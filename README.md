@@ -1,8 +1,8 @@
 # Andrew's Airsoft
 
-A tactical airsoft team shooter for Roblox, aimed at grown-up players who want the feel of a real Sunday skirmish: BBs that actually fly and drop, honest hit calls, spawn discipline and a field built for flanking.
+A tactical airsoft team shooter for Roblox, built for grown-up players. Think a Sunday skirmish shot like an action film: BBs that actually fly and drop, honest hit calls, a hotel-style armory where you pick your gun, a neon nightclub in the rain, and a slow-motion replay of every round's final tag.
 
-The whole game lives in code. The map, every gun model, player kit and the HUD are built procedurally, so the repo is the single source of truth and there are no uploaded assets to lose.
+The whole game lives in code. Maps, gun models, player kit and HUD are all built procedurally, so it runs with zero uploads. When you want to go further, realistic Blender gun models (`assets/meshes/`) and synthesized gun sounds (`assets/audio/`) are ready to import, and the game uses them automatically.
 
 ---
 
@@ -51,26 +51,53 @@ Ranks and stats are stored in a DataStore. To test that in Studio, turn on **Gam
 
 | | |
 |---|---|
-| **Field** | *Ironwood Yard*: a 340×250-stud outdoor field at dusk with floodlights, a two-storey container yard (A), a CQB shoot house (B), a woodline bunker (C), barricades, sandbag walls, tyre stacks, cable spools, wrecks and team watchtowers. Mirrored, so neither side has an advantage. |
-| **Staging area** | Lobby with a chrono station, field rules board, gun racks and a **practice range** with steel targets that ding when hit. |
-| **Modes** | **Team Deathmatch**: first to 30 tags. **Domination**: hold A/B/C; every held point scores every 2 s; first to 200. Players vote between rounds. |
-| **Round flow** | Intermission and vote (20 s) → Briefing, frozen at spawn (6 s) → Live (5 min) → After-action report (12 s). |
+| **Ironwood Yard** | A 340×250-stud outdoor field at dusk with floodlights: a two-storey container yard (A), a CQB shoot house (B), a woodline bunker (C), barricades, sandbag walls, tyre stacks, cable spools, wrecks and team watchtowers. |
+| **Velvet Club** | Night-time close quarters in the rain. A two-level nightclub with a neon street out front and a loading dock out back: the bar (A), an LED dance floor with moving lights (B), and a VIP balcony upstairs (C). Wet tarmac, puddles, lightning. |
+| **Staging area** | Lobby with a chrono station, rules board and a **practice range** with steel targets that ding. Through the side door is **the Armory**: a walnut-and-brass gun room with every weapon hanging in its own lit bay. Walk up to one and press **E** to customise it. |
+| **Modes** | **Team Deathmatch**: first to 30 tags. **Domination**: hold A/B/C; every held point scores every 2 s; first to 200. Players vote on **map and mode** between rounds. Both maps are mirrored, so neither side has an advantage. |
+| **Round flow** | Intermission and vote (20 s) → Briefing, frozen at spawn (6 s) → Live (5 min) → **final tag replay** in slow motion → After-action report. |
 | **Hit rules** | One BB anywhere is a hit. A tagged player calls "HIT!", gets an orange dead rag and walks off for 4 s. 3 s spawn protection, which ends as soon as you fire. No friendly fire. |
-| **Progression** | XP for tags, captures, wins and finished matches. 10 ranks from *Recruit* to *Field Marshal*. Career stats and settings are saved. |
+| **Progression** | XP for tags, captures, wins and finished matches. 10 ranks from *Recruit* to *Field Marshal*. Ranks unlock gun finishes, up to *Gilded*. Career stats, settings and every gun's attachments are saved. |
 
 ### Arsenal
 
-| Gun | Type | Notes |
-|---|---|---|
-| M4A1 Carbine | AEG | All-rounder, red dot, full auto / semi |
-| MP5 SD | AEG | CQB, fastest handling, 40-round mags |
-| SR-25 DMR | AEG | Semi-auto, 4× scope |
-| VSR-10 | Spring | Bolt-action sniper, quiet, 18 FOV scope |
-| M870 Tri-Shot | Gas | Three BBs per shell |
-| G17 GBB | Gas | Sidearm for everyone |
-| BB Burst Grenade | Utility | One per life, 16-stud burst, blocked by cover |
+| Gun | Class | Type | Character |
+|---|---|---|---|
+| M4A1 Carbine | Rifle | AEG | The benchmark: auto/semi, red dot and vertical grip by default |
+| AK-74 Classic | Rifle | AEG | Wood and steel; harder-hitting, more kick |
+| SR-25 DMR | DMR | AEG | Semi-auto marksman rifle with a 4× scope |
+| VSR-10 | Sniper | Spring | Bolt action, whisper quiet, 10× scope overlay |
+| M249 SAW | LMG | AEG | 100-round box, slow to aim |
+| MP5 SD | SMG | AEG | Integrally suppressed CQB classic |
+| Vector .45 | SMG | AEG | Absurd fire rate, three-round burst mode |
+| MP7 | SMG | Gas | Snappy gas-blowback PDW |
+| P90 | SMG | AEG | 50-round top-loading bullpup |
+| M870 Tri-Shot | Shotgun | Gas | Three BBs per shell, pump between shots |
+| G17 / G18C | Pistol | Gas | Reliable sidearm / full-auto machine pistol |
+| 1911 | Pistol | Gas | Steel classic, flat shooting |
+| Desert Eagle | Pistol | Gas | Huge velocity, huge kick |
+| BB Burst Grenade | Utility | – | One per life, 16-stud burst, blocked by cover |
 
-BBs are simulated as real projectiles with muzzle velocity, hop-up-limited drop, and spread that grows when you move, jump or hip-fire. Each gun can carry a weapon light, and team-coloured tape on guns and armbands makes friendlies readable.
+**Attachments** change real stats, and the armory shows the difference live:
+
+| Slot | Options |
+|---|---|
+| Optic | Micro red dot, holographic, 4× combat scope, 10× sniper scope |
+| Muzzle | Mock suppressor (quiet, different report), compensator (less climb) |
+| Grip | Vertical (steadier auto), angled (faster aim) |
+| Laser | Laser/light module (tighter hip fire, visible beam; **F** toggles) |
+
+**Finishes:** Factory Black, Flat Dark Earth, Ranger Green, Cerakote Gunmetal, Arctic, Crimson Lacquer, Carbon Weave and Gilded. Each unlocks at a rank.
+
+BBs are simulated as real projectiles with muzzle velocity, hop-up-limited drop, and spread that grows when you move, jump or hip-fire. Team-coloured tape on guns and armbands makes friendlies readable.
+
+### Gun handling
+
+- **Animated reloads:** the mag drops out and your support hand seats a fresh one. Empty reloads also charge the gun.
+- **Gun actions:** pistols' slides blow back and lock open on empty. Snipers work the bolt and shotguns rack the pump between shots.
+- **Inspect (I):** turn the gun over in your hands.
+- **Slide:** crouch while sprinting to slide into cover.
+- **Lean:** Q and E to lean around corners.
 
 ### Controls
 
@@ -86,8 +113,11 @@ BBs are simulated as real projectiles with muzzle velocity, hop-up-limited drop,
 | Sprint | Shift | L3 (toggle) | – |
 | Crouch | C / Ctrl | B | C |
 | Lean | Q / E | – | – |
+| Inspect weapon | I | – | – |
+| Slide | Crouch while sprinting | B while sprinting | C while sprinting |
+| Customise at armory | E at a display | X | tap prompt |
 | Scoreboard | Tab (hold) | D-pad ↓ | SCORES |
-| Loadout | L | D-pad ← | LOADOUT |
+| Armory / loadout | L | D-pad ← | LOADOUT |
 | Settings | P | Select | SETTINGS |
 | Vote (frees mouse) | V | – | tap |
 
@@ -99,16 +129,26 @@ The settings menu has look sensitivity, aim sensitivity (scaled by zoom), field 
 
 ```
 default.project.json   Rojo project: maps src/ into the place, sets lighting and player settings
+assets/
+  meshes/              Blender-made .glb gun and attachment models to import
+  audio/               Synthesized .ogg sounds to upload
+  gunmodels/           Save imported gun models here as .rbxm so builds include them
+tools/
+  blender/             build_guns.py: generates assets/meshes, GunMeshData.lua and docs/renders
+  audio/               make_sounds.py: generates assets/audio
 src/
   shared/              → ReplicatedStorage.Shared
-    Config.lua         All tuning: round timers, modes, XP, ranks, movement, sounds
-    Weapons.lua        Gun stats (velocity, drop, spread, recoil, mags…)
+    Config.lua         All tuning: round timers, modes, maps, XP, ranks, movement, sounds
+    Weapons.lua        Gun stats, attachments, finishes and stat resolution
     Ballistics.lua     BB flight simulation used by client and server
-    GunBuilder.lua     Builds every gun model from parts
+    GunBuilder.lua     Builds every gun: imported meshes if present, otherwise parts
+    GunMeshData.lua    Generated by the Blender script: mesh piece layout per gun
+    AssetIds.lua       Paste uploaded sound IDs here
     Remotes.lua        Every network channel in one place
   server/              → ServerScriptService.Server
     Main.server.lua    Entry point: builds the world, wires services, handles joins
-    MapBuilder.lua     Ironwood Yard + staging area + lighting
+    MapBuilder.lua     Ironwood Yard, staging area, armory, lighting presets
+    ClubBuilder.lua    Velvet Club night map
     Gear.lua           Plate carrier, goggles, mask and armband for every player
     PlayerService.lua  Spawning, loadouts, ammo, spawn protection, out state
     CombatService.lua  Server-side shot and hit validation, grenades
@@ -118,9 +158,11 @@ src/
   client/              → StarterPlayer.StarterPlayerScripts.Client
     Main.client.lua    Entry point
     WeaponController   Input, firing, ADS, recoil, sprint/crouch/lean, mobile + gamepad
-    Viewmodel.lua      First-person gun and arms, sway, bob, reload pose
+    Viewmodel.lua      First-person gun and arms; draw, reload, inspect, bolt/pump/slide animation
     HUD.lua            Compass, scores, objectives, crosshair, ammo, kill feed, scope
-    Menu.lua           Loadout, settings, scoreboard, mode vote, after-action report
+    Menu.lua           Armory/loadout, settings, scoreboard, map+mode vote, after-action report
+    Cinematic.lua      Slow-motion final tag replay
+    Ambience.lua       Rain, lightning, armory prompts
     Effects.lua        BB tracers, impacts, sounds, grenade burst
     State.lua / UI.lua Client state and UI helpers
 ```
@@ -140,9 +182,29 @@ Most balance changes are a one-line edit in `src/shared/Config.lua` or `src/shar
 - Longer walk-off: `Config.RespawnTime = 6`
 - Snappier M4: lower `Weapons.List.M4.FireInterval`
 
+## Realistic gun models and sounds
+
+Out of the box, every gun is built from parts and every shot uses a built-in Roblox sound, so the game works with nothing uploaded. The repo also ships upgrade assets that the game picks up automatically.
+
+### Gun models (Blender)
+
+`assets/meshes/` contains a `.glb` file for every gun (`M4.glb`, `AK74.glb`, …) and attachment (`ATT_RedDot.glb`, …). They're generated by `tools/blender/build_guns.py`; preview renders are in `docs/renders/`.
+
+1. In Studio, open the **Asset Manager** and use **Bulk Import**, or use **Home → Import 3D** one file at a time. Pick the `.glb` files from `assets/meshes/`.
+2. In the import dialog, keep the defaults and import each file as a **Model**.
+3. Move each imported model into **ReplicatedStorage → GunModels**. Make sure its name matches the file name exactly (`M4`, `ATT_RedDot`, …).
+4. Press Play. Guns with an imported model use it; anything missing falls back to the part-built version. Finishes, team tape, attachments and reload animations work on both.
+
+To keep the models in builds made with `rojo build`, right-click each model → **Save to File…** and save it as `assets/gunmodels/<ID>.rbxm`. Rojo then puts it back into `ReplicatedStorage.GunModels` every build. While using `rojo serve`, models you import straight into GunModels are left alone.
+
 ### Sounds
 
-The game uses audio that ships with every Roblox client, so nothing fails to load. For a more premium mix, upload your own sounds at <https://create.roblox.com/dashboard/creations> and replace the IDs in `Config.Sounds`.
+`assets/audio/` has synthesized `.ogg` files for each gun class (rifle, SMG, DMR, LMG, sniper, shotgun, pistol, magnum, suppressed) plus magazine, bolt, hit-marker, steel-target and grenade sounds. They come from `tools/audio/make_sounds.py`.
+
+1. Upload them at <https://create.roblox.com/dashboard/creations> → **Development Items → Audio** (or the Asset Manager's bulk import).
+2. Paste each asset ID into `src/shared/AssetIds.lua` under the matching name.
+
+Any ID left at `0` falls back to the built-in sound, pitched per gun class so guns still sound different. Recorded airsoft audio will always beat synthesis; drop real recordings in the same slots whenever you have them.
 
 ---
 

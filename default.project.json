@@ -2,19 +2,20 @@
   "name": "AndrewsAirsoft",
   "tree": {
     "$className": "DataModel",
-
     "ReplicatedStorage": {
       "Shared": {
         "$path": "src/shared"
+      },
+      "GunModels": {
+        "$path": "assets/gunmodels",
+        "$ignoreUnknownInstances": true
       }
     },
-
     "ServerScriptService": {
       "Server": {
         "$path": "src/server"
       }
     },
-
     "StarterPlayer": {
       "$properties": {
         "CameraMaxZoomDistance": 0.5,
@@ -30,14 +31,12 @@
         }
       }
     },
-
     "Players": {
       "$properties": {
         "CharacterAutoLoads": false,
         "RespawnTime": 4
       }
     },
-
     "Lighting": {
       "$properties": {
         "Technology": "Future",
@@ -48,24 +47,29 @@
         "EnvironmentSpecularScale": 1,
         "GlobalShadows": true,
         "ShadowSoftness": 0.25,
-        "Ambient": [0.16, 0.15, 0.17],
-        "OutdoorAmbient": [0.42, 0.38, 0.40],
+        "Ambient": [
+          0.16,
+          0.15,
+          0.17
+        ],
+        "OutdoorAmbient": [
+          0.42,
+          0.38,
+          0.4
+        ],
         "ExposureCompensation": 0.15
       }
     },
-
     "Workspace": {
       "$properties": {
         "Gravity": 196.2
       }
     },
-
     "SoundService": {
       "$properties": {
         "RespectFilteringEnabled": true
       }
     },
-
     "Teams": {
       "$className": "Teams"
     }

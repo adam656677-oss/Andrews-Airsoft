@@ -21,6 +21,7 @@ local Lighting = game:GetService("Lighting")
 
 local Config = require(game:GetService("ReplicatedStorage").Shared.Config)
 local Build = require(script.Parent.Build)
+local ClubBuilder = require(script.Parent.ClubBuilder)
 
 local MapBuilder = {}
 
@@ -57,43 +58,7 @@ local rng = Random.new(1337)
 
 -- Generic pieces -----------------------------------------------------------------
 
-type Opening = { At: number, Width: number, Bottom: number, Top: number }
-
--- Builds a wall from `a` to `b` (both at floor level) with rectangular openings.
-local function wall(parent: Instance, a: Vector3, b: Vector3, height: number, thickness: number, color: Color3, material: Enum.Material, openings: { Opening }?)
-	local dir = (b - a).Unit
-	local length = (b - a).Magnitude
-	local list = table.clone(openings or {})
-	table.sort(list, function(x, y)
-		return x.At < y.At
-	end)
-
-	local function piece(from: number, to: number, y0: number, y1: number)
-		if to - from < 0.05 or y1 - y0 < 0.05 then
-			return
-		end
-		local center = a + dir * ((from + to) / 2) + Vector3.new(0, (y0 + y1) / 2, 0)
-		Build.Part({
-			Name = "Wall",
-			Size = Vector3.new(thickness, y1 - y0, to - from),
-			CFrame = CFrame.lookAt(center, center + dir),
-			Color = color,
-			Material = material,
-			Parent = parent,
-		})
-	end
-
-	local cursor = 0
-	for _, o in list do
-		local s = o.At - o.Width / 2
-		local e = o.At + o.Width / 2
-		piece(cursor, s, 0, height)
-		piece(s, e, 0, o.Bottom)
-		piece(s, e, o.Top, height)
-		cursor = e
-	end
-	piece(cursor, length, 0, height)
-end
+local wall = Build.Wall
 
 local function sandbagWall(parent: Instance, cf: CFrame, bags: number, rows: number)
 	local model = Build.Model("Sandbags", parent)
@@ -422,7 +387,7 @@ local function buildPerimeter(map: Instance)
 		local t = i / 60
 		local angle = t * math.pi * 2
 		local r = Vector3.new(math.cos(angle) * (FIELD_X + rng:NextNumber(18, 50)), 0, math.sin(angle) * (FIELD_Z + rng:NextNumber(18, 50)))
-		if not (r.Z > FIELD_Z and math.abs(r.X) < 90) then
+		if not (r.Z > FIELD_Z and math.abs(r.X) < 135) then
 			tree(trees, r, rng:NextNumber(0.9, 1.5))
 		end
 	end
@@ -703,16 +668,16 @@ local function buildMidfield(map: Instance)
 	return mid
 end
 
-local function buildObjectives(map: Instance)
-	local folder = Build.Folder("Objectives", map)
-	local points = {
-		A = Vector3.new(0, 0, 80),
-		B = Vector3.new(0, 0.5, 0),
-		C = Vector3.new(0, 0, -80),
-	}
-	local radius = Config.Modes.DOM.CaptureRadius
-	for name, pos in points do
+type ObjectiveSpec = { Position: Vector3, Radius: number?, Height: number? }
+
+local function buildObjectives(parent: Instance, points: { [string]: ObjectiveSpec })
+	local folder = Build.Folder("Objectives", parent)
+	for name, spec in points do
+		local pos = spec.Position
+		local radius = spec.Radius or Config.Modes.DOM.CaptureRadius
 		local model = Build.Model(name, folder)
+		model:SetAttribute("Radius", radius)
+		model:SetAttribute("Height", spec.Height or 14)
 		local ring = Build.Part({
 			Name = "Zone",
 			Shape = Enum.PartType.Cylinder,
@@ -779,7 +744,7 @@ local function buildLobby(map: Instance, spawns: Instance)
 	-- Walls (low on the field side so you can look over the field)
 	wall(lobby, o + Vector3.new(-60, 1, -35), o + Vector3.new(60, 1, -35), 5, 1, C.ConcreteDark, Enum.Material.Concrete)
 	wall(lobby, o + Vector3.new(-60, 1, 35), o + Vector3.new(60, 1, 35), 12, 1, C.ConcreteDark, Enum.Material.Concrete)
-	wall(lobby, o + Vector3.new(-60, 1, -35), o + Vector3.new(-60, 1, 35), 12, 1, C.ConcreteDark, Enum.Material.Concrete)
+	wall(lobby, o + Vector3.new(-60, 1, -35), o + Vector3.new(-60, 1, 35), 12, 1, C.ConcreteDark, Enum.Material.Concrete, { { At = 35, Width = 8, Bottom = 0, Top = 9 } })
 	wall(lobby, o + Vector3.new(60, 1, -35), o + Vector3.new(60, 1, 35), 12, 1, C.ConcreteDark, Enum.Material.Concrete)
 
 	-- Signage
@@ -798,11 +763,8 @@ local function buildLobby(map: Instance, spawns: Instance)
 	local chrono = Build.Part({ Name = "Chronograph", Size = Vector3.new(2, 1, 1.2), CFrame = CFrame.new(o + Vector3.new(-30, 4.7, 20)), Color = Color3.fromRGB(30, 30, 30), Parent = lobby })
 	Build.SurfaceText(chrono, Enum.NormalId.Front, "358 FPS", Color3.fromRGB(80, 255, 120), Color3.fromRGB(10, 14, 10))
 
-	-- Weapon racks with display guns are added by the server after the gun builder runs.
-	local racks = Build.Folder("Racks", lobby)
-	for i = 0, 4 do
-		Build.Part({ Name = "Rack" .. i, Size = Vector3.new(6, 0.4, 2), CFrame = CFrame.new(o + Vector3.new(-50 + i * 7, 3.2, 31)), Color = C.PlywoodDark, Material = Enum.Material.Wood, Parent = racks })
-	end
+	local armorySign = Build.Part({ Name = "ArmorySign", Size = Vector3.new(0.4, 2, 10), CFrame = CFrame.new(o + Vector3.new(-59.2, 11, 0)), Color = Color3.fromRGB(20, 16, 12), Parent = lobby })
+	Build.SurfaceText(armorySign, Enum.NormalId.Right, "◂ THE ARMORY", Color3.fromRGB(214, 170, 90))
 
 	-- Practice range on the east side
 	local range = Build.Folder("Range", lobby)
@@ -856,53 +818,215 @@ local function buildLobby(map: Instance, spawns: Instance)
 	return lobby
 end
 
-local function setupLighting()
+-- The Armory --------------------------------------------------------------------
+-- A walnut-and-brass gun room off the staging area. Every gun in the game hangs
+-- in its own lit bay; walk up to one and press E to customise it.
+
+local function buildArmory(map: Instance)
+	local GunBuilder = require(game:GetService("ReplicatedStorage").Shared.GunBuilder)
+	local Weapons = require(game:GetService("ReplicatedStorage").Shared.Weapons)
+
+	local room = Build.Model("Armory", map)
+	local o = LOBBY_CENTER + Vector3.new(-90, 1, 0) -- room centre at floor level
+	local W, D, H = 60, 46, 14
+	local walnut = Color3.fromRGB(62, 38, 24)
+	local brass = Color3.fromRGB(196, 150, 72)
+	local leather = Color3.fromRGB(46, 26, 20)
+
+	local floor = Build.Part({ Name = "Floor", Size = Vector3.new(W, 1, D), CFrame = CFrame.new(o - Vector3.new(0, 0.5, 0)), Color = Color3.fromRGB(26, 24, 26), Material = Enum.Material.Marble, Parent = room })
+	floor.Reflectance = 0.12
+	Build.Part({ Name = "Rug", Size = Vector3.new(W - 20, 0.1, 12), CFrame = CFrame.new(o + Vector3.new(0, 0.05, 0)), Color = Color3.fromRGB(92, 16, 30), Material = Enum.Material.Fabric, Parent = room })
+	Build.Part({ Name = "Ceiling", Size = Vector3.new(W, 1, D), CFrame = CFrame.new(o + Vector3.new(0, H + 0.5, 0)), Color = Color3.fromRGB(30, 22, 18), Material = Enum.Material.Wood, Parent = room })
+	wall(room, o + Vector3.new(-W / 2, 0, -D / 2), o + Vector3.new(W / 2, 0, -D / 2), H, 1, walnut, Enum.Material.Wood)
+	wall(room, o + Vector3.new(-W / 2, 0, D / 2), o + Vector3.new(W / 2, 0, D / 2), H, 1, walnut, Enum.Material.Wood)
+	wall(room, o + Vector3.new(-W / 2, 0, -D / 2), o + Vector3.new(-W / 2, 0, D / 2), H, 1, walnut, Enum.Material.Wood)
+	-- East wall meets the lobby; the doorway lines up with the lobby opening.
+	wall(room, o + Vector3.new(W / 2, 0, -D / 2), o + Vector3.new(W / 2, 0, D / 2), H, 1, walnut, Enum.Material.Wood, { { At = D / 2, Width = 8, Bottom = 0, Top = 9 } })
+	Build.Part({ Name = "Corridor", Size = Vector3.new(2, 0.2, 8), CFrame = CFrame.new(o + Vector3.new(W / 2 + 0.5, 0.1, 0)), Color = Color3.fromRGB(26, 24, 26), Material = Enum.Material.Marble, Parent = room })
+	-- Brass dado rail and skirting.
+	for _, z in { -D / 2 + 0.6, D / 2 - 0.6 } do
+		Build.Part({ Name = "DadoRail", Size = Vector3.new(W - 2, 0.2, 0.15), CFrame = CFrame.new(o + Vector3.new(0, 4, z)), Color = brass, Material = Enum.Material.Metal, Parent = room })
+	end
+
+	local displays = Build.Folder("Displays", room)
+	local ids = table.clone(Weapons.Primaries)
+	for _, id in Weapons.Secondaries do
+		table.insert(ids, id)
+	end
+	local perWall = math.ceil(#ids / 2)
+	local spacing = (W - 8) / perWall
+	for i, id in ids do
+		local w = Weapons.Get(id)
+		local north = i <= perWall
+		local index = north and (i - 1) or (i - perWall - 1)
+		local x = -W / 2 + 4 + spacing * (index + 0.5)
+		local z = north and (D / 2 - 0.7) or (-D / 2 + 0.7)
+		local facing = north and -1 or 1
+		local bayCF = CFrame.lookAt(o + Vector3.new(x, 7, z), o + Vector3.new(x, 7, z + facing))
+
+		-- Backlit panel, brass frame, plaque and a little downlight per gun.
+		local panel = Build.Part({ Name = "Backlight", Size = Vector3.new(spacing - 1.2, 6.5, 0.2), CFrame = bayCF * CFrame.new(0, 0, 0.1), Color = Color3.fromRGB(255, 226, 180), Material = Enum.Material.Neon, Transparency = 0.55, CanCollide = false, Parent = displays })
+		panel.CanQuery = false
+		for _, dx in { -1, 1 } do
+			Build.Part({ Name = "Frame", Size = Vector3.new(0.2, 7, 0.4), CFrame = bayCF * CFrame.new(dx * (spacing - 1) / 2, 0, 0), Color = brass, Material = Enum.Material.Metal, Parent = displays })
+		end
+		local plaque = Build.Part({ Name = "Plaque", Size = Vector3.new(spacing - 2, 0.9, 0.15), CFrame = bayCF * CFrame.new(0, -4, -0.2), Color = brass, Material = Enum.Material.Metal, Parent = displays })
+		Build.SurfaceText(plaque, Enum.NormalId.Front, w.Name:upper(), Color3.fromRGB(40, 28, 16))
+		local lamp = Build.Part({ Name = "Downlight", Size = Vector3.new(1, 0.3, 0.6), CFrame = bayCF * CFrame.new(0, 4, -0.8), Color = Color3.fromRGB(255, 230, 190), Material = Enum.Material.Neon, CanCollide = false, Parent = displays })
+		lamp.CanQuery = false
+		local spot = Instance.new("SpotLight")
+		spot.Face = Enum.NormalId.Bottom
+		spot.Angle = 70
+		spot.Range = 10
+		spot.Brightness = 3
+		spot.Color = Color3.fromRGB(255, 224, 180)
+		spot.Parent = lamp
+
+		-- The gun itself, hung side-on with its default attachments.
+		local ok, model = pcall(GunBuilder.Build, id, { Accent = brass })
+		if ok then
+			for _, d in model:GetDescendants() do
+				if d:IsA("BasePart") then
+					d.Anchored = true
+					d.CanQuery = false
+				end
+			end
+			local _, size = model:GetBoundingBox()
+			local scale = math.min(1, (spacing - 1.6) / math.max(size.Z, 0.1))
+			if scale < 1 then
+				model:ScaleTo(scale)
+			end
+			-- Barrel runs along the wall, right side facing the room.
+			model:PivotTo(bayCF * CFrame.new(0, 0.4, -0.6) * CFrame.Angles(0, math.rad(90 * facing), 0))
+			model.Parent = displays
+		end
+
+		local prompt = Instance.new("ProximityPrompt")
+		prompt.Name = "Customize"
+		prompt.ActionText = "Customize"
+		prompt.ObjectText = w.Name
+		prompt.KeyboardKeyCode = Enum.KeyCode.E
+		prompt.GamepadKeyCode = Enum.KeyCode.ButtonX
+		prompt.MaxActivationDistance = 9
+		prompt.RequiresLineOfSight = false
+		prompt.Style = Enum.ProximityPromptStyle.Default
+		prompt:SetAttribute("WeaponId", id)
+		local anchor = Build.Part({ Name = "PromptAnchor", Size = Vector3.new(1, 1, 1), CFrame = bayCF * CFrame.new(0, -1, -2), Transparency = 1, CanCollide = false, Parent = displays })
+		anchor.CanQuery = false
+		prompt.Parent = anchor
+	end
+
+	-- The armorer's counter in the middle of the room.
+	Build.Part({ Name = "Counter", Size = Vector3.new(18, 3.6, 4), CFrame = CFrame.new(o + Vector3.new(-8, 1.8, 0)), Color = walnut, Material = Enum.Material.Wood, Parent = room })
+	Build.Part({ Name = "CounterTop", Size = Vector3.new(18.6, 0.3, 4.6), CFrame = CFrame.new(o + Vector3.new(-8, 3.75, 0)), Color = Color3.fromRGB(30, 28, 30), Material = Enum.Material.Marble, Parent = room })
+	Build.Part({ Name = "LeatherMat", Size = Vector3.new(6, 0.05, 3), CFrame = CFrame.new(o + Vector3.new(-8, 3.92, 0)), Color = leather, Material = Enum.Material.Leather, Parent = room })
+	local featured = select(2, pcall(GunBuilder.Build, "DEAGLE", { Accent = brass, Loadout = { Skin = "Gilded" } }))
+	if typeof(featured) == "Instance" then
+		for _, d in featured:GetDescendants() do
+			if d:IsA("BasePart") then
+				d.Anchored = true
+				d.CanQuery = false
+			end
+		end
+		featured:PivotTo(CFrame.new(o + Vector3.new(-8, 4.05, 0)) * CFrame.Angles(0, math.rad(70), math.rad(90)))
+		featured.Parent = room
+	end
+	local lampShade = Build.Part({ Name = "BankersLamp", Size = Vector3.new(1.6, 0.5, 0.8), CFrame = CFrame.new(o + Vector3.new(-14, 5, 0)), Color = Color3.fromRGB(30, 90, 50), Material = Enum.Material.Glass, Parent = room })
+	local lampLight = Instance.new("PointLight")
+	lampLight.Range = 10
+	lampLight.Brightness = 1.4
+	lampLight.Color = Color3.fromRGB(255, 220, 160)
+	lampLight.Parent = lampShade
+	local sign = Build.Part({ Name = "ArmorySign", Size = Vector3.new(14, 2.4, 0.3), CFrame = CFrame.new(o + Vector3.new(-W / 2 + 0.7, 10.5, 0)) * CFrame.Angles(0, math.rad(90), 0), Color = Color3.fromRGB(20, 16, 12), Parent = room })
+	Build.SurfaceText(sign, Enum.NormalId.Back, "THE ARMORY", brass)
+	Build.SurfaceText(sign, Enum.NormalId.Front, "THE ARMORY", brass)
+
+	-- Warm ceiling lights.
+	for _, x in { -18, 0, 18 } do
+		local light = Build.Part({ Name = "CeilingLight", Size = Vector3.new(3, 0.3, 3), CFrame = CFrame.new(o + Vector3.new(x, H - 0.2, 0)), Color = Color3.fromRGB(255, 220, 170), Material = Enum.Material.Neon, CanCollide = false, Parent = room })
+		light.CanQuery = false
+		local l = Instance.new("SurfaceLight")
+		l.Face = Enum.NormalId.Bottom
+		l.Range = 18
+		l.Angle = 120
+		l.Brightness = 1.2
+		l.Color = Color3.fromRGB(255, 214, 160)
+		l.Parent = light
+	end
+	return room
+end
+
+-- Lighting presets ------------------------------------------------------------------
+
+local PRESETS = {
+	Field = {
+		ClockTime = 18.35,
+		Brightness = 2.2,
+		Ambient = Color3.fromRGB(40, 38, 44),
+		OutdoorAmbient = Color3.fromRGB(108, 98, 102),
+		Atmosphere = { Density = 0.32, Offset = 0.15, Color = Color3.fromRGB(214, 170, 140), Decay = Color3.fromRGB(96, 78, 92), Glare = 0.35, Haze = 1.4 },
+		Bloom = { Intensity = 0.6, Size = 28, Threshold = 1.6 },
+		SunRays = 0.06,
+		Grade = { Brightness = 0.02, Contrast = 0.12, Saturation = 0.05, TintColor = Color3.fromRGB(255, 244, 236) },
+		Stars = 2500,
+	},
+	Club = {
+		ClockTime = 0.6,
+		Brightness = 0.6,
+		Ambient = Color3.fromRGB(22, 20, 30),
+		OutdoorAmbient = Color3.fromRGB(46, 50, 70),
+		Atmosphere = { Density = 0.42, Offset = 0.05, Color = Color3.fromRGB(70, 80, 110), Decay = Color3.fromRGB(40, 30, 60), Glare = 0, Haze = 2.2 },
+		Bloom = { Intensity = 1.1, Size = 36, Threshold = 1.2 },
+		SunRays = 0,
+		Grade = { Brightness = 0.0, Contrast = 0.18, Saturation = 0.12, TintColor = Color3.fromRGB(236, 236, 255) },
+		Stars = 0,
+	},
+}
+
+function MapBuilder.ApplyLighting(mapId: string)
+	local preset = PRESETS[mapId] or PRESETS.Field
 	for _, child in Lighting:GetChildren() do
 		if child:IsA("PostEffect") or child:IsA("Atmosphere") or child:IsA("Sky") then
 			child:Destroy()
 		end
 	end
-	Lighting.ClockTime = 18.35
+	Lighting.ClockTime = preset.ClockTime
 	Lighting.GeographicLatitude = 38
-	Lighting.Brightness = 2.2
-	Lighting.Ambient = Color3.fromRGB(40, 38, 44)
-	Lighting.OutdoorAmbient = Color3.fromRGB(108, 98, 102)
+	Lighting.Brightness = preset.Brightness
+	Lighting.Ambient = preset.Ambient
+	Lighting.OutdoorAmbient = preset.OutdoorAmbient
 	Lighting.EnvironmentDiffuseScale = 1
 	Lighting.EnvironmentSpecularScale = 1
 	Lighting.GlobalShadows = true
 
 	local atmosphere = Instance.new("Atmosphere")
-	atmosphere.Density = 0.32
-	atmosphere.Offset = 0.15
-	atmosphere.Color = Color3.fromRGB(214, 170, 140)
-	atmosphere.Decay = Color3.fromRGB(96, 78, 92)
-	atmosphere.Glare = 0.35
-	atmosphere.Haze = 1.4
+	for k, v in preset.Atmosphere do
+		(atmosphere :: any)[k] = v
+	end
 	atmosphere.Parent = Lighting
 
 	local sky = Instance.new("Sky")
 	sky.SunAngularSize = 14
-	sky.MoonAngularSize = 8
-	sky.StarCount = 2500
+	sky.MoonAngularSize = 9
+	sky.StarCount = preset.Stars
 	sky.Parent = Lighting
 
 	local bloom = Instance.new("BloomEffect")
-	bloom.Intensity = 0.6
-	bloom.Size = 28
-	bloom.Threshold = 1.6
+	for k, v in preset.Bloom do
+		(bloom :: any)[k] = v
+	end
 	bloom.Parent = Lighting
 
 	local sunRays = Instance.new("SunRaysEffect")
-	sunRays.Intensity = 0.06
+	sunRays.Intensity = preset.SunRays
 	sunRays.Spread = 0.6
 	sunRays.Parent = Lighting
 
 	local grade = Instance.new("ColorCorrectionEffect")
 	grade.Name = "Grade"
-	grade.Brightness = 0.02
-	grade.Contrast = 0.12
-	grade.Saturation = 0.05
-	grade.TintColor = Color3.fromRGB(255, 244, 236)
+	for k, v in preset.Grade do
+		(grade :: any)[k] = v
+	end
 	grade.Parent = Lighting
 end
 
@@ -913,20 +1037,42 @@ function MapBuilder.Build()
 	end
 	local map = Build.Folder("Map", workspace)
 	local spawns = Build.Folder("Spawns", map)
+	local arenas = Build.Folder("Arenas", map)
 	Build.Folder("Effects", workspace)
 
-	setupLighting()
+	MapBuilder.ApplyLighting("Field")
 	buildGround(map)
-	buildPerimeter(map)
-	buildSpawn(map, spawns, "Blue", -1)
-	buildSpawn(map, spawns, "Red", 1)
-	buildShootHouse(map)
-	buildContainerYard(map)
-	buildWoodline(map)
-	buildMidfield(map)
-	buildObjectives(map)
+
+	-- Ironwood Yard
+	local field = Build.Folder("Field", arenas)
+	local fieldSpawns = Build.Folder("Spawns", field)
+	buildPerimeter(field)
+	buildSpawn(field, fieldSpawns, "Blue", -1)
+	buildSpawn(field, fieldSpawns, "Red", 1)
+	buildShootHouse(field)
+	buildContainerYard(field)
+	buildWoodline(field)
+	buildMidfield(field)
+	buildObjectives(field, {
+		A = { Position = Vector3.new(0, 0, 80) },
+		B = { Position = Vector3.new(0, 0.5, 0) },
+		C = { Position = Vector3.new(0, 0, -80) },
+	})
+
+	-- Velvet Club
+	local club = Build.Folder("Club", arenas)
+	ClubBuilder.Build(club)
+	buildObjectives(club, ClubBuilder.Objectives)
+
 	buildLobby(map, spawns)
+	buildArmory(map)
 	return map
+end
+
+function MapBuilder.Arena(mapId: string): Instance?
+	local map = workspace:FindFirstChild("Map")
+	local arenas = map and map:FindFirstChild("Arenas")
+	return arenas and arenas:FindFirstChild(mapId) or nil
 end
 
 MapBuilder.LobbyCenter = LOBBY_CENTER

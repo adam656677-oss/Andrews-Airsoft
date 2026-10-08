@@ -33,6 +33,13 @@ local equippedTool: Tool? = nil
 local triggerHeld = false
 local fireQueued = false
 local lastShot = 0
+local burstLeft = 0
+local sliding = false
+local slideDir = Vector3.zero
+local slideStart = 0
+local lastSlide = 0
+local laserPart: BasePart? = nil
+local laserDot: BasePart? = nil
 local nextShotId = 0
 local bloom = 0
 local aimHeld = false
@@ -48,6 +55,7 @@ local reloadToken = 0
 local throwing = false
 
 local rng = Random.new()
+local updateLaser: (boolean) -> ()
 
 ---------------------------------------------------------------------------
 -- Helpers
@@ -66,8 +74,19 @@ local function isOut(): boolean
 	return player:GetAttribute("Out") == true
 end
 
+-- Stats with the equipped tool's attachments applied.
+local resolved: { [string]: any } = {}
+
 local function currentWeapon()
-	return State.Weapon and Weapons.Get(State.Weapon) or nil
+	if not State.Weapon then
+		return nil
+	end
+	return resolved[State.Weapon] or Weapons.Get(State.Weapon)
+end
+
+local function firePitch(w): number
+	local base = Config.UsingUploadedSounds and 1 or (Config.FallbackPitch[w.Sound] or 1)
+	return base * rng:NextNumber(0.96, 1.05)
 end
 
 local function myColor(): Color3
@@ -251,8 +270,15 @@ local function fire()
 		})
 	end
 
-	Effects.Play2D(w.Sound, w.Quiet and 0.35 or 0.55, rng:NextNumber(0.95, 1.08))
+	Effects.Play2D(w.Sound, w.Quiet and 0.35 or 0.55, firePitch(w))
 	viewmodel:Recoil(w.Recoil[1] * 0.35)
+	viewmodel:CancelInspect()
+	if w.FireModes[1] == "Bolt" or w.FireModes[1] == "Pump" then
+		viewmodel:Play("Cycle", w.FireInterval * 0.85)
+	end
+	if w.Class == "Pistol" and ammo.Mag <= 0 then
+		viewmodel:SetSlideLocked(true)
+	end
 	local recoilScale = (1 - State.AimAlpha * 0.35) * (State.Crouching and 0.8 or 1)
 	recoilTarget += Vector2.new(math.rad(w.Recoil[1]) * recoilScale, math.rad(rng:NextNumber(-w.Recoil[2], w.Recoil[2])) * recoilScale)
 	bloom = math.min(bloom + w.Spread.Hip * 0.12, 2.5)
@@ -285,11 +311,23 @@ local function tryFire()
 		return
 	end
 	local mode = fireModeName()
-	if mode ~= "Auto" then
+	if mode == "Burst" then
+		if burstLeft <= 0 then
+			if not fireQueued then
+				return
+			end
+			fireQueued = false
+			burstLeft = 3
+		end
+		burstLeft -= 1
+	elseif mode ~= "Auto" then
 		if not fireQueued then
 			return
 		end
 		fireQueued = false
+	end
+	if viewmodel and viewmodel:Busy("Cycle") then
+		return
 	end
 	fire()
 end
@@ -304,18 +342,16 @@ function WeaponController.Reload()
 		return
 	end
 	State.Reloading = true
+	burstLeft = 0
 	State.Emit("Reload", true)
 	reloadToken += 1
 	local token = reloadToken
 	local weaponId = w.Id
 	local duration = ammo.Mag == 0 and w.EmptyReloadTime or w.ReloadTime
 	Remotes.Reload:FireServer(weaponId)
-	Effects.Play2D("Reload", 0.4, 0.8)
-	task.delay(duration * 0.5, function()
-		if token == reloadToken then
-			Effects.Play2D("Reload", 0.4, 1.1)
-		end
-	end)
+	if viewmodel then
+		viewmodel:Play("Reload", duration, { Empty = ammo.Mag == 0 })
+	end
 	task.delay(duration, function()
 		if token ~= reloadToken then
 			return
@@ -337,6 +373,9 @@ local function cancelReload()
 	if State.Reloading then
 		reloadToken += 1
 		State.Reloading = false
+		if viewmodel and viewmodel:Busy("Reload") then
+			viewmodel.Anim = nil
+		end
 		State.Emit("Reload", false)
 	end
 end
@@ -400,8 +439,18 @@ local function onToolEquipped(tool: Tool)
 	if viewmodel then
 		viewmodel:Destroy()
 	end
-	viewmodel = Viewmodel.new(id, myColor())
+	local loadout = Weapons.ParseLoadout(tool:GetAttribute("Loadout"))
+	local saved = State.Settings.Loadouts and State.Settings.Loadouts[id]
+	loadout.Skin = saved and saved.Skin or "Black"
+	if Weapons.Get(id) then
+		resolved[id] = Weapons.Resolve(id, loadout)
+	end
+	viewmodel = Viewmodel.new(id, { Accent = myColor(), Loadout = loadout })
 	viewmodel:SetLight(lightOn)
+	local ammo = State.Ammo[id]
+	if ammo and ammo.Mag <= 0 and resolved[id] and resolved[id].Class == "Pistol" then
+		viewmodel:SetSlideLocked(true)
+	end
 	Effects.Play2D("UIClick", 0.35, 0.8)
 	State.Emit("Equipped", id)
 end
@@ -494,9 +543,32 @@ local function onSimple(fn)
 	end
 end
 
+local SLIDE_TIME = 0.75
+local SLIDE_COOLDOWN = 1.2
+
+-- Crouching out of a sprint turns into a slide.
 local function toggleCrouch()
+	local h = humanoid()
+	local root = h and h.RootPart
+	if State.Sprinting and h and root and h.FloorMaterial ~= Enum.Material.Air and os.clock() - lastSlide > SLIDE_COOLDOWN then
+		sliding = true
+		slideStart = os.clock()
+		lastSlide = slideStart
+		local flat = camera.CFrame.LookVector * Vector3.new(1, 0, 1)
+		slideDir = flat.Magnitude > 0.01 and flat.Unit or root.CFrame.LookVector
+		State.Crouching = true
+		Effects.Play2D("UIClick", 0.3, 0.5)
+		State.Emit("Crouch", true)
+		return
+	end
 	State.Crouching = not State.Crouching
 	State.Emit("Crouch", State.Crouching)
+end
+
+local function inspect()
+	if viewmodel and not State.Reloading and State.AimAlpha < 0.1 and not viewmodel:Busy() then
+		viewmodel:Play("Inspect", 2.6)
+	end
 end
 
 local function toggleLight()
@@ -525,6 +597,7 @@ local function setupInput()
 	bind("AirsoftFireMode", onSimple(cycleFireMode), false, Enum.KeyCode.B, Enum.KeyCode.DPadUp)
 	bind("AirsoftCrouch", onSimple(toggleCrouch), true, Enum.KeyCode.C, Enum.KeyCode.LeftControl, Enum.KeyCode.ButtonB)
 	bind("AirsoftLight", onSimple(toggleLight), false, Enum.KeyCode.F, Enum.KeyCode.DPadRight)
+	bind("AirsoftInspect", onSimple(inspect), false, Enum.KeyCode.I)
 	bind("AirsoftSprint", function(_, inputState)
 		if inputState == Enum.UserInputState.Begin then
 			sprintHeld = not UserInputService.GamepadEnabled and true or not sprintHeld
@@ -590,7 +663,7 @@ local function updateMovement(dt: number)
 	local moving = h.MoveDirection.Magnitude > 0.1
 	-- Sprint only when moving roughly forward.
 	local forward = moving and h.MoveDirection:Dot(camera.CFrame.LookVector * Vector3.new(1, 0, 1)) > 0.5
-	State.Sprinting = sprintHeld and forward and not State.Crouching and not aimHeld and not State.Reloading
+	State.Sprinting = sprintHeld and forward and not State.Crouching and not aimHeld and not State.Reloading and not sliding
 	if not moving and UserInputService.GamepadEnabled then
 		sprintHeld = false
 	end
@@ -609,6 +682,19 @@ local function updateMovement(dt: number)
 	speed *= (w and w.SpeedMultiplier) or 1
 	h.WalkSpeed = speed
 
+	-- Slide: carry sprint momentum low to the ground, then settle into a crouch.
+	if sliding then
+		local t = (os.clock() - slideStart) / SLIDE_TIME
+		local root = h.RootPart
+		if t >= 1 or not root or h.FloorMaterial == Enum.Material.Air and t > 0.3 then
+			sliding = false
+		else
+			local slideSpeed = Config.SprintSpeed * 1.55 * (1 - t * 0.75)
+			local v = root.AssemblyLinearVelocity
+			root.AssemblyLinearVelocity = Vector3.new(slideDir.X * slideSpeed, v.Y, slideDir.Z * slideSpeed)
+		end
+	end
+
 	-- Crouch lowers the hip height on R15 rigs; camera follows on both rigs.
 	if h.RigType == Enum.HumanoidRigType.R15 then
 		defaultHipHeight = defaultHipHeight or h.HipHeight
@@ -620,7 +706,61 @@ local function updateMovement(dt: number)
 	h.CameraOffset = Vector3.new(lean * 1.4, crouchOffset, 0)
 end
 
+-- Draws the laser beam and dot locally when a laser module is fitted and on.
+updateLaser = function(alive: boolean)
+	local w = currentWeapon()
+	local emitter = viewmodel and viewmodel:LaserPosition()
+	local on = alive and lightOn and emitter ~= nil and w ~= nil and w.Loadout and w.Loadout.Laser == "Laser" and not State.ScopeVisible
+	if not on then
+		if laserPart then
+			laserPart.Transparency = 1
+		end
+		if laserDot then
+			laserDot.Transparency = 1
+		end
+		return
+	end
+	if not laserPart then
+		local beam = Instance.new("Part")
+		beam.Name = "LaserBeam"
+		beam.Anchored = true
+		beam.CanCollide = false
+		beam.CanQuery = false
+		beam.CanTouch = false
+		beam.CastShadow = false
+		beam.Material = Enum.Material.Neon
+		beam.Color = Color3.fromRGB(255, 30, 30)
+		beam.Parent = effectsFolder
+		laserPart = beam
+		local dot = beam:Clone()
+		dot.Name = "LaserDot"
+		dot.Shape = Enum.PartType.Ball
+		dot.Size = Vector3.new(0.12, 0.12, 0.12)
+		dot.Parent = effectsFolder
+		laserDot = dot
+	end
+	local origin = emitter :: Vector3
+	local aimPoint = camera.CFrame.Position + camera.CFrame.LookVector * 300
+	local result = workspace:Raycast(camera.CFrame.Position, camera.CFrame.LookVector * 300, rayParams())
+	local hit = result and result.Position or aimPoint
+	-- Hip-fire laser points where the gun points, converging on the crosshair.
+	local length = (hit - origin).Magnitude
+	local beam = laserPart :: BasePart
+	beam.Size = Vector3.new(0.012, 0.012, length)
+	beam.CFrame = CFrame.lookAt(origin, hit) * CFrame.new(0, 0, -length / 2)
+	beam.Transparency = 0.55
+	local dot = laserDot :: BasePart
+	dot.CFrame = CFrame.new(hit)
+	dot.Transparency = 0.1
+end
+
 local function updateCamera(dt: number)
+	if State.Cinematic then
+		if viewmodel then
+			viewmodel:SetVisible(false)
+		end
+		return
+	end
 	local w = currentWeapon()
 	local h = humanoid()
 	local alive = h ~= nil and h.Health > 0 and not isOut()
@@ -635,7 +775,7 @@ local function updateCamera(dt: number)
 	local baseFOV = State.Settings.FOV or Config.DefaultFOV
 	local aimFOV = w and w.AimFOV or baseFOV
 	local eased = 1 - (1 - State.AimAlpha) ^ 2
-	camera.FieldOfView = baseFOV + (aimFOV - baseFOV) * eased + (State.Sprinting and 4 or 0)
+	camera.FieldOfView = baseFOV + (aimFOV - baseFOV) * eased + (State.Sprinting and 4 or 0) + (sliding and 7 or 0)
 
 	-- Sensitivity scales with zoom so aiming feels consistent.
 	local sens = State.Settings.Sensitivity or 1
@@ -669,8 +809,12 @@ local function updateCamera(dt: number)
 		local root = h and h.RootPart
 		local speed = root and (root.AssemblyLinearVelocity * Vector3.new(1, 0, 1)).Magnitude or 0
 		viewmodel:SetVisible(not scoped and alive)
-		viewmodel:Update(dt, camera, eased, speed, mouseDelta, State.Reloading, State.Sprinting)
+		viewmodel:Update(dt, camera, eased, speed, mouseDelta, State.Sprinting, sliding)
+		if aimHeld then
+			viewmodel:CancelInspect()
+		end
 	end
+	updateLaser(alive)
 	mouseDelta = Vector2.zero
 
 	if w then
@@ -680,7 +824,7 @@ end
 
 local function onRender(dt: number)
 	updateMovement(dt)
-	if triggerHeld then
+	if triggerHeld or burstLeft > 0 then
 		tryFire()
 	end
 	updateCamera(dt)
@@ -756,7 +900,8 @@ function WeaponController.Init()
 		if shooter == player then
 			return
 		end
-		local w = Weapons.Get(weaponId)
+		local shooterTool = shooter.Character and shooter.Character:FindFirstChildOfClass("Tool")
+		local w = Weapons.Resolve(weaponId, Weapons.ParseLoadout(shooterTool and shooterTool:GetAttribute("Loadout")))
 		if not w then
 			return
 		end
@@ -786,7 +931,7 @@ function WeaponController.Init()
 				end,
 			})
 		end
-		Effects.Play3D(w.Sound, muzzle and muzzle.WorldPosition or origin, w.Quiet and 0.25 or 0.6, rng:NextNumber(0.95, 1.08))
+		Effects.Play3D(w.Sound, muzzle and muzzle.WorldPosition or origin, w.Quiet and 0.25 or 0.6, firePitch(w))
 	end)
 
 	Remotes.GrenadeBurst.OnClientEvent:Connect(Effects.GrenadeBurst)

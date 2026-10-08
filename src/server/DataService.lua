@@ -24,6 +24,12 @@ end
 local profiles: { [Player]: any } = {}
 local loaded: { [Player]: boolean } = {}
 
+local function defaultSettings()
+	local s = table.clone(Config.DefaultSettings)
+	s.Loadouts = {} -- never share the nested table between players
+	return s
+end
+
 local function defaultProfile()
 	return {
 		Version = 1,
@@ -34,7 +40,7 @@ local function defaultProfile()
 		Matches = 0,
 		Captures = 0,
 		BestStreak = 0,
-		Settings = table.clone(Config.DefaultSettings),
+		Settings = defaultSettings(),
 	}
 end
 
@@ -49,11 +55,11 @@ local function reconcile(data)
 		end
 	end
 	if type(data.Settings) ~= "table" then
-		data.Settings = table.clone(Config.DefaultSettings)
+		data.Settings = defaultSettings()
 	end
 	for k, v in Config.DefaultSettings do
 		if data.Settings[k] == nil then
-			data.Settings[k] = v
+			data.Settings[k] = type(v) == "table" and table.clone(v) or v
 		end
 	end
 	return data
@@ -143,7 +149,9 @@ function DataService.ApplySettings(player: Player, incoming: any)
 	end
 end
 
-function DataService.SetLoadout(player: Player, primary: any, secondary: any)
+-- `custom` is { [weaponId] = { Optic, Muzzle, Grip, Laser, Skin } } for any
+-- weapons the player changed. Finishes above the player's rank are refused.
+function DataService.SetLoadout(player: Player, primary: any, secondary: any, custom: any)
 	local profile = profiles[player]
 	if not profile then
 		return false
@@ -153,6 +161,24 @@ function DataService.SetLoadout(player: Player, primary: any, secondary: any)
 	end
 	if type(secondary) == "string" and Weapons.IsSecondary(secondary) then
 		profile.Settings.Secondary = secondary
+	end
+	if type(custom) == "table" then
+		local rankIndex = Config.RankForXP(profile.XP)
+		profile.Settings.Loadouts = type(profile.Settings.Loadouts) == "table" and profile.Settings.Loadouts or {}
+		local count = 0
+		for id, requested in custom do
+			count += 1
+			if count > 32 then
+				break
+			end
+			if type(id) == "string" and Weapons.Get(id) then
+				local clean = Weapons.CleanLoadout(id, requested)
+				if Weapons.Skin(clean.Skin).Unlock > rankIndex then
+					clean.Skin = "Black"
+				end
+				profile.Settings.Loadouts[id] = clean
+			end
+		end
 	end
 	return true
 end

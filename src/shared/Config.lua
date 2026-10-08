@@ -13,7 +13,7 @@ Config.MinPlayers = 2 -- Studio solo testing drops this to 1 automatically
 Config.IntermissionTime = 20
 Config.BriefingTime = 6
 Config.RoundTime = 300
-Config.PostRoundTime = 12
+Config.PostRoundTime = 15
 
 -- Rules ----------------------------------------------------------------------
 Config.RespawnTime = 4
@@ -39,6 +39,20 @@ Config.Modes = {
 	},
 }
 Config.ModeOrder = { "TDM", "DOM" }
+
+Config.Maps = {
+	Field = {
+		Id = "Field",
+		Name = "Ironwood Yard",
+		Blurb = "Outdoor field at dusk. Container yard, CQB house, woodline.",
+	},
+	Club = {
+		Id = "Club",
+		Name = "Velvet Club",
+		Blurb = "Night CQB in the rain. Neon, glass, a bar and a VIP balcony.",
+	},
+}
+Config.MapOrder = { "Field", "Club" }
 
 Config.Teams = {
 	Blue = {
@@ -96,20 +110,54 @@ function Config.RankForXP(xp: number)
 end
 
 -- Sounds -----------------------------------------------------------------------
--- These use audio bundled with every Roblox client so they always load.
--- Swap in your own uploaded rbxassetid:// sounds for a more premium mix.
-Config.Sounds = {
-	FireAEG = "rbxasset://sounds/paintball.wav",
-	FireGas = "rbxasset://sounds/paintball.wav",
-	FireSpring = "rbxasset://sounds/paintball.wav",
+-- Fallbacks use audio bundled with every Roblox client so they always load.
+-- Upload the generated sounds in assets/audio/ and paste their IDs into
+-- src/shared/AssetIds.lua; any ID filled in there wins over the fallback.
+local AssetIds = require(script.Parent.AssetIds)
+
+local FALLBACK_SOUNDS = {
+	FireRifle = "rbxasset://sounds/paintball.wav",
+	FireSMG = "rbxasset://sounds/paintball.wav",
+	FireDMR = "rbxasset://sounds/paintball.wav",
+	FireSniper = "rbxasset://sounds/paintball.wav",
+	FireShotgun = "rbxasset://sounds/paintball.wav",
+	FirePistol = "rbxasset://sounds/paintball.wav",
+	FireLMG = "rbxasset://sounds/paintball.wav",
+	FireMagnum = "rbxasset://sounds/paintball.wav",
+	FireSuppressed = "rbxasset://sounds/paintball.wav",
 	DryFire = "rbxasset://sounds/clickfast.wav",
 	Reload = "rbxasset://sounds/clickfast.wav",
+	MagOut = "rbxasset://sounds/clickfast.wav",
+	MagIn = "rbxasset://sounds/clickfast.wav",
+	BoltCycle = "rbxasset://sounds/clickfast.wav",
 	HitMarker = "rbxasset://sounds/electronicpingshort.wav",
 	Tagged = "rbxasset://sounds/electronicpingshort.wav",
 	Ding = "rbxasset://sounds/electronicpingshort.wav",
 	UIClick = "rbxasset://sounds/clickfast.wav",
 	Grenade = "rbxasset://sounds/paintball.wav",
+	Impact = "rbxasset://sounds/clickfast.wav",
 }
+
+Config.Sounds = {}
+for key, fallback in FALLBACK_SOUNDS do
+	local uploaded = AssetIds.Sounds[key]
+	Config.Sounds[key] = (uploaded and uploaded ~= 0) and ("rbxassetid://" .. tostring(uploaded)) or fallback
+end
+-- Without uploaded audio every gun shares one sample, so pitch it per class.
+Config.FallbackPitch = {
+	FireRifle = 1,
+	FireSMG = 1.18,
+	FireDMR = 0.86,
+	FireSniper = 0.72,
+	FireShotgun = 0.62,
+	FirePistol = 1.28,
+	FireLMG = 0.94,
+	FireMagnum = 0.58,
+	FireSuppressed = 1.45,
+}
+
+-- True when real uploaded gun audio is in use (fallbacks get pitch-shifted per class).
+Config.UsingUploadedSounds = AssetIds.Sounds.FireRifle ~= nil and AssetIds.Sounds.FireRifle ~= 0
 
 -- Data -----------------------------------------------------------------------
 Config.DataStoreName = "AndrewsAirsoft_Profiles_v1"
@@ -121,6 +169,7 @@ Config.DefaultSettings = {
 	ToggleAim = false,
 	Primary = "M4",
 	Secondary = "G17",
+	Loadouts = {}, -- [weaponId] = { Optic, Muzzle, Grip, Laser, Skin }
 }
 
 return Config

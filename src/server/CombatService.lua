@@ -121,7 +121,7 @@ local function onFire(player: Player, weaponId: any, shotId: any, origin: any, d
 	if type(weaponId) ~= "string" or type(shotId) ~= "number" or not isValidVector(origin) or type(directions) ~= "table" then
 		return
 	end
-	local weapon = Weapons.Get(weaponId)
+	local weapon = state.Weapons[weaponId]
 	if not weapon or not equippedTool(player, weaponId) then
 		return
 	end
@@ -235,7 +235,7 @@ local function onReload(player: Player, weaponId: any)
 	if not state or not state.Alive or type(weaponId) ~= "string" then
 		return
 	end
-	local weapon = Weapons.Get(weaponId)
+	local weapon = state.Weapons[weaponId]
 	local ammo = state.Ammo[weaponId]
 	if not weapon or not ammo or state.Reloading[weaponId] then
 		return

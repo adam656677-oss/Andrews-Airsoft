@@ -463,7 +463,9 @@ local function onRender()
 	local showObjectives = phase ~= "Waiting" and phase ~= "Intermission" and gameState:GetAttribute("Mode") == "DOM"
 	refs.ObjectiveChips.Visible = showObjectives
 	if showObjectives then
-		local folder = workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("Objectives")
+		local arenas = workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("Arenas")
+		local arena = arenas and arenas:FindFirstChild(gameState:GetAttribute("Map") or "Field")
+		local folder = arena and arena:FindFirstChild("Objectives")
 		for letter, chip in refs.Chips do
 			local model = folder and folder:FindFirstChild(letter)
 			if model then

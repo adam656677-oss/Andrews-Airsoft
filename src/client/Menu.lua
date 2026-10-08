@@ -84,81 +84,317 @@ local function window(name: string, title: string, size: Vector2): Frame
 end
 
 ---------------------------------------------------------------------------
--- Loadout
+-- Loadout (armory)
 ---------------------------------------------------------------------------
 
-local function statBar(parent: Instance, label: string, value: number, y: number)
-	UI.Label({ Text = label:upper(), TextSize = 11, TextColor3 = UI.Colors.Muted, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(12, y), Size = UDim2.fromOffset(70, 14), ZIndex = 12, Parent = parent })
-	local bg = UI.new("Frame", { Position = UDim2.fromOffset(82, y + 5), Size = UDim2.new(1, -96, 0, 4), BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.85, BorderSizePixel = 0, ZIndex = 12, Parent = parent })
-	UI.new("Frame", { Size = UDim2.fromScale(value, 1), BackgroundColor3 = UI.Colors.Accent, BorderSizePixel = 0, ZIndex = 12, Parent = bg })
+local GunBuilder = require(Shared.GunBuilder)
+
+-- Bars derived from final stats so attachments visibly change them.
+local function statValues(w)
+	return {
+		Range = math.clamp((w.Velocity - 300) / 300 * 0.6 + w.Range / 420 * 0.4, 0.05, 1),
+		Rate = math.clamp(60 / w.FireInterval / 1100, 0.05, 1),
+		Control = math.clamp(1 - w.Recoil[1] / 2.8 - w.Spread.Hip / 12, 0.05, 1),
+		Handling = math.clamp(1 - (w.AimTime - 0.1) / 0.4 + ((w.SpeedMultiplier or 1) - 1) * 2, 0.05, 1),
+	}
+end
+
+local loadoutState = {
+	Selected = "M4",
+	Primary = "M4",
+	Secondary = "G17",
+}
+
+local function currentLoadout(id: string)
+	State.Settings.Loadouts = State.Settings.Loadouts or {}
+	local l = Weapons.CleanLoadout(id, State.Settings.Loadouts[id])
+	State.Settings.Loadouts[id] = l
+	return l
+end
+
+local function rankIndex(): number
+	return (Config.RankForXP(player:GetAttribute("XP") or 0))
 end
 
 local function buildLoadout()
-	local frame = window("Loadout", "LOADOUT", Vector2.new(820, 470))
+	local frame = window("Loadout", "ARMORY", Vector2.new(980, 560))
+
+	-- Left: weapon list grouped by slot
 	local list = UI.new("ScrollingFrame", {
 		Position = UDim2.fromOffset(20, 66),
-		Size = UDim2.new(1, -40, 1, -130),
+		Size = UDim2.new(0, 220, 1, -86),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		ScrollBarThickness = 4,
-		AutomaticCanvasSize = Enum.AutomaticSize.X,
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
 		CanvasSize = UDim2.new(),
-		ScrollingDirection = Enum.ScrollingDirection.X,
 		ZIndex = 11,
 		Parent = frame,
 	})
-	UI.new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 10), Parent = list })
+	UI.new("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder, Parent = list })
 
-	local cards = {}
-	local selected = State.Settings.Primary or "M4"
-	local function refresh()
-		for id, card in cards do
-			local stroke = card:FindFirstChildOfClass("UIStroke") :: UIStroke
-			stroke.Color = id == selected and UI.Colors.Accent or Color3.new(1, 1, 1)
-			stroke.Transparency = id == selected and 0 or 0.85
-			stroke.Thickness = id == selected and 2 or 1
-		end
+	-- Centre: preview + details
+	local preview = UI.new("ViewportFrame", {
+		Position = UDim2.fromOffset(256, 66),
+		Size = UDim2.fromOffset(440, 220),
+		BackgroundColor3 = Color3.fromRGB(10, 11, 13),
+		BackgroundTransparency = 0.1,
+		Ambient = Color3.fromRGB(150, 150, 150),
+		LightColor = Color3.fromRGB(255, 240, 220),
+		LightDirection = Vector3.new(-0.4, -1, -0.6),
+		ZIndex = 11,
+		Parent = frame,
+	}, { UI.Corner(6) })
+	local previewCam = Instance.new("Camera")
+	previewCam.FieldOfView = 30
+	previewCam.Parent = preview
+	preview.CurrentCamera = previewCam
+
+	local title = UI.Label({ Text = "", Font = UI.FontHeavy, TextSize = 20, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(256, 294), Size = UDim2.fromOffset(440, 24), ZIndex = 11, Parent = frame })
+	local subtitle = UI.Label({ Text = "", TextSize = 12, TextColor3 = UI.Colors.Accent, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(256, 318), Size = UDim2.fromOffset(440, 16), ZIndex = 11, Parent = frame })
+	local blurb = UI.Label({ Text = "", Font = UI.FontLight, TextSize = 13, TextColor3 = UI.Colors.Muted, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, Position = UDim2.fromOffset(256, 338), Size = UDim2.fromOffset(440, 36), ZIndex = 11, Parent = frame })
+	local stats = UI.new("Frame", { Position = UDim2.fromOffset(256, 378), Size = UDim2.fromOffset(440, 100), BackgroundTransparency = 1, ZIndex = 11, Parent = frame })
+	local numbers = UI.Label({ Text = "", TextSize = 12, TextColor3 = UI.Colors.Muted, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(256, 482), Size = UDim2.fromOffset(440, 16), ZIndex = 11, Parent = frame })
+
+	-- Right: attachments and finishes
+	local custom = UI.new("ScrollingFrame", {
+		Position = UDim2.fromOffset(712, 66),
+		Size = UDim2.new(0, 248, 1, -140),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ScrollBarThickness = 4,
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		CanvasSize = UDim2.new(),
+		ZIndex = 11,
+		Parent = frame,
+	})
+	UI.new("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder, Parent = custom })
+
+	local equipButton = UI.Button({ Text = "EQUIP", Font = UI.FontHeavy, AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -176, 1, -16), Size = UDim2.fromOffset(140, 38), ZIndex = 11, Parent = frame })
+	local confirm = UI.Button({ Text = "DEPLOY LOADOUT", Font = UI.FontHeavy, BackgroundColor3 = UI.Colors.Accent, TextColor3 = Color3.fromRGB(20, 20, 20), AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -20, 1, -16), Size = UDim2.fromOffset(150, 38), ZIndex = 11, Parent = frame })
+	local equippedLabel = UI.Label({ Text = "", TextSize = 12, TextColor3 = UI.Colors.Muted, TextXAlignment = Enum.TextXAlignment.Left, AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 256, 1, -26), Size = UDim2.fromOffset(420, 16), ZIndex = 11, Parent = frame })
+
+	local listButtons: { [string]: TextButton } = {}
+	local previewModel: Model? = nil
+	local spin = 0
+
+	local refresh: () -> ()
+
+	local function sectionHeader(parent: Instance, text: string, order: number)
+		UI.Label({ LayoutOrder = order, Text = text, TextSize = 11, TextColor3 = UI.Colors.Muted, TextXAlignment = Enum.TextXAlignment.Left, Size = UDim2.new(1, -8, 0, 18), ZIndex = 12, Parent = parent })
 	end
 
-	for _, id in Weapons.Primaries do
-		local w = Weapons.Get(id)
-		local card = UI.Button({ Text = "", Size = UDim2.fromOffset(180, 300), BackgroundColor3 = UI.Colors.PanelLight, ZIndex = 11, Parent = list })
-		UI.Label({ Text = w.Name:upper(), Font = UI.FontHeavy, TextSize = 16, TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true, Position = UDim2.fromOffset(12, 12), Size = UDim2.new(1, -24, 0, 40), ZIndex = 12, Parent = card })
-		UI.Label({ Text = w.Kind:upper() .. "  •  " .. table.concat(w.FireModes, " / "):upper(), TextSize = 11, TextColor3 = UI.Colors.Accent, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(12, 52), Size = UDim2.new(1, -24, 0, 14), ZIndex = 12, Parent = card })
-		UI.Label({ Text = w.Description, Font = UI.FontLight, TextSize = 12, TextColor3 = UI.Colors.Muted, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, Position = UDim2.fromOffset(12, 74), Size = UDim2.new(1, -24, 0, 70), ZIndex = 12, Parent = card })
-		local y = 160
-		for _, stat in { "Range", "Rate", "Control", "Handling" } do
-			statBar(card, stat, w.Stats[stat], y)
-			y += 22
+	local order = 0
+	local function addList(ids: { string }, header: string)
+		order += 1
+		sectionHeader(list, header, order)
+		for _, id in ids do
+			order += 1
+			local w = Weapons.Get(id)
+			local b = UI.Button({ LayoutOrder = order, Text = "", Size = UDim2.new(1, -8, 0, 40), ZIndex = 12, Parent = list })
+			UI.Label({ Text = w.Name, TextSize = 13, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(10, 4), Size = UDim2.new(1, -20, 0, 18), ZIndex = 13, Parent = b })
+			UI.Label({ Name = "Class", Text = w.Class:upper() .. "  •  " .. w.Kind:upper(), TextSize = 10, TextColor3 = UI.Colors.Muted, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(10, 22), Size = UDim2.new(1, -20, 0, 14), ZIndex = 13, Parent = b })
+			b.Activated:Connect(function()
+				click()
+				loadoutState.Selected = id
+				refresh()
+			end)
+			listButtons[id] = b
 		end
-		UI.Label({ Text = ("%d RND  •  %d FPS"):format(w.MagSize, math.floor(w.Velocity * 0.85)), TextSize = 11, TextColor3 = UI.Colors.Muted, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(12, 260), Size = UDim2.new(1, -24, 0, 14), ZIndex = 12, Parent = card })
-		card.Activated:Connect(function()
+	end
+	addList(Weapons.Primaries, "PRIMARY")
+	addList(Weapons.Secondaries, "SIDEARM")
+
+	local function setPreview(id: string, loadout)
+		if previewModel then
+			previewModel:Destroy()
+		end
+		local ok, model = pcall(GunBuilder.Build, id, { Accent = UI.Colors.Accent, Loadout = loadout })
+		if not ok then
+			return
+		end
+		for _, d in model:GetDescendants() do
+			if d:IsA("BasePart") then
+				d.Anchored = true
+			end
+		end
+		model:PivotTo(CFrame.identity)
+		model.Parent = preview
+		previewModel = model
+		local _, size = model:GetBoundingBox()
+		previewCam:SetAttribute("Distance", math.max(size.Magnitude, 1.5) * 1.9)
+	end
+
+	local function optionButton(parent: Instance, label: string, selected: boolean, locked: boolean, onClick: () -> ())
+		local b = UI.Button({ Text = (locked and "🔒 " or "") .. label, TextSize = 12, Size = UDim2.new(0.5, -4, 0, 28), ZIndex = 13, Parent = parent })
+		local stroke = b:FindFirstChildOfClass("UIStroke") :: UIStroke
+		stroke.Color = selected and UI.Colors.Accent or Color3.new(1, 1, 1)
+		stroke.Transparency = selected and 0 or 0.85
+		stroke.Thickness = selected and 2 or 1
+		b.TextColor3 = locked and UI.Colors.Muted or UI.Colors.Text
+		b.Activated:Connect(function()
+			if locked then
+				return
+			end
 			click()
-			selected = id
-			refresh()
+			onClick()
 		end)
-		cards[id] = card
+		return b
 	end
-	refresh()
 
-	UI.Label({ Text = "SIDEARM: G17 GAS BLOWBACK   •   UTILITY: 1× BB BURST GRENADE", TextSize = 12, TextColor3 = UI.Colors.Muted, TextXAlignment = Enum.TextXAlignment.Left, AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 20, 1, -24), Size = UDim2.fromOffset(500, 16), ZIndex = 11, Parent = frame })
-	local confirm = UI.Button({ Text = "CONFIRM", Font = UI.FontHeavy, BackgroundColor3 = UI.Colors.Accent, TextColor3 = Color3.fromRGB(20, 20, 20), AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -20, 1, -16), Size = UDim2.fromOffset(150, 38), ZIndex = 11, Parent = frame })
+	refresh = function()
+		local id = loadoutState.Selected
+		local base = Weapons.Get(id)
+		local loadout = currentLoadout(id)
+		local w = Weapons.Resolve(id, loadout)
+
+		for bid, b in listButtons do
+			local stroke = b:FindFirstChildOfClass("UIStroke") :: UIStroke
+			local isSelected = bid == id
+			local isEquipped = bid == loadoutState.Primary or bid == loadoutState.Secondary
+			stroke.Color = isSelected and UI.Colors.Accent or (isEquipped and UI.Colors.Good or Color3.new(1, 1, 1))
+			stroke.Transparency = (isSelected or isEquipped) and 0.1 or 0.85
+			stroke.Thickness = isSelected and 2 or 1
+		end
+
+		title.Text = base.Name:upper()
+		subtitle.Text = base.Class:upper() .. "  •  " .. base.Kind:upper() .. "  •  " .. table.concat(base.FireModes, " / "):upper()
+		blurb.Text = base.Description
+
+		for _, c in stats:GetChildren() do
+			c:Destroy()
+		end
+		local base4 = statValues(base)
+		local now4 = statValues(w)
+		for i, key in { "Range", "Rate", "Control", "Handling" } do
+			local y = (i - 1) * 24
+			UI.Label({ Text = key:upper(), TextSize = 11, TextColor3 = UI.Colors.Muted, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(0, y), Size = UDim2.fromOffset(80, 16), ZIndex = 12, Parent = stats })
+			local bg = UI.new("Frame", { Position = UDim2.fromOffset(84, y + 6), Size = UDim2.new(1, -90, 0, 5), BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.88, BorderSizePixel = 0, ZIndex = 12, Parent = stats })
+			UI.new("Frame", { Size = UDim2.fromScale(now4[key], 1), BackgroundColor3 = UI.Colors.Accent, BorderSizePixel = 0, ZIndex = 13, Parent = bg })
+			local delta = now4[key] - base4[key]
+			if math.abs(delta) > 0.01 then
+				UI.new("Frame", {
+					Position = UDim2.fromScale(math.min(base4[key], now4[key]), 0),
+					Size = UDim2.fromScale(math.abs(delta), 1),
+					BackgroundColor3 = delta > 0 and UI.Colors.Good or UI.Colors.Bad,
+					BorderSizePixel = 0,
+					ZIndex = 14,
+					Parent = bg,
+				})
+			end
+		end
+		numbers.Text = ("%d RPM   •   %d FPS   •   %d RND   •   ADS %d ms%s"):format(
+			math.floor(60 / w.FireInterval + 0.5),
+			math.floor(w.Velocity * 0.85),
+			w.MagSize,
+			math.floor(w.AimTime * 1000),
+			w.Quiet and "   •   SUPPRESSED" or ""
+		)
+
+		-- Attachment slots
+		for _, c in custom:GetChildren() do
+			if c:IsA("GuiObject") then
+				c:Destroy()
+			end
+		end
+		local corder = 0
+		for _, slot in Weapons.Slots do
+			local options = base.Options[slot]
+			if options then
+				corder += 1
+				sectionHeader(custom, slot:upper(), corder)
+				corder += 1
+				local grid = UI.new("Frame", { LayoutOrder = corder, Size = UDim2.new(1, -6, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1, ZIndex = 12, Parent = custom })
+				UI.new("UIGridLayout", { CellSize = UDim2.new(0.5, -4, 0, 28), CellPadding = UDim2.fromOffset(6, 6), SortOrder = Enum.SortOrder.LayoutOrder, Parent = grid })
+				for _, opt in options do
+					local a = Weapons.Attachments[opt]
+					optionButton(grid, a.Name, loadout[slot] == opt, false, function()
+						loadout[slot] = opt
+						refresh()
+					end)
+				end
+			end
+		end
+		corder += 1
+		sectionHeader(custom, "FINISH", corder)
+		corder += 1
+		local skinGrid = UI.new("Frame", { LayoutOrder = corder, Size = UDim2.new(1, -6, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1, ZIndex = 12, Parent = custom })
+		UI.new("UIGridLayout", { CellSize = UDim2.new(0.5, -4, 0, 28), CellPadding = UDim2.fromOffset(6, 6), SortOrder = Enum.SortOrder.LayoutOrder, Parent = skinGrid })
+		local myRank = rankIndex()
+		for _, skin in Weapons.Skins do
+			local locked = skin.Unlock > myRank
+			local b = optionButton(skinGrid, skin.Name, loadout.Skin == skin.Id, locked, function()
+				loadout.Skin = skin.Id
+				refresh()
+			end)
+			UI.new("Frame", { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 4, 0.5, 0), Size = UDim2.fromOffset(4, 18), BackgroundColor3 = skin.Primary, BorderSizePixel = 0, ZIndex = 14, Parent = b })
+			if locked then
+				b.Text = "🔒 " .. Config.Ranks[skin.Unlock].Name
+			end
+		end
+
+		local slotName = base.Slot == "Primary" and "PRIMARY" or "SIDEARM"
+		local isEquipped = id == loadoutState.Primary or id == loadoutState.Secondary
+		equipButton.Text = isEquipped and "EQUIPPED" or ("SET AS " .. slotName)
+		equippedLabel.Text = ("Carrying: %s  +  %s"):format(Weapons.Get(loadoutState.Primary).Name, Weapons.Get(loadoutState.Secondary).Name)
+		setPreview(id, loadout)
+	end
+
+	equipButton.Activated:Connect(function()
+		click()
+		local id = loadoutState.Selected
+		if Weapons.IsPrimary(id) then
+			loadoutState.Primary = id
+		else
+			loadoutState.Secondary = id
+		end
+		refresh()
+	end)
+
 	confirm.Activated:Connect(function()
 		click()
-		State.Settings.Primary = selected
-		Remotes.SetLoadout:FireServer(selected, "G17")
+		State.Settings.Primary = loadoutState.Primary
+		State.Settings.Secondary = loadoutState.Secondary
+		Remotes.SetLoadout:FireServer(loadoutState.Primary, loadoutState.Secondary, State.Settings.Loadouts)
 		local inMatch = (player:GetAttribute("Side") or "") ~= ""
 		Menu.Close()
 		if inMatch then
-			-- Loadout changes take effect on the next respawn.
 			local hud = require(script.Parent.HUD)
 			hud.Announce("Loadout saved", "Applies on your next respawn", UI.Colors.Accent, 2)
 		end
 	end)
-	State.On("Profile", function()
-		selected = State.Settings.Primary or selected
-		refresh()
+
+	RunService.RenderStepped:Connect(function(dt)
+		if frame.Visible and previewModel then
+			spin += dt * 0.5
+			local distance = previewCam:GetAttribute("Distance") or 6
+			local pivot = previewModel:GetBoundingBox().Position
+			previewCam.CFrame = CFrame.lookAt(pivot + Vector3.new(math.cos(spin) * distance, distance * 0.18, math.sin(spin) * distance), pivot)
+		end
 	end)
+
+	State.On("Profile", function()
+		loadoutState.Primary = State.Settings.Primary or loadoutState.Primary
+		loadoutState.Secondary = State.Settings.Secondary or loadoutState.Secondary
+		if frame.Visible then
+			refresh()
+		end
+	end)
+	frame:GetPropertyChangedSignal("Visible"):Connect(function()
+		if frame.Visible then
+			refresh()
+		end
+	end)
+end
+
+-- Opens the armory with a specific weapon highlighted (used by armory racks).
+function Menu.OpenLoadout(weaponId: string?)
+	if weaponId and Weapons.Get(weaponId) then
+		loadoutState.Selected = weaponId
+	end
+	if openPage ~= "Loadout" then
+		Menu.Open("Loadout")
+	end
 end
 
 ---------------------------------------------------------------------------
@@ -310,26 +546,53 @@ local votePanel: Frame
 local voteButtons: { [string]: TextButton } = {}
 local myVote: string? = nil
 
-local function buildVote()
-	votePanel = UI.Panel({ Name = "Vote", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -130), Size = UDim2.fromOffset(460, 110), Visible = false, Parent = gui })
-	local voteTitle = UserInputService.KeyboardEnabled and "VOTE NEXT MODE  [V]" or "VOTE NEXT MODE"
-	UI.Label({ Text = voteTitle, Font = UI.FontHeavy, TextSize = 14, TextColor3 = UI.Colors.Accent, Position = UDim2.fromOffset(0, 8), Size = UDim2.new(1, 0, 0, 18), Parent = votePanel })
-	local row = UI.new("Frame", { Position = UDim2.fromOffset(14, 34), Size = UDim2.new(1, -28, 0, 62), BackgroundTransparency = 1, Parent = votePanel })
+local mapButtons: { [string]: TextButton } = {}
+local myMapVote: string? = nil
+
+local function voteRow(parent: Instance, y: number, label: string, ids: { string }, defs: { [string]: any }, store: { [string]: TextButton }, onPick: (string) -> ())
+	UI.Label({ Text = label, TextSize = 11, TextColor3 = UI.Colors.Muted, Position = UDim2.fromOffset(16, y), Size = UDim2.new(1, -32, 0, 14), TextXAlignment = Enum.TextXAlignment.Left, Parent = parent })
+	local row = UI.new("Frame", { Position = UDim2.fromOffset(14, y + 16), Size = UDim2.new(1, -28, 0, 58), BackgroundTransparency = 1, Parent = parent })
 	UI.new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Center, Padding = UDim.new(0, 10), Parent = row })
-	for i, id in Config.ModeOrder do
-		local mode = Config.Modes[id]
-		local b = UI.Button({ LayoutOrder = i, Text = "", Size = UDim2.fromOffset(210, 62), Parent = row })
-		UI.Label({ Name = "Title", Text = mode.Name:upper(), Font = UI.FontHeavy, TextSize = 15, Position = UDim2.fromOffset(0, 8), Size = UDim2.new(1, 0, 0, 20), Parent = b })
-		UI.Label({ Name = "Count", Text = "0 votes", TextSize = 12, TextColor3 = UI.Colors.Muted, Position = UDim2.fromOffset(0, 32), Size = UDim2.new(1, 0, 0, 18), Parent = b })
+	for i, id in ids do
+		local def = defs[id]
+		local b = UI.Button({ LayoutOrder = i, Text = "", Size = UDim2.fromOffset(240, 58), Parent = row })
+		UI.Label({ Name = "Title", Text = def.Name:upper(), Font = UI.FontHeavy, TextSize = 15, Position = UDim2.fromOffset(0, 6), Size = UDim2.new(1, 0, 0, 20), Parent = b })
+		UI.Label({ Name = "Count", Text = "0 votes", TextSize = 12, TextColor3 = UI.Colors.Muted, Position = UDim2.fromOffset(0, 30), Size = UDim2.new(1, 0, 0, 18), Parent = b })
 		b.Activated:Connect(function()
 			click()
-			myVote = id
-			Remotes.VoteMode:FireServer(id)
-			if not openPage then
-				setMenuOpen(false)
-			end
+			onPick(id)
 		end)
-		voteButtons[id] = b
+		store[id] = b
+	end
+end
+
+local function buildVote()
+	votePanel = UI.Panel({ Name = "Vote", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -120), Size = UDim2.fromOffset(530, 196), Visible = false, Parent = gui })
+	local voteTitle = UserInputService.KeyboardEnabled and "NEXT ROUND  ·  PRESS [V] TO VOTE" or "NEXT ROUND  ·  TAP TO VOTE"
+	UI.Label({ Text = voteTitle, Font = UI.FontHeavy, TextSize = 14, TextColor3 = UI.Colors.Accent, Position = UDim2.fromOffset(0, 8), Size = UDim2.new(1, 0, 0, 18), Parent = votePanel })
+	local function done()
+		if not openPage then
+			setMenuOpen(false)
+		end
+	end
+	voteRow(votePanel, 32, "MAP", Config.MapOrder, Config.Maps, mapButtons, function(id)
+		myMapVote = id
+		Remotes.VoteMap:FireServer(id)
+	end)
+	voteRow(votePanel, 112, "MODE", Config.ModeOrder, Config.Modes, voteButtons, function(id)
+		myVote = id
+		Remotes.VoteMode:FireServer(id)
+		done()
+	end)
+end
+
+local function paintVotes(store: { [string]: TextButton }, prefix: string, mine: string?)
+	for id, b in store do
+		local n = gameState:GetAttribute(prefix .. id) or 0
+		(b:FindFirstChild("Count") :: TextLabel).Text = ("%d vote%s"):format(n, n == 1 and "" or "s")
+		local stroke = b:FindFirstChildOfClass("UIStroke") :: UIStroke
+		stroke.Color = id == mine and UI.Colors.Accent or Color3.new(1, 1, 1)
+		stroke.Transparency = id == mine and 0 or 0.85
 	end
 end
 
@@ -341,15 +604,11 @@ local function refreshVote()
 	votePanel.Visible = show
 	if not show then
 		myVote = nil
+		myMapVote = nil
 		return
 	end
-	for id, b in voteButtons do
-		local n = gameState:GetAttribute("Votes_" .. id) or 0
-		(b:FindFirstChild("Count") :: TextLabel).Text = ("%d vote%s"):format(n, n == 1 and "" or "s")
-		local stroke = b:FindFirstChildOfClass("UIStroke") :: UIStroke
-		stroke.Color = id == myVote and UI.Colors.Accent or Color3.new(1, 1, 1)
-		stroke.Transparency = id == myVote and 0 or 0.85
-	end
+	paintVotes(voteButtons, "Votes_", myVote)
+	paintVotes(mapButtons, "MapVotes_", myMapVote)
 end
 
 ---------------------------------------------------------------------------
@@ -364,6 +623,7 @@ local function buildSummary()
 	UI.new("UIListLayout", { Padding = UDim.new(0, 3), SortOrder = Enum.SortOrder.LayoutOrder, Parent = rows })
 
 	Remotes.RoundSummary.OnClientEvent:Connect(function(summary)
+		local received = os.clock()
 		local winner = summary.Winner
 		if winner == "Draw" then
 			banner.Text = "DRAW"
@@ -390,8 +650,10 @@ local function buildSummary()
 			UI.Label({ Text = r.Name, TextSize = 14, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(12, 0), Size = UDim2.new(0.4, 0, 1, 0), TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 12, Parent = row })
 			UI.Label({ Text = ("%d          %d          %d        +%d"):format(r.Tags, r.Outs, r.Captures, r.XP), TextSize = 14, TextXAlignment = Enum.TextXAlignment.Right, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -10, 0, 0), Size = UDim2.new(0.6, 0, 1, 0), ZIndex = 12, Parent = row })
 		end
+		-- Slow-motion replay of the last tag first, then the report.
+		require(script.Parent.Cinematic).Play(summary.FinalTag)
 		Menu.Open("Summary")
-		task.delay(Config.PostRoundTime - 0.5, function()
+		task.delay(math.max(Config.PostRoundTime - 0.5 - (os.clock() - received), 1), function()
 			if openPage == "Summary" then
 				Menu.Close()
 			end

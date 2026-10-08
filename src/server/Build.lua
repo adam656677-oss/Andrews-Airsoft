@@ -84,6 +84,44 @@ function Build.Span(a: Vector3, b: Vector3, thickness: number, props: PartProps?
 	})
 end
 
+export type Opening = { At: number, Width: number, Bottom: number, Top: number }
+
+-- Builds a wall from `a` to `b` (both at floor level) with rectangular openings.
+function Build.Wall(parent: Instance, a: Vector3, b: Vector3, height: number, thickness: number, color: Color3, material: Enum.Material, openings: { Opening }?)
+	local dir = (b - a).Unit
+	local length = (b - a).Magnitude
+	local list = table.clone(openings or {})
+	table.sort(list, function(x, y)
+		return x.At < y.At
+	end)
+
+	local function piece(from: number, to: number, y0: number, y1: number)
+		if to - from < 0.05 or y1 - y0 < 0.05 then
+			return
+		end
+		local center = a + dir * ((from + to) / 2) + Vector3.new(0, (y0 + y1) / 2, 0)
+		Build.Part({
+			Name = "Wall",
+			Size = Vector3.new(thickness, y1 - y0, to - from),
+			CFrame = CFrame.lookAt(center, center + dir),
+			Color = color,
+			Material = material,
+			Parent = parent,
+		})
+	end
+
+	local cursor = 0
+	for _, o in list do
+		local s = o.At - o.Width / 2
+		local e = o.At + o.Width / 2
+		piece(cursor, s, 0, height)
+		piece(s, e, 0, o.Bottom)
+		piece(s, e, o.Top, height)
+		cursor = e
+	end
+	piece(cursor, length, 0, height)
+end
+
 function Build.SurfaceText(part: BasePart, face: Enum.NormalId, text: string, color: Color3?, background: Color3?)
 	local gui = Instance.new("SurfaceGui")
 	gui.Face = face

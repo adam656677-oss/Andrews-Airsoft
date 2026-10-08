@@ -14,6 +14,7 @@ local Config = require(Shared.Config)
 local Remotes = require(Shared.Remotes)
 
 local PlayerService = require(script.Parent.PlayerService)
+local MapBuilder = require(script.Parent.MapBuilder)
 local DataService = require(script.Parent.DataService)
 
 local RoundService = {}
@@ -25,6 +26,8 @@ gameState.Parent = ReplicatedStorage
 local match = {
 	State = "Waiting",
 	Mode = "TDM",
+	Map = "Field",
+	MapVotes = {} :: { [Player]: string },
 	Scores = { Blue = 0, Red = 0 },
 	Votes = {} :: { [Player]: string },
 	Ending = false,
@@ -101,8 +104,9 @@ end
 
 -- Objectives -------------------------------------------------------------------
 
-local function objectiveModels(): { Model }
-	local folder = workspace.Map:FindFirstChild("Objectives")
+local function objectiveModels(mapId: string?): { Model }
+	local arena = MapBuilder.Arena(mapId or match.Map)
+	local folder = arena and arena:FindFirstChild("Objectives")
 	return folder and folder:GetChildren() or {}
 end
 
@@ -132,6 +136,15 @@ local function paintObjective(model: Model)
 end
 
 local function resetObjectives(enabled: boolean)
+	for _, mapId in Config.MapOrder do
+		for _, model in objectiveModels(mapId) do
+			local zone = model:FindFirstChild("Zone") :: BasePart
+			zone.Transparency = 1
+			local marker = model:FindFirstChild("Marker") :: BillboardGui
+			marker.Enabled = false
+			model:SetAttribute("Active", false)
+		end
+	end
 	for _, model in objectiveModels() do
 		model:SetAttribute("Owner", "")
 		model:SetAttribute("Progress", 0)
@@ -156,7 +169,9 @@ local function updateObjectives(dt: number)
 				local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
 				if root then
 					local offset = root.Position - center
-					if Vector3.new(offset.X, 0, offset.Z).Magnitude <= cfg.CaptureRadius and math.abs(offset.Y) < 14 then
+					local radius = model:GetAttribute("Radius") or cfg.CaptureRadius
+					local height = model:GetAttribute("Height") or 14
+					if Vector3.new(offset.X, 0, offset.Z).Magnitude <= radius and math.abs(offset.Y) < height then
 						table.insert(present[s.Side], player)
 					end
 				end
@@ -222,12 +237,32 @@ function RoundService.IsLive(): boolean
 	return match.State == "Live"
 end
 
+-- The most recent tag of the round, replayed in slow motion afterwards.
+local lastTag: any = nil
+
+local function recordTag(shooter: Player, victim: Player, weaponId: string)
+	local head = shooter.Character and shooter.Character:FindFirstChild("Head") :: BasePart?
+	local root = victim.Character and victim.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if head and root then
+		lastTag = {
+			Shooter = shooter.DisplayName,
+			Victim = victim.DisplayName,
+			ShooterSide = shooter:GetAttribute("Side"),
+			VictimSide = victim:GetAttribute("Side"),
+			From = head.Position,
+			To = root.Position,
+			Weapon = weaponId,
+		}
+	end
+end
+
 function RoundService.OnTag(shooter: Player?, victim: Player, weaponId: string)
 	DataService.Increment(victim, "Outs")
 	updateLeaderstats(victim)
 	if not shooter then
 		return
 	end
+	recordTag(shooter, victim, weaponId)
 	DataService.Increment(shooter, "Tags")
 	local s = PlayerService.Get(shooter)
 	local profile = DataService.Get(shooter)
@@ -254,6 +289,23 @@ end
 
 function RoundService.OnPlayerRemoving(player: Player)
 	match.Votes[player] = nil
+end
+
+function RoundService.VoteMap(player: Player, mapId: any)
+	if match.State ~= "Intermission" or type(mapId) ~= "string" or not Config.Maps[mapId] then
+		return
+	end
+	match.MapVotes[player] = mapId
+	local tally = {}
+	for _, id in Config.MapOrder do
+		tally[id] = 0
+	end
+	for _, v in match.MapVotes do
+		tally[v] += 1
+	end
+	for id, n in tally do
+		set("MapVotes_" .. id, n)
+	end
 end
 
 function RoundService.Vote(player: Player, modeId: any)
@@ -300,11 +352,15 @@ end
 
 local function phaseIntermission()
 	match.Votes = {}
+	match.MapVotes = {}
 	for _, id in Config.ModeOrder do
 		set("Votes_" .. id, 0)
 	end
+	for _, id in Config.MapOrder do
+		set("MapVotes_" .. id, 0)
+	end
 	setState("Intermission", Config.IntermissionTime)
-	set("Message", "Vote for the next game mode")
+	set("Message", "Vote for the next map and mode")
 	resetObjectives(false)
 	return waitFor(Config.IntermissionTime, function()
 		return not enoughPlayers()
@@ -349,7 +405,31 @@ local function assignTeams()
 	return sides
 end
 
+local function chooseMap(): string
+	local tally = {}
+	for _, v in match.MapVotes do
+		tally[v] = (tally[v] or 0) + 1
+	end
+	local best, bestCount = nil, 0
+	for _, id in Config.MapOrder do
+		local n = tally[id] or 0
+		if n > bestCount or (n == bestCount and n > 0 and math.random() < 0.5) then
+			best, bestCount = id, n
+		end
+	end
+	if not best then
+		-- Nobody voted: alternate maps so both get played.
+		local i = table.find(Config.MapOrder, match.Map) or 0
+		return Config.MapOrder[i % #Config.MapOrder + 1]
+	end
+	return best
+end
+
 local function phaseBriefing()
+	lastTag = nil
+	match.Map = chooseMap()
+	set("Map", match.Map)
+	MapBuilder.ApplyLighting(match.Map)
 	match.Mode = chooseMode()
 	local mode = Config.Modes[match.Mode]
 	match.Scores = { Blue = 0, Red = 0 }
@@ -368,7 +448,7 @@ local function phaseBriefing()
 		updateLeaderstats(player)
 		task.spawn(PlayerService.Spawn, player, side, { Frozen = true })
 	end
-	announceAll(mode.Name, mode.Blurb, Color3.fromRGB(255, 196, 64), Config.BriefingTime - 1)
+	announceAll(mode.Name .. "  •  " .. Config.Maps[match.Map].Name, mode.Blurb, Color3.fromRGB(255, 196, 64), Config.BriefingTime - 1)
 	waitFor(Config.BriefingTime)
 end
 
@@ -449,6 +529,7 @@ local function phasePostRound()
 		Blue = match.Scores.Blue,
 		Red = match.Scores.Red,
 		MVP = mvp and mvp.DisplayName or nil,
+		FinalTag = lastTag,
 		Rows = rows,
 	})
 	for _, player in Players:GetPlayers() do
@@ -475,6 +556,7 @@ end
 
 function RoundService.Run()
 	set("Mode", match.Mode)
+	set("Map", match.Map)
 	set("BlueScore", 0)
 	set("RedScore", 0)
 	set("ScoreLimit", Config.Modes[match.Mode].ScoreLimit)

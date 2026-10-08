@@ -27,6 +27,7 @@ export type State = {
 	ProtectedUntil: number,
 	Grenades: number,
 	Ammo: { [string]: AmmoState },
+	Weapons: { [string]: any }, -- resolved stats (attachments applied) per weapon id
 	Reloading: { [string]: boolean },
 	LastFire: { [string]: number },
 	Shots: { [number]: any },
@@ -54,6 +55,7 @@ function PlayerService.Init(player: Player)
 		ProtectedUntil = 0,
 		Grenades = 0,
 		Ammo = {},
+		Weapons = {},
 		Reloading = {},
 		LastFire = {},
 		Shots = {},
@@ -81,8 +83,13 @@ function PlayerService.TeamColor(side: string?): Color3
 end
 
 local function pickSpawn(side: string?): CFrame
-	local spawns = workspace:WaitForChild("Map"):WaitForChild("Spawns")
-	local folder = spawns:FindFirstChild(side or "Lobby") or spawns:FindFirstChild("Lobby")
+	local map = workspace:WaitForChild("Map")
+	local folder = map:WaitForChild("Spawns"):FindFirstChild("Lobby")
+	if side then
+		local mapId = ReplicatedStorage.GameState:GetAttribute("Map") or "Field"
+		local arena = map.Arenas:FindFirstChild(mapId) or map.Arenas.Field
+		folder = arena.Spawns:FindFirstChild(side) or folder
+	end
 	local pads = folder:GetChildren()
 	-- Prefer the pad furthest from other live players to avoid stacking.
 	local best, bestScore = pads[1], -math.huge
@@ -116,16 +123,20 @@ local function giveLoadout(player: Player, state: State)
 	state.LastFire = {}
 	state.Shots = {}
 
+	state.Weapons = {}
+	local loadouts = type(settings.Loadouts) == "table" and settings.Loadouts or {}
 	for _, id in { primary, secondary } do
-		local w = Weapons.Get(id)
-		local tool = GunBuilder.BuildTool(id, color)
+		local loadout = Weapons.CleanLoadout(id, loadouts[id])
+		local w = Weapons.Resolve(id, loadout)
+		state.Weapons[id] = w
+		local tool = GunBuilder.BuildTool(id, { Accent = color, Loadout = loadout })
 		tool:SetAttribute("Slot", w.Slot)
 		tool.Parent = backpack
 		state.Ammo[id] = { Mag = w.MagSize, Reserve = w.Reserve }
 	end
 
 	state.Grenades = Weapons.Grenade.PerLife
-	local grenade = GunBuilder.BuildTool("Grenade", color)
+	local grenade = GunBuilder.BuildTool("Grenade", { Accent = color })
 	grenade:SetAttribute("Slot", "Grenade")
 	grenade.Parent = backpack
 

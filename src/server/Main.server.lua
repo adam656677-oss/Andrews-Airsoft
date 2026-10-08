@@ -9,8 +9,6 @@ local Teams = game:GetService("Teams")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared.Config)
 local Remotes = require(Shared.Remotes)
-local GunBuilder = require(Shared.GunBuilder)
-local Weapons = require(Shared.Weapons)
 
 local MapBuilder = require(script.Parent.MapBuilder)
 local DataService = require(script.Parent.DataService)
@@ -20,22 +18,6 @@ local RoundService = require(script.Parent.RoundService)
 
 -- World ----------------------------------------------------------------------------
 local map = MapBuilder.Build()
-
--- Display guns on the lobby racks.
-local racks = map.StagingArea:FindFirstChild("Racks")
-for i, id in Weapons.Primaries do
-	local rack = racks and racks:FindFirstChild("Rack" .. (i - 1)) :: BasePart?
-	if rack then
-		local model = GunBuilder.Build(id, Color3.fromRGB(255, 196, 64))
-		for _, part in model:GetDescendants() do
-			if part:IsA("BasePart") then
-				part.Anchored = true
-			end
-		end
-		model:PivotTo(CFrame.new(rack.Position + Vector3.new(0, 1.3, 0)) * CFrame.Angles(0, math.rad(90), math.rad(90)))
-		model.Parent = map.StagingArea
-	end
-end
 
 -- Teams ------------------------------------------------------------------------------
 for key, team in Config.Teams do
@@ -56,9 +38,23 @@ CombatService.Init({
 })
 
 Remotes.VoteMode.OnServerEvent:Connect(RoundService.Vote)
+Remotes.VoteMap.OnServerEvent:Connect(RoundService.VoteMap)
 
-Remotes.SetLoadout.OnServerEvent:Connect(function(player, primary, secondary)
-	DataService.SetLoadout(player, primary, secondary)
+-- Animate the club's dance floor and moving lights while it's in play.
+task.spawn(function()
+	local ClubBuilder = require(script.Parent.ClubBuilder)
+	local gameState = ReplicatedStorage:WaitForChild("GameState")
+	local clubArena = MapBuilder.Arena("Club")
+	while clubArena do
+		if gameState:GetAttribute("Map") == "Club" then
+			ClubBuilder.Animate(clubArena, os.clock())
+		end
+		task.wait(0.25)
+	end
+end)
+
+Remotes.SetLoadout.OnServerEvent:Connect(function(player, primary, secondary, custom)
+	DataService.SetLoadout(player, primary, secondary, custom)
 	local profile = DataService.Get(player)
 	if profile then
 		Remotes.Profile:FireClient(player, profile)

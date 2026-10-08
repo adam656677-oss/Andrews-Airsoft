@@ -15,6 +15,7 @@ local EVENTS = {
 	"SetLoadout", -- (primaryId, secondaryId)
 	"SaveSettings", -- (settingsTable)
 	"VoteMode", -- (modeId)
+	"VoteMap", -- (mapId)
 	"ToggleLight", -- (on) weapon light
 
 	-- server -> client

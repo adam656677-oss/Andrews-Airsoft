@@ -18,6 +18,7 @@ local State = {
 	MenuOpen = false,
 	Spread = 0,
 	ScopeVisible = false,
+	Cinematic = false,
 }
 
 local listeners: { [string]: { (any) -> () } } = {}
