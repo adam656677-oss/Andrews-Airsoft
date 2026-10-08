@@ -683,6 +683,10 @@ local function addAttachments(b, weaponId: string, loadout: any)
 	for _, slot in Weapons.Slots do
 		local choice = clean[slot]
 		local mount = b:Point(mounts[slot])
+		if not mount and slot == "Laser" then
+			-- Pistol meshes have no side rail; hang the laser off the dust-cover rail.
+			mount = b:Point("UnderMount")
+		end
 		if choice and choice ~= "None" and mount then
 			local before = {}
 			for _, d in b.Model:GetChildren() do
