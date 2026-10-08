@@ -47,11 +47,11 @@ PALETTE = {
     "gunmetal": ((0.055, 0.058, 0.062), 0.85, 0.35),
     "steel": ((0.16, 0.16, 0.165), 0.9, 0.3),
     "parkerized": ((0.07, 0.072, 0.07), 0.6, 0.55),
-    "fde": ((0.42, 0.32, 0.19), 0.0, 0.6),
-    "od": ((0.16, 0.17, 0.09), 0.0, 0.6),
-    "wood": ((0.30, 0.12, 0.04), 0.0, 0.42),
-    "wood_light": ((0.42, 0.20, 0.08), 0.0, 0.45),
-    "plum": ((0.20, 0.06, 0.05), 0.0, 0.5),
+    "fde": ((0.25, 0.18, 0.105), 0.0, 0.6),
+    "od": ((0.085, 0.09, 0.05), 0.0, 0.6),
+    "wood": ((0.15, 0.06, 0.022), 0.0, 0.42),
+    "wood_light": ((0.24, 0.11, 0.045), 0.0, 0.45),
+    "plum": ((0.11, 0.035, 0.03), 0.0, 0.5),
     "tape": ((0.62, 0.62, 0.60), 0.0, 0.85),
     "rubber": ((0.015, 0.015, 0.015), 0.0, 0.9),
     "glass": ((0.05, 0.12, 0.14), 0.0, 0.05),
@@ -457,6 +457,49 @@ def octagon(cx, cy, w, h, ch):
     return [(x0 + ch, y0), (x1 - ch, y0), (x1, y0 + ch), (x1, y1 - ch), (x1 - ch, y1), (x0 + ch, y1), (x0, y1 - ch), (x0, y0 + ch)]
 
 
+def clip_half(pts, nx, ny, d):
+    """Clip a 2D polygon to the half-plane nx*u + ny*v >= d (Sutherland-Hodgman)."""
+    out = []
+    n = len(pts)
+    for i in range(n):
+        P, Q = pts[i], pts[(i + 1) % n]
+        fp = nx * P[0] + ny * P[1] - d
+        fq = nx * Q[0] + ny * Q[1] - d
+        if fp >= 0:
+            out.append(P)
+        if (fp >= 0) != (fq >= 0):
+            t = fp / (fp - fq)
+            out.append((P[0] + (Q[0] - P[0]) * t, P[1] + (Q[1] - P[1]) * t))
+    return out
+
+
+def clip_box(pts, u0=None, u1=None, v0=None, v1=None):
+    if u0 is not None:
+        pts = clip_half(pts, 1, 0, u0)
+    if u1 is not None:
+        pts = clip_half(pts, -1, 0, -u1)
+    if v0 is not None:
+        pts = clip_half(pts, 0, 1, v0)
+    if v1 is not None:
+        pts = clip_half(pts, 0, -1, -v1)
+    return pts
+
+
+def axis_band(pts, top, a, L, t0, t1):
+    """Part of a grip profile between fractions t0..t1 along its axis."""
+    a, top = V(a), V(top)
+    base = a.dot(top)
+    pts = clip_half(pts, a.x, a.y, base + t0 * L)
+    return clip_half(pts, -a.x, -a.y, -(base + t1 * L))
+
+
+def axis_rrect(top, a, nf, L, t0, t1, f0, f1, r=0.03, n=3):
+    """Rounded rectangle laid out in grip-local coordinates (t along the axis, f forward)."""
+    top, a, nf = V(top), V(a), V(nf)
+    loc = rrect((f0 + f1) / 2, -(t0 + t1) / 2 * L, f1 - f0, (t1 - t0) * L, r, n)
+    return [tuple(top + nf * u - a * v) for u, v in loc]
+
+
 def bezier(p0, p1, p2, p3, n=8):
     out = []
     for i in range(n + 1):
@@ -566,6 +609,7 @@ class Gun:
             bmesh.ops.dissolve_degenerate(bm, edges=bm.edges, dist=1e-7)
             bm.to_mesh(me)
             bm.free()
+            me.validate(clean_customdata=False)
             me.materials.clear()
             me.materials.append(material(self.mats[piece]))
             for p in me.polygons:
@@ -787,11 +831,12 @@ def ar_lower(g, y_rear=-0.34, y_front=0.95, w=0.2, mw_front=0.9, mw_rear=0.5, mw
         box((-w / 2 - 0.01, (mw_front + mw_rear) / 2, 0.24), (0.03, 0.26, 0.2), bev=0.01),
     )
     g.body(lower)
+    g.body(side([(mw_rear - 0.015, mw_bot + 0.07), (mw_front + 0.012, mw_bot + 0.07), (mw_front - 0.01, mw_bot - 0.005), (mw_rear + 0.0, mw_bot - 0.005)], w + 0.024, bev=0.01))
     # pivot / takedown pins
     for yy in (y_front - 0.04, y_rear + 0.12):
         g.metal(cyl_x(-w / 2 - 0.008, w / 2 + 0.008, 0.022, y=yy, z=top - 0.03, seg=12))
     # trigger guard
-    g.body(bar([(0.12, 0.27), (0.13, 0.15), (0.2, 0.13), (mw_rear - 0.02, 0.13), (mw_rear - 0.02, 0.2)], 0.025, 0.07, bev=0.006))
+    g.body(bar([(0.12, 0.27), (0.13, 0.15), (0.2, 0.125), (mw_rear - 0.04, 0.125), (mw_rear - 0.02, 0.15), (mw_rear - 0.02, 0.24)], 0.03, 0.08, bev=0.008))
     g.metal(trigger(0.25, 0.28))
     # selector, mag release
     g.metal(cyl_x(-w / 2 - 0.02, -w / 2, 0.03, y=0.02, z=0.36, seg=12))
@@ -809,22 +854,22 @@ def ar_grip(g, piece="Furniture"):
 
 
 def ar_upper(g, y_rear=-0.34, y_front=0.95, w=0.22, top=0.62, bot=0.42, port=(0.05, 0.42)):
-    up = box(((0, (y_rear + y_front) / 2, (top + bot) / 2)), (w, y_front - y_rear, top - bot), bev=0.014, seg=2)
-    # side flats / rounding near the barrel nut
+    up = side([(y_rear, bot), (y_rear, top - 0.04), (y_rear + 0.04, top), (y_front, top), (y_front, bot)], w, bev=0)
+    sec = [(-w / 2, bot), (w / 2, bot), (w / 2, top - 0.055), (w / 2 - 0.04, top), (-w / 2 + 0.04, top), (-w / 2, top - 0.055)]
+    intersect(up, section(sec, y_rear - 0.1, y_front + 0.1, bev=0))
+    bevel(up, 0.012, 2)
     port_c = box((w / 2, (port[0] + port[1]) / 2, BORE + 0.01), (0.07, port[1] - port[0], 0.1), bev=0.008)
-    up = cut(up, port_c)
+    cs = [port_c]
+    for sx in (-1, 1):  # shallow fluting along the front of the upper
+        cs.append(box((sx * w / 2, (port[1] + y_front) / 2 + 0.03, BORE + 0.03), (0.016, y_front - port[1] - 0.14, 0.03), bev=0.008))
+    up = cut(up, cs)
     g.body(up)
-    # bolt carrier visible in the port
     g.metal(box((w / 2 - 0.03, (port[0] + port[1]) / 2, BORE + 0.01), (0.03, port[1] - port[0] - 0.02, 0.08), bev=0.005))
     g.metal(cyl_x(w / 2 - 0.03, w / 2 - 0.012, 0.022, y=(port[0] + port[1]) / 2 + 0.06, z=BORE + 0.01, seg=10))
-    # dust cover hinged open below the port
     g.body(box((w / 2 + 0.012, (port[0] + port[1]) / 2, BORE - 0.07), (0.012, port[1] - port[0] + 0.02, 0.06), bev=0.004))
-    # brass deflector + forward assist
     g.body(side([(port[0] - 0.12, BORE + 0.08), (port[0] - 0.01, BORE + 0.08), (port[0] - 0.01, BORE - 0.02), (port[0] - 0.05, BORE - 0.02)], 0.05, x=w / 2 + 0.01, bev=0.008))
-    fa = cyl((w / 2 - 0.02, -0.02, BORE + 0.04), (w / 2 + 0.03, -0.26, BORE + 0.04), 0.038, seg=16, bev=0.006)
-    g.body(fa)
+    g.body(cyl((w / 2 - 0.02, -0.02, BORE + 0.04), (w / 2 + 0.03, -0.26, BORE + 0.04), 0.038, seg=16, bev=0.006))
     g.metal(cyl((w / 2 + 0.035, -0.29, BORE + 0.04), (w / 2 + 0.02, -0.24, BORE + 0.04), 0.03, seg=16, bev=0.006))
-    # charging handle
     g.metal(box((0, y_rear - 0.03, top - 0.03), (0.08, 0.1, 0.035), bev=0.008))
     g.metal(box((0, y_rear - 0.06, top - 0.03), (0.2, 0.035, 0.035), bev=0.01, seg=2))
     return up
@@ -838,26 +883,23 @@ def buffer_tube(g, y0, y1, z=0.52, r=0.07, piece="Metal"):
 
 
 def m4_stock(g, y_back=-1.4, z_tube=0.52, piece="Furniture"):
+    """CTR-style collapsible stock: tube housing, open triangular brace, tall butt."""
+    z = z_tube
+    yb = y_back
     pts = [
-        (y_back, z_tube + 0.14),
-        (y_back + 0.12, z_tube + 0.15),
-        (-0.92, z_tube + 0.12),
-        (-0.62, z_tube + 0.1),
-        (-0.6, z_tube - 0.09),
-        (-0.8, z_tube - 0.1),
-        (y_back + 0.2, 0.06),
-        (y_back + 0.14, 0.02),
-        (y_back, 0.02),
+        (yb, z + 0.16), (yb + 0.32, z + 0.15), (-0.86, z + 0.11), (-0.64, z + 0.1), (-0.62, z + 0.07),
+        (-0.62, z - 0.08), (-0.66, z - 0.1), (-0.8, z - 0.11), (yb + 0.13, 0.04), (yb + 0.1, 0.0), (yb, 0.0),
     ]
-    st = side(pts, 0.17, bev=0.022, seg=2)
-    win = side([(y_back + 0.2, z_tube + 0.0), (-0.86, z_tube - 0.03), (y_back + 0.22, 0.22)], 0.4, bev=0)
-    bevel(win, 0.0)
-    st = cut(st, win)
+    st = side(pts, 0.16, bev=0.0)
+    win = [(yb + 0.12, z - 0.12), (-0.93, z - 0.12), (yb + 0.12, 0.14)]
+    st = cut(st, side(win, 0.4, bev=0))
+    # lightening pocket on the tube housing
+    cut(st, [side(rrect(-0.95 + (yb + 0.95) * 0.35, z + 0.03, 0.26, 0.07, 0.03), 0.03, x=sx * 0.08, bev=0) for sx in (-1, 1)])
+    bevel(st, 0.02, 2)
     g.add(piece, st)
-    # butt pad
-    g.add(piece, side([(y_back - 0.03, z_tube + 0.15), (y_back + 0.005, z_tube + 0.15), (y_back + 0.005, 0.01), (y_back - 0.03, 0.01)], 0.18, bev=0.012, seg=2))
-    # adjustment lever
-    g.metal(box((0, -0.75, z_tube - 0.1), (0.04, 0.16, 0.03), bev=0.008))
+    g.add(piece, side([(yb - 0.035, z + 0.165), (yb + 0.005, z + 0.165), (yb + 0.005, -0.005), (yb - 0.035, -0.005)], 0.17, bev=0.014, seg=2))
+    g.metal(box((0, -0.82, z - 0.115), (0.04, 0.18, 0.03), bev=0.008))
+    g.metal(cyl_x(-0.09, 0.09, 0.02, y=yb + 0.06, z=z + 0.02, seg=10))
 
 
 def mlok_handguard(g, y0, y1, cz=BORE - 0.01, w=0.25, h=0.27, ch=0.06, slot_ys=None, piece="Body", tape_at=None):
@@ -1060,10 +1102,10 @@ def build_mp5(g):
     tp = tube((0, 1.5, B), (0, 1.6, B), 0.14, 0.125, seg=24)
     g.tape(cut(tp, box((0, 1.55, B + 0.1), (0.4, 0.2, 0.16), bev=0)))
     # A2 fixed stock
-    st = side([(yr, 0.34), (yr, 0.6), (-0.75, 0.62), (-1.45, 0.61), (-1.52, 0.64), (-1.56, 0.62), (-1.56, 0.04), (-1.5, 0.0), (-1.4, 0.0), (-0.85, 0.26), (-0.62, 0.33)], 0.16, bev=0.03, seg=2)
-    cut(st, [box((sx * 0.085, -1.1, 0.4), (0.03, 0.55, 0.1), bev=0.02) for sx in (-1, 1)])
+    st = side([(yr, 0.36), (yr, 0.6), (-0.8, 0.6), (-1.4, 0.57), (-1.5, 0.6), (-1.56, 0.6), (-1.56, 0.06), (-1.5, 0.03), (-1.42, 0.05), (-1.2, 0.2), (-0.8, 0.33), (-0.62, 0.35)], 0.15, bev=0.035, seg=2)
+    cut(st, side([(-1.42, 0.24), (-1.42, 0.49), (-0.95, 0.5), (-1.2, 0.33)], 0.4, bev=0))
     g.furn(st)
-    g.furn(side([(-1.6, 0.63), (-1.555, 0.63), (-1.555, 0.03), (-1.6, 0.03)], 0.17, bev=0.014, seg=2))
+    g.furn(side([(-1.6, 0.61), (-1.555, 0.61), (-1.555, 0.05), (-1.6, 0.05)], 0.16, bev=0.014, seg=2))
     # rear drum sight + hooded front sight
     g.metal(box((0, -0.36, 0.64), (0.12, 0.14, 0.04), bev=0.008))
     drum = cyl_x(-0.055, 0.055, 0.06, y=-0.36, z=0.72, seg=8)
@@ -1187,7 +1229,7 @@ def build_vsr(g):
     act = lathe((0, -0.42, B), (0, 1, 0), [(0, 0), (0, 0.07), (0.03, 0.085), (1.35, 0.085), (1.37, 0.07), (1.37, 0)], seg=24, bev=0.004)
     cut(act, box((0.08, 0.32, B + 0.03), (0.08, 0.36, 0.08), bev=0.01))
     g.metal(act)
-    g.metal(lathe((0, 0.95, B), (0, 1, 0), [(0, 0), (0, 0.056), (0.15, 0.05), (1.95, 0.04), (1.95, 0)], seg=20))
+    g.metal(lathe((0, 0.95, B), (0, 1, 0), [(0, 0), (0, 0.064), (0.15, 0.058), (1.95, 0.052), (1.95, 0)], seg=20))
     sup = lathe((0, 2.9, B), (0, 1, 0), [(0, 0), (0, 0.06), (0.04, 0.088), (1.12, 0.088), (1.16, 0.075), (1.16, 0.02), (1.15, 0)], seg=24, bev=0.006)
     cut(sup, [tube((0, 2.9 + y, B), (0, 2.9 + y + 0.016, B), 0.1, 0.082, seg=24) for y in (0.12, 0.17, 0.22, 1.02)])
     g.metal(sup)
@@ -1287,7 +1329,7 @@ def build_m870(g):
 @register("AK74", "Primary")
 def build_ak74(g):
     B = 0.48
-    g.mats.update(Body="parkerized", Wood="wood_light", Mag="plum", Metal="gunmetal")
+    g.mats.update(Body="parkerized", Wood="wood", Mag="plum", Metal="gunmetal")
     g.roles["Mag"] = "Secondary"
     yr, yf = -0.48, 1.02
     rec = side([(yr, 0.3), (yr, 0.56), (yf, 0.56), (yf, 0.3)], 0.2, bev=0.008)
@@ -1424,7 +1466,7 @@ def build_vector(g):
     buffer_tube(g, -0.5, -1.05, z=0.5, r=0.065)
     m4_stock(g, y_back=-1.42, z_tube=0.5)
     straight_mag(g, (0.63, 0.27), 0.86, 0.2, 0.11, tilt=0, base=0.03)
-    g.tape(box((0, 0.95, 0.1), (W + 0.012, 0.12, 0.2), bev=0.004))
+    g.tape(side(axis_band(pts, (0.07, 0.28), a, L, 0.66, 0.8), 0.172, bev=0.004))
     g.points.update(
         Muzzle=(0, 1.61, B),
         Aim=(0, -0.3 - 0.55, 0.8),
@@ -1513,61 +1555,56 @@ def build_mp7(g):
 
 @register("P90", "Primary")
 def build_p90(g):
-    dz = 0.08
-    B = 0.44 + dz
+    dz = 0.1
+    B = 0.36 + dz
     g.mats.update(Body="polymer", Furniture="polymer_dark", Mag="smoke", Metal="gunmetal")
     g.roles["Mag"] = "Secondary"
     W = 0.26
-    top_z = 0.62 + dz
-    outline = [
-        (-1.12, -0.12 + dz), (-1.17, 0.05 + dz), (-1.18, 0.4 + dz), (-1.14, top_z - 0.02), (-1.06, top_z),
-        (1.0, top_z), (1.2, 0.55 + dz), (1.28, 0.42 + dz), (1.24, 0.3 + dz), (1.0, 0.18 + dz),
-        (0.88, 0.02 + dz), (0.78, -0.16 + dz), (0.66, -0.26 + dz), (0.48, -0.3 + dz), (0.2, -0.3 + dz),
-        (0.0, -0.32 + dz), (-0.22, -0.33 + dz), (-0.6, -0.3 + dz), (-0.95, -0.24 + dz),
-    ]
+    top_z = 0.49 + dz
+    outline = (
+        [(-1.08, -0.16 + dz), (-1.14, 0.0 + dz), (-1.16, 0.36 + dz), (-1.12, top_z - 0.02), (-1.04, top_z), (0.98, top_z)]
+        + bezier((0.98, top_z), (1.14, top_z - 0.02), (1.24, 0.44 + dz), (1.26, 0.36 + dz), 5)[1:]
+        + bezier((1.26, 0.36 + dz), (1.27, 0.27 + dz), (1.1, 0.22 + dz), (0.96, 0.13 + dz), 5)[1:]
+        + bezier((0.96, 0.13 + dz), (0.86, 0.04 + dz), (0.86, -0.26 + dz), (0.62, -0.31 + dz), 6)[1:]
+        + [(0.4, -0.32 + dz), (0.12, -0.3 + dz), (-0.1, -0.31 + dz), (-0.4, -0.3 + dz), (-0.8, -0.25 + dz)]
+    )
     body = side(outline, W, bev=0.0)
-    holes = [
-        side(rrect(0.32, 0.0 + dz, 0.32, 0.2, 0.09, 4), 0.6, bev=0),
-        side(rrect(-0.32, 0.0 + dz, 0.2, 0.26, 0.09, 4), 0.6, bev=0),
-    ]
-    cut(body, holes)
+    front_hole = rrect(0.33, -0.03 + dz, 0.44, 0.22, 0.1, 4)
+    thumb_hole = rrect(-0.29, 0.0 + dz, 0.23, 0.3, 0.1, 4)
+    cut(body, side(front_hole, 0.6, bev=0), side(thumb_hole, 0.6, bev=0))
     bevel(body, 0.035, 2)
     cs = []
     for sx in (-1, 1):
-        cs.append(side(rrect(-0.8, 0.15 + dz, 0.5, 0.3, 0.1, 3), 0.03, x=sx * W / 2, bev=0))
-        cs.append(box((sx * W / 2, 0.05, 0.42 + dz), (0.02, 1.8, 0.012), bev=0))
+        cs.append(box((sx * W / 2, 0.0, 0.34 + dz), (0.02, 1.9, 0.012), bev=0))
+        cs.append(box((sx * W / 2, -0.75, 0.2 + dz), (0.02, 0.5, 0.012), bev=0))
     cut(body, cs)
     g.body(body)
-    # grey butt / grip panels
-    g.furn(side(rrect(-0.8, 0.15 + dz, 0.48, 0.28, 0.09, 3), W - 0.012, bev=0.01))
-    g.metal(trigger(0.2, 0.1 + dz, h=0.1))
-    g.metal(cyl_z(-0.31 + dz, -0.28 + dz, 0.04, y=0.25, seg=14))  # rotary selector
-    # magazine on top
-    mag = box((0, -0.18, top_z + 0.065), (0.24, 1.56, 0.13), bev=0.025, seg=2)
-    g.mag(mag)
-    # rail bridge (TR) + side rails
+    g.furn(side([(-1.2, top_z - 0.03), (-1.13, top_z - 0.03), (-1.11, -0.15 + dz), (-1.06, -0.2 + dz), (-1.2, -0.2 + dz)], W - 0.02, bev=0.02, seg=2))
+    g.metal(trigger(0.17, 0.09 + dz, h=0.1))
+    g.metal(cyl_z(-0.32 + dz, -0.29 + dz, 0.04, y=0.2, seg=14))
+    g.mag(box((0, -0.2, top_z + 0.065), (0.24, 1.56, 0.13), bev=0.025, seg=2))
     for sx in (-1, 1):
         g.body(side([(0.15, top_z - 0.02), (0.98, top_z - 0.02), (0.95, top_z + 0.2), (0.18, top_z + 0.2)], 0.025, x=sx * 0.13, bev=0.006))
     g.body(box((0, 0.57, top_z + 0.2), (0.285, 0.8, 0.03), bev=0.006))
     g.body(picatinny(0.18, 0.96, top_z + 0.215, w=0.14, h=0.05))
     for sx in ("side_r", "side_l"):
-        g.body(orient(picatinny(0.7, 1.08, B + W / 2 - 0.005, w=0.1, h=0.035), sx, (0, 0, B)))
-    # barrel + flash hider + charging handles
-    g.metal(cyl_y(1.25, 1.32, 0.04, z=B, seg=16))
+        g.body(orient(picatinny(0.72, 1.06, B + W / 2 - 0.005, w=0.1, h=0.035), sx, (0, 0, B)))
+    g.metal(cyl_y(1.24, 1.32, 0.04, z=B, seg=16))
     fh = lathe((0, 1.3, B), (0, 1, 0), [(0, 0), (0, 0.035), (0.16, 0.035), (0.16, 0.02), (0.15, 0)], seg=16, bev=0.004)
     cut(fh, [box((sx * 0.03, 1.4, B), (0.03, 0.08, 0.014), bev=0) for sx in (-1, 1)])
     g.metal(fh)
     for sx in (-1, 1):
-        g.metal(cyl_x(sx * W / 2, sx * (W / 2 + 0.04), 0.022, y=0.98, z=0.3 + dz, seg=10))
-    g.tape(box((0, 0.66, -0.14 + dz), (W + 0.012, 0.12, 0.12), bev=0.02))
+        g.metal(cyl_x(sx * W / 2, sx * (W / 2 + 0.04), 0.022, y=0.98, z=0.26 + dz, seg=10))
+    band = clip_box(outline, u0=0.44, u1=0.62, v1=-0.15 + dz)
+    g.tape(side(band, W + 0.014, bev=0.006))
     g.points.update(
         Muzzle=(0, 1.46, B),
         Aim=(0, 0.2 - 0.55, top_z + 0.33),
-        LeftHand=(0, 0.66, -0.2 + dz),
+        LeftHand=(0, 0.56, -0.24 + dz),
         Optic=(0, 0.55, top_z + 0.265),
         MuzzleMount=(0, 1.32, B),
         Side=(0.165, 0.9, B),
-        MagWell=(0, -0.18, top_z + 0.13),
+        MagWell=(0, -0.2, top_z + 0.13),
     )
 
 
@@ -1676,62 +1713,56 @@ def glock(g, gid):
     g.mats.update(Body="polymer", Slide="gunmetal", Mag="polymer", Metal="gunmetal")
     g.roles["Mag"] = "Primary"
     W = 0.16
-    y0, y1, z0, z1 = -0.44, 0.86, 0.29, 0.49
+    y0, y1, z0, z1 = -0.1, 1.2, 0.29, 0.49
     sec = [(-W / 2, z0), (W / 2, z0), (W / 2, z1 - 0.045), (W / 2 - 0.03, z1), (-W / 2 + 0.03, z1), (-W / 2, z1 - 0.045)]
     sl = section(sec, y0, y1, bev=0.01, seg=2)
     cs = serrations(y0 + 0.05, y0 + 0.2, 7, z0 + 0.02, z1 - 0.03, W, depth=0.012, groove=0.014)
-    cs.append(box((0.045, 0.16, z1), (0.12, 0.3, 0.09), bev=0.006))  # ejection port
+    cs.append(box((0.045, 0.47, z1), (0.12, 0.3, 0.09), bev=0.006))  # ejection port
     cs.append(cyl_y(y1 - 0.02, y1 + 0.02, 0.035, z=PB, seg=16))
     cs.append(side([(y1 - 0.1, z0 - 0.01), (y1 + 0.02, z0 - 0.01), (y1 + 0.02, z0 + 0.05)], 0.3, bev=0))  # nose
     if gid == "G18":
         cs += [box((0, y1 - 0.08 - i * 0.07, z1), (0.04, 0.035, 0.1), bev=0.008) for i in range(3)]
     cut(sl, cs)
     g.add("Slide", sl)
-    # sights
     rs = box((0, y0 + 0.06, z1 + 0.025), (0.11, 0.06, 0.05), bev=0.008)
     cut(rs, box((0, y0 + 0.06, z1 + 0.05), (0.025, 0.1, 0.04), bev=0))
     g.add("Slide", rs)
     g.add("Slide", box((0, y1 - 0.06, z1 + 0.02), (0.03, 0.05, 0.04), bev=0.006))
     if gid == "G18":
         g.add("Slide", box((-W / 2 - 0.006, y0 + 0.08, z0 + 0.1), (0.014, 0.05, 0.03), bev=0.004))
-    # barrel hood + crown
-    g.metal(box((0, 0.16, z1 - 0.04), (0.09, 0.3, 0.06), bev=0.006))
+    g.metal(box((0, 0.47, z1 - 0.04), (0.09, 0.3, 0.06), bev=0.006))
     g.metal(tube((0, y1 - 0.05, PB), (0, y1 - 0.015, PB), 0.034, 0.015, seg=16))
-    # frame
-    fr = side([(y0 + 0.02, z0 + 0.01), (y1 - 0.02, z0 + 0.01), (y1 - 0.02, 0.25), (y1 - 0.06, 0.21), (0.48, 0.21), (0.12, 0.2), (-0.3, 0.23), (y0 + 0.02, 0.26)], W - 0.006, bev=0.01, seg=1)
-    cut(fr, [box((0, 0.62 + i * 0.07, 0.205), (0.2, 0.025, 0.02), bev=0) for i in range(3)])
-    cut(fr, [box((sx * W / 2, 0.62, 0.235), (0.02, 0.38, 0.015), bev=0) for sx in (-1, 1)])
+    # frame: dust cover with rail, square trigger guard, angled grip
+    fr = side([(y0 + 0.02, z0 + 0.01), (y1 - 0.02, z0 + 0.01), (y1 - 0.02, 0.25), (y1 - 0.06, 0.21), (0.62, 0.21), (0.24, 0.2), (0.0, 0.22), (y0 + 0.02, 0.25)], W - 0.006, bev=0.01)
+    cut(fr, [box((0, 0.86 + i * 0.08, 0.205), (0.2, 0.028, 0.02), bev=0) for i in range(3)])
+    cut(fr, [box((sx * W / 2, 0.92, 0.235), (0.02, 0.4, 0.015), bev=0) for sx in (-1, 1)])
     g.body(fr)
-    g.body(bar([(0.1, 0.22), (0.12, 0.09), (0.2, 0.06), (0.44, 0.06), (0.5, 0.12), (0.5, 0.21)], 0.035, 0.1, bev=0.008))
-    top, bot = (0.07, 0.24), (-0.08, -0.3)
-    pts, nf, a, L = grip_profile(top, bot, 0.27, 0.25, nub=0.012, waves=3, n=24, beaver=0.04, swell=0.008)
+    g.body(bar([(0.23, 0.22), (0.25, 0.09), (0.32, 0.055), (0.58, 0.055), (0.64, 0.11), (0.64, 0.21)], 0.035, 0.1, bev=0.008))
+    top, bot = (0.07, 0.24), (-0.08, -0.31)
+    pts, nf, a, L = grip_profile(top, bot, 0.3, 0.27, nub=0.012, waves=3, n=24, beaver=0.05, swell=0.008)
     grip = side(pts, 0.17, bev=0.03, seg=2)
-    cut(grip, grip_texture(top, a, nf, L, 0.17, 0.27, t0=0.22, t1=0.8, n=8))
+    cut(grip, grip_texture(top, a, nf, L, 0.17, 0.3, t0=0.22, t1=0.62, n=6))
     g.body(grip)
-    g.metal(trigger(0.23, 0.22, h=0.1, w=0.04))
-    g.metal(box((0, 0.235, 0.17), (0.012, 0.02, 0.05), bev=0.003))
-    g.metal(box((-W / 2 - 0.004, 0.1, z0 - 0.02), (0.01, 0.16, 0.025), bev=0.003))  # slide stop
+    g.metal(trigger(0.36, 0.22, h=0.1, w=0.04))
+    g.metal(box((0, 0.365, 0.17), (0.012, 0.02, 0.05), bev=0.003))
+    g.metal(box((-W / 2 - 0.004, 0.36, z0 - 0.02), (0.01, 0.16, 0.025), bev=0.003))
     for sx in (-1, 1):
-        g.metal(box((sx * (W / 2 - 0.002), 0.33, z0 - 0.025), (0.012, 0.04, 0.02), bev=0.003))
-    g.metal(box((-W / 2 + 0.01, 0.06, 0.17), (0.02, 0.05, 0.04), bev=0.006))  # mag release
-    # magazine aligned with the grip
+        g.metal(box((sx * (W / 2 - 0.002), 0.58, z0 - 0.025), (0.012, 0.04, 0.02), bev=0.003))
+    g.metal(box((-W / 2 + 0.01, 0.22, 0.17), (0.02, 0.05, 0.04), bev=0.006))
     ext = 0.55 if gid == "G18" else 0.0
-    mlen = 0.6 + ext
-    mp = straight_mag(g, (0, 0.23), mlen, 0.2, 0.12, base=0.03, bev=0.008)
+    mp = straight_mag(g, (0, 0.23), 0.6 + ext, 0.22, 0.12, base=0.03, bev=0.008)
     ang = -math.degrees(math.atan2(-(bot[0] - top[0]), -(bot[1] - top[1])))
     for p_ in mp:
         rotate(p_, ang, "X", (0, 0, 0.23))
-        move(p_, (0, top[0] + (bot[0] - top[0]) * (0.01 / 0.54) + 0.01, 0))
-    tp = side(pts, 0.176, bev=0.004)
-    intersect(tp, box((0, -0.05, -0.12), (0.4, 0.6, 0.12), bev=0))
-    g.tape(tp)
+        move(p_, (0, top[0], 0))
+    g.tape(side(axis_band(pts, top, a, L, 0.72, 0.86), 0.178, bev=0.004))
     g.points.update(
         Muzzle=(0, y1 + 0.005, PB),
         Aim=(0, y0 + 0.06 - 0.55, z1 + 0.045),
         LeftHand=(-0.07, -0.02, -0.04),
-        Underbarrel=(0, 0.65, 0.21),
+        Underbarrel=(0, 0.95, 0.21),
         MuzzleMount=(0, y1, PB),
-        MagWell=(0, 0.07, 0.23),
+        MagWell=(0, top[0], 0.23),
     )
 
 
@@ -1746,11 +1777,11 @@ def build_m1911(g):
     g.mats.update(Body="parkerized", Slide="parkerized", Wood="wood", Mag="gunmetal", Metal="steel")
     g.roles.update(Mag="Metal", Slide="Metal")
     W = 0.13
-    y0, y1, z0 = -0.42, 0.97, 0.29
+    y0, y1, z0 = -0.12, 1.27, 0.29
     sec = [(-W / 2, z0), (W / 2, z0), (W / 2, 0.41)] + arc(0, 0.41, W / 2, 0, 180, 8)[1:-1] + [(-W / 2, 0.41)]
     sl = section(sec, y0, y1, bev=0.008, seg=2)
     cs = serrations(y0 + 0.05, y0 + 0.2, 8, z0 + 0.02, 0.43, W, depth=0.01, groove=0.012, slant=-8)
-    cs.append(box((W / 2, 0.2, 0.39), (0.06, 0.26, 0.09), bev=0.006))
+    cs.append(box((W / 2, 0.5, 0.39), (0.06, 0.26, 0.09), bev=0.006))
     cs.append(cyl_y(y1 - 0.03, y1 + 0.02, 0.05, z=B, seg=18))
     cut(sl, cs)
     g.add("Slide", sl)
@@ -1758,53 +1789,47 @@ def build_m1911(g):
     cut(rs, box((0, y0 + 0.06, 0.5), (0.02, 0.1, 0.03), bev=0))
     g.add("Slide", rs)
     g.add("Slide", box((0, y1 - 0.08, 0.485), (0.02, 0.06, 0.03), bev=0.005))
-    g.metal(box((W / 2 - 0.03, 0.2, 0.39), (0.02, 0.24, 0.07), bev=0.004))
+    g.metal(box((W / 2 - 0.03, 0.5, 0.39), (0.02, 0.24, 0.07), bev=0.004))
     g.metal(tube((0, y1 - 0.025, B), (0, y1 + 0.005, B), 0.048, 0.03, seg=18))
     g.metal(tube((0, y1 - 0.02, B), (0, y1 + 0.0, B), 0.03, 0.017, seg=14))
     g.metal(cyl_y(y1 - 0.05, y1 - 0.0, 0.035, z=0.31, seg=14))
-    # frame
-    fr = side([(y0 + 0.02, z0 + 0.005), (y1 - 0.04, z0 + 0.005), (y1 - 0.04, 0.24), (0.5, 0.23), (0.12, 0.22), (-0.3, 0.24), (y0 + 0.02, 0.27)], W - 0.006, bev=0.008)
+    fr = side([(y0 + 0.02, z0 + 0.005), (y1 - 0.04, z0 + 0.005), (y1 - 0.04, 0.24), (0.6, 0.23), (0.22, 0.22), (0.0, 0.24), (y0 + 0.02, 0.27)], W - 0.006, bev=0.008)
     g.body(fr)
-    g.body(bar([(0.1, 0.23), (0.12, 0.1), (0.2, 0.08), (0.36, 0.08), (0.42, 0.12), (0.44, 0.22)], 0.028, 0.08, bev=0.008, seg=1))
-    top, bot = (0.05, 0.25), (-0.06, -0.3)
-    pts, nf, a, L = grip_profile(top, bot, 0.22, 0.22, swell=0.0)
-    grip = side(pts, W - 0.006, bev=0.014)
-    g.body(grip)
-    # wood panels with checkering
+    g.body(bar([(0.21, 0.23), (0.23, 0.1), (0.31, 0.075), (0.5, 0.075), (0.57, 0.12), (0.58, 0.22)], 0.028, 0.08, bev=0.008))
+    top, bot = (0.05, 0.25), (-0.06, -0.31)
+    pts, nf, a, L = grip_profile(top, bot, 0.27, 0.26, swell=0.0)
+    g.body(side(pts, W - 0.006, bev=0.014))
+    # wood panels with diamond checkering
     for sx in (-1, 1):
-        pn = side(pts, 0.024, x=sx * (W / 2 + 0.004), bev=0.0)
-        intersect(pn, box((sx * (W / 2 + 0.004), -0.02, -0.04), (0.06, 0.6, 0.46), bev=0))
-        bevel(pn, 0.01, 2)
+        xp = sx * (W / 2 + 0.006)
+        pn = side(axis_rrect(top, a, nf, L, 0.14, 0.9, -0.1, 0.105, 0.04), 0.024, x=xp, bev=0.01, seg=2)
         ccs = []
-        for i in range(-5, 7):
+        for i in range(-6, 7):
             for d in (-1, 1):
-                c = box((sx * (W / 2 + 0.018), -0.02 + i * 0.045, -0.04), (0.014, 0.008, 0.8), bev=0)
-                rotate(c, d * 35, "X", (0, -0.02 + i * 0.045, -0.04))
+                c = box((sx * (W / 2 + 0.02), -0.02 + i * 0.04, -0.03), (0.014, 0.008, 0.7), bev=0)
+                rotate(c, d * 35, "X", (0, -0.02 + i * 0.04, -0.03))
                 ccs.append(c)
-        intersect_box = box((sx * (W / 2 + 0.018), -0.02, -0.04), (0.03, 0.2, 0.34), bev=0)
         cutter = join(ccs, "chk")
-        intersect(cutter, intersect_box)
+        intersect(cutter, side(axis_rrect(top, a, nf, L, 0.22, 0.82, -0.075, 0.08, 0.02), 0.03, x=sx * (W / 2 + 0.02), bev=0))
         cut(pn, cutter)
         g.wood(pn)
-        for zz in (0.12, -0.2):
-            g.metal(cyl_x(sx * (W / 2 + 0.012), sx * (W / 2 + 0.02), 0.016, y=top[0] + (bot[0] - top[0]) * (0.25 - zz) / 0.55, z=zz, seg=10))
-    # hammer, grip safety, thumb safety, slide stop, trigger, mag release
-    g.metal(side([(y0 - 0.02, 0.31), (y0 + 0.04, 0.33), (y0 - 0.04, 0.44), (y0 - 0.1, 0.45), (y0 - 0.08, 0.41)], 0.05, bev=0.006))
-    g.metal(side([(y0 + 0.02, 0.27), (y0 - 0.12, 0.26), (y0 - 0.12, 0.22), (y0 - 0.02, 0.13), (y0 + 0.08, 0.1)], 0.11, bev=0.015, seg=2))
-    g.metal(box((-W / 2 - 0.01, y0 + 0.14, 0.29), (0.014, 0.12, 0.03), bev=0.004))
-    g.metal(box((-W / 2 - 0.008, 0.18, 0.28), (0.012, 0.18, 0.03), bev=0.004))
-    g.metal(cyl_x(-W / 2 - 0.012, W / 2, 0.018, y=0.18, z=0.28, seg=10))
-    g.metal(side([(0.17, 0.24), (0.22, 0.24), (0.22, 0.13), (0.18, 0.13)], 0.04, bev=0.006))
-    g.metal(cyl_x(-W / 2 - 0.01, -W / 2, 0.022, y=0.06, z=0.18, seg=10))
-    g.metal(side([(bot[0] - 0.05, -0.31), (bot[0] + 0.12, -0.29), (bot[0] + 0.11, -0.25), (bot[0] - 0.06, -0.27)], W - 0.02, bev=0.006))
-    mp = straight_mag(g, (0, 0.23), 0.6, 0.15, 0.1, base=0.03, bev=0.006)
+        for t in (0.28, 0.78):
+            c = V(top) + V(a) * L * t
+            g.metal(cyl_x(sx * (W / 2 + 0.016), sx * (W / 2 + 0.022), 0.016, y=c.x, z=c.y, seg=10))
+    # hammer, beavertail grip safety, thumb safety, slide stop, trigger, mag release
+    g.metal(side([(y0 + 0.01, 0.31), (y0 + 0.05, 0.34), (y0 - 0.02, 0.44), (y0 - 0.07, 0.45), (y0 - 0.06, 0.41), (y0 - 0.03, 0.4)], 0.045, bev=0.006))
+    g.metal(side([(y0 + 0.06, 0.285), (y0 - 0.04, 0.29), (y0 - 0.1, 0.27), (y0 - 0.09, 0.245), (y0 - 0.02, 0.235), (y0 + 0.04, 0.17), (y0 + 0.08, 0.18)], 0.11, bev=0.014, seg=2))
+    g.metal(box((-W / 2 - 0.01, y0 + 0.16, 0.29), (0.014, 0.12, 0.03), bev=0.004))
+    g.metal(box((-W / 2 - 0.008, 0.36, 0.28), (0.012, 0.18, 0.03), bev=0.004))
+    g.metal(cyl_x(-W / 2 - 0.012, W / 2, 0.018, y=0.36, z=0.28, seg=10))
+    g.metal(side([(0.29, 0.24), (0.34, 0.24), (0.34, 0.13), (0.3, 0.13)], 0.04, bev=0.006))
+    g.metal(cyl_x(-W / 2 - 0.01, -W / 2, 0.022, y=0.2, z=0.18, seg=10))
+    mp = straight_mag(g, (0, 0.23), 0.62, 0.16, 0.1, base=0.03, bev=0.006)
     ang = -math.degrees(math.atan2(-(bot[0] - top[0]), -(bot[1] - top[1])))
     for p_ in mp:
         rotate(p_, ang, "X", (0, 0, 0.23))
         move(p_, (0, top[0], 0))
-    g.tape(box((0, -0.075, -0.24), (W + 0.012, 0.21, 0.08), bev=0.01))
-    for p_ in g.parts["Tape"]:
-        rotate(p_, ang, "X", (0, -0.075, -0.24))
+    g.tape(side(axis_band(pts, top, a, L, 0.9, 0.98), W + 0.012, bev=0.004))
     g.points.update(
         Muzzle=(0, y1 + 0.005, B),
         Aim=(0, y0 + 0.06 - 0.55, 0.51),
@@ -1820,57 +1845,55 @@ def build_deagle(g):
     g.mats.update(Body="anodized", Slide="steel", Metal="steel", Furniture="rubber", Mag="gunmetal")
     g.roles.update(Mag="Metal", Slide="Metal")
     W = 0.17
-    yb0, yb1 = 0.18, 1.32
-    # fixed barrel with triangular top + integral rail
+    y0 = -0.14
+    yb0, yb1 = 0.56, 1.62
+    # fixed barrel: triangular top with integral rail and side flutes
     bsec = [(-0.08, 0.3), (0.08, 0.3), (0.08, 0.47), (0.03, 0.56), (-0.03, 0.56), (-0.08, 0.47)]
     br = section(bsec, yb0, yb1, bev=0.01, seg=2)
-    cut(br, [cyl_y(yb1 - 0.02, yb1 + 0.02, 0.04, z=B, seg=16)] + [side(rrect(0.85, 0.38, 0.6, 0.06, 0.03), 0.02, x=sx * 0.08, bev=0) for sx in (-1, 1)])
+    cut(br, [cyl_y(yb1 - 0.02, yb1 + 0.02, 0.04, z=B, seg=16)] + [side(rrect(1.2, 0.39, 0.55, 0.055, 0.027), 0.02, x=sx * 0.08, bev=0) for sx in (-1, 1)])
     g.metal(br)
     g.metal(picatinny(yb0 + 0.04, yb1 - 0.12, 0.56, w=0.08, h=0.035, pitch=0.06))
     g.metal(box((0, yb1 - 0.05, 0.58), (0.03, 0.05, 0.04), bev=0.006))
     g.metal(tube((0, yb1 - 0.03, B), (0, yb1 - 0.01, B), 0.036, 0.022, seg=16))
-    # slide (rear)
-    y0 = -0.46
+    # slide (rear half, wraps the bolt)
     ssec = [(-W / 2, 0.29), (W / 2, 0.29), (W / 2, 0.47), (0.05, 0.545), (-0.05, 0.545), (-W / 2, 0.47)]
     sl = section(ssec, y0, yb0 + 0.02, bev=0.012, seg=2)
     cs = serrations(y0 + 0.05, y0 + 0.22, 8, 0.31, 0.46, W, depth=0.012, groove=0.016, slant=-10)
-    cs.append(box((W / 2, 0.02, 0.46), (0.08, 0.22, 0.08), bev=0.006))
+    cs.append(box((W / 2, 0.36, 0.46), (0.08, 0.22, 0.08), bev=0.006))
     cut(sl, cs)
     g.add("Slide", sl)
     rs = box((0, y0 + 0.06, 0.57), (0.11, 0.06, 0.05), bev=0.008)
     cut(rs, box((0, y0 + 0.06, 0.6), (0.025, 0.1, 0.04), bev=0))
     g.add("Slide", rs)
-    for sx in (-1, 1):
+    for sx in (-1, 1):  # ambi safety levers
         g.add("Slide", box((sx * (W / 2 + 0.01), y0 + 0.1, 0.43), (0.025, 0.08, 0.04), bev=0.008))
-    g.metal(box((0.05, 0.02, 0.44), (0.02, 0.2, 0.06), bev=0.004))
+    g.metal(box((0.05, 0.36, 0.44), (0.02, 0.2, 0.06), bev=0.004))
     # frame
-    fr = side([(-0.42, 0.3), (yb1 - 0.02, 0.3), (yb1 - 0.02, 0.26), (yb1 - 0.08, 0.2), (0.52, 0.19), (0.14, 0.2), (-0.3, 0.22), (-0.42, 0.26)], W - 0.006, bev=0.012)
+    fr = side([(y0 + 0.02, 0.3), (yb1 - 0.02, 0.3), (yb1 - 0.02, 0.26), (yb1 - 0.08, 0.2), (0.74, 0.19), (0.26, 0.2), (0.0, 0.22), (y0 + 0.02, 0.26)], W - 0.006, bev=0.012)
     g.body(fr)
-    g.body(bar([(0.12, 0.21), (0.14, 0.08), (0.24, 0.04), (0.46, 0.04), (0.53, 0.1), (0.54, 0.2)], 0.04, 0.1, bev=0.01))
-    top, bot = (0.07, 0.24), (-0.1, -0.33)
-    pts, nf, a, L = grip_profile(top, bot, 0.26, 0.25, swell=0.006, beaver=0.04)
+    g.body(bar([(0.25, 0.21), (0.27, 0.08), (0.37, 0.035), (0.63, 0.035), (0.71, 0.1), (0.72, 0.2)], 0.04, 0.1, bev=0.01))
+    top, bot = (0.08, 0.24), (-0.09, -0.34)
+    pts, nf, a, L = grip_profile(top, bot, 0.33, 0.3, swell=0.008, beaver=0.04)
     g.body(side(pts, W - 0.01, bev=0.02, seg=2))
-    gw = side(pts, W + 0.016, bev=0.025, seg=2)
-    intersect(gw, box((0, -0.03, -0.06), (0.4, 0.7, 0.5), bev=0))
-    cut(gw, grip_texture(top, a, nf, L, W + 0.016, 0.28, t0=0.2, t1=0.85, n=9))
+    wrap = axis_band(pts, top, a, L, 0.12, 0.97)
+    gw = side(wrap, W + 0.016, bev=0.025, seg=2)
+    cut(gw, grip_texture(top, a, nf, L, W + 0.016, 0.34, t0=0.2, t1=0.62, n=6))
     g.furn(gw)
-    g.metal(side([(-0.45, 0.33), (-0.4, 0.36), (-0.46, 0.46), (-0.52, 0.46), (-0.5, 0.42)], 0.05, bev=0.006))  # hammer
-    g.metal(trigger(0.27, 0.2, h=0.1, w=0.04))
-    g.metal(box((-W / 2 - 0.004, 0.16, 0.26), (0.012, 0.16, 0.03), bev=0.004))
-    g.metal(cyl_x(-W / 2 - 0.012, -W / 2, 0.024, y=0.1, z=0.16, seg=10))
-    mp = straight_mag(g, (0, 0.22), 0.62, 0.19, 0.11, base=0.035, bev=0.008)
+    g.metal(side([(y0 + 0.0, 0.33), (y0 + 0.05, 0.36), (y0 - 0.01, 0.46), (y0 - 0.07, 0.465), (y0 - 0.05, 0.42)], 0.05, bev=0.006))
+    g.metal(trigger(0.4, 0.2, h=0.1, w=0.04))
+    g.metal(box((-W / 2 - 0.004, 0.42, 0.26), (0.012, 0.16, 0.03), bev=0.004))
+    g.metal(cyl_x(-W / 2 - 0.012, -W / 2, 0.024, y=0.24, z=0.16, seg=10))
+    mp = straight_mag(g, (0, 0.22), 0.66, 0.21, 0.11, base=0.035, bev=0.008)
     ang = -math.degrees(math.atan2(-(bot[0] - top[0]), -(bot[1] - top[1])))
     for p_ in mp:
         rotate(p_, ang, "X", (0, 0, 0.22))
         move(p_, (0, top[0], 0))
-    tp = side(pts, W + 0.03, bev=0.004)
-    intersect(tp, box((0, -0.08, -0.15), (0.4, 0.6, 0.11), bev=0))
-    g.tape(tp)
+    g.tape(side(axis_band(pts, top, a, L, 0.7, 0.82), W + 0.032, bev=0.004))
     g.points.update(
         Muzzle=(0, yb1 + 0.005, B),
         Aim=(0, y0 + 0.06 - 0.55, 0.6),
         LeftHand=(-0.07, -0.03, -0.05),
-        Optic=(0, 0.75, 0.595),
+        Optic=(0, 1.05, 0.595),
         MagWell=(0, top[0], 0.22),
     )
 
@@ -2145,7 +2168,7 @@ def setup_render():
     world = bpy.data.worlds.new("World")
     world.use_nodes = True
     bg = world.node_tree.nodes.get("Background")
-    bg.inputs["Color"].default_value = (0.045, 0.045, 0.05, 1)
+    bg.inputs["Color"].default_value = (0.05, 0.05, 0.055, 1)
     bg.inputs["Strength"].default_value = 1.0
     scn.world = world
 
@@ -2199,7 +2222,7 @@ def frame_camera(cam, lights, lo, hi, view_dir=(1.0, 0.42, 0.3), aspect=900 / 50
     h = max(ys) - min(ys)
     off = right * (max(xs) + min(xs)) / 2 + up * (max(ys) + min(ys)) / 2
     cam.location += off
-    cam.data.ortho_scale = max(w, h * aspect) * margin
+    cam.data.ortho_scale = (max(w, h * aspect) if aspect >= 1 else max(h, w / aspect)) * margin
     cam.data.clip_end = radius * 10 + 50
     size = max(radius, 1.0)
     # studio lights relative to subject
@@ -2210,7 +2233,7 @@ def frame_camera(cam, lights, lo, hi, view_dir=(1.0, 0.42, 0.3), aspect=900 / 50
     for k, lo_ in lights.items():
         look_at(lo_, center)
         lo_.data.size = size * (1.5 if k != "top" else 3)
-        base = {"key": 260, "fill": 70, "rim": 180, "top": 90}[k]
+        base = {"key": 420, "fill": 130, "rim": 260, "top": 160}[k]
         lo_.data.energy = base * size * size
 
 

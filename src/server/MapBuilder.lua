@@ -897,7 +897,10 @@ local function buildArmory(map: Instance)
 				model:ScaleTo(scale)
 			end
 			-- Barrel runs along the wall, right side facing the room.
-			model:PivotTo(bayCF * CFrame.new(0, 0.4, -0.6) * CFrame.Angles(0, math.rad(90 * facing), 0))
+			-- Centre the gun's bounding box in the bay rather than its grip.
+			local boxCF = model:GetBoundingBox()
+			local pivotToBox = model:GetPivot():ToObjectSpace(boxCF)
+			model:PivotTo(bayCF * CFrame.new(0, 0.4, -0.6) * CFrame.Angles(0, math.rad(90 * facing), 0) * CFrame.new(-pivotToBox.Position))
 			model.Parent = displays
 		end
 
@@ -905,8 +908,9 @@ local function buildArmory(map: Instance)
 		prompt.Name = "Customize"
 		prompt.ActionText = "Customize"
 		prompt.ObjectText = w.Name
-		prompt.KeyboardKeyCode = Enum.KeyCode.E
-		prompt.GamepadKeyCode = Enum.KeyCode.ButtonX
+		-- E/X are lean and reload; use free keys so the game never swallows them.
+		prompt.KeyboardKeyCode = Enum.KeyCode.T
+		prompt.GamepadKeyCode = Enum.KeyCode.ButtonL1
 		prompt.MaxActivationDistance = 9
 		prompt.RequiresLineOfSight = false
 		prompt.Style = Enum.ProximityPromptStyle.Default

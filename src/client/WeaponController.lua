@@ -363,6 +363,9 @@ function WeaponController.Reload()
 			local take = math.min(w.MagSize - a.Mag, a.Reserve)
 			a.Mag += take
 			a.Reserve -= take
+			if a.Mag > 0 and viewmodel and State.Weapon == weaponId then
+				viewmodel:SetSlideLocked(false)
+			end
 		end
 		State.Emit("Reload", false)
 		State.Emit("Ammo")
@@ -385,6 +388,7 @@ local function cycleFireMode()
 	if not w or #w.FireModes < 2 then
 		return
 	end
+	burstLeft = 0
 	local index = (State.FireMode[w.Id] or 1) % #w.FireModes + 1
 	State.FireMode[w.Id] = index
 	Effects.Play2D("UIClick", 0.4, 1.3)
@@ -432,6 +436,7 @@ end
 
 local function onToolEquipped(tool: Tool)
 	equippedTool = tool
+	burstLeft = 0
 	local id = tool:GetAttribute("WeaponId")
 	State.Weapon = id
 	State.Reloading = false
@@ -440,8 +445,8 @@ local function onToolEquipped(tool: Tool)
 		viewmodel:Destroy()
 	end
 	local loadout = Weapons.ParseLoadout(tool:GetAttribute("Loadout"))
-	local saved = State.Settings.Loadouts and State.Settings.Loadouts[id]
-	loadout.Skin = saved and saved.Skin or "Black"
+	-- The finish the server actually built the tool with, not unsaved menu edits.
+	loadout.Skin = tool:GetAttribute("Skin") or "Black"
 	if Weapons.Get(id) then
 		resolved[id] = Weapons.Resolve(id, loadout)
 	end
@@ -461,6 +466,7 @@ local function onToolUnequipped(tool: Tool)
 	end
 	equippedTool = nil
 	State.Weapon = nil
+	burstLeft = 0
 	cancelReload()
 	if viewmodel then
 		viewmodel:Destroy()
@@ -759,6 +765,7 @@ local function updateCamera(dt: number)
 		if viewmodel then
 			viewmodel:SetVisible(false)
 		end
+		updateLaser(false)
 		return
 	end
 	local w = currentWeapon()
@@ -842,6 +849,8 @@ local function onCharacter(c: Model)
 	aimHeld = false
 	triggerHeld = false
 	throwing = false
+	burstLeft = 0
+	sliding = false
 	recoilOffset = Vector2.zero
 	recoilTarget = Vector2.zero
 	if viewmodel then

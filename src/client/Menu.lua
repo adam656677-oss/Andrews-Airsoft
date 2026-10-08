@@ -105,12 +105,18 @@ local loadoutState = {
 	Secondary = "G17",
 }
 
+-- Edits happen on a draft; State.Settings only changes when the loadout is deployed.
+local draftLoadouts: { [string]: any } = {}
+
 local function currentLoadout(id: string)
-	State.Settings.Loadouts = State.Settings.Loadouts or {}
-	local l = Weapons.CleanLoadout(id, State.Settings.Loadouts[id])
-	State.Settings.Loadouts[id] = l
-	return l
+	if not draftLoadouts[id] then
+		local saved = State.Settings.Loadouts and State.Settings.Loadouts[id]
+		draftLoadouts[id] = Weapons.CleanLoadout(id, saved)
+	end
+	return draftLoadouts[id]
 end
+
+local refreshLoadout: (() -> ())? = nil
 
 local function rankIndex(): number
 	return (Config.RankForXP(player:GetAttribute("XP") or 0))
@@ -355,7 +361,11 @@ local function buildLoadout()
 		click()
 		State.Settings.Primary = loadoutState.Primary
 		State.Settings.Secondary = loadoutState.Secondary
-		Remotes.SetLoadout:FireServer(loadoutState.Primary, loadoutState.Secondary, State.Settings.Loadouts)
+		State.Settings.Loadouts = State.Settings.Loadouts or {}
+		for id, l in draftLoadouts do
+			State.Settings.Loadouts[id] = table.clone(l)
+		end
+		Remotes.SetLoadout:FireServer(loadoutState.Primary, loadoutState.Secondary, draftLoadouts)
 		local inMatch = (player:GetAttribute("Side") or "") ~= ""
 		Menu.Close()
 		if inMatch then
@@ -373,7 +383,9 @@ local function buildLoadout()
 		end
 	end)
 
+	refreshLoadout = refresh
 	State.On("Profile", function()
+		draftLoadouts = {}
 		loadoutState.Primary = State.Settings.Primary or loadoutState.Primary
 		loadoutState.Secondary = State.Settings.Secondary or loadoutState.Secondary
 		if frame.Visible then
@@ -394,6 +406,8 @@ function Menu.OpenLoadout(weaponId: string?)
 	end
 	if openPage ~= "Loadout" then
 		Menu.Open("Loadout")
+	elseif refreshLoadout then
+		refreshLoadout()
 	end
 end
 

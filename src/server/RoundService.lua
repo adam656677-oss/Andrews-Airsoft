@@ -289,6 +289,7 @@ end
 
 function RoundService.OnPlayerRemoving(player: Player)
 	match.Votes[player] = nil
+	match.MapVotes[player] = nil
 end
 
 function RoundService.VoteMap(player: Player, mapId: any)

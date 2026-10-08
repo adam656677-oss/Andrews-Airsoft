@@ -70,7 +70,11 @@ function Viewmodel.new(weaponId: string, opts: { Accent: Color3, Loadout: any? }
 	local roles: { string } = {}
 	local opticParts: { BasePart } = {}
 	for _, d in model:GetDescendants() do
-		if d:IsA("BasePart") then
+		if d:IsA("WeldConstraint") then
+			-- Every part is anchored and placed by hand; welds would drag
+			-- the whole gun along whenever a mag or slide moves.
+			d:Destroy()
+		elseif d:IsA("BasePart") then
 			d.Anchored = true
 			d.CanCollide = false
 			d.CanQuery = false

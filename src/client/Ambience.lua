@@ -5,6 +5,7 @@
 ]]
 
 local Lighting = game:GetService("Lighting")
+local Players = game:GetService("Players")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -83,7 +84,7 @@ function Ambience.Init()
 		if now - lastCheck > 0.2 then
 			lastCheck = now
 			-- Indoors (anything solid overhead) means no rain.
-			params.FilterDescendantsInstances = { camera, workspace:FindFirstChild("Effects") :: Instance }
+			params.FilterDescendantsInstances = { camera, workspace:FindFirstChild("Effects") :: Instance, Players.LocalPlayer.Character :: Instance }
 			local roof = workspace:Raycast(pos, Vector3.new(0, 50, 0), params)
 			local outdoors = roof == nil or roof.Instance.Transparency >= 1
 			rain.Rate = outdoors and 1600 or 0

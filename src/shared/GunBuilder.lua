@@ -370,6 +370,7 @@ BUILDERS.MP7 = function(b)
 	b:Attach("MuzzleMount", Vector3.new(0, 0.5, -1.33))
 	b:Attach("OpticMount", Vector3.new(0, 0.69, -0.35))
 	b:Attach("SideMount", Vector3.new(0.14, 0.48, -0.8))
+	b:Attach("UnderMount", Vector3.new(0, 0.3, -0.9))
 	b:Attach("LeftHand", Vector3.new(0, 0.1, -0.9))
 	b:Attach("Aim", Vector3.new(0, 0.82, 0.5))
 	b:Add({ Name = "RearSight", Role = "Metal", Size = Vector3.new(0.1, 0.1, 0.06), Pos = Vector3.new(0, 0.74, 0.0) })
@@ -797,6 +798,7 @@ function GunBuilder.BuildTool(weaponId: string, opts: BuildOptions?): Tool
 	tool.ManualActivationOnly = true
 	tool:SetAttribute("WeaponId", weaponId)
 	tool:SetAttribute("Loadout", model:GetAttribute("Loadout"))
+	tool:SetAttribute("Skin", Weapons.CleanLoadout(weaponId, options.Loadout).Skin)
 
 	-- Rotate the tilted grip back so the barrel points straight ahead.
 	local handle = model.PrimaryPart :: BasePart

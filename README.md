@@ -53,7 +53,7 @@ Ranks and stats are stored in a DataStore. To test that in Studio, turn on **Gam
 |---|---|
 | **Ironwood Yard** | A 340×250-stud outdoor field at dusk with floodlights: a two-storey container yard (A), a CQB shoot house (B), a woodline bunker (C), barricades, sandbag walls, tyre stacks, cable spools, wrecks and team watchtowers. |
 | **Velvet Club** | Night-time close quarters in the rain. A two-level nightclub with a neon street out front and a loading dock out back: the bar (A), an LED dance floor with moving lights (B), and a VIP balcony upstairs (C). Wet tarmac, puddles, lightning. |
-| **Staging area** | Lobby with a chrono station, rules board and a **practice range** with steel targets that ding. Through the side door is **the Armory**: a walnut-and-brass gun room with every weapon hanging in its own lit bay. Walk up to one and press **E** to customise it. |
+| **Staging area** | Lobby with a chrono station, rules board and a **practice range** with steel targets that ding. Through the side door is **the Armory**: a walnut-and-brass gun room with every weapon hanging in its own lit bay. Walk up to one and press **T** to customise it. |
 | **Modes** | **Team Deathmatch**: first to 30 tags. **Domination**: hold A/B/C; every held point scores every 2 s; first to 200. Players vote on **map and mode** between rounds. Both maps are mirrored, so neither side has an advantage. |
 | **Round flow** | Intermission and vote (20 s) → Briefing, frozen at spawn (6 s) → Live (5 min) → **final tag replay** in slow motion → After-action report. |
 | **Hit rules** | One BB anywhere is a hit. A tagged player calls "HIT!", gets an orange dead rag and walks off for 4 s. 3 s spawn protection, which ends as soon as you fire. No friendly fire. |
@@ -115,7 +115,7 @@ BBs are simulated as real projectiles with muzzle velocity, hop-up-limited drop,
 | Lean | Q / E | – | – |
 | Inspect weapon | I | – | – |
 | Slide | Crouch while sprinting | B while sprinting | C while sprinting |
-| Customise at armory | E at a display | X | tap prompt |
+| Customise at armory | T at a display | LB | tap prompt |
 | Scoreboard | Tab (hold) | D-pad ↓ | SCORES |
 | Armory / loadout | L | D-pad ← | LOADOUT |
 | Settings | P | Select | SETTINGS |
