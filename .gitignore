@@ -1,0 +1,13 @@
+# Build output — regenerate with `rojo build -o build/AndrewsAirsoft.rbxlx`
+build/
+*.rbxl
+*.rbxlx
+*.rbxl.lock
+*.rbxlx.lock
+
+# Editor tooling
+sourcemap.json
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
