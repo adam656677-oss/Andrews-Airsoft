@@ -1,0 +1,43 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rojo
+        run: |
+          curl -sSL -o rojo.zip https://github.com/rojo-rbx/rojo/releases/download/v7.7.1/rojo-7.7.1-linux-x86_64.zip
+          unzip -q rojo.zip -d "$HOME/.local/bin"
+          chmod +x "$HOME/.local/bin/rojo"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Install Luau
+        run: |
+          curl -sSL -o luau.zip https://github.com/luau-lang/luau/releases/download/0.640/luau-ubuntu.zip
+          unzip -q luau.zip -d "$HOME/.local/bin"
+          chmod +x "$HOME/.local/bin/luau-compile"
+
+      - name: Syntax check every script
+        run: |
+          status=0
+          for f in $(find src -name '*.lua'); do
+            luau-compile --null "$f" > /dev/null || { echo "::error file=$f::Luau syntax error"; status=1; }
+          done
+          exit $status
+
+      - name: Build place file
+        run: rojo build default.project.json -o AndrewsAirsoft.rbxlx
+
+      - name: Upload place file
+        uses: actions/upload-artifact@v4
+        with:
+          name: AndrewsAirsoft-place
+          path: AndrewsAirsoft.rbxlx
