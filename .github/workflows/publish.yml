@@ -26,6 +26,7 @@ jobs:
 
       - name: Install Rojo
         run: |
+          mkdir -p "$HOME/.local/bin"
           curl -sSL -o rojo.zip https://github.com/rojo-rbx/rojo/releases/download/v7.7.1/rojo-7.7.1-linux-x86_64.zip
           unzip -q rojo.zip -d "$HOME/.local/bin"
           chmod +x "$HOME/.local/bin/rojo"
