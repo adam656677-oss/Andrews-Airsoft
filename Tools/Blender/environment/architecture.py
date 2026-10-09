@@ -802,6 +802,25 @@ def build(aid, res, opts):
         objs.append(obj)
     entry['Bounds'] = bl.bounds_ue(objs)
     print('  %-24s tris=%d' % (aid, tris), flush=True)
+    import json
+    bpy.ops.wm.save_as_mainfile(filepath=os.path.join(bl.ensure(SCRATCH), aid + '.blend'), compress=False)
+    json.dump(entry, open(os.path.join(SCRATCH, aid + '.json'), 'w'))
+    return render_asset(aid, objs, entry, opts)
+
+
+def resume(aid, opts):
+    import json
+    import time
+    b = os.path.join(SCRATCH, aid + '.blend')
+    j = os.path.join(SCRATCH, aid + '.json')
+    if not (os.path.exists(b) and os.path.exists(j) and time.time() - os.path.getmtime(j) < 3 * 3600):
+        return None
+    bpy.ops.wm.open_mainfile(filepath=b)
+    objs = [o for o in bpy.context.scene.objects if o.type == 'MESH' and not o.name.startswith('Cyc')]
+    return render_asset(aid, objs, json.load(open(j)), opts)
+
+
+def render_asset(aid, objs, entry, opts):
     if opts['render']:
         az = -40.0
         el = 14.0
@@ -815,8 +834,6 @@ def build(aid, res, opts):
             bl.clear_scene_extras()
             bl.product_shot(objs, os.path.join(bl.RENDERS, CAT, aid + '_Back.png'), az=180 - 35.0, el=10.0,
                             samples=opts['samples'] or 16, margin=1.12)
-    # save a .blend for the lineup
-    bpy.ops.wm.save_as_mainfile(filepath=os.path.join(bl.ensure(SCRATCH), aid + '.blend'), compress=False)
     return entry
 
 
@@ -874,7 +891,8 @@ def main():
     ids = o['ids'] or ASSETS
     if not o['lineup_only']:
         for aid in ids:
-            e = build(aid, o['res'], o)
+            e = resume(aid, o) if '--resume' in sys.argv else None
+            e = e or build(aid, o['res'], o)
             bl.json_update('Architecture.json', 'Assets', {aid: e},
                        extra={'Notes': 'Unreal cm. Origin = floor centre, front +X. MI_* slots use Materials.json '
                                        '(UVs: 1 UV = 2 m -> tiling ArchUVScale). Snap = grid size in cm.'})

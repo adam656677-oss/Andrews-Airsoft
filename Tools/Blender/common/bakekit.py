@@ -349,7 +349,43 @@ def deselect_all():
             o.select_set(False)
 
 
-def uv_unwrap(ob, res=4096, angle=62.0, margin_px=4):
+def _geo_hash(ob):
+    me = ob.data
+    co = np.empty(len(me.vertices) * 3, dtype=np.float32)
+    me.vertices.foreach_get("co", co)
+    idx = np.empty(len(me.loops), dtype=np.int32)
+    me.loops.foreach_get("vertex_index", idx)
+    h = hashlib.sha1()
+    h.update(np.round(co, 5).tobytes())
+    h.update(idx.tobytes())
+    return h.hexdigest()[:16]
+
+
+def uv_unwrap(ob, res=4096, angle=62.0, margin_px=4, cache_key=None):
+    """Smart-project + pack.  UV packing is not bit-for-bit deterministic, so the result
+    is cached per mesh (cache_key + geometry hash) to keep re-runs consistent with the
+    cached bakes."""
+    cache = None
+    if cache_key:
+        os.makedirs(HASH_DIR, exist_ok=True)
+        cache = os.path.join(HASH_DIR, f"uv_{cache_key}_{_geo_hash(ob)}.npy")
+        if os.path.exists(cache):
+            uv = np.load(cache)
+            me = ob.data
+            if len(uv) == len(me.loops) * 2:
+                while me.uv_layers:
+                    me.uv_layers.remove(me.uv_layers[0])
+                me.uv_layers.new(name="UVMap")
+                me.uv_layers.active.data.foreach_set("uv", uv)
+                return
+    _uv_unwrap(ob, res, angle, margin_px)
+    if cache:
+        uv = np.empty(len(ob.data.loops) * 2, dtype=np.float32)
+        ob.data.uv_layers.active.data.foreach_get("uv", uv)
+        np.save(cache, uv)
+
+
+def _uv_unwrap(ob, res=4096, angle=62.0, margin_px=4):
     deselect_all()
     bpy.context.view_layer.objects.active = ob
     ob.select_set(True)

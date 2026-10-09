@@ -1,6 +1,37 @@
 {
   "Version": 1,
   "Assets": {
+    "Container_20ft": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Container_20ft_Body"
+          ],
+          "Triangles": 28920,
+          "Textures": {
+            "BC": "Architecture/Container_20ft/T_Container_20ft_Body_BC.png",
+            "N": "Architecture/Container_20ft/T_Container_20ft_Body_N.png",
+            "ORM": "Architecture/Container_20ft/T_Container_20ft_Body_ORM.png",
+            "M": "Architecture/Container_20ft/T_Container_20ft_Body_M.png"
+          }
+        }
+      ],
+      "Snap": 10,
+      "Bounds": {
+        "Min": [
+          -302.9,
+          -122.9,
+          0.0
+        ],
+        "Max": [
+          310.9,
+          122.9,
+          259.1
+        ]
+      }
+    },
     "Ladder_Metal_4m": {
       "Pieces": [
         {

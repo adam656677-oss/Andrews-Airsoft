@@ -410,6 +410,7 @@ def booth_sofa(A):
     buttons = []
 
     def surf(u, v):
+        u = 1.0 - u  # wind faces so normals point at the sitter
         a = a0 + (a1 - a0) * u
         z = z0 + (z1 - z0) * v
         s = u * length
@@ -928,7 +929,7 @@ def planter(A):
             for off in (-0.14, 0.14):
                 r_at = 0.25 + 0.05 * zz / 0.70
                 p = V((sx * r_at, sy * r_at, zz)) + V((-sy * off, sx * off, 0))
-                A.cyl(0.011, 0.004, at=tuple(p - V((sx, sy, 0)) * 0.002), axis="X", rot=(0, 0, rz), mat="concrete_dark", n=16, bevel=0.0015)
+                A.cyl(0.011, 0.004, at=tuple(p - V((sx, sy, 0)) * 0.0035), axis="X", rot=(0, 0, rz), mat="concrete_dark", n=16, bevel=0.0015)
     # brass inlay band
     zb = 0.58
     rb = 0.25 + (0.30 - 0.25) * zb / 0.70

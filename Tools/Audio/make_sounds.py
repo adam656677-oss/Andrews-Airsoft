@@ -52,7 +52,17 @@ def file_names(key, spec):
 
 
 def render_key(args):
-    key, spec, out_dir = args
+    key, out_dir = args
+    t0 = time.time()
+    try:
+        return _render_key(key, out_dir)
+    except Exception:  # report and keep going so one broken recipe does not sink the run
+        import traceback
+        return key, [], time.time() - t0, traceback.format_exc()
+
+
+def _render_key(key, out_dir):
+    spec = registry()[key]  # looked up here: recipe lambdas cannot be pickled to workers
     t0 = time.time()
     results = []
     names = file_names(key, spec)
@@ -74,7 +84,7 @@ def render_key(args):
                 results.append((name, st, preview))
             else:
                 results.append((name, None, None))
-    return key, results, time.time() - t0
+    return key, results, time.time() - t0, None
 
 
 def main():
@@ -100,22 +110,29 @@ def main():
 
     # heaviest first so the pool stays busy
     keys.sort(key=lambda k: (not reg[k]["loop"], k))
-    jobs = [(k, reg[k], a.out) for k in keys]
+    jobs = [(k, a.out) for k in keys]
     t0 = time.time()
-    done = {}
+    done, failed = {}, {}
+
+    def collect(item):
+        key, res, dt, err = item
+        done[key] = res
+        if err:
+            failed[key] = err
+            print(f"  {key:22s} FAILED\n{err}", flush=True)
+        else:
+            print(f"  {key:22s} {dt:6.1f}s", flush=True)
+
     if a.jobs > 1 and len(jobs) > 1:
         import multiprocessing as mp
         with mp.get_context("fork").Pool(a.jobs) as pool:
-            for key, res, dt in pool.imap_unordered(render_key, jobs):
-                done[key] = res
-                print(f"  {key:22s} {dt:6.1f}s", flush=True)
+            for item in pool.imap_unordered(render_key, jobs):
+                collect(item)
     else:
         for j in jobs:
-            key, res, dt = render_key(j)
-            done[key] = res
-            print(f"  {key:22s} {dt:6.1f}s", flush=True)
+            collect(render_key(j))
 
-    if not a.only:  # remove stale files from older layouts
+    if not a.only and not failed:  # remove stale files from older layouts
         expected = {n + ".wav" for k in reg for grp in file_names(k, reg[k]) for n in grp}
         for f in os.listdir(a.out):
             if f.endswith(".wav") and f not in expected:
@@ -139,12 +156,16 @@ def main():
     clipped = [n for n, s in rows if s["clipped"]]
     if clipped:
         print("WARNING clipped:", ", ".join(clipped))
+    if failed:
+        print("FAILED keys:", ", ".join(sorted(failed)))
     if not a.no_overview and not a.only:
         try:
             p = report.contact_sheet(os.path.join(a.out, "_overview.png"), items, loops)
             print("overview:", p)
         except ImportError:
             print("Pillow not installed; skipped _overview.png")
+    if failed:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

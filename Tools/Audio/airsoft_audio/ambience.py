@@ -10,7 +10,7 @@ first exactly as any other pair of neighbouring samples would.
 import numpy as np
 
 from . import foley, weapons
-from .dsp import (SR, Mix, bp, burst, colored, conv, env, env_pts, eq, hp, lp, make_ir,
+from .dsp import (Mix, bp, burst, colored, conv, env, env_pts, eq, hp, lp, make_ir,
                   modes, ns, pan, phase, resample_fft, saw, scatter, sine, smooth_random,
                   stft_apply, sweep, thump, tvec, ROOMS)
 from .instruments import kick
@@ -224,11 +224,14 @@ def rain(r, n):
             w = np.sqrt(0.5 * (1 + sgn * pans))
             drops[ch] += scatter(n, times, gains * w, ker, circular=True)
     out += lvl(drops, -24.0)
+    times = np.cumsum(r.uniform(0.6, 1.4, int(L / 0.6) + 2))
+    times = times[times < L]
+    which = r.integers(0, 4, len(times))
     drip = np.zeros(n)
-    t = r.uniform(0, 1)
-    while t < L:
-        drip += scatter(n, [t], [r.uniform(0.6, 1.0)], _plink(r, r.uniform(900, 1400), 0.06) + 0.3 * hp(burst(r, 0.03, 0.004), 1500), circular=True)
-        t += r.uniform(0.6, 1.4)
+    for j in range(4):  # gutter drip: a lower plink + splash, four variants
+        ker = _plink(r, r.uniform(900, 1400), 0.06) + 0.3 * hp(burst(r, 0.06, 0.004), 1500)
+        sel = which == j
+        drip += scatter(n, times[sel], r.uniform(0.6, 1.0, sel.sum()), ker, circular=True)
     out += lvl(verb(pan(drip, -0.6), r, "small", 0.5), -34.0)
     return out
 
@@ -241,7 +244,7 @@ def car_pass(r, d=8.0):
     x = v * t
     dist = np.sqrt(x ** 2 + d0 ** 2)
     prox = (d0 / dist) ** 2
-    hiss = band_noise = r.standard_normal(n)
+    band_noise = r.standard_normal(n)
     bright = bp(hp(band_noise, 900), 3500, 0.6)
     dark = lp(hp(band_noise, 300), 1500)
     spray = hp(r.standard_normal(n), 4000) * grit(r, n, 300)
@@ -250,7 +253,6 @@ def car_pass(r, d=8.0):
     eng = lp(saw(f_eng, n) + 0.5 * saw(f_eng * 2, n), 380)
     sig = (bright * prox + dark * np.sqrt(prox)) * 0.8 + spray * prox ** 1.5 * 0.4 + eng * np.sqrt(prox) * 0.35
     sig *= np.clip((t + d / 2) / 0.8, 0, 1) * np.clip((d / 2 - t) / 0.8, 0, 1)
-    del hiss
     return pan(sig, np.clip(x / dist, -1, 1) * 0.9)
 
 
@@ -293,7 +295,6 @@ def club_leak(r, n):
 
 
 def neon(r, n):
-    t = tvec(n)
     b = bp(saw(per(120.0), n), 2200, 1.5) * (0.8 + 0.2 * (smooth_random(r, n, 2.0) > -0.85))
     return pan(b, 0.55)
 

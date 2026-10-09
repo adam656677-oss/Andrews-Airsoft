@@ -3,7 +3,7 @@ else is 2D stereo."""
 
 import numpy as np
 
-from .dsp import (Mix, bp, burst, colored, env, env_pts, hp, lp, modes, ns, pan, phase,
+from .dsp import (Mix, bp, burst, colored, env, env_pts, hp, lp, modes, ns, phase,
                   saturate, smooth_random, space, stereo, tail_cut, thump, tvec)
 from .instruments import bell, brass, cinematic_hit, midi, reverse_swell, riser, wet_only
 
@@ -29,7 +29,6 @@ def hit_call(r, v):
     """'HIT!' call as a loud pea-whistle chirp: rising onset, pea trill, breath."""
     L = 0.32
     n = ns(L)
-    t = tvec(n)
     f = env_pts(n, [(0, 2450), (0.018, 3050), (0.05, 3170), (0.22, 3120), (L, 2750)])
     trill_rate = 38 + 4 * smooth_random(r, n, 6)
     tr = 0.5 + 0.5 * np.sin(2 * np.pi * phase(trill_rate, n))
@@ -47,7 +46,6 @@ def tagged(r, v):
     """You've been hit: body thud, tinnitus ring, muffled breath (stereo)."""
     L = 1.55
     n = ns(L)
-    t = tvec(n)
     m = Mix(L, stereo=True)
     thud = thump(0.45, 95, 42, 0.11, pitch_tau=0.02) + 0.6 * lp(burst(r, 0.45, 0.03, attack=0.001), 500)
     thud = thud + 0.4 * bp(burst(r, 0.45, 0.008, attack=0.0003), 1100, 1.0)

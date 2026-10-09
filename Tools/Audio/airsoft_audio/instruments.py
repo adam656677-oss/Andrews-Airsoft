@@ -2,8 +2,8 @@
 
 import numpy as np
 
-from .dsp import (SR, burst, bp, conv, env, env_pts, hp, lp, make_ir, modes, ns,
-                  phase, pulse, saturate, saw, sine, sweep, thump, tvec, tvf, ROOMS)
+from .dsp import (burst, bp, conv, env, env_pts, hp, lp, make_ir, modes, ns,
+                  phase, pulse, saturate, saw, sweep, thump, tvec, tvf, ROOMS)
 
 
 def midi(n):
@@ -58,10 +58,12 @@ def piano(r, f, seconds, vel=0.7, gate=None):
             break
         a = k ** -1.1 * np.exp(-k / (3.0 + 7.0 * vel))
         Tk = T0 / (1 + 0.38 * (k - 1))
-        e = 0.65 * np.exp(-t / (Tk * 0.18)) + 0.35 * np.exp(-t / Tk)
+        nk = min(n, ns(Tk * 9.2))  # stop once the partial is ~-80 dB
+        tk = t[:nk]
+        e = 0.65 * np.exp(-tk / (Tk * 0.18)) + 0.35 * np.exp(-tk / Tk)
         ph = r.uniform(0, 2 * np.pi)
         det = 1 + r.uniform(0.2, 0.6) / 1200.0
-        out += a * e * 0.5 * (np.sin(2 * np.pi * fk * t + ph) + np.sin(2 * np.pi * fk * det * t + ph))
+        out[:nk] += a * e * 0.5 * (np.sin(2 * np.pi * fk * tk + ph) + np.sin(2 * np.pi * fk * det * tk + ph))
     out *= np.where(t < gate, 1.0, np.exp(-(t - gate) / 0.12))
     out *= np.clip(t / 0.002, 0, 1)
     ham = bp(burst(r, 0.04, 0.004, attack=0.0003), min(f * 3, 4000), 1.0)

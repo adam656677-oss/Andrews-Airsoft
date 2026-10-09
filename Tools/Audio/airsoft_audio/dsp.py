@@ -173,9 +173,17 @@ def filt(x, sections, circular=False):
         return _sps.sosfilt(sos, x, axis=-1)
     n = x.shape[-1]
     nfft = n if circular else fast_len(n + sum(_tail(a) for _, a in sections))
-    z = np.exp(-2j * np.pi * np.arange(nfft // 2 + 1) / nfft)  # e^{-jw} on the rfft grid
+    H = response(sections, nfft)
+    return np.fft.irfft(np.fft.rfft(x, nfft, axis=-1) * H, nfft, axis=-1)[..., :n]
+
+
+def response(sections, nfft, z=None):
+    """Complex response of a (b, a) cascade on the rfft grid of size nfft
+    (Horner evaluation of B(z^-1)/A(z^-1): far cheaper than FFTs of the taps)."""
+    if z is None:
+        z = np.exp(-2j * np.pi * np.arange(nfft // 2 + 1) / nfft)
     H = np.ones(nfft // 2 + 1, complex)
-    for b, a in sections:  # Horner evaluation of B(z^-1)/A(z^-1): far cheaper than FFTs of the taps
+    for b, a in sections:
         nb = np.full_like(z, b[-1])
         for c in b[-2::-1]:
             nb = nb * z + c
@@ -183,7 +191,7 @@ def filt(x, sections, circular=False):
         for c in a[-2::-1]:
             na = na * z + c
         H *= nb / na
-    return np.fft.irfft(np.fft.rfft(x, nfft, axis=-1) * H, nfft, axis=-1)[..., :n]
+    return H
 
 
 _BUTTER_Q = {2: [0.7071], 4: [0.5412, 1.3066], 6: [0.5176, 0.7071, 1.9319], 8: [0.5098, 0.6013, 0.9000, 2.5629]}

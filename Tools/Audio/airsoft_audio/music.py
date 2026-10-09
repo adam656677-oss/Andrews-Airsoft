@@ -3,9 +3,8 @@ then folded so everything past the loop end overlaps the start."""
 
 import numpy as np
 
-from .dsp import (SR, Mix, burst, colored, conv, env, env_pts, eq, fold_tail, hp, lp,
-                  make_ir, modes, ns, pan, pulse, saturate, saw, sine, smooth_random,
-                  thump, tvec, tvf, ROOMS)
+from .dsp import (SR, Mix, _bq, burst, colored, conv, env, env_pts, eq, fast_len, fold_tail, hp,
+                  lp, make_ir, modes, ns, pulse, response, saturate, saw, sine, thump, tvec, tvf, ROOMS)
 from .instruments import clap, hat, kick, midi, pad_voice, piano
 
 LOOP = {"ch": 2, "loop": True}
@@ -23,6 +22,27 @@ def wet(x, r, room, amount, **kw):
     x = np.stack([x, x]) if x.ndim == 1 else x
     w = np.stack([conv(x[i], ir[i])[:x.shape[-1]] for i in range(2)])
     return x + amount * w
+
+
+def pingpong(x, delay_s, taps=4, fb=0.42, pan_amt=0.7):
+    """Ping-pong delay done in one FFT: tap k is delayed k*delay_s, scaled fb**k,
+    low-passed a little more each repeat and alternately panned L/R."""
+    n = len(x)
+    nfft = fast_len(n)
+    k = np.arange(nfft // 2 + 1)
+    z = np.exp(-2j * np.pi * k / nfft)
+    X = np.fft.rfft(x, nfft)
+    ang = (np.array([-pan_amt, pan_amt]) + 1.0) * np.pi / 4.0
+    gl, gr = np.cos(ang) * np.sqrt(2), np.sin(ang) * np.sqrt(2)
+    Ls, Rs = X.copy(), X.copy()
+    H = np.ones_like(X)
+    for tap in range(1, taps + 1):
+        H = H * response([_bq("lp", 3200 - 400 * tap)], nfft, z)
+        D = H * (fb ** tap) * np.exp(-2j * np.pi * k * round(tap * delay_s * SR) / nfft)
+        side = 0 if tap % 2 else 1
+        Ls += D * X * gl[side]
+        Rs += D * X * gr[side]
+    return np.stack([np.fft.irfft(Ls, nfft)[:n], np.fft.irfft(Rs, nfft)[:n]])
 
 
 def simple_pluck(r, f, seconds=0.32):
@@ -153,13 +173,7 @@ def club_music(r, v):
     a_sig = arp.out()
     acut = np.interp(bars_f, [16, 20, 32, 36, 56], [700, 3800, 3800, 2200, 3800])
     a_sig = tvf(a_sig, "lp", acut, q=1.0)
-    delay = Mix(total, stereo=True)
-    delay.add(a_sig, 0.0, 1.0)
-    src = a_sig
-    for tap in range(1, 5):
-        src = lp(src, 3200 - 400 * tap)
-        delay.add(src, tap * 0.75 * BEAT, 0.42 ** tap, pan_pos=(-0.7 if tap % 2 else 0.7))
-    arp_bus = delay.out() * (1.0 - 0.3 * (1.0 - duck))
+    arp_bus = pingpong(a_sig, 0.75 * BEAT, taps=4, fb=0.42) * (1.0 - 0.3 * (1.0 - duck))
     claps_bus = wet(claps.out(), r, "club", 0.35, t60=0.9)
     mix = (lvl(np.stack([drums.out()] * 2), -17.0) + lvl(np.stack([bass_sig] * 2), -19.5)
            + lvl(pad, -25.0) + lvl(np.stack([hats.out(), np.roll(hats.out(), 11)]), -31.0)
@@ -195,7 +209,6 @@ def _place(events, bar0, octave=0, roll=0.0):
 def menu_music(r, v):
     loop_n = ns(ML)
     total = ML + 7.0
-    n = ns(total)
     t = tvec(loop_n)
 
     def p(f):  # loop-periodic frequency

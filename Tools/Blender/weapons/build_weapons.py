@@ -2057,10 +2057,10 @@ def process(g, res, do_bake, rig, do_render):
             ob.data.materials.append(mat)
             for p in ob.data.polygons:
                 p.material_index = 0
-            bk.uv_unwrap(ob, res)
+            bk.uv_unwrap(ob, res, cache_key=f"{g.id}_{piece}")
         else:
             res_piece = res if piece == "Body" and g.kind != "Attachment" else max(512, res // 2)
-            bk.uv_unwrap(ob, res_piece)
+            bk.uv_unwrap(ob, res_piece, cache_key=f"{g.id}_{piece}")
             if do_bake:
                 t0 = time.time()
                 bk.setup_bake_engine()

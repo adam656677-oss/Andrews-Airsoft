@@ -1170,6 +1170,31 @@ def build(aid, res, opts):
         objs.append(obj)
     entry['Bounds'] = bl.bounds_ue(objs)
     print('  %-22s tris=%s' % (aid, [p['Triangles'] for p in entry['Pieces']]), flush=True)
+    checkpoint(aid, 'P_', entry)
+    return render_asset(aid, objs, entry, opts)
+
+
+def checkpoint(aid, pre, entry):
+    import json
+    bl.ensure(SCRATCH)
+    bpy.ops.wm.save_as_mainfile(filepath=os.path.join(SCRATCH, pre + aid + '.blend'), compress=False)
+    json.dump(entry, open(os.path.join(SCRATCH, pre + aid + '.json'), 'w'))
+
+
+def resume(aid, opts):
+    """Render-only from a checkpoint written by a build that was killed while rendering."""
+    import json
+    import time
+    b = os.path.join(SCRATCH, 'P_' + aid + '.blend')
+    j = os.path.join(SCRATCH, 'P_' + aid + '.json')
+    if not (os.path.exists(b) and os.path.exists(j) and time.time() - os.path.getmtime(j) < 3 * 3600):
+        return None
+    bpy.ops.wm.open_mainfile(filepath=b)
+    objs = [o for o in bpy.context.scene.objects if o.type == 'MESH' and not o.name.startswith('Cyc')]
+    return render_asset(aid, objs, json.load(open(j)), opts)
+
+
+def render_asset(aid, objs, entry, opts):
     if opts['render']:
         az, el = -38.0, 16.0
         if aid.startswith('Tree'):
@@ -1180,7 +1205,6 @@ def build(aid, res, opts):
                         samples=opts['samples'] or 10, margin=1.1)
         if aid == 'OilDrum':
             pass
-    bpy.ops.wm.save_as_mainfile(filepath=os.path.join(bl.ensure(SCRATCH), 'P_' + aid + '.blend'), compress=False)
     return entry
 
 
@@ -1190,7 +1214,8 @@ def main():
     if not o['lineup_only']:
         for aid in ids:
             try:
-                e = build(aid, o['res'], o)
+                e = resume(aid, o) if '--resume' in sys.argv else None
+                e = e or build(aid, o['res'], o)
             except Exception as ex:
                 import traceback
                 traceback.print_exc()
