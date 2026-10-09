@@ -819,7 +819,7 @@ def _velvet():
     it += [prop("Planter_Concrete", -9.2, -6.8, 0, 0), prop("Planter_Concrete", 9.2, -6.8, 0, 0),
            prop("BarCounter_4m", -7.6, -8.6, 0, 0, name="CoatCheck"),
            prop("WallSconce", -9.83, -8.0, 2.0, 0), prop("WallSconce", 9.83, -8.0, 2.0, 180),
-           hanging("Chandelier", 0, -8, 4.0)]
+           hanging("Chandelier", 0, -8, 4.0, light={"shadows": False, "cd": 4.0, "radius": 7.0})]
     # facade dressing: canopy, LED, neon sign, velvet rope queue
     it += [slab(-3.6, -12.6, 3.6, -10.2, 3.35, 3.6, "Velvet", tint="Black", name="Canopy"),
            slab(-3.6, -12.62, 3.6, -12.56, 3.3, 3.36, "Emissive:Magenta", glow=40, coll=False, name="CanopyLED"),
@@ -889,7 +889,7 @@ def _velvet():
            prop("BoothTable", -22.1, 1.0, 3.4, 0), prop("Armchair_Leather", -23.2, 8.0, 3.4, 0),
            prop("Armchair_Leather", -21.0, 8.0, 3.4, 180), prop("BoothTable", -22.1, 8.0, 3.4, 0),
            prop("HighTable", -19.6, 13.0, 3.4, 0), prop("HighTable", -19.6, 4.5, 3.4, 0),
-           hanging("Chandelier", -22.2, 5.0, 7.0, light=True)]
+           hanging("Chandelier", -22.2, 5.0, 7.0, light={"shadows": False})]
     it += [blocker(-26, -6.2, -18.4, 20.2, 4.4, 7.0)]
 
     # ---- east VIP lounge + high tables ----
@@ -905,7 +905,7 @@ def _velvet():
         it.append(prop("VelvetRopePost", x, 6.8, 0, -90))
     for y in (-2.0, 6.0, 13.0):
         it.append(prop("WallSconce", 25.68, y, 2.0, 180, light=True))
-    it += [hanging("Chandelier", 19.0, 5.0, 7.0, light=True)]
+    it += [hanging("Chandelier", 19.0, 5.0, 7.0, light={"shadows": False})]
     # dividers so the hall is not one open box (break long sightlines)
     it += [slab(-12.3, 9.0, -11.7, 13.5, 0, 2.6, "Velvet", name="Divider"),
            slab(11.7, -4.5, 12.3, 0.0, 0, 2.6, "Velvet", name="Divider"),
@@ -1014,7 +1014,7 @@ def _velvet():
            prop("Crate_Wood", -11.0, 25.6, 0.6, 30), prop("OilDrum", 2.5, 24.0, 0, 0, tint="Red"),
            prop("OilDrum", 3.2, 24.4, 0, 30, tint="Red"), prop("PalletStack", 10.5, 30.5, 0, 0),
            prop("Crate_Ammo", 14.5, 23.0, 1.2, 0),
-           prop("StreetLamp", -12.0, 32.0 - 0.6, 0, 180, light={"shadows": True, "cd": 14}),
+           prop("StreetLamp", -12.0, 32.0 - 0.6, 0, 180, light={"shadows": False, "cd": 14}),
            prop("StreetLamp", 6.0, 31.4, 0, 180, light={"shadows": False, "cd": 12}),
            light("spot", 23.0, 21.6, 3.2, yaw=90, pitch=-55, color="Sodium", cd=14, radius=12, cone=(25, 45),
                  shadows=True),
