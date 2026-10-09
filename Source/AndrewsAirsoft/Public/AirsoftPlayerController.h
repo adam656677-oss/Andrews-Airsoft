@@ -151,6 +151,8 @@ protected:
 	void ShowWidget(TSharedPtr<SWidget>& Slot, const TSharedRef<SWidget>& Widget, int32 ZOrder);
 	void HideWidget(TSharedPtr<SWidget>& Slot);
 	void UpdateInteraction();
+	/** Phase changes, objective captures and capture ticks -> stings. */
+	void UpdateMatchAudio();
 	void UpdateReplay(float DeltaTime);
 	void StartReplay();
 	void StopReplay();
@@ -226,4 +228,8 @@ protected:
 	double ReplayStart = -1.0;
 	bool bReplayFired = false;
 	bool bReplayHitPlayed = false;
+	EAirsoftPhase LastPhase = EAirsoftPhase::Waiting;
+	TMap<TWeakObjectPtr<AActor>, EAirsoftTeam> LastObjectiveOwners;
+	double NextCaptureTick = 0.0;
+	bool bSummaryStingPlayed = false;
 };

@@ -8,6 +8,7 @@
 #include "AirsoftGameInstance.h"
 #include "AirsoftGameMode.h"
 #include "AirsoftGameState.h"
+#include "AirsoftObjective.h"
 #include "AirsoftPlayerState.h"
 #include "AirsoftSaveGame.h"
 #include "AirsoftWeaponData.h"
@@ -22,6 +23,7 @@
 #include "InputAction.h"
 #include "InputMappingContext.h"
 #include "InputModifiers.h"
+#include "TimerManager.h"
 #include "UI/AirsoftUI.h"
 
 namespace
@@ -846,15 +848,78 @@ void AAirsoftPlayerController::PlayerTick(float DeltaTime)
 
 	UpdateInteraction();
 	UpdateReplay(DeltaTime);
+	UpdateMatchAudio();
 
 	const bool bWantSummary = IsSummaryVisible();
 	if (bWantSummary && !SummaryWidget.IsValid())
 	{
 		ShowWidget(SummaryWidget, AirsoftUI::MakeSummary(this), 30);
+		if (!bSummaryStingPlayed)
+		{
+			bSummaryStingPlayed = true;
+			const bool bWon = Summary.Winner != EAirsoftTeam::None && Summary.Winner == Summary.MyTeam;
+			AirsoftAssets::Play2D(this, bWon ? TEXT("Victory") : TEXT("Defeat"), 0.8f, 1.f);
+			if (Summary.RankAfter > Summary.RankBefore)
+			{
+				FTimerHandle Handle;
+				GetWorldTimerManager().SetTimer(Handle, FTimerDelegate::CreateWeakLambda(this, [this]()
+				{
+					AirsoftAssets::Play2D(this, TEXT("RankUp"), 0.8f, 1.f);
+				}), 2.5f, false);
+			}
+		}
 	}
 	else if (!bWantSummary && SummaryWidget.IsValid())
 	{
 		HideWidget(SummaryWidget);
+	}
+}
+
+void AAirsoftPlayerController::UpdateMatchAudio()
+{
+	const AAirsoftGameState* GS = GetAirsoftGameState();
+	if (!GS || bMainMenu)
+	{
+		return;
+	}
+	if (GS->Phase != LastPhase)
+	{
+		if (GS->bIsMatchMap && GS->Phase == EAirsoftPhase::Live && LastPhase == EAirsoftPhase::Briefing)
+		{
+			AirsoftAssets::Play2D(this, TEXT("RoundStart"), 0.8f, 1.f);
+		}
+		LastPhase = GS->Phase;
+	}
+	if (GS->Phase != EAirsoftPhase::Live)
+	{
+		LastObjectiveOwners.Reset();
+		return;
+	}
+
+	const APawn* MyPawn = GetPawn();
+	const double Now = GetWorld()->GetRealTimeSeconds();
+	for (const TObjectPtr<AAirsoftObjective>& Obj : GS->Objectives)
+	{
+		if (!Obj || !Obj->bActive)
+		{
+			continue;
+		}
+		EAirsoftTeam& Last = LastObjectiveOwners.FindOrAdd(Obj.Get(), Obj->OwnerTeam);
+		if (Last != Obj->OwnerTeam)
+		{
+			if (Obj->OwnerTeam != EAirsoftTeam::None)
+			{
+				const bool bMine = GetAirsoftPlayerState() && GetAirsoftPlayerState()->Team == Obj->OwnerTeam;
+				AirsoftAssets::Play2D(this, TEXT("PointCaptured"), 0.7f, bMine ? 1.f : 0.8f);
+			}
+			Last = Obj->OwnerTeam;
+		}
+		// Ticking while we stand on a point that is changing hands.
+		if (MyPawn && Obj->CapturingTeam != EAirsoftTeam::None && !Obj->bContested && Obj->IsInside(MyPawn->GetActorLocation()) && Now >= NextCaptureTick)
+		{
+			NextCaptureTick = Now + 0.5;
+			AirsoftAssets::Play2D(this, TEXT("CaptureTick"), 0.35f, 0.9f + 0.3f * FMath::Abs(Obj->Progress));
+		}
 	}
 }
 
@@ -1116,6 +1181,7 @@ void AAirsoftPlayerController::ClientMatchEnded_Implementation(EAirsoftTeam Winn
 	Summary.FinalTag = FinalTag;
 	Summary.XPEarned = XPEarned;
 	Summary.Time = GetWorld()->GetRealTimeSeconds();
+	bSummaryStingPlayed = false;
 
 	// The profile lives on each player's own PC.
 	if (UAirsoftGameInstance* GI = GetGameInstance<UAirsoftGameInstance>())
@@ -1160,6 +1226,7 @@ void AAirsoftPlayerController::ClientMatchEnded_Implementation(EAirsoftTeam Winn
 void AAirsoftPlayerController::ClientResetForNewRound_Implementation()
 {
 	Summary = FAirsoftMatchSummary();
+	bSummaryStingPlayed = false;
 	KillFeed.Reset();
 	XPPopups.Reset();
 	StopReplay();
