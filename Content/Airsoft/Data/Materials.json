@@ -1,0 +1,323 @@
+{
+  "Version": 1,
+  "Materials": {
+    "Asphalt": {
+      "TileMeters": 3.0,
+      "BC": "Materials/Asphalt/T_Asphalt_BC.png",
+      "N": "Materials/Asphalt/T_Asphalt_N.png",
+      "ORM": "Materials/Asphalt/T_Asphalt_ORM.png",
+      "H": "Materials/Asphalt/T_Asphalt_H.png",
+      "Opacity": null,
+      "Resolution": 1024,
+      "ArchUVScale": 0.66667,
+      "HeightRangeM": 0.00795
+    },
+    "AsphaltWet": {
+      "TileMeters": 3.0,
+      "BC": "Materials/AsphaltWet/T_AsphaltWet_BC.png",
+      "N": "Materials/AsphaltWet/T_AsphaltWet_N.png",
+      "ORM": "Materials/AsphaltWet/T_AsphaltWet_ORM.png",
+      "H": null,
+      "Opacity": null,
+      "Resolution": 1024,
+      "ArchUVScale": 0.66667
+    },
+    "Bark": {
+      "TileMeters": 1.0,
+      "BC": "Materials/Bark/T_Bark_BC.png",
+      "N": "Materials/Bark/T_Bark_N.png",
+      "ORM": "Materials/Bark/T_Bark_ORM.png",
+      "H": "Materials/Bark/T_Bark_H.png",
+      "Opacity": null,
+      "Resolution": 1024,
+      "ArchUVScale": 2.0,
+      "HeightRangeM": 0.0348
+    },
+    "Brass": {
+      "TileMeters": 0.5,
+      "BC": "Materials/Brass/T_Brass_BC.png",
+      "N": "Materials/Brass/T_Brass_N.png",
+      "ORM": "Materials/Brass/T_Brass_ORM.png",
+      "H": null,
+      "Opacity": null,
+      "Resolution": 1024,
+      "ArchUVScale": 4.0
+    },
+    "Brick": {
+      "TileMeters": 1.8,
+      "BC": "Materials/Brick/T_Brick_BC.png",
+      "N": "Materials/Brick/T_Brick_N.png",
+      "ORM": "Materials/Brick/T_Brick_ORM.png",
+      "H": "Materials/Brick/T_Brick_H.png",
+      "Opacity": null,
+      "Resolution": 1024,
+      "ArchUVScale": 1.11111,
+      "HeightRangeM": 0.00858
+    },
+    "BrickDark": {
+      "TileMeters": 1.8,
+      "BC": "Materials/BrickDark/T_BrickDark_BC.png",
+      "N": "Materials/BrickDark/T_BrickDark_N.png",
+      "ORM": "Materials/BrickDark/T_BrickDark_ORM.png",
+      "H": null,
+      "Opacity": null,
+      "Resolution": 1024,
+      "ArchUVScale": 1.11111
+    },
+    "Burlap": {
+      "TileMeters": 0.5,
+      "BC": "Materials/Burlap/T_Burlap_BC.png",
+      "N": "Materials/Burlap/T_Burlap_N.png",
+      "ORM": "Materials/Burlap/T_Burlap_ORM.png",
+      "H": null,
+      "Opacity": null,
+      "Resolution": 1024,
+      "ArchUVScale": 4.0
+    },
+    "Canvas": {
+      "TileMeters": 1.0,
+      "BC": "Materials/Canvas/T_Canvas_BC.png",
+      "N": "Materials/Canvas/T_Canvas_N.png",
+      "ORM": "Materials/Canvas/T_Canvas_ORM.png",
+      "H": null,
+      "Opacity": null,
+      "Resolution": 1024,
+      "ArchUVScale": 2.0
+    },
+    "Carpet": {
+      "TileMeters": 1.0,
+      "BC": "Materials/Carpet/T_Carpet_BC.png",
+      "N": "Materials/Carpet/T_Carpet_N.png",
+      "ORM": "Materials/Carpet/T_Carpet_ORM.png",
+      "H": null,
+      "Opacity": null,
+      "Resolution": 1024,
+      "ArchUVScale": 2.0
+    },
+    "Concrete": {
+      "TileMeters": 2.4,
+      "BC": "Materials/Concrete/T_Concrete_BC.png",
+      "N": "Materials/Concrete/T_Concrete_N.png",
+      "ORM": "Materials/Concrete/T_Concrete_ORM.png",
+      "H": null,
+      "Opacity": null,
+      "Resolution": 1024,
+      "ArchUVScale": 0.83333
+    },
+    "ConcreteFloor": {
+      "TileMeters": 4.0,
+      "BC": "Materials/ConcreteFloor/T_ConcreteFloor_BC.png",
+      "N": "Materials/ConcreteFloor/T_ConcreteFloor_N.png",
+      "ORM": "Materials/ConcreteFloor/T_ConcreteFloor_ORM.png",
+      "H": null,
+      "Opacity": null,
+      "Resolution": 1024,
+      "ArchUVScale": 0.5
+    },
+    "CorrodedMetal": {
+      "TileMeters": 1.0,
+      "BC": "Materials/CorrodedMetal/T_CorrodedMetal_BC.png",
+      "N": "Materials/CorrodedMetal/T_CorrodedMetal_N.png",
+      "ORM": "Materials/CorrodedMetal/T_CorrodedMetal_ORM.png",
+      "H": null,
+      "Opacity": null,
+      "Resolution": 1024,
+      "ArchUVScale": 2.0
+    },
+    "DiamondPlate": {
+      "TileMeters": 0.6,
+      "BC": "Materials/DiamondPlate/T_DiamondPlate_BC.png",
+      "N": "Materials/DiamondPlate/T_DiamondPlate_N.png",
+      "ORM": "Materials/DiamondPlate/T_DiamondPlate_ORM.png",
+      "H": null,
+      "Opacity": null,
+      "Resolution": 1024,
+      "ArchUVScale": 3.33333
+    },
+    "Dirt": {
+      "TileMeters": 2.0,
+      "BC": "Materials/Dirt/T_Dirt_BC.png",
+      "N": "Materials/Dirt/T_Dirt_N.png",
+      "ORM": "Materials/Dirt/T_Dirt_ORM.png",
+      "H": "Materials/Dirt/T_Dirt_H.png",
+      "Opacity": null,
+      "Resolution": 1024,
+      "ArchUVScale": 1.0,
+      "HeightRangeM": 0.04154
+    },
+    "ForestFloor": {
+      "TileMeters": 2.0,
+      "BC": "Materials/ForestFloor/T_ForestFloor_BC.png",
+      "N": "Materials/ForestFloor/T_ForestFloor_N.png",
+      "ORM": "Materials/ForestFloor/T_ForestFloor_ORM.png",
+      "H": "Materials/ForestFloor/T_ForestFloor_H.png",
+      "Opacity": null,
+      "Resolution": 1024,
+      "ArchUVScale": 1.0,
+      "HeightRangeM": 0.0387
+    },
+    "Granite": {
+      "TileMeters": 1.5,
+      "BC": "Materials/Granite/T_Granite_BC.png",
+      "N": "Materials/Granite/T_Granite_N.png",
+      "ORM": "Materials/Granite/T_Granite_ORM.png",
+      "H": null,
+      "Opacity": null,
+      "Resolution": 1024,
+      "ArchUVScale": 1.33333
+    },
+    "Grass": {
+      "TileMeters": 2.0,
+      "BC": "Materials/Grass/T_Grass_BC.png",
+      "N": "Materials/Grass/T_Grass_N.png",
+      "ORM": "Materials/Grass/T_Grass_ORM.png",
+      "H": null,
+      "Opacity": null,
+      "Resolution": 1024,
+      "ArchUVScale": 1.0
+    },
+    "Gravel": {
+      "TileMeters": 1.5,
+      "BC": "Materials/Gravel/T_Gravel_BC.png",
+      "N": "Materials/Gravel/T_Gravel_N.png",
+      "ORM": "Materials/Gravel/T_Gravel_ORM.png",
+      "H": "Materials/Gravel/T_Gravel_H.png",
+      "Opacity": null,
+      "Resolution": 1024,
+      "ArchUVScale": 1.33333,
+      "HeightRangeM": 0.0342
+    },
+    "Leather": {
+      "TileMeters": 0.5,
+      "BC": "Materials/Leather/T_Leather_BC.png",
+      "N": "Materials/Leather/T_Leather_N.png",
+      "ORM": "Materials/Leather/T_Leather_ORM.png",
+      "H": null,
+      "Opacity": null,
+      "Resolution": 1024,
+      "ArchUVScale": 4.0
+    },
+    "MarbleBlack": {
+      "TileMeters": 2.0,
+      "BC": "Materials/MarbleBlack/T_MarbleBlack_BC.png",
+      "N": "Materials/MarbleBlack/T_MarbleBlack_N.png",
+      "ORM": "Materials/MarbleBlack/T_MarbleBlack_ORM.png",
+      "H": null,
+      "Opacity": null,
+      "Resolution": 1024,
+      "ArchUVScale": 1.0
+    },
+    "Mud": {
+      "TileMeters": 2.0,
+      "BC": "Materials/Mud/T_Mud_BC.png",
+      "N": "Materials/Mud/T_Mud_N.png",
+      "ORM": "Materials/Mud/T_Mud_ORM.png",
+      "H": null,
+      "Opacity": null,
+      "Resolution": 1024,
+      "ArchUVScale": 1.0
+    },
+    "Netting": {
+      "TileMeters": 1.0,
+      "BC": "Materials/Netting/T_Netting_BC.png",
+      "N": "Materials/Netting/T_Netting_N.png",
+      "ORM": "Materials/Netting/T_Netting_ORM.png",
+      "H": null,
+      "Opacity": "Materials/Netting/T_Netting_Opacity.png",
+      "Resolution": 1024,
+      "ArchUVScale": 2.0,
+      "BlendMode": "Masked"
+    },
+    "OSB": {
+      "TileMeters": 1.5,
+      "BC": "Materials/OSB/T_OSB_BC.png",
+      "N": "Materials/OSB/T_OSB_N.png",
+      "ORM": "Materials/OSB/T_OSB_ORM.png",
+      "H": null,
+      "Opacity": null,
+      "Resolution": 1024,
+      "ArchUVScale": 1.33333
+    },
+    "PaintedSteel": {
+      "TileMeters": 1.0,
+      "BC": "Materials/PaintedSteel/T_PaintedSteel_BC.png",
+      "N": "Materials/PaintedSteel/T_PaintedSteel_N.png",
+      "ORM": "Materials/PaintedSteel/T_PaintedSteel_ORM.png",
+      "H": null,
+      "Opacity": null,
+      "Resolution": 1024,
+      "ArchUVScale": 2.0
+    },
+    "Plywood": {
+      "TileMeters": 2.0,
+      "BC": "Materials/Plywood/T_Plywood_BC.png",
+      "N": "Materials/Plywood/T_Plywood_N.png",
+      "ORM": "Materials/Plywood/T_Plywood_ORM.png",
+      "H": null,
+      "Opacity": null,
+      "Resolution": 1024,
+      "ArchUVScale": 1.0
+    },
+    "PlywoodPainted": {
+      "TileMeters": 2.0,
+      "BC": "Materials/PlywoodPainted/T_PlywoodPainted_BC.png",
+      "N": "Materials/PlywoodPainted/T_PlywoodPainted_N.png",
+      "ORM": "Materials/PlywoodPainted/T_PlywoodPainted_ORM.png",
+      "H": null,
+      "Opacity": null,
+      "Resolution": 1024,
+      "ArchUVScale": 1.0
+    },
+    "Rubber": {
+      "TileMeters": 1.0,
+      "BC": "Materials/Rubber/T_Rubber_BC.png",
+      "N": "Materials/Rubber/T_Rubber_N.png",
+      "ORM": "Materials/Rubber/T_Rubber_ORM.png",
+      "H": null,
+      "Opacity": null,
+      "Resolution": 1024,
+      "ArchUVScale": 2.0
+    },
+    "Straw": {
+      "TileMeters": 1.0,
+      "BC": "Materials/Straw/T_Straw_BC.png",
+      "N": "Materials/Straw/T_Straw_N.png",
+      "ORM": "Materials/Straw/T_Straw_ORM.png",
+      "H": null,
+      "Opacity": null,
+      "Resolution": 1024,
+      "ArchUVScale": 2.0
+    },
+    "Timber": {
+      "TileMeters": 2.0,
+      "BC": "Materials/Timber/T_Timber_BC.png",
+      "N": "Materials/Timber/T_Timber_N.png",
+      "ORM": "Materials/Timber/T_Timber_ORM.png",
+      "H": null,
+      "Opacity": null,
+      "Resolution": 1024,
+      "ArchUVScale": 1.0
+    },
+    "Velvet": {
+      "TileMeters": 1.0,
+      "BC": "Materials/Velvet/T_Velvet_BC.png",
+      "N": "Materials/Velvet/T_Velvet_N.png",
+      "ORM": "Materials/Velvet/T_Velvet_ORM.png",
+      "H": null,
+      "Opacity": null,
+      "Resolution": 1024,
+      "ArchUVScale": 2.0
+    },
+    "Walnut": {
+      "TileMeters": 1.2,
+      "BC": "Materials/Walnut/T_Walnut_BC.png",
+      "N": "Materials/Walnut/T_Walnut_N.png",
+      "ORM": "Materials/Walnut/T_Walnut_ORM.png",
+      "H": null,
+      "Opacity": null,
+      "Resolution": 1024,
+      "ArchUVScale": 1.66667
+    }
+  },
+  "Notes": "Paths relative to SourceAssets/. Tileable, seamless. N is DirectX. ORM = AO/Roughness/Metallic (linear). Wood grain/brushing runs along U. TileMeters = real-world size of one texture tile; architecture UVs are 1 UV = 2 m, so use UV tiling ArchUVScale = 2/TileMeters. H is 16-bit, 0..1 spans HeightRangeM metres."
+}

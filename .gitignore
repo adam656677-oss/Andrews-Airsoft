@@ -26,3 +26,10 @@ Content/Airsoft/Audio/
 
 .DS_Store
 Thumbs.db
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# Full-size PNG renders stay local; compressed JPG copies are committed instead
+Docs/Renders/**/*.png

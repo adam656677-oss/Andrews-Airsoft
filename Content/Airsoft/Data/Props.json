@@ -1,0 +1,201 @@
+{
+  "Version": 1,
+  "Assets": {
+    "Bush_A": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "MI_Bark"
+          ],
+          "Triangles": 4890
+        },
+        {
+          "Name": "Leaves",
+          "Kind": "Static",
+          "Slots": [
+            "M_Bush_A_Leaves"
+          ],
+          "Triangles": 3576,
+          "Textures": {
+            "BC": "Props/Bush_A/T_Bush_A_Leaves_BC.png",
+            "N": "Props/Bush_A/T_Bush_A_Leaves_N.png",
+            "ORM": "Props/Bush_A/T_Bush_A_Leaves_ORM.png",
+            "Opacity": "Props/Bush_A/T_Bush_A_Leaves_Opacity.png"
+          },
+          "BlendMode": "Masked"
+        }
+      ],
+      "Collision": "Convex",
+      "Bounds": {
+        "Min": [
+          -129.7,
+          -124.8,
+          -79.8
+        ],
+        "Max": [
+          139.1,
+          134.3,
+          171.5
+        ]
+      }
+    },
+    "OilDrum": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_OilDrum_Body"
+          ],
+          "Triangles": 3968,
+          "Textures": {
+            "BC": "Props/OilDrum/T_OilDrum_Body_BC.png",
+            "N": "Props/OilDrum/T_OilDrum_Body_N.png",
+            "ORM": "Props/OilDrum/T_OilDrum_Body_ORM.png",
+            "M": "Props/OilDrum/T_OilDrum_Body_M.png"
+          },
+          "TextureSize": 512
+        }
+      ],
+      "Collision": "Convex",
+      "TintVariants": {
+        "Blue": [
+          0.05,
+          0.16,
+          0.4
+        ],
+        "Red": [
+          0.45,
+          0.05,
+          0.03
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -30.1,
+          -29.8,
+          0.0
+        ],
+        "Max": [
+          29.8,
+          29.8,
+          88.9
+        ]
+      }
+    },
+    "Tire": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Tire_Body"
+          ],
+          "Triangles": 8960,
+          "Textures": {
+            "BC": "Props/Tire/T_Tire_Body_BC.png",
+            "N": "Props/Tire/T_Tire_Body_N.png",
+            "ORM": "Props/Tire/T_Tire_Body_ORM.png"
+          },
+          "TextureSize": 512
+        }
+      ],
+      "Collision": "Convex",
+      "Bounds": {
+        "Min": [
+          -33.0,
+          -33.0,
+          -0.5
+        ],
+        "Max": [
+          33.0,
+          33.0,
+          21.5
+        ]
+      }
+    },
+    "Tree_Oak_A": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "MI_Bark"
+          ],
+          "Triangles": 23062
+        },
+        {
+          "Name": "Leaves",
+          "Kind": "Static",
+          "Slots": [
+            "M_Tree_Oak_A_Leaves"
+          ],
+          "Triangles": 13368,
+          "Textures": {
+            "BC": "Props/Tree_Oak_A/T_Tree_Oak_A_Leaves_BC.png",
+            "N": "Props/Tree_Oak_A/T_Tree_Oak_A_Leaves_N.png",
+            "ORM": "Props/Tree_Oak_A/T_Tree_Oak_A_Leaves_ORM.png",
+            "Opacity": "Props/Tree_Oak_A/T_Tree_Oak_A_Leaves_Opacity.png"
+          },
+          "BlendMode": "Masked"
+        }
+      ],
+      "Collision": "Convex",
+      "Bounds": {
+        "Min": [
+          -724.5,
+          -485.0,
+          -12.2
+        ],
+        "Max": [
+          540.1,
+          474.5,
+          1054.5
+        ]
+      }
+    },
+    "Tree_Oak_B": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "MI_Bark"
+          ],
+          "Triangles": 19292
+        },
+        {
+          "Name": "Leaves",
+          "Kind": "Static",
+          "Slots": [
+            "M_Tree_Oak_B_Leaves"
+          ],
+          "Triangles": 11128,
+          "Textures": {
+            "BC": "Props/Tree_Oak_B/T_Tree_Oak_B_Leaves_BC.png",
+            "N": "Props/Tree_Oak_B/T_Tree_Oak_B_Leaves_N.png",
+            "ORM": "Props/Tree_Oak_B/T_Tree_Oak_B_Leaves_ORM.png",
+            "Opacity": "Props/Tree_Oak_B/T_Tree_Oak_B_Leaves_Opacity.png"
+          },
+          "BlendMode": "Masked"
+        }
+      ],
+      "Collision": "Convex",
+      "Bounds": {
+        "Min": [
+          -478.5,
+          -638.3,
+          -11.8
+        ],
+        "Max": [
+          667.7,
+          495.7,
+          1006.3
+        ]
+      }
+    }
+  },
+  "Notes": "Unreal cm. Origin = floor centre, front +X. M_* slots = unique baked sets (T_<Id>_<Piece>_BC/N/ORM, _M role mask R = tint). MI_Bark uses Materials.json (1 UV = 2 m). Leaves/Net are Masked with _Opacity."
+}

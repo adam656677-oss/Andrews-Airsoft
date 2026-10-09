@@ -1,0 +1,220 @@
+{
+  "Version": 1,
+  "Assets": {
+    "Ladder_Metal_4m": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "MI_PaintedSteel",
+            "MI_Rubber",
+            "MI_DiamondPlate"
+          ],
+          "Triangles": 2996
+        }
+      ],
+      "Snap": 50,
+      "Bounds": {
+        "Min": [
+          -17.0,
+          -26.5,
+          0.0
+        ],
+        "Max": [
+          4.5,
+          26.5,
+          400.0
+        ]
+      }
+    },
+    "Platform_Timber_4m": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "MI_Timber",
+            "MI_CorrodedMetal"
+          ],
+          "Triangles": 5616
+        }
+      ],
+      "Snap": 50,
+      "Bounds": {
+        "Min": [
+          -60.9,
+          -200.0,
+          0.0
+        ],
+        "Max": [
+          60.7,
+          200.0,
+          23.0
+        ]
+      }
+    },
+    "Post_Timber": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "MI_Timber",
+            "MI_PaintedSteel",
+            "MI_CorrodedMetal"
+          ],
+          "Triangles": 1088
+        }
+      ],
+      "Snap": 25,
+      "Bounds": {
+        "Min": [
+          -12.5,
+          -12.5,
+          0.0
+        ],
+        "Max": [
+          12.5,
+          12.5,
+          300.0
+        ]
+      }
+    },
+    "Roof_Corrugated_4m": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "MI_Timber",
+            "MI_CorrodedMetal",
+            "MI_PaintedSteel"
+          ],
+          "Triangles": 60464
+        }
+      ],
+      "Snap": 50,
+      "Bounds": {
+        "Min": [
+          -200.0,
+          -200.0,
+          0.0
+        ],
+        "Max": [
+          200.0,
+          200.0,
+          13.2
+        ]
+      }
+    },
+    "Wall_Concrete_4m": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "MI_Concrete",
+            "MI_CorrodedMetal"
+          ],
+          "Triangles": 792
+        }
+      ],
+      "Snap": 50,
+      "Bounds": {
+        "Min": [
+          -13.0,
+          -200.0,
+          0.0
+        ],
+        "Max": [
+          13.0,
+          200.0,
+          301.9
+        ]
+      }
+    },
+    "Wall_Plywood_4m": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "MI_Plywood",
+            "MI_Timber",
+            "MI_CorrodedMetal"
+          ],
+          "Triangles": 9568
+        }
+      ],
+      "Snap": 50,
+      "Bounds": {
+        "Min": [
+          -6.0,
+          -200.0,
+          0.0
+        ],
+        "Max": [
+          6.2,
+          200.0,
+          300.0
+        ]
+      }
+    },
+    "Wall_Plywood_Door_4m": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "MI_Plywood",
+            "MI_Timber",
+            "MI_CorrodedMetal"
+          ],
+          "Triangles": 8140
+        }
+      ],
+      "Snap": 50,
+      "Bounds": {
+        "Min": [
+          -6.0,
+          -200.0,
+          0.0
+        ],
+        "Max": [
+          6.2,
+          200.0,
+          300.0
+        ]
+      }
+    },
+    "Wall_Plywood_Window_4m": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "MI_Plywood",
+            "MI_Timber",
+            "MI_CorrodedMetal"
+          ],
+          "Triangles": 8616
+        }
+      ],
+      "Snap": 50,
+      "Bounds": {
+        "Min": [
+          -6.0,
+          -200.0,
+          0.0
+        ],
+        "Max": [
+          8.7,
+          200.0,
+          300.0
+        ]
+      }
+    }
+  },
+  "Notes": "Unreal cm. Origin = floor centre, front +X. MI_* slots use Materials.json (UVs: 1 UV = 2 m -> tiling ArchUVScale). Snap = grid size in cm."
+}
