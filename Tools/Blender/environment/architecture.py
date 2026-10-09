@@ -785,7 +785,7 @@ def build(aid, res, opts):
     return entry
 
 
-SCRATCH = os.environ.get('ENV_SCRATCH', os.path.join(os.path.dirname(os.path.abspath(__file__)), '.cache'))
+SCRATCH = os.environ.get('ENV_SCRATCH', os.path.join(__import__('tempfile').gettempdir(), 'airsoft_env_cache'))
 
 
 def lineup(ids, cat, out_name='_Lineup_4K.png', cols=5, spacing=1.0):

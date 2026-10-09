@@ -25,7 +25,7 @@ from envlib.geo import Builder, box_bm, cyl_bm, mtx  # noqa: E402
 
 CAT = 'Props'
 OUT = os.path.join(bl.SA, CAT)
-SCRATCH = os.environ.get('ENV_SCRATCH', os.path.join(os.path.dirname(os.path.abspath(__file__)), '.cache'))
+SCRATCH = os.environ.get('ENV_SCRATCH', os.path.join(__import__('tempfile').gettempdir(), 'airsoft_env_cache'))
 
 # ----------------------------------------------------------------------------
 # recipes
