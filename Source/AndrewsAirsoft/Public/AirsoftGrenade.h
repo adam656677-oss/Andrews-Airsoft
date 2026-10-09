@@ -5,6 +5,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Engine/NetSerialization.h"
 #include "AirsoftTypes.h"
 #include "AirsoftGrenade.generated.h"
 
