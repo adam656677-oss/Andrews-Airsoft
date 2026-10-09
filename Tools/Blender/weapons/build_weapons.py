@@ -2120,7 +2120,7 @@ def process(g, res, do_bake, rig, do_render):
     return entry, info
 
 
-RENDER_SAMPLES = 16
+RENDER_SAMPLES = 10
 GEO_SEG = 3.5  # round-segment multiplier (Nanite: dense curvature is cheap)
 GEO_BEVEL = 2  # extra bevel segments on every chamfer
 RENDER_RES = (1920, 1080)

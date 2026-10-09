@@ -165,7 +165,7 @@ def render(path, res, samples=64):
         scn.cycles.texture_limit_render = "2048"
     except Exception:
         pass
-    scn.cycles.adaptive_min_samples = 16
+    scn.cycles.adaptive_min_samples = 4
     scn.cycles.max_bounces = 5
     scn.cycles.diffuse_bounces = 2
     scn.cycles.glossy_bounces = 3

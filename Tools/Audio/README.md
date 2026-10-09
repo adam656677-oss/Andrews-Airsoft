@@ -37,14 +37,14 @@ python3 Tools/Audio/make_sounds.py --jobs 1        # single process (default is 
 | Format | 48 kHz, 16-bit PCM WAV, TPDF-dithered |
 | Channels | **mono** for positional (3D) one-shots; **stereo** for 2D UI / feedback / stingers, ambience and music |
 | Level | normalised to **-1 dBTP** (4x-oversampled true peak), so nothing clips |
-| One-shots | 20 Hz DC/rumble high-pass, leading silence trimmed to the transient, trailing silence trimmed below -62 dB, 5 ms raised-cosine fade-out |
-| Loops | seamless by construction (see below); circular 20 Hz high-pass, zero DC |
+| One-shots | 20 Hz DC/rumble high-pass + gentle 17.5 kHz air low-pass, leading silence trimmed to the transient, trailing silence trimmed below -62 dB, 5 ms raised-cosine fade-out |
+| Loops | seamless by construction (see below); circular 20 Hz high-pass + 17.5 kHz low-pass, zero DC |
 | Variations | `<Key>_01.wav`, `<Key>_02.wav`, ... **plus** `<Key>.wav` (a copy of `_01`), so the plain key always exists |
 
 ### Loops
 
-The six loops are marked **LOOP** in the tables below. Set `Looping` on the
-imported SoundWave, or loop them in a MetaSound / Audio Component.
+The six loops are marked **LOOP** in the tables below. The setup script imports
+them with `looping` on (see below).
 
 * **Ambiences** are synthesised circularly. Noise beds are coloured in the FFT
   domain, so they are periodic. Slow gust/swell modulators come from periodic random
