@@ -30,7 +30,7 @@
         "Body": 5624
       },
       "TextureSize": {
-        "Body": 512
+        "Body": 2048
       }
     },
     "Armchair_Leather": {
@@ -47,7 +47,7 @@
       "Points": {
         "Seat": [
           5.0,
-          0,
+          0.0,
           47.0
         ]
       },
@@ -68,7 +68,7 @@
         "Body": 13852
       },
       "TextureSize": {
-        "Body": 512
+        "Body": 2048
       }
     },
     "ArmoryCounter": {
@@ -130,7 +130,7 @@
       "Points": {
         "WallMount": [
           -3.0,
-          0,
+          0.0,
           23.0
         ]
       },
@@ -152,8 +152,8 @@
         "Brass": 14156
       },
       "TextureSize": {
-        "Body": 512,
-        "Brass": 512
+        "Body": 2048,
+        "Brass": 2048
       }
     },
     "BackBar_4m": {
@@ -240,7 +240,7 @@
       "Points": {
         "Light": [
           9.0,
-          0,
+          0.0,
           38.5
         ]
       },
@@ -263,9 +263,9 @@
         "Glass": 1968
       },
       "TextureSize": {
-        "Body": 512,
-        "Emissive": 128,
-        "Glass": 256
+        "Body": 2048,
+        "Emissive": 256,
+        "Glass": 1024
       }
     },
     "BarCounter_4m": {
@@ -282,12 +282,12 @@
       "Points": {
         "BarTop": [
           0.0,
-          -0.0,
+          0.0,
           108.0
         ],
         "Footrail": [
           36.0,
-          -0.0,
+          0.0,
           21.0
         ]
       },
@@ -308,7 +308,7 @@
         "Body": 18596
       },
       "TextureSize": {
-        "Body": 1024
+        "Body": 4096
       }
     },
     "BarStool": {
@@ -349,6 +349,38 @@
         "Body": 2048
       }
     },
+    "Bollard": {
+      "Group": "Club",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Bollard_Body"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -15.0,
+          -15.0,
+          0.0
+        ],
+        "Max": [
+          15.0,
+          15.0,
+          93.5
+        ]
+      },
+      "Collision": "Convex",
+      "Triangles": {
+        "Body": 5264
+      },
+      "TextureSize": {
+        "Body": 2048
+      }
+    },
     "BoothSofa_Curved": {
       "Group": "Club",
       "Pieces": [
@@ -363,7 +395,7 @@
       "Points": {
         "SeatCentre": [
           -79.0,
-          0,
+          0.0,
           47.0
         ]
       },
@@ -384,7 +416,7 @@
         "Body": 100834
       },
       "TextureSize": {
-        "Body": 512
+        "Body": 2048
       }
     },
     "BoothTable": {
@@ -470,9 +502,9 @@
         "Emissive": 3824
       },
       "TextureSize": {
-        "Body": 512,
-        "Glass": 256,
-        "Emissive": 128
+        "Body": 2048,
+        "Glass": 1024,
+        "Emissive": 512
       }
     },
     "Car_Coupe": {
@@ -504,12 +536,12 @@
       "Bounds": {
         "Min": [
           -269.8,
-          -115.0,
+          -100.0,
           0.0
         ],
         "Max": [
           269.8,
-          115.0,
+          100.0,
           134.4
         ]
       },
@@ -520,9 +552,9 @@
         "Emissive": 1724
       },
       "TextureSize": {
-        "Body": 1024,
-        "Glass": 256,
-        "Emissive": 128
+        "Body": 4096,
+        "Glass": 1024,
+        "Emissive": 512
       }
     },
     "Car_Sedan": {
@@ -554,25 +586,25 @@
       "Bounds": {
         "Min": [
           -256.0,
-          -118.5,
+          -109.4,
           0.0
         ],
         "Max": [
           256.5,
-          118.5,
+          109.4,
           146.5
         ]
       },
       "Collision": "Convex",
       "Triangles": {
-        "Body": 85868,
-        "Glass": 3740,
+        "Body": 99738,
+        "Glass": 3736,
         "Emissive": 3236
       },
       "TextureSize": {
-        "Body": 1024,
-        "Glass": 256,
-        "Emissive": 128
+        "Body": 4096,
+        "Glass": 1024,
+        "Emissive": 512
       }
     },
     "CeilingLight_Brass": {
@@ -602,13 +634,13 @@
       ],
       "Points": {
         "CeilingMount": [
-          0,
-          0,
+          0.0,
+          0.0,
           36.0
         ],
         "Light": [
-          0,
-          0,
+          0.0,
+          0.0,
           13.0
         ]
       },
@@ -631,9 +663,9 @@
         "Emissive": 672
       },
       "TextureSize": {
-        "Body": 512,
-        "Glass": 256,
-        "Emissive": 128
+        "Body": 2048,
+        "Glass": 1024,
+        "Emissive": 256
       }
     },
     "Chandelier": {
@@ -689,7 +721,7 @@
       "Triangles": {
         "Body": 42632,
         "Emissive": 1792,
-        "Glass": 5244
+        "Glass": 4476
       },
       "TextureSize": {
         "Body": 1024,
@@ -718,8 +750,8 @@
       "Points": {
         "DJ": [
           -75.0,
-          0,
-          0
+          0.0,
+          0.0
         ]
       },
       "Bounds": {
@@ -740,8 +772,40 @@
         "Emissive": 24
       },
       "TextureSize": {
-        "Body": 1024,
-        "Emissive": 128
+        "Body": 4096,
+        "Emissive": 512
+      }
+    },
+    "Dumpster": {
+      "Group": "Club",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Dumpster_Body"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -60.0,
+          -107.5,
+          0.0
+        ],
+        "Max": [
+          59.6,
+          107.5,
+          127.8
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 4972
+      },
+      "TextureSize": {
+        "Body": 2048
       }
     },
     "GunCase_Hard": {
@@ -773,7 +837,7 @@
         "Body": 83652
       },
       "TextureSize": {
-        "Body": 512
+        "Body": 2048
       }
     },
     "GunDisplayBay": {
@@ -804,42 +868,42 @@
       "Points": {
         "GunMount": [
           -3.0,
-          -0.0,
+          0.0,
           61.5
         ],
         "Plaque": [
           13.5,
-          -0.0,
+          0.0,
           5.0
         ],
         "WallMount": [
           -13.0,
-          -0.0,
+          0.0,
           60.0
         ]
       },
       "Bounds": {
         "Min": [
           -13.0,
-          -73.0,
+          -74.0,
           0.0
         ],
         "Max": [
-          16.5,
-          73.0,
-          120.0
+          17.0,
+          74.0,
+          121.0
         ]
       },
       "Collision": "Box",
       "Triangles": {
-        "Body": 5184,
+        "Body": 109814,
         "Emissive": 48,
         "Plaque": 508
       },
       "TextureSize": {
-        "Body": 1024,
-        "Emissive": 128,
-        "Plaque": 256
+        "Body": 4096,
+        "Emissive": 512,
+        "Plaque": 1024
       }
     },
     "HighTable": {
@@ -855,8 +919,8 @@
       ],
       "Points": {
         "TableTop": [
-          0,
-          0,
+          0.0,
+          0.0,
           107.0
         ]
       },
@@ -877,7 +941,39 @@
         "Body": 15584
       },
       "TextureSize": {
-        "Body": 512
+        "Body": 2048
+      }
+    },
+    "Kiosk": {
+      "Group": "Club",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Kiosk_Body"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -88.0,
+          -145.0,
+          0.0
+        ],
+        "Max": [
+          117.1,
+          145.0,
+          281.0
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 14100
+      },
+      "TextureSize": {
+        "Body": 2048
       }
     },
     "Mannequin_Torso": {
@@ -909,7 +1005,7 @@
         "Body": 7432
       },
       "TextureSize": {
-        "Body": 512
+        "Body": 2048
       }
     },
     "MovingHeadLight": {
@@ -933,7 +1029,7 @@
       "Points": {
         "Beam": [
           17.2,
-          -0.0,
+          0.0,
           55.0
         ]
       },
@@ -955,8 +1051,8 @@
         "Glass": 192
       },
       "TextureSize": {
-        "Body": 512,
-        "Glass": 256
+        "Body": 2048,
+        "Glass": 1024
       }
     },
     "NeonSign_Velvet": {
@@ -980,12 +1076,12 @@
       "Points": {
         "WallMount": [
           -4.0,
-          0,
+          0.0,
           31.0
         ],
         "Light": [
           13.5,
-          0,
+          0.0,
           31.0
         ]
       },
@@ -1007,8 +1103,8 @@
         "Emissive": 9728
       },
       "TextureSize": {
-        "Body": 512,
-        "Emissive": 128
+        "Body": 2048,
+        "Emissive": 512
       }
     },
     "Planter_Concrete": {
@@ -1044,12 +1140,12 @@
       },
       "Collision": "Convex",
       "Triangles": {
-        "Body": 1096,
-        "Shrub": 36960
+        "Body": 5172,
+        "Shrub": 36000
       },
       "TextureSize": {
-        "Body": 512,
-        "Shrub": 512
+        "Body": 2048,
+        "Shrub": 2048
       }
     },
     "RugPersian": {
@@ -1113,7 +1209,7 @@
         "Body": 8772
       },
       "TextureSize": {
-        "Body": 512
+        "Body": 2048
       }
     },
     "StreetLamp": {
@@ -1143,8 +1239,8 @@
       ],
       "Points": {
         "Light": [
-          0,
-          0,
+          0.0,
+          0.0,
           344.0
         ]
       },
@@ -1167,9 +1263,41 @@
         "Emissive": 192
       },
       "TextureSize": {
-        "Body": 512,
-        "Glass": 256,
-        "Emissive": 128
+        "Body": 2048,
+        "Glass": 1024,
+        "Emissive": 256
+      }
+    },
+    "TrashBags": {
+      "Group": "Club",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_TrashBags_Body"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -67.5,
+          -67.9,
+          -2.6
+        ],
+        "Max": [
+          62.4,
+          57.2,
+          91.3
+        ]
+      },
+      "Collision": "Convex",
+      "Triangles": {
+        "Body": 68304
+      },
+      "TextureSize": {
+        "Body": 2048
       }
     },
     "VelvetRopePost": {
@@ -1192,12 +1320,12 @@
       ],
       "Points": {
         "RopeStart": [
-          0,
+          0.0,
           4.5,
           86.0
         ],
         "RopeEnd": [
-          0,
+          0.0,
           139.5,
           86.0
         ]
@@ -1220,8 +1348,8 @@
         "Rope": 5196
       },
       "TextureSize": {
-        "Body": 512,
-        "Rope": 256
+        "Body": 2048,
+        "Rope": 1024
       }
     },
     "WallPanel_Walnut_4m": {
@@ -1283,12 +1411,12 @@
       "Points": {
         "WallMount": [
           -12.0,
-          0,
+          0.0,
           13.0
         ],
         "Light": [
           7.0,
-          0,
+          0.0,
           29.0
         ]
       },
@@ -1311,9 +1439,9 @@
         "Glass": 448
       },
       "TextureSize": {
-        "Body": 512,
-        "Emissive": 128,
-        "Glass": 256
+        "Body": 2048,
+        "Emissive": 256,
+        "Glass": 1024
       }
     }
   }

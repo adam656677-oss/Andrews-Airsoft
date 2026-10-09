@@ -5,7 +5,8 @@ Procedural airsoft weapons + attachments for Andrew's Airsoft (Unreal Engine 5).
     python Tools/Blender/weapons/build_weapons.py -- --res 1024    # quick preview bake
     python Tools/Blender/weapons/build_weapons.py -- M4 G17        # only some assets
     flags: --res 4096|2048|1024, --no-bake, --no-render, --preview (small quick renders),
-           --lineup (force lineup renders on a partial run), --lineups-only
+           --lineup (force lineup renders on a partial run), --lineups-only,
+           --each (one child process per asset, then the lineups; low memory)
 
 Outputs (see Tools/Blender/CONVENTIONS.md):
     SourceAssets/Weapons/<ID>/SM_<ID>_<Piece>.fbx + T_<ID>_<Piece>_{BC,N,ORM,M}.png
@@ -192,6 +193,8 @@ class Gun:
                     delete(o)
             bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-6)
             bmesh.ops.dissolve_degenerate(bm, edges=bm.edges, dist=1e-7)
+            # triangulate now so the baked tangent space matches the exported FBX exactly
+            bmesh.ops.triangulate(bm, faces=bm.faces[:], quad_method="BEAUTY", ngon_method="BEAUTY")
             me = bpy.data.meshes.new(f"SM_{self.id}_{piece}")
             bm.to_mesh(me)
             bm.free()
@@ -2075,7 +2078,7 @@ def process(g, res, do_bake, rig, do_render):
         export_fbx(ob, os.path.join(out_dir, f"SM_{g.id}_{piece}.fbx"))
         ob.name = piece
         if textured:
-            prev = bk.preview_material(f"PV_{g.id}_{piece}", bk.texture_paths(out_dir, g.id, piece), tints)
+            prev = bk.preview_material(f"PV_{g.id}_{piece}", bk.texture_paths(out_dir, g.id, piece), tints, proxy_res=1024 if not do_render else 2048)
             ob.data.materials.clear()
             ob.data.materials.append(prev)
         info.append({"Name": piece, "Kind": KIND_OF_PIECE.get(piece, "Static"), "Slots": [slot], "Triangles": tris, "Textured": textured, "Object": ob})
@@ -2117,7 +2120,7 @@ def process(g, res, do_bake, rig, do_render):
     return entry, info
 
 
-RENDER_SAMPLES = 24
+RENDER_SAMPLES = 16
 GEO_SEG = 3.5  # round-segment multiplier (Nanite: dense curvature is cheap)
 GEO_BEVEL = 2  # extra bevel segments on every chamfer
 RENDER_RES = (1920, 1080)
@@ -2164,12 +2167,45 @@ def lineup(rig, category, rows, row_gap, col_gap, label_size, view_dir, lens, pa
     del meshes
 
 
+def run_each(argv, only, res):
+    """Driver: one child process per asset (frees memory between assets, retries a
+    crashed child once), optionally several at a time (--jobs N), then one child that
+    renders the lineups from the cached bakes."""
+    import subprocess
+    from concurrent.futures import ThreadPoolExecutor
+
+    jobs = 1
+    if "--jobs" in argv:
+        jobs = int(argv[argv.index("--jobs") + 1])
+    passthru = [a for a in argv if a.startswith("--") and a not in ("--each", "--res", "--jobs")]
+    ids = [i for i in BUILDERS if not only or i in only]
+
+    def one(gid):
+        for attempt in range(2):
+            cmd = [sys.executable, os.path.abspath(__file__), "--", gid, "--res", str(res)] + passthru
+            print(f"[each] {gid} (attempt {attempt + 1})", flush=True)
+            r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+            log = [ln for ln in r.stdout.splitlines() if ln.startswith(("  ", "built", "WARNING", "Traceback")) or "Error" in ln]
+            print("\n".join(log), flush=True)
+            if r.returncode == 0:
+                return None
+        return gid
+
+    with ThreadPoolExecutor(max_workers=jobs) as ex:
+        failed = [f for f in ex.map(one, ids) if f]
+    if "--no-render" not in passthru:
+        subprocess.run([sys.executable, os.path.abspath(__file__), "--", "--res", str(res), "--lineups-only"] + passthru)
+    print(f"[each] done; failed: {failed}", flush=True)
+
+
 def main(argv):
     flags = [a for a in argv if a.startswith("--")]
     res = 4096
     if "--res" in argv:
         res = int(argv[argv.index("--res") + 1])
     only = [a for a in argv if not a.startswith("--") and not a.isdigit()]
+    if "--each" in flags:
+        return run_each(argv, only, res)
     do_bake = "--no-bake" not in flags
     do_render = "--no-render" not in flags
     lineups_only = "--lineups-only" in flags  # rebuild (cached bakes) and render only the lineups

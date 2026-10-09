@@ -385,8 +385,8 @@ def car_sedan(A):
         hl = [(s * (0.33 + p[0]), p[1]) for p in hl]
         if s < 0:
             hl = list(reversed(hl))
-        lamp(A, hl, 0, 0.05, at=(xf - 0.16, 0, 0.70), rot=(0, -28, 0))
-        lamp(A, round_poly(rrect_pts(0.34, 0.014, 0.006, 3), 0.002), 0, 0.03, at=(xf - 0.11, s * 0.52, 0.665), rot=(0, -15, 0))
+        lamp(A, hl, 0, 0.05, at=(xf - 0.045, 0, 0.655), rot=(0, -38, 0))
+        lamp(A, round_poly(rrect_pts(0.34, 0.014, 0.006, 3), 0.002), 0, 0.03, at=(xf - 0.03, s * 0.52, 0.60), rot=(0, -15, 0))
     # rear: full-width light bar + plate + exhausts
     xr = -2.55
     lamp(A, round_poly(rrect_pts(1.55, 0.05, 0.02, 4), 0.003), 0, 0.04, at=(xr + 0.02, 0, 0.93), rot=(0, 20, 0))
@@ -400,7 +400,7 @@ def car_sedan(A):
     A.vattr(plate, "luv", lambda co: (0.5 - co.y / 0.52, co.z / 0.11 + 0.5, 1.0))
     for s in (-1, 1):
         A.prism(round_poly(rrect_pts(0.20, 0.07, 0.03, 4), 0.003), 0.08, mat="chrome", plane="YZ", at=(xr + 0.03, s * 0.55, 0.30), bevel=0.003)
-    fplate = A.box((0.006, 0.52, 0.11), at=(xf - 0.03, 0, 0.45), mat="plate", bevel=0.003)
+    fplate = A.box((0.006, 0.52, 0.11), at=(xf + 0.004, 0, 0.45), mat="plate", bevel=0.003)
     A.vattr(fplate, "luv", lambda co: (0.5 + co.y / 0.52, co.z / 0.11 + 0.5, 1.0))
     A.preview["Body"] = {"tint": (0.035, 0.045, 0.07), "coat": True}
     A.preview["Emissive"] = {"emit": (1.0, 0.95, 0.9, 8.0)}

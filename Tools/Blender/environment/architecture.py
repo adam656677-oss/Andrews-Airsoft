@@ -164,7 +164,37 @@ def a_Wall_Concrete_4m():
         B.cyl('MI_CorrodedMetal', 0.012, 0.03, (0, y, 3.0 + 0.004), n=12, bevel=0.003)
     # chamfered kicker / plinth
     B.box('MI_Concrete', (T + 0.06, 4.0, 0.12), (0, 0, 0.06), bevel=0.02, segs=2)
-    return [('Body', 'Body', B.finish('Wall_Concrete_4m_Body'))], 50
+    o = B.finish('Wall_Concrete_4m_Body')
+    # dense remesh + chipped arrises (concrete damage along the edges)
+    import numpy as np
+    for _ in range(4):
+        bm = bmesh.new()
+        bm.from_mesh(o.data)
+        long_e = [e for e in bm.edges if e.calc_length() > 0.08]
+        if not long_e:
+            bm.free()
+            break
+        bmesh.ops.subdivide_edges(bm, edges=long_e, cuts=1, use_grid_fill=True)
+        bm.to_mesh(o.data)
+        bm.free()
+    me = o.data
+    P = geo.verts_np(me)
+    hw = T / 2
+    dx = hw - np.abs(P[:, 0])
+    dy = 2.0 - np.abs(P[:, 1])
+    dz = 3.0 - P[:, 2]
+    near = np.minimum.reduce([np.maximum(dx, dy), np.maximum(dx, dz), np.maximum(dy, dz)])
+    wall = P[:, 2] > 0.125
+    n = geo.fbm3(P * 9.0, 1.0, 4, 0.55, 3)
+    chip = np.clip(n - 0.12, 0, None) * 0.25 * np.clip(1 - near / 0.05, 0, 1) * wall
+    c = np.array([0.0, 0.0, 1.5])
+    dirv = P - c
+    dirv[:, 0] *= 8
+    dirv /= np.linalg.norm(dirv, axis=1, keepdims=True)
+    geo.set_verts(me, P - dirv * chip[:, None])
+    for p in me.polygons:
+        p.use_smooth = True
+    return [('Body', 'Body', o)], 50
 
 
 def a_Roof_Corrugated_4m():
@@ -237,14 +267,16 @@ def a_Platform_Timber_4m():
 def a_Ladder_Metal_4m():
     B = Builder(arch=True)
     for y in (-0.24, 0.24):
-        B.box('MI_PaintedSteel', (0.065, 0.028, 4.0), (0, y, 2.0), bevel=0.004, grain='z')
+        B.box('MI_PaintedSteel', (0.065, 0.028, 4.0), (0, y, 2.0), bevel=0.004, segs=3, grain='z')
         B.box('MI_Rubber', (0.09, 0.05, 0.05), (0, y, 0.025), bevel=0.01)
         # top hooks
         B.box('MI_PaintedSteel', (0.18, 0.028, 0.04), (-0.07, y, 3.98), bevel=0.006)
         B.box('MI_PaintedSteel', (0.04, 0.028, 0.14), (-0.15, y, 3.92), bevel=0.006)
     z = 0.3
     while z < 3.9:
-        B.between('MI_DiamondPlate', (0, -0.226, z), (0, 0.226, z), 0.017, n=14, bevel=0.001)
+        B.between('MI_DiamondPlate', (0, -0.226, z), (0, 0.226, z), 0.017, n=28, bevel=0.002)
+        for y in (-0.222, 0.222):
+            B.between('MI_PaintedSteel', (0, y - 0.006, z), (0, y + 0.006, z), 0.024, n=28, bevel=0.002)
         z += 0.3
     return [('Body', 'Body', B.finish('Ladder_Metal_4m_Body'))], 50
 
@@ -349,7 +381,7 @@ def a_FloodlightTower():
         bm = box_bm((0.18, 0.012, 0.22), 0.003, 1)
         B.add(bm, 'MI_PaintedSteel', Matrix.Translation(R @ Vector((0.17, 0, 0.435))) @ R)
     # tapered pole
-    B.add(cyl_bm(0.11, 9.7, 32, 0.01, 2, r2=0.07), 'MI_PaintedSteel', mtx((0, 0, 0.325 + 4.85)), grain='z')
+    B.add(cyl_bm(0.11, 9.7, 64, 0.01, 3, r2=0.07), 'MI_PaintedSteel', mtx((0, 0, 0.325 + 4.85)), grain='z')
     B.box('MI_PaintedSteel', (0.02, 0.12, 0.35), (-0.112, 0, 1.0), bevel=0.004)  # access door
     # step bolts
     for i in range(18):
@@ -418,7 +450,7 @@ def a_SpawnTent():
     def sag_x(x):
         # sag between poles along the ridge / eaves
         d = min(abs(x - px) for px in poles_x)
-        return math.sin(min(d / 3.0, 1.0) * math.pi / 2) * 0.07
+        return math.sin(min(d / 3.0, 1.0) * math.pi / 2) * 0.12
 
     for sy in (-1, 1):
         def roof(u, v, sy=sy):
@@ -427,9 +459,9 @@ def a_SpawnTent():
             z = eave + (ridge - eave) * v
             z -= sag_x(x) * math.sin(v * math.pi) * 1.3 + 0.04 * math.sin(v * math.pi)
             p = Vector((x, y, z))
-            p.z += wr(p, 0.012, 2.0, 1)
+            p.z += wr(p, 0.03, 2.0, 1) + wr(p, 0.008, 7.0, 5)
             return p
-        grid_panel(B, 'MI_Canvas', roof, 60, 22)
+        grid_panel(B, 'MI_Canvas', roof, 120, 40)
 
         def wall(u, v, sy=sy):
             x = (u - 0.5) * L
@@ -437,9 +469,9 @@ def a_SpawnTent():
             y = sy * (Wd / 2 + 0.05 * (1 - v) ** 3)
             y += sy * (-sag_x(x) * 0.5 * math.sin(v * math.pi))
             p = Vector((x, y, z))
-            p.y += wr(p, 0.015, 2.2, 2)
+            p.y += wr(p, 0.03, 2.2, 2) + wr(p, 0.008, 7.0, 6)
             return p
-        grid_panel(B, 'MI_Canvas', wall, 60, 14)
+        grid_panel(B, 'MI_Canvas', wall, 120, 28)
     for sx in (-1, 1):
         def end(u, v, sx=sx):
             y = (u - 0.5) * Wd
@@ -447,10 +479,10 @@ def a_SpawnTent():
             z = ztop * v
             x = sx * (L / 2 + 0.02 * math.sin(v * math.pi))
             p = Vector((x, y, z))
-            p.x += wr(p, 0.012, 2.5, 3)
+            p.x += wr(p, 0.025, 2.5, 3) + wr(p, 0.006, 7.0, 7)
             return p
         bm = bmesh.new()
-        nu, nv = 30, 22
+        nu, nv = 60, 40
         vs = [[bm.verts.new(end(i / nu, j / nv)) for j in range(nv + 1)] for i in range(nu + 1)]
         for i in range(nu):
             for j in range(nv):
@@ -563,7 +595,7 @@ def a_Bunker_Logs():
     for y in (-0.6, 0.6):
         B.box('MI_Timber', (0.2, 0.15, 1.4), (-S / 2 + r, y, 0.7), bevel=0.01, grain='z')
     # roof logs across
-    zr = r + courses * h + 0.12
+    zr = 2 * r + (courses - 1) * h + 0.105
     n = 22
     for i in range(n):
         y = -S / 2 + 0.1 + i * (S - 0.2) / (n - 1)
@@ -602,7 +634,7 @@ def a_Bunker_Logs():
 # container (baked unique)
 # ----------------------------------------------------------------------------
 CONT_RECIPES = {
-    'paint': dict(base='PaintedSteel', paint=(0.88, 0.88, 0.87), chip=0.55, chip_scale=7.0, under='CorrodedMetal',
+    'paint': dict(base='PaintedSteel', paint=(0.88, 0.88, 0.88), chip=0.55, chip_scale=7.0, under='CorrodedMetal',
                   paint_rough=0.5, edge=0.25, dirt=0.6, ground=0.5, streak=0.55, streak_col=(0.3, 0.14, 0.06),
                   mask=(1, 0, 0), mask_paint_only=True, edge_r=0.01),
     'steel': dict(base='PaintedSteel', tint=(0.35, 0.35, 0.35), edge=0.5, dirt=0.7, ground=0.4, streak=0.3,
@@ -611,6 +643,11 @@ CONT_RECIPES = {
     'wood': dict(base='Timber', tint=(0.55, 0.45, 0.35), dirt=0.8),
     'rubber': dict(base='Rubber', dirt=0.4),
 }
+
+
+# corrugated sheet local axes (X ribs, Y waves, Z normal) -> wall orientations
+SIDE = Matrix(((0, 1, 0), (0, 0, 1), (1, 0, 0))).to_4x4()   # ribs vertical, waves along X, normal Y
+END = Matrix(((0, 0, -1), (0, 1, 0), (1, 0, 0))).to_4x4()   # ribs vertical, waves along Y, normal X
 
 
 def a_Container_20ft():
@@ -643,13 +680,11 @@ def a_Container_20ft():
     wh = H - 0.16 - 0.06
     for sy in (-1, 1):
         bm = shapes.corrugated_bm(wh, L - 0.32, pitch=0.278, depth=0.036, thick=0.002, nl=6, profile='trap')
-        R = Matrix.Rotation(-math.pi / 2, 4, 'Y')  # local X -> world Z
-        Rz = Matrix.Rotation(math.pi / 2, 4, 'X') if sy > 0 else Matrix.Rotation(-math.pi / 2, 4, 'X')
-        M = mtx((0, sy * (W / 2 - 0.03), 0.16 + wh / 2)) @ Rz @ Matrix.Rotation(math.pi / 2, 4, 'Z') @ R
+        M = mtx((0, sy * (W / 2 - 0.03), 0.16 + wh / 2)) @ SIDE
         B.add(bm, 'paint', M, grain='x')
     # back end wall (-X)
     bm = shapes.corrugated_bm(wh, W - 0.32, pitch=0.278, depth=0.036, thick=0.002, nl=6, profile='trap')
-    M = mtx((-L / 2 + 0.05, 0, 0.16 + wh / 2)) @ Matrix.Rotation(-math.pi / 2, 4, 'Z') @ Matrix.Rotation(math.pi / 2, 4, 'X') @ Matrix.Rotation(math.pi / 2, 4, 'Z') @ Matrix.Rotation(-math.pi / 2, 4, 'Y')
+    M = mtx((-L / 2 + 0.05, 0, 0.16 + wh / 2)) @ END
     B.add(bm, 'paint', M, grain='x')
     # roof (shallow corrugation across X)
     bm = shapes.corrugated_bm(W - 0.2, L - 0.3, pitch=0.25, depth=0.015, thick=0.002, nl=4, profile='sine')
@@ -665,7 +700,7 @@ def a_Container_20ft():
         B.box('paint', (0.04, dw - 0.02, dh), (x, yc, 0.14 + dh / 2), bevel=0.012)
         # door panel corrugation (inset, vertical ribs)
         bm = shapes.corrugated_bm(dh - 0.24, dw - 0.2, pitch=0.24, depth=0.03, thick=0.002, nl=4, profile='trap')
-        M = mtx((x + 0.028, yc, 0.14 + dh / 2)) @ Matrix.Rotation(math.pi / 2, 4, 'Z') @ Matrix.Rotation(math.pi / 2, 4, 'X') @ Matrix.Rotation(math.pi / 2, 4, 'Z') @ Matrix.Rotation(-math.pi / 2, 4, 'Y')
+        M = mtx((x + 0.028, yc, 0.14 + dh / 2)) @ END
         B.add(bm, 'paint', M, grain='x')
         # frame rails on the door leaf
         for z in (0.2, 0.14 + dh - 0.06):
@@ -744,7 +779,7 @@ def build(aid, res, opts):
             want_m = any(rec[s].get('mask') for s in rec)
             bake.bake_piece(obj, prefix, res, mask_res=min(1024, res), want_mask=want_m)
             slot = 'M_%s_%s' % (aid, pname)
-            bake.finalize_piece(obj, slot, prefix, has_mask=want_m, tint=(0.08, 0.2, 0.32) if want_m else None)
+            bake.finalize_piece(obj, slot, prefix, has_mask=want_m, tint=(0.05, 0.13, 0.22) if want_m else None)
             slots = [slot]
         else:
             slots = [m.name for m in obj.data.materials]
@@ -774,7 +809,7 @@ def build(aid, res, opts):
             az, el = -32.0, 10.0
         if aid == 'Roof_Corrugated_4m' or aid == 'Platform_Timber_4m':
             el = 28.0
-        bl.product_shot(objs, os.path.join(bl.RENDERS, CAT, aid + '.png'), az=az, el=el, samples=opts['samples'] or 14,
+        bl.product_shot(objs, os.path.join(bl.RENDERS, CAT, aid + '.png'), az=az, el=el, samples=opts['samples'] or 10,
                         margin=1.12)
         if aid == 'Wall_Plywood_Door_4m' and not opts['preview']:
             bl.clear_scene_extras()
@@ -830,7 +865,7 @@ def lineup(ids, cat, out_name='_Lineup_4K.png', cols=5, spacing=1.0):
         o.location.x -= c.x
         o.location.y -= c.y
     bpy.context.view_layer.update()
-    bl.product_shot(objs, os.path.join(bl.RENDERS, cat, out_name), az=-35.0, el=22.0, lens=50, samples=16, margin=1.03,
+    bl.product_shot(objs, os.path.join(bl.RENDERS, cat, out_name), az=-35.0, el=22.0, lens=50, samples=12, margin=1.03,
                     w=3840, h=2160, tex_limit='1024')
 
 
@@ -838,14 +873,16 @@ def main():
     o = bl.parse_args()
     ids = o['ids'] or ASSETS
     if not o['lineup_only']:
-        entries = {}
         for aid in ids:
-            entries[aid] = build(aid, o['res'], o)
-        bl.json_update('Architecture.json', 'Assets', entries,
+            e = build(aid, o['res'], o)
+            bl.json_update('Architecture.json', 'Assets', {aid: e},
                        extra={'Notes': 'Unreal cm. Origin = floor centre, front +X. MI_* slots use Materials.json '
                                        '(UVs: 1 UV = 2 m -> tiling ArchUVScale). Snap = grid size in cm.'})
     if o['lineup'] and o['render']:
-        lineup(ASSETS, CAT)
+        lineup(['Post_Timber', 'Ladder_Metal_4m', 'Wall_Plywood_2m', 'Wall_Plywood_4m', 'Wall_Plywood_Door_4m',
+                'Wall_Plywood_Window_4m', 'Wall_Concrete_4m', 'Platform_Timber_4m', 'Roof_Corrugated_4m',
+                'NettingFence_4m', 'Container_20ft', 'SpawnTent', 'Bunker_Logs', 'Watchtower', 'FloodlightTower'],
+               CAT, cols=5, spacing=1.0)
 
 
 if __name__ == '__main__':

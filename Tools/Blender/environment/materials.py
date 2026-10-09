@@ -113,7 +113,7 @@ def render_lineup(ids):
         r = i // cols
         c = i % cols
         x0 = (r - (rows - 1) / 2) * -(size + gap + 0.25)
-        y0 = (c - (cols - 1) / 2) * -(size + gap)
+        y0 = (c - (cols - 1) / 2) * (size + gap)
         bm = bmesh.new()
         bmesh.ops.create_cube(bm, size=1.0)
         for v in bm.verts:
@@ -145,11 +145,11 @@ def render_lineup(ids):
         cu.align_x = 'CENTER'
         t = bpy.data.objects.new('Label_' + mid, cu)
         bpy.context.scene.collection.objects.link(t)
-        t.location = (x0 - size / 2 - 0.16, y0, 0.002)
+        t.location = (x0 + size / 2 + 0.2, y0, 0.002)
         t.rotation_euler = (0, 0, math.radians(90))
         lm = bl.simple_material('LabelMat', (0.03, 0.03, 0.03), 0.6)
         cu.materials.append(lm)
-    bl.cycles_setup(16, 3840, 2160, '2048')
+    bl.cycles_setup(12, 3840, 2160, '1024')
     pts = bl.bbox_world(objs)
     cam, tgt, d = bl.camera_fit(pts, az_deg=0.0, el_deg=58.0, lens=50, margin=1.04)
     from mathutils import Vector
@@ -160,15 +160,39 @@ def render_lineup(ids):
     bl.render_to(os.path.join(bl.RENDERS, 'Materials', '_Lineup_4K.png'))
 
 
+def refresh_json():
+    """Rebuild Materials.json entries from the files on disk (keeps HeightRangeM)."""
+    import struct
+    path = os.path.join(ROOT, 'Content', 'Airsoft', 'Data', 'Materials.json')
+    old = json.load(open(path)).get('Materials', {}) if os.path.exists(path) else {}
+    ents = {}
+    for mid, (tile, seed, want_h) in SPECS.items():
+        pre = os.path.join(MATDIR, mid, 'T_%s_' % mid)
+        if not os.path.exists(pre + 'BC.png'):
+            continue
+        with open(pre + 'BC.png', 'rb') as f:
+            f.read(16)
+            w = struct.unpack('>I', f.read(4))[0]
+        e = dict(old.get(mid, {}))
+        e.update({'TileMeters': tile, 'BC': 'Materials/%s/T_%s_BC.png' % (mid, mid),
+                  'N': 'Materials/%s/T_%s_N.png' % (mid, mid), 'ORM': 'Materials/%s/T_%s_ORM.png' % (mid, mid),
+                  'H': ('Materials/%s/T_%s_H.png' % (mid, mid)) if os.path.exists(pre + 'H.png') else None,
+                  'Opacity': ('Materials/%s/T_%s_Opacity.png' % (mid, mid)) if os.path.exists(pre + 'Opacity.png') else None,
+                  'Resolution': w, 'ArchUVScale': round(2.0 / tile, 5)})
+        ents[mid] = e
+    write_json(ents)
+
+
 def main():
     from envlib.bl import parse_args
+    if '--json-only' in sys.argv:
+        refresh_json()
+        return
     o = parse_args()
     ids = o['ids'] or list(SPECS.keys())
     if not o['lineup_only']:
-        entries = {}
         for mid in ids:
-            entries[mid] = build(mid, o['res'])
-        write_json(entries)
+            write_json({mid: build(mid, o['res'])})  # incremental, survives interruption
     if o['render']:
         render_lineup(ids)
 

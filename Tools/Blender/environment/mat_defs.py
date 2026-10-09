@@ -147,7 +147,7 @@ def m_Plywood(ctx):
 
 def m_PlywoodPainted(ctx):
     bc_w, h_w, late, c = wood_face(ctx, col('#d4b285'), col('#8f6038'), ring_cyc=26, wild=1.0, knots=0)
-    od = col('#4b5126')
+    od = col('#41432a')
     tone = ctx.n01(0.6, oct=4)
     roller = ctx.n01(0.01, oct=3, rough=0.5)  # orange peel / roller stipple
     streak = ctx.n01(0.25, oct=3, aniso=0.15)  # vertical roller streaks
@@ -156,8 +156,8 @@ def m_PlywoodPainted(ctx):
     fade = cover(ctx.n01(0.4, oct=5), 0.35, 0.35)
     paint = lerp(paint, col('#6d7048'), fade * 0.35)
     # chips revealing wood
-    ch = chips_mask(ctx, 0.05, 0.08, 0.012)
-    ch_small = chips_mask(ctx, 0.015, 0.03, 0.02)
+    ch = chips_mask(ctx, 0.05, 0.045, 0.012)
+    ch_small = chips_mask(ctx, 0.015, 0.02, 0.02)
     chips = np.clip(ch + ch_small, 0, 1)
     ring = np.clip(blur(chips, ctx.px(0.003)) * 1.5 - chips, 0, 1)
     wood = lerp(bc_w, col('#7c5a3a'), 0.25)
@@ -758,15 +758,15 @@ def m_CorrodedMetal(ctx):
     deep = cover(lay, 0.5, 0.2)
     pits_n = ctx.noise(0.002, oct=2, rough=0.7)
     pits = cover(-pits_n, 0.08, 0.05)
-    bc = ramp(norm01(lay + fz * 0.6 * flake), [(0, col('#2d1a10')), (0.35, col('#5a2e18')), (0.6, col('#8a4522')),
-                                                (0.8, col('#a65d2c')), (1, col('#c07a3e'))])
+    bc = ramp(norm01(lay + fz * 0.6 * flake), [(0, col('#2a1b12')), (0.35, col('#4e2c1a')), (0.6, col('#6e3a20')),
+                                                (0.8, col('#8a4c28')), (1, col('#a0643a'))])
     bc = bc * (1 + 0.06 * ctx.noise(0.004, oct=2))[..., None]
     bc = lerp(bc, col('#1c120c'), pits * 0.5)
     # remnant paint + bare steel patches
     paint = cover(ctx.n01(0.3, oct=4, rough=0.55), 0.12, 0.03)
-    steel = cover(ctx.n01(0.15, oct=4), 0.08, 0.05) * (1 - paint)
+    steel = cover(ctx.n01(0.15, oct=4), 0.3, 0.12) * (1 - paint)
     bc = lerp(bc, col('#4f5a52'), paint)
-    bc = lerp(bc, col('#56514b'), steel)
+    bc = lerp(bc, col('#4c4743') * (0.85 + 0.3 * ctx.n01(0.03, oct=3))[..., None], steel * 0.85)
     h = lay * 0.0006 + flake * fz * 0.0004 * deep - pits * 0.0006 + paint * 0.0006
     metal = steel * 0.8
     rough = 0.86 + 0.08 * fz - steel * 0.35 - paint * 0.25

@@ -535,11 +535,13 @@ def np_to_image(name, arr):
 def save_png(arr, path, srgb=False):
     """Writes an (h, w, 3|4) float array (linear) to an 8-bit PNG. srgb applies the sRGB OETF."""
     h, w = arr.shape[:2]
-    a = np.clip(arr[..., :3], 0, 1).astype(np.float32)
-    if srgb:
-        a = np.where(a <= 0.0031308, a * 12.92, 1.055 * np.power(a, 1 / 2.4) - 0.055)
     out = np.ones((h, w, 4), np.float32)
-    out[..., :3] = a
+    out[..., :3] = arr[..., :3]
+    np.clip(out, 0, 1, out=out)
+    if srgb:
+        for r0 in range(0, h, 512):
+            a = out[r0:r0 + 512, :, :3]
+            out[r0:r0 + 512, :, :3] = np.where(a <= 0.0031308, a * 12.92, 1.055 * np.power(a, 1 / 2.4) - 0.055)
     im = bpy.data.images.new("save_tmp", w, h, alpha=False, float_buffer=False)
     im.colorspace_settings.name = "Non-Color"
     im.pixels.foreach_set(out.ravel())
@@ -781,35 +783,45 @@ def bake_piece(ob, asset, piece, res, out_dir, log=print):
     a4[..., :3] = aux_full
     auximg.pixels.foreach_set(a4.ravel())
     auximg.update()
-    del a4, aux, sm, rgb
+    del a4, aux, sm, rgb, aux_s, cover
     bpy.data.images.remove(aux_tgt)
     # --- colour / data / normal passes ----------------------------------------------
+    ao_full = aux_full[..., 1].copy()
+    del aux_full
     tgt = new_image("BAKE_TGT", res, res)
     t1 = time.time()
+    base = os.path.join(out_dir, f"T_{aid}_{pn}")
     _set_output(ob, "BC")
     _bake(ob, "EMIT", tgt, margin)
-    bc = img_np(tgt)[..., :3].copy()
+    bc = img_np(tgt)[..., :3]
+    if bc.max() <= 0.0:
+        log(f"    WARNING: {aid}.{pn} base colour bake came out black")
+    save_png(bc, base + "_BC.png", srgb=True)
+    del bc
     _set_output(ob, "ORM")
     _bake(ob, "EMIT", tgt, margin)
-    data = img_np(tgt)[..., :3].copy()
-    _set_output(ob, "N")
-    _bake(ob, "NORMAL", tgt, margin)
-    nrm = img_np(tgt)[..., :3].copy()
-    _set_output(ob, "BC")
-    t_bake = time.time() - t1
-    base = os.path.join(out_dir, f"T_{aid}_{pn}")
-    save_png(bc, base + "_BC.png", srgb=True)
-    ao = 1.0 - (1.0 - aux_full[..., 1]) * 0.9
-    orm = np.stack([ao, np.clip(data[..., 1], 0.02, 1), data[..., 2]], axis=-1)
+    data = img_np(tgt)
+    ao = 1.0 - (1.0 - ao_full) * 0.9
+    orm = np.empty((res, res, 3), np.float32)
+    orm[..., 0] = ao
+    orm[..., 1] = np.clip(data[..., 1], 0.02, 1)
+    orm[..., 2] = data[..., 2]
+    del ao, ao_full
     save_png(orm, base + "_ORM.png")
-    save_png(nrm, base + "_N.png")
+    del orm
     mres = min(1024, res)
     msk = downsample(data[..., 0:1], res // mres)[..., 0]
+    del data
     if asset.mask and msk.max() > 0.01:
         m3 = np.stack([msk, np.zeros_like(msk), np.zeros_like(msk)], -1)
     else:
         m3 = np.zeros((mres, mres, 3), np.float32)
     save_png(m3, base + "_M.png")
+    _set_output(ob, "N")
+    _bake(ob, "NORMAL", tgt, margin)
+    save_png(img_np(tgt), base + "_N.png")
+    _set_output(ob, "BC")
+    t_bake = time.time() - t1
     paths = {k: base + f"_{k}.png" for k in ("BC", "N", "ORM", "M")}
     bpy.data.images.remove(tgt)
     log(f"    bake {aid}.{pn}: {res}px uv {t_uv:.1f}s bake {t_bake:.1f}s total {time.time() - t0:.1f}s")
@@ -1104,12 +1116,14 @@ def render(path, res=(1920, 1080), samples=48):
     scn.render.resolution_percentage = 100
     scn.cycles.samples = samples
     scn.cycles.use_adaptive_sampling = True
-    scn.cycles.adaptive_threshold = 0.04
-    scn.cycles.max_bounces = 6
-    scn.cycles.diffuse_bounces = 3
-    scn.cycles.glossy_bounces = 3
-    scn.cycles.transmission_bounces = 6
-    scn.cycles.transparent_max_bounces = 6
+    scn.cycles.adaptive_threshold = 0.06
+    scn.cycles.adaptive_min_samples = 4
+    scn.cycles.max_bounces = 5
+    scn.cycles.diffuse_bounces = 2
+    scn.cycles.glossy_bounces = 2
+    scn.cycles.transmission_bounces = 5
+    scn.cycles.transparent_max_bounces = 5
+    scn.cycles.light_sampling_threshold = 0.05
     scn.cycles.caustics_reflective = False
     scn.cycles.caustics_refractive = False
     scn.cycles.blur_glossy = 1.0

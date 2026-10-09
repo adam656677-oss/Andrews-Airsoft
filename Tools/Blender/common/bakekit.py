@@ -251,13 +251,13 @@ def build_zone_graph(mat, r, role, mask_img, seed, edge_radius):
     tint = role is not None
 
     # mask pass: R = edge (convex + concave), G = AO, B = convex edge
-    bev = nb.node("ShaderNodeBevel", samples=8)
+    bev = nb.node("ShaderNodeBevel", samples=6)
     bev.inputs["Radius"].default_value = edge_radius * 2.5
     dot = nb.node("ShaderNodeVectorMath", operation="DOT_PRODUCT")
     nb._in(dot.inputs[0], bev.outputs["Normal"])
     nb._in(dot.inputs[1], geo.outputs["Normal"])
     edge = nb.maprange(dot.outputs["Value"], 0.995, 0.75, 0.0, 1.0)
-    ao = nb.node("ShaderNodeAmbientOcclusion", samples=16, only_local=True)
+    ao = nb.node("ShaderNodeAmbientOcclusion", samples=10, only_local=True)
     ao.inputs["Distance"].default_value = edge_radius * 12
     ao_v = ao.outputs["AO"]
     convex = nb.mul(edge, nb.maprange(ao_v, 0.55, 0.9, 0.0, 1.0))
@@ -267,7 +267,7 @@ def build_zone_graph(mat, r, role, mask_img, seed, edge_radius):
     outs["role"] = nb.emit((1.0 if role == "P" else 0.0, 1.0 if role == "S" else 0.0, 1.0 if role == "A" else 0.0, 1.0))
 
     # normal pass: bevel-shader rounding + micro height
-    bev2 = nb.node("ShaderNodeBevel", samples=8)
+    bev2 = nb.node("ShaderNodeBevel", samples=5)
     bev2.inputs["Radius"].default_value = edge_radius
     kind, _scale, strength = r["micro"]
     bsdf = nb.node("ShaderNodeBsdfDiffuse")
@@ -292,17 +292,17 @@ def build_zone_graph(mat, r, role, mask_img, seed, edge_radius):
     p = nb.vadd(geo.outputs["Position"], (seed * 7.1, seed * 3.3, seed * 5.7))
 
     # curvature-driven edge wear, broken up by noise, plus sparse scratches
-    wn = nb.noise(p, 38.0, 6.0, 0.7)
+    wn = nb.noise(p, 38.0, 4.0, 0.7)
     wear_raw = nb.sub(nb.mul(m_convex, 1.25 * r["wear"]), nb.mul(nb.maprange(wn, 0.35, 0.65, 0.0, 1.0), 0.75))
     wear = nb.maprange(wear_raw, 0.05, 0.35, 0.0, 1.0, smooth=True)
     if r["scratches"] > 0:
-        sc = nb.noise(nb.vscale(p, (1.0, 0.04, 1.0)), 60.0, 4.0, 0.7, dist=0.4)
-        sc2 = nb.noise(nb.vscale(p, (0.05, 1.0, 1.0)), 45.0, 4.0, 0.7, dist=0.4)
+        sc = nb.noise(nb.vscale(p, (1.0, 0.04, 1.0)), 60.0, 3.0, 0.7, dist=0.4)
+        sc2 = nb.noise(nb.vscale(p, (0.05, 1.0, 1.0)), 45.0, 3.0, 0.7, dist=0.4)
         sline = nb.math("MAXIMUM", nb.maprange(sc, 0.71, 0.74, 0.0, 1.0), nb.maprange(sc2, 0.72, 0.745, 0.0, 1.0))
         spots = nb.maprange(nb.noise(p, 4.0, 2.0), 0.45, 0.7, 0.0, 1.0)
         wear = nb.math("MAXIMUM", wear, nb.mul(nb.mul(sline, spots), 0.55 * r["scratches"]))
     # AO cavity grime
-    gn = nb.noise(p, 12.0, 4.0, 0.6)
+    gn = nb.noise(p, 12.0, 2.0, 0.6)
     grime = nb.mul(nb.maprange(m_ao, 0.95, 0.35, 0.0, 1.0), nb.add(0.5, nb.mul(gn, 0.8)))
     grime = nb.mul(grime, r["grime"], clamp=True)
     mot = nb.noise(p, 2.5, 3.0, 0.5)
@@ -419,15 +419,19 @@ def _srgb(x):
 
 
 def save_png(arr, path, srgb):
+    """Saves an (h, w, 4) float array as an 8-bit PNG.  Modifies arr in place."""
     h, w, _ = arr.shape
     im = bpy.data.images.new("__save", w, h, alpha=False, float_buffer=False)
     im.colorspace_settings.name = "sRGB" if srgb else "Non-Color"
-    out = arr.copy()
+    out = arr
     out[..., 3] = 1.0
     if srgb:
         out[..., :3] = _srgb(out[..., :3])
-    out = np.round(np.clip(out, 0, 1) * 255.0) / 255.0
-    im.pixels.foreach_set(out.astype(np.float32).ravel())
+    np.clip(out, 0, 1, out=out)
+    out *= 255.0
+    np.round(out, out=out)
+    out /= 255.0
+    im.pixels.foreach_set(out.ravel())
     im.filepath_raw = path
     im.file_format = "PNG"
     im.save(filepath=path)
@@ -467,6 +471,43 @@ def _denoise_inplace(img, passes=2):
     img.update()
 
 
+PROXY_RES = 2048
+
+
+def proxy_path(path, res=None):
+    return os.path.join(HASH_DIR, "proxy", f"{res or PROXY_RES}_{os.path.basename(path)}")
+
+
+def _save_proxy(a, path, srgb, res=None):
+    """Preview renders use <= 2K copies of the textures (keeps memory low)."""
+    res = res or PROXY_RES
+    os.makedirs(os.path.join(HASH_DIR, "proxy"), exist_ok=True)
+    f = max(1, a.shape[0] // res)
+    if f > 1:
+        h, w, c = a.shape
+        p = a.reshape(h // f, f, w // f, f, c).mean(axis=(1, 3))
+    else:
+        p = a.copy()
+    save_png(p, proxy_path(path, res), srgb)
+
+
+def ensure_proxies(paths, res=None):
+    res = res or PROXY_RES
+    for k, path in paths.items():
+        if not os.path.exists(proxy_path(path, res)) or os.path.getmtime(proxy_path(path, res)) < os.path.getmtime(path) - 120:
+            im = bpy.data.images.load(path)
+            im.colorspace_settings.name = "Non-Color"
+            a = _pixels(im)
+            bpy.data.images.remove(im)
+            if k == "BC":  # stored sRGB bytes; keep them as-is (no re-encode)
+                f = max(1, a.shape[0] // res)
+                h, w, c = a.shape
+                p = a.reshape(h // f, f, w // f, f, c).mean(axis=(1, 3)) if f > 1 else a
+                save_png(p, proxy_path(path, res), srgb=False)
+            else:
+                _save_proxy(a, path, False, res)
+
+
 def texture_paths(out_dir, asset, piece):
     base = os.path.join(out_dir, f"T_{asset}_{piece}")
     return {"BC": base + "_BC.png", "N": base + "_N.png", "ORM": base + "_ORM.png", "M": base + "_M.png"}
@@ -493,7 +534,7 @@ def bake_piece(ob, zones, res, out_dir, asset, piece, seed=0.0, edge_radius=0.00
         else:
             ob.data.materials.append(m)
     margin = max(4, res // 256)
-    mask_res = max(512, res // 2)
+    mask_res = max(512, res // 4 if res >= 4096 else res // 2)
     mask = _float_image(f"__mask_{asset}_{piece}", mask_res)
     outs = [build_zone_graph(m, RECIPES[z[0]], z[1], None, seed, edge_radius) for m, z in zip(mats, zones)]
     _bake(ob, mats, [o["mask"] for o in outs], mask, "EMIT", max(2, margin // 2))
@@ -501,7 +542,9 @@ def bake_piece(ob, zones, res, out_dir, asset, piece, seed=0.0, edge_radius=0.00
     role_res = min(1024, res)
     role = _float_image(f"__role_{asset}_{piece}", role_res)
     _bake(ob, mats, [o["role"] for o in outs], role, "EMIT", max(2, margin // 2))
-    save_png(_pixels(role), paths["M"], srgb=False)
+    ra = _pixels(role)
+    _save_proxy(ra, paths["M"], False)
+    save_png(ra, paths["M"], srgb=False)
     bpy.data.images.remove(role)
     for m in mats:
         m.node_tree.nodes.clear()
@@ -512,12 +555,15 @@ def bake_piece(ob, zones, res, out_dir, asset, piece, seed=0.0, edge_radius=0.00
         img = _float_image(f"__{passname}_{asset}_{piece}", res)
         _bake(ob, mats, [o[passname] for o in outs], img, kind, margin)
         a = _pixels(img)
+        bpy.data.images.remove(img)
         if passname == "normal":
             v = a[..., :3] * 2.0 - 1.0
             v /= np.maximum(np.linalg.norm(v, axis=2, keepdims=True), 1e-6)
             a[..., :3] = v * 0.5 + 0.5
-        save_png(a, paths[{"color": "BC", "orm": "ORM", "normal": "N"}[passname]], srgb=srgb)
-        bpy.data.images.remove(img)
+            del v
+        key = {"color": "BC", "orm": "ORM", "normal": "N"}[passname]
+        _save_proxy(a, paths[key], srgb)
+        save_png(a, paths[key], srgb=srgb)
         del a
     bpy.data.images.remove(mask)
     for i, m in enumerate(saved):
@@ -556,7 +602,7 @@ def plain_material(name, rgb=(0.5, 0.5, 0.5), rough=0.5, metal=0.0, alpha=1.0, e
     return m
 
 
-def preview_material(name, paths, tints=None):
+def preview_material(name, paths, tints=None, proxy_res=None):
     """Material for Blender preview renders: BC * role-mask tints, ORM, DirectX normal."""
     m = fresh_material(name)
     nt = m.node_tree
@@ -566,8 +612,9 @@ def preview_material(name, paths, tints=None):
     nt.links.new(bsdf.outputs[0], out.inputs["Surface"])
     uv = nb.node("ShaderNodeUVMap", uv_map="UVMap")
     imgs = {}
+    ensure_proxies(paths, proxy_res)
     for k, cs in (("BC", "sRGB"), ("ORM", "Non-Color"), ("N", "Non-Color"), ("M", "Non-Color")):
-        t = nb.node("ShaderNodeTexImage", image=_load(paths[k], cs))
+        t = nb.node("ShaderNodeTexImage", image=_load(proxy_path(paths[k], proxy_res), cs))
         nt.links.new(uv.outputs["UV"], t.inputs["Vector"])
         imgs[k] = t
     col = imgs["BC"].outputs["Color"]

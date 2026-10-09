@@ -799,7 +799,7 @@ def chandelier(A):
             p0, p1 = tier_tips[i], tier_tips[(i + 1) % len(tier_tips)]
             path = catenary(p0, p1, 0.10 if ti == 0 else 0.07, nbeads + 1)
             for p in path[1:-1]:
-                octa_bead(A, p, 0.008, 0.016)
+                octa_bead(A, p, 0.011, 0.022)
     # crystal basket: strands from the lower ring down to the column bottom
     for i in range(12):
         a = 2 * math.pi * (i + 0.5) / 12
@@ -807,7 +807,7 @@ def chandelier(A):
         p1 = (0.05 * math.cos(a), 0.05 * math.sin(a), zb + 0.03)
         path = catenary(p0, p1, 0.06, 8)
         for p in path[1:]:
-            octa_bead(A, p, 0.0075, 0.015)
+            octa_bead(A, p, 0.010, 0.020)
     # crown ring of drops near the top
     for i in range(16):
         a = 2 * math.pi * i / 16
@@ -817,7 +817,7 @@ def chandelier(A):
     A.point("CeilingMount", (0, 0, 1.23))
     A.point("Light", (0, 0, zb + 0.45))
     A.preview["Emissive"] = {"emit": (1.0, 0.78, 0.5, 40.0)}
-    A.preview["Glass"] = {"glass": {"trans": 1.0, "rough": 0.0, "thin": True, "ior": 1.55}}
+    A.preview["Glass"] = {"glass": {"trans": 1.0, "rough": 0.0, "thin": False, "ior": 1.6}}
     A.view = (1.0, -0.55, 0.12)
 
 
@@ -942,7 +942,7 @@ def planter(A):
     # boxwood: dark core + thousands of small leaves on a lumpy sphere
     A.cur = "Shrub"
     cz, R = 0.95, 0.31
-    A.sphere(R - 0.02, at=(0, 0, cz), mat="leaves", seg=32, rings=16)
+    A.sphere(R - 0.02, at=(0, 0, cz), mat="leaves", seg=32, rings=16, piece="Body")
     rng = random.Random(11)
     verts, faces = [], []
     nleaves = 9000
@@ -1080,33 +1080,47 @@ def bollard(A):
 @asset("TrashBags", res=2048, collision="Convex", edge=0.004, ao_dist=0.2)
 def trash_bags(A):
     rng = random.Random(5)
-    bags = [((0.0, 0.0), 0.30, 0.52), ((0.38, 0.22), 0.27, 0.46), ((-0.34, 0.30), 0.28, 0.40), ((0.15, -0.36), 0.24, 0.42), ((-0.15, -0.20), 0.22, 0.30), ((0.05, 0.12), 0.22, 0.35)]
+    bags = [((0.0, 0.0), 0.30, 0.62), ((0.42, 0.25), 0.27, 0.58), ((-0.36, 0.32), 0.28, 0.52), ((0.18, -0.40), 0.25, 0.55), ((-0.18, -0.24), 0.22, 0.40), ((0.05, 0.12), 0.22, 0.45)]
     for k, ((bx, by), r, h) in enumerate(bags):
         zbase = 0.0 if k < 4 else 0.28
         if k == 5:
             bx, by, zbase = 0.10, 0.08, 0.40
         seed = rng.uniform(0, 10)
+        lumps = []
+        for _ in range(7):
+            d = V((rng.uniform(-1, 1), rng.uniform(-1, 1), rng.uniform(-1, 1))).normalized() * rng.uniform(7, 16)
+            lumps.append((d, rng.uniform(0, 6.28), rng.uniform(0.05, 0.10)))
+        folds = [(rng.randint(5, 12), rng.uniform(0, 6.28), rng.uniform(0.04, 0.08)) for _ in range(3)]
+        sq = (rng.uniform(0.85, 1.2), rng.uniform(0.85, 1.2))
+        lean = V((rng.uniform(-0.1, 0.1), rng.uniform(-0.1, 0.1), 0))
 
-        def bag_fn(u, v, r=r, h=h, seed=seed):
+        def bag_fn(u, v, r=r, h=h, lumps=lumps, folds=folds, sq=sq, lean=lean):
             a = 2 * math.pi * u
-            # profile: flat bottom, bulging body, gathered neck
-            if v < 0.82:
-                t = v / 0.82
-                rad = r * (0.55 + 0.45 * math.sin(math.pi * min(1.0, t * 1.15))) * (1.0 if t > 0.1 else 0.6 + 4 * t)
-                z = h * 0.85 * t
+            if v < 0.84:
+                t = v / 0.84
+                body = math.sin(math.pi * min(1.0, 0.06 + t * 0.96)) ** 0.5
+                rad = r * body * (1.0 + 0.32 * (1 - t) ** 3)
+                z = h * 0.86 * (t if t > 0.06 else 0.06 * (t / 0.06) ** 0.5)
             else:
-                t = (v - 0.82) / 0.18
-                rad = r * 0.12 * (1 - 0.6 * t) + 0.012
-                z = h * 0.85 + h * 0.18 * t
-            wr = 1.0 + 0.10 * math.sin(a * 5 + seed + v * 9) * math.sin(v * 11 + seed) + 0.05 * math.sin(a * 13 + v * 23 + seed * 2)
-            sag = 1.0 + 0.25 * max(0.0, 0.3 - v)
-            return (rad * wr * sag * math.cos(a), rad * wr * math.sin(a) * 0.9, z)
+                t = (v - 0.84) / 0.16
+                rad = r * (0.14 * (1 - t) + 0.03)
+                z = h * 0.86 + h * 0.16 * t
+            p0 = V((rad * sq[0] * math.cos(a), rad * sq[1] * math.sin(a), z))
+            w = 0.0
+            for d, ph, amp in lumps:
+                w += amp * math.sin(d.dot(p0) + ph)
+            neck = max(0.0, min(1.0, (v - 0.55) / 0.29))
+            for k, ph, amp in folds:
+                w -= amp * neck * abs(math.sin(a * k + ph + v * 3.0))
+            w *= min(1.0, v / 0.08)
+            p = p0 * (1.0 + w) if v < 0.98 else p0
+            return tuple(p + lean * (z / h) * h)
 
-        ob = A.grid(bag_fn, 64, 40, mat="trashbag", closed_u=True, recalc=False)
+        ob = A.grid(bag_fn, 96, 56, mat="trashbag", closed_u=True, recalc=False)
         ob.matrix_world = Matrix.Translation((bx, by, zbase)) @ Matrix.Rotation(rng.uniform(-0.25, 0.25), 4, "X") @ Matrix.Rotation(rng.uniform(0, 6.28), 4, "Z")
         # knot ears
         for s in (-1, 1):
-            e = A.sweep(catmull([(0, 0, h * 1.0), (s * 0.04, 0.0, h * 1.05), (s * 0.07, 0.01, h * 1.02)], 5), r=0.012, mat="trashbag", smooth=180)
+            e = A.sweep(catmull([(0, 0, h * 1.0), (s * 0.05, 0.01, h * 1.06), (s * 0.09, 0.02, h * 1.03), (s * 0.11, 0.0, h * 0.98)], 5), prof=circle_pts(0.014, 10, rx=0.004), mat="trashbag", smooth=180, scales=[1.0, 1.2, 1.4, 1.5, 1.6, 1.6, 1.5, 1.3, 1.1, 0.9, 0.7, 0.5, 0.4, 0.3, 0.2, 0.2][:16])
             e.matrix_world = ob.matrix_world.copy()
     A.view = (1.0, -0.6, 0.45)
 

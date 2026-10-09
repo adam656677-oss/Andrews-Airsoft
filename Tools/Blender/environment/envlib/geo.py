@@ -119,6 +119,9 @@ class Builder:
 
     def finish(self, name, collection=None, smooth_angle=32.0):
         me = bpy.data.meshes.new(name)
+        ngons = [f for f in self.bm.faces if len(f.verts) > 4]
+        if ngons:  # FBX tangent export needs tris/quads
+            bmesh.ops.triangulate(self.bm, faces=ngons, quad_method='BEAUTY', ngon_method='BEAUTY')
         self.bm.normal_update()
         self.bm.to_mesh(me)
         self.bm.free()
@@ -206,7 +209,8 @@ def smart_uv(obj, margin=0.004, angle=60.0, layer='UVMap'):
                              correct_aspect=True, scale_to_bounds=False)
     try:
         bpy.ops.uv.average_islands_scale()
-        bpy.ops.uv.pack_islands(rotate=True, margin=margin)
+        bpy.ops.uv.pack_islands(rotate=True, rotate_method='ANY', shape_method='CONCAVE',
+                                margin_method='FRACTION', margin=margin)
     except Exception as e:
         print('pack failed', e)
     bpy.ops.object.mode_set(mode='OBJECT')

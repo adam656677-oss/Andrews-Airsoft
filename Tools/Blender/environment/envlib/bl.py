@@ -92,9 +92,9 @@ def cycles_setup(samples=24, w=1920, h=1080, tex_limit='2048'):
         sc.cycles.denoising_prefilter = 'ACCURATE'
     except Exception:
         pass
-    sc.cycles.max_bounces = 6
-    sc.cycles.diffuse_bounces = 3
-    sc.cycles.glossy_bounces = 3
+    sc.cycles.max_bounces = 4
+    sc.cycles.diffuse_bounces = 2
+    sc.cycles.glossy_bounces = 2
     sc.cycles.transparent_max_bounces = 16
     sc.cycles.transmission_bounces = 4
     sc.cycles.caustics_reflective = False
@@ -474,6 +474,14 @@ def clear_scene_extras():
 # ----------------------------------------------------------------------------
 def export_fbx(obj, path):
     ensure(os.path.dirname(path))
+    import bmesh
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    ng = [f for f in bm.faces if len(f.verts) > 4]
+    if ng:  # FBX tangent space requires tris/quads
+        bmesh.ops.triangulate(bm, faces=ng, quad_method='BEAUTY', ngon_method='BEAUTY')
+        bm.to_mesh(obj.data)
+    bm.free()
     for o in bpy.context.view_layer.objects:
         o.select_set(False)
     obj.select_set(True)

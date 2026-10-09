@@ -43,9 +43,10 @@ R = {
     'steel_dark': dict(base='PaintedSteel', tint=(0.45, 0.45, 0.45), hue=(0.3, 0.8), dirt=0.6, edge=0.5, ground=0.2),
     'galv': dict(base='Brass', hue=(0.0, 0.85), metal=1.0, dirt=0.6, edge=0.2, rough_add=0.15),
     'rust': dict(base='CorrodedMetal', dirt=0.6, edge=0.25, ground=0.3),
-    'straw': dict(base='Straw', dirt=0.7, ground=0.25, ground_col=(0.25, 0.2, 0.12), breakup=0.35, bump=0.3,
-                  bump_scale=40.0),
-    'granite': dict(base='Granite', dirt=0.8, edge=0.45, ground=0.3, moss=0.75, ao_dist=0.4, breakup=0.35,
+    'straw': dict(base='Straw', tint=(0.82, 0.74, 0.56), dirt=0.85, ground=0.3, ground_col=(0.2, 0.16, 0.1),
+                  breakup=0.45, breakup_scale=2.0, bump=0.3, bump_scale=40.0),
+    'granite': dict(base='Granite', tint=(0.8, 0.78, 0.74), dirt=0.9, edge=0.45, ground=0.3, moss=1.0, ao_dist=0.4,
+                    breakup=0.5, breakup_scale=1.5, streak=0.35, streak_col=(0.1, 0.095, 0.085), streak_scale=2.0,
                     bump=0.25, bump_scale=6.0, bump_dist=0.01),
     'concrete': dict(base='Concrete', dirt=0.7, edge=0.35, ground=0.2),
 }
@@ -342,22 +343,30 @@ def p_HayBale_Square():
     L, W, H = 1.0, 0.48, 0.38
     bm = box_bm((L, W, H), 0.05, 3, subdiv=0)
     B.add(bm, 'straw', mtx((0, 0, H / 2)), grain='x')
-    for x in (-0.25, 0.25):
-        prof = [(W / 2 + 0.006, -H / 2 - 0.006), (W / 2 + 0.006, H / 2 + 0.006), (-W / 2 - 0.006, H / 2 + 0.006),
-                (-W / 2 - 0.006, -H / 2 - 0.006)]
-        for i in range(4):
-            a = Vector((x, prof[i][0], prof[i][1] + H / 2))
-            b2 = Vector((x, prof[(i + 1) % 4][0], prof[(i + 1) % 4][1] + H / 2))
-            B.between('twine', a, b2, 0.004, n=6, bevel=0)
     o = B.finish('HayBale_Square_Body')
-    geo.subdivide_obj(o, 2, simple=True)
+    geo.subdivide_obj(o, 3, simple=True)
     me = o.data
     P = geo.verts_np(me)
     N = geo.normals_np(me)
     d = geo.fbm3(P * 3.0, 1.0, 4, 0.5, 7) * 0.02 + geo.fbm3(P * 18.0, 1.0, 3, 0.5, 8) * 0.006
-    # twine cuts in
-    tw = np.exp(-((np.abs(P[:, 0]) - 0.25) / 0.012) ** 2) * 0.012
+    tw = np.exp(-((np.abs(P[:, 0]) - 0.25) / 0.015) ** 2) * 0.014  # twine cuts in
     geo.set_verts(me, P + N * (d - tw)[:, None])
+    T = Builder()
+    for x in (-0.25, 0.25):
+        pts = []
+        for k in range(41):
+            a = k / 40 * math.tau
+            y = math.cos(a) * (W / 2 + 0.005)
+            z = H / 2 + math.sin(a) * (H / 2 + 0.005)
+            # rounded-rectangle loop hugging the bale
+            y = max(-W / 2 + 0.01, min(W / 2 - 0.01, y * 1.25))
+            z = max(0.01, min(H - 0.005, (z - H / 2) * 1.25 + H / 2))
+            pts.append(Vector((x, y, z)))
+        for a_, b_ in zip(pts[:-1], pts[1:]):
+            if (b_ - a_).length > 1e-4:
+                T.between('twine', a_, b_, 0.0035, n=6, bevel=0)
+    t = T.finish('HayBale_Square_Twine')
+    o = geo.join([o, t], 'HayBale_Square_Body')
     return [('Body', 'Body', o, {'straw': R['straw'], 'twine': dict(base='Burlap', tint=(0.9, 0.75, 0.45), dirt=0.3)})], \
         'small', 'Box'
 
@@ -525,7 +534,7 @@ def p_WreckedCar():
         return float(np.interp(x, xs, zs))
     zbelt = lambda x: min(ztop(x), 0.97 + 0.02 * (x / 2.3))
     zbot = 0.22
-    nx, ns = 120, 64
+    nx, ns = 200, 96
     bm = bmesh.new()
     grid = []
     tags = []
@@ -595,8 +604,18 @@ def p_WreckedCar():
                     cut = True
             if not cut:
                 faces.append(bm.faces.new((grid[i][j], grid[i + 1][j], grid[i + 1][j + 1], grid[i][j + 1])))
-    # end caps (front / back panels)
     bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context='VERTS')
+    # snap the wheel-arch cut to a clean (slightly ragged) circle
+    for v in bm.verts:
+        if not v.is_boundary:
+            continue
+        for xw in (-1.38, 1.36):
+            dx, dz = v.co.x - xw, v.co.z - 0.3
+            d = math.hypot(dx, dz)
+            if d < 0.47 and v.co.z < 0.8:
+                rr = 0.4 + 0.012 * math.sin(math.atan2(dz, dx) * 7 + xw)
+                v.co.x = xw + dx / max(d, 1e-6) * rr
+                v.co.z = 0.3 + dz / max(d, 1e-6) * rr
     bm.normal_update()
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
     bmesh.ops.solidify(bm, geom=bm.faces[:], thickness=0.018)
@@ -657,7 +676,7 @@ def p_WreckedCar():
     P[:, 2] -= P[:, 2].min()
     geo.set_verts(me, P)
     rec = {
-        'body': dict(base='CorrodedMetal', paint=(0.32, 0.12, 0.1), chip=0.9, chip_scale=3.5, chip_global=0.38,
+        'body': dict(base='CorrodedMetal', paint=(0.36, 0.13, 0.1), chip=0.9, chip_scale=3.0, chip_global=0.62,
                      under='CorrodedMetal', paint_rough=0.75, edge=0.2, dirt=0.8, ground=0.45, streak=0.6,
                      streak_col=(0.22, 0.09, 0.03)),
         'rust': dict(base='CorrodedMetal', dirt=0.8, edge=0.2, ground=0.4),
@@ -937,7 +956,8 @@ def rock(name, seed, size, flat=0.6):
         d = np.percentile(P @ n, rng.uniform(80, 93))
         over = np.clip(P @ n - d, 0, None)
         P = P - np.outer(over * 0.85, n)
-    P = P + P / np.linalg.norm(P, axis=1, keepdims=True) * (geo.fbm3(P * 3.0, 1.0, 4, 0.55, seed + 1) * 0.035 * max(size))[:, None]
+    P = P + P / np.linalg.norm(P, axis=1, keepdims=True) * (geo.fbm3(P * 3.0, 1.0, 4, 0.55, seed + 1) * 0.05 * max(size))[:, None]
+    P = P + P / np.linalg.norm(P, axis=1, keepdims=True) * (geo.fbm3(P * 25.0, 1.0, 2, 0.5, seed + 3) * 0.004 * max(size))[:, None]
     P = P + P / np.linalg.norm(P, axis=1, keepdims=True) * (geo.fbm3(P * 12.0, 1.0, 3, 0.5, seed + 2) * 0.008 * max(size))[:, None]
     zmin = P[:, 2].min()
     P[:, 2] = np.maximum(P[:, 2], zmin + size[2] * 0.25 * flat)
@@ -1012,8 +1032,8 @@ def p_FlagPole_Objective():
     flag = F.finish('FlagPole_Objective_Flag')
     rb = {'pole': R['galv'], 'tyre': R['rubber'], 'conc': R['concrete'],
           'rope': dict(base='Burlap', tint=(0.95, 0.95, 0.9), hue=(0.1, 1.3), dirt=0.3)}
-    rf = {'flag': dict(base='Canvas', hue=(0.0, 2.35), mask=(1, 0, 0), dirt=0.35, breakup=0.15, edge=0.0,
-                       bump=0.15, bump_scale=8.0),
+    rf = {'flag': dict(base='Canvas', paint=(0.88, 0.88, 0.88), chip=0.0, chip_global=-0.6, paint_rough=0.8,
+                       mask=(1, 0, 0), dirt=0.35, breakup=0.15, edge=0.0, bump=0.15, bump_scale=8.0),
           'clip': dict(base='PaintedSteel', tint=(0.3, 0.3, 0.3), mask=(0, 0, 0))}
     return [('Body', 'Body', body, rb), ('Flag', 'Static', flag, rf)], 'small', 'Convex', \
         {'TintVariants': {'Red': [0.6, 0.05, 0.04], 'Blue': [0.04, 0.15, 0.6]},
@@ -1085,8 +1105,8 @@ def p_ChronoTable():
     rec = {'top': R['ply'], 'frame': R['steel_dark'], 'feet': R['rubber'],
            'chrono': dict(base='Rubber', tint=(0.9, 0.9, 0.9), dirt=0.3, edge=0.4, metal=0.0),
            'display': dict(base='MarbleBlack', tint=(0.3, 0.45, 0.35), rough_add=-0.05),
-           'screen': dict(base='Canvas', hue=(0.0, 2.6), dirt=0.2),
-           'bottle': dict(base='Rubber', tint=(2.2, 2.2, 2.3), rough_mul=0.5, dirt=0.2),
+           'screen': dict(base='Canvas', paint=(0.92, 0.92, 0.9), chip=0.0, chip_global=-0.6, paint_rough=0.6, dirt=0.2),
+           'bottle': dict(base='Rubber', paint=(0.9, 0.9, 0.92), chip=0.0, chip_global=-0.6, paint_rough=0.3, dirt=0.2),
            'clip': dict(base='OSB', dirt=0.2)}
     return [('Body', 'Body', body, rec)], 'small', 'Box'
 
@@ -1157,7 +1177,7 @@ def build(aid, res, opts):
         if aid in ('Tire',):
             el = 30.0
         bl.product_shot(objs, os.path.join(bl.RENDERS, CAT, aid + '.png'), az=az, el=el,
-                        samples=opts['samples'] or 14, margin=1.1)
+                        samples=opts['samples'] or 10, margin=1.1)
         if aid == 'OilDrum':
             pass
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(bl.ensure(SCRATCH), 'P_' + aid + '.blend'), compress=False)
@@ -1168,23 +1188,26 @@ def main():
     o = bl.parse_args()
     ids = o['ids'] or ASSETS
     if not o['lineup_only']:
-        entries = {}
         for aid in ids:
             try:
-                entries[aid] = build(aid, o['res'], o)
-            except Exception as e:
+                e = build(aid, o['res'], o)
+            except Exception as ex:
                 import traceback
                 traceback.print_exc()
-                print('FAILED', aid, e, flush=True)
-        bl.json_update('Props.json', 'Assets', entries,
+                print('FAILED', aid, ex, flush=True)
+                continue
+            bl.json_update('Props.json', 'Assets', {aid: e},
                        extra={'Notes': 'Unreal cm. Origin = floor centre, front +X. M_* slots = unique baked sets '
                                        '(T_<Id>_<Piece>_BC/N/ORM, _M role mask R = tint). MI_Bark uses Materials.json '
-                                       '(1 UV = 2 m). Leaves/Net are Masked with _Opacity.'})
+                                       '(1 UV = 2 m). Leaves/Net are Masked with _Opacity.'})  # per asset
     if o['lineup'] and o['render']:
         import architecture
         architecture.SCRATCH = SCRATCH
-        lineup_ids = ['P_' + a for a in ASSETS]
-        architecture.lineup(lineup_ids, CAT, cols=6, spacing=0.6)
+        order = ['Tire', 'TireStack', 'OilDrum', 'Crate_Ammo', 'Crate_Wood', 'Pallet', 'PalletStack', 'HayBale_Square',
+                 'SteelTarget', 'ChronoTable', 'Rock_B', 'HayBale_Round', 'CableSpool', 'Rock_A', 'SandbagCorner',
+                 'SandbagWall_3m', 'Barricade_Plywood_3m', 'Barricade_Plywood_4m', 'WreckedCar', 'FlagPole_Objective',
+                 'Bush_A', 'Tree_Oak_B', 'Tree_Oak_A', 'Tree_Oak_C']
+        architecture.lineup(['P_' + a for a in order], CAT, cols=7, spacing=0.5)
 
 
 if __name__ == '__main__':

@@ -361,7 +361,7 @@ def velvet(nb, c, col=(0.16, 0.012, 0.025), rough=0.82):
     cr, _ = nb.noise(c.P, 9.0, 6.0, 0.65, dist=0.6)
     pile, _ = nb.noise(c.P, 1400.0, 1.0, 0.5)
     col_s = nb.cmul(col, nb.add(0.65, nb.mul(cr, 0.75)))
-    col_s = nb.cmul(col_s, nb.mix(nb.mul(c.cav, 1.8), 1.0, 0.25))
+    col_s = nb.cmul(col_s, nb.mix(nb.mul(c.cav, 1.3), 1.0, 0.45))
     sheen = tuple(min(1, x * 1.9 + 0.01) for x in col)
     col_s = nb.mixc(nb.mul(c.edge, 0.55), col_s, sheen)
     r = nb.add(rough, nb.mul(cr, 0.1))
@@ -660,7 +660,7 @@ def trashbag(nb, c):
     col = nb.cmul((0.012, 0.013, 0.014), nb.add(0.8, nb.mul(cr, 0.8)))
     dust, _ = nb.noise(c.P, 6.0, 4.0, 0.6)
     col = nb.mixc(nb.mul(nb.ss(0.6, 0.8, dust), 0.5), col, (0.05, 0.045, 0.04))
-    r = nb.add(0.22, nb.add(nb.mul(cr, 0.15), nb.mul(nb.ss(0.6, 0.8, dust), 0.4)))
+    r = nb.add(0.33, nb.add(nb.mul(cr, 0.15), nb.mul(nb.ss(0.6, 0.8, dust), 0.35)))
     return _out(col, r, 0.0, nb.mul(cr, -1.0), 0.5, 0.001)
 
 
@@ -706,7 +706,7 @@ MATS = {
     "cast_iron": (paint, dict(col=(0.018, 0.018, 0.019), rough=0.45, peel=1.0, grime=0.5, rust=0.6, chip=0.5, chip_col=(0.08, 0.04, 0.02))),
     "powder_black": (paint, dict(col=(0.022, 0.022, 0.024), rough=0.48, peel=1.0, grime=0.3)),
     "lacquer_black": (paint, dict(col=(0.008, 0.008, 0.009), rough=0.07, peel=0.3, grime=0.15)),
-    "paint_car": (paint, dict(col=(0.75, 0.75, 0.75), rough=0.16, mask=1.0, peel=0.6, grime=0.35)),
+    "paint_car": (paint, dict(col=(0.75, 0.75, 0.75), rough=0.11, mask=1.0, peel=0.6, grime=0.3)),
     "paint_truck": (paint, dict(col=(0.75, 0.75, 0.75), rough=0.3, mask=1.0, peel=0.8, grime=0.55, streak=0.4)),
     "paint_box_white": (paint, dict(col=(0.62, 0.62, 0.60), rough=0.4, peel=0.4, grime=0.7, streak=0.6)),
     "paint_dumpster": (paint, dict(col=(0.025, 0.075, 0.04), rough=0.5, peel=1.0, grime=0.7, chip=1.0, chip_col=(0.10, 0.05, 0.025), rust=0.8, streak=0.6)),

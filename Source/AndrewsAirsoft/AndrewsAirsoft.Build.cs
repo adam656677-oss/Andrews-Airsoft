@@ -21,7 +21,8 @@ public class AndrewsAirsoft : ModuleRules
 			"NetCore",
 			"PhysicsCore",
 			"DeveloperSettings",
-			"AudioMixer"
+			"AudioMixer",
+			"Sockets"
 		});
 	}
 }

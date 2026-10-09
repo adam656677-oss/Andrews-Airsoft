@@ -160,9 +160,9 @@ def recipe_material(name, r):
     emit.name = 'BAKE_EMIT'
 
     # AUX source (AO, edge) - replaced by baked image after pass 1
-    ao = b.node('ShaderNodeAmbientOcclusion', samples=12, only_local=False)
+    ao = b.node('ShaderNodeAmbientOcclusion', samples=8, only_local=False)
     ao.inputs['Distance'].default_value = r.get('ao_dist', 0.25)
-    bev = b.node('ShaderNodeBevel', samples=8)
+    bev = b.node('ShaderNodeBevel', samples=6)
     bev.inputs['Radius'].default_value = r.get('edge_r', 0.008)
     geo = b.node('ShaderNodeNewGeometry')
     dot = b.node('ShaderNodeVectorMath', operation='DOT_PRODUCT')
@@ -211,7 +211,7 @@ def recipe_material(name, r):
         n1 = b.noise(r.get('chip_scale', 9.0), 8, 0.7, dist=0.3)
         chipf = b.math('ADD', b.math('MULTIPLY', EDGE, r.get('chip', 0.5) * 1.6), b.math('MULTIPLY', n1, 0.9))
         chip = b.ramp(chipf, 0.98 - r.get('chip_global', 0.0), 1.06 - r.get('chip_global', 0.0))
-        pc = r['paint']
+        pc = tuple(float(c) for c in __import__('envlib.tex', fromlist=['x']).srgb_to_lin(r['paint']))  # sRGB in
         pnoise = b.noise(3.0, 4, 0.5)
         paint = b.mix(tuple(pc), tuple(c * 0.86 for c in pc), pnoise)
         if r.get('under'):

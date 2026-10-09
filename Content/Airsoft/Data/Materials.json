@@ -8,7 +8,7 @@
       "ORM": "Materials/Asphalt/T_Asphalt_ORM.png",
       "H": "Materials/Asphalt/T_Asphalt_H.png",
       "Opacity": null,
-      "Resolution": 1024,
+      "Resolution": 4096,
       "ArchUVScale": 0.66667,
       "HeightRangeM": 0.00795
     },
@@ -19,7 +19,7 @@
       "ORM": "Materials/AsphaltWet/T_AsphaltWet_ORM.png",
       "H": null,
       "Opacity": null,
-      "Resolution": 1024,
+      "Resolution": 4096,
       "ArchUVScale": 0.66667
     },
     "Bark": {
@@ -29,9 +29,9 @@
       "ORM": "Materials/Bark/T_Bark_ORM.png",
       "H": "Materials/Bark/T_Bark_H.png",
       "Opacity": null,
-      "Resolution": 1024,
+      "Resolution": 4096,
       "ArchUVScale": 2.0,
-      "HeightRangeM": 0.0348
+      "HeightRangeM": 0.03401
     },
     "Brass": {
       "TileMeters": 0.5,
@@ -40,7 +40,7 @@
       "ORM": "Materials/Brass/T_Brass_ORM.png",
       "H": null,
       "Opacity": null,
-      "Resolution": 1024,
+      "Resolution": 4096,
       "ArchUVScale": 4.0
     },
     "Brick": {
@@ -50,7 +50,7 @@
       "ORM": "Materials/Brick/T_Brick_ORM.png",
       "H": "Materials/Brick/T_Brick_H.png",
       "Opacity": null,
-      "Resolution": 1024,
+      "Resolution": 4096,
       "ArchUVScale": 1.11111,
       "HeightRangeM": 0.00858
     },
@@ -61,7 +61,7 @@
       "ORM": "Materials/BrickDark/T_BrickDark_ORM.png",
       "H": null,
       "Opacity": null,
-      "Resolution": 1024,
+      "Resolution": 4096,
       "ArchUVScale": 1.11111
     },
     "Burlap": {
@@ -71,7 +71,7 @@
       "ORM": "Materials/Burlap/T_Burlap_ORM.png",
       "H": null,
       "Opacity": null,
-      "Resolution": 1024,
+      "Resolution": 4096,
       "ArchUVScale": 4.0
     },
     "Canvas": {
@@ -81,7 +81,7 @@
       "ORM": "Materials/Canvas/T_Canvas_ORM.png",
       "H": null,
       "Opacity": null,
-      "Resolution": 1024,
+      "Resolution": 4096,
       "ArchUVScale": 2.0
     },
     "Carpet": {
@@ -91,7 +91,7 @@
       "ORM": "Materials/Carpet/T_Carpet_ORM.png",
       "H": null,
       "Opacity": null,
-      "Resolution": 1024,
+      "Resolution": 4096,
       "ArchUVScale": 2.0
     },
     "Concrete": {
@@ -101,7 +101,7 @@
       "ORM": "Materials/Concrete/T_Concrete_ORM.png",
       "H": null,
       "Opacity": null,
-      "Resolution": 1024,
+      "Resolution": 4096,
       "ArchUVScale": 0.83333
     },
     "ConcreteFloor": {
@@ -111,7 +111,7 @@
       "ORM": "Materials/ConcreteFloor/T_ConcreteFloor_ORM.png",
       "H": null,
       "Opacity": null,
-      "Resolution": 1024,
+      "Resolution": 4096,
       "ArchUVScale": 0.5
     },
     "CorrodedMetal": {
@@ -121,7 +121,7 @@
       "ORM": "Materials/CorrodedMetal/T_CorrodedMetal_ORM.png",
       "H": null,
       "Opacity": null,
-      "Resolution": 1024,
+      "Resolution": 4096,
       "ArchUVScale": 2.0
     },
     "DiamondPlate": {
@@ -131,7 +131,7 @@
       "ORM": "Materials/DiamondPlate/T_DiamondPlate_ORM.png",
       "H": null,
       "Opacity": null,
-      "Resolution": 1024,
+      "Resolution": 4096,
       "ArchUVScale": 3.33333
     },
     "Dirt": {
@@ -141,7 +141,7 @@
       "ORM": "Materials/Dirt/T_Dirt_ORM.png",
       "H": "Materials/Dirt/T_Dirt_H.png",
       "Opacity": null,
-      "Resolution": 1024,
+      "Resolution": 4096,
       "ArchUVScale": 1.0,
       "HeightRangeM": 0.04154
     },
@@ -152,7 +152,7 @@
       "ORM": "Materials/ForestFloor/T_ForestFloor_ORM.png",
       "H": "Materials/ForestFloor/T_ForestFloor_H.png",
       "Opacity": null,
-      "Resolution": 1024,
+      "Resolution": 4096,
       "ArchUVScale": 1.0,
       "HeightRangeM": 0.0387
     },
@@ -163,7 +163,7 @@
       "ORM": "Materials/Granite/T_Granite_ORM.png",
       "H": null,
       "Opacity": null,
-      "Resolution": 1024,
+      "Resolution": 4096,
       "ArchUVScale": 1.33333
     },
     "Grass": {
@@ -173,7 +173,7 @@
       "ORM": "Materials/Grass/T_Grass_ORM.png",
       "H": null,
       "Opacity": null,
-      "Resolution": 1024,
+      "Resolution": 4096,
       "ArchUVScale": 1.0
     },
     "Gravel": {
@@ -183,7 +183,7 @@
       "ORM": "Materials/Gravel/T_Gravel_ORM.png",
       "H": "Materials/Gravel/T_Gravel_H.png",
       "Opacity": null,
-      "Resolution": 1024,
+      "Resolution": 4096,
       "ArchUVScale": 1.33333,
       "HeightRangeM": 0.0342
     },
@@ -194,7 +194,7 @@
       "ORM": "Materials/Leather/T_Leather_ORM.png",
       "H": null,
       "Opacity": null,
-      "Resolution": 1024,
+      "Resolution": 4096,
       "ArchUVScale": 4.0
     },
     "MarbleBlack": {
@@ -204,7 +204,7 @@
       "ORM": "Materials/MarbleBlack/T_MarbleBlack_ORM.png",
       "H": null,
       "Opacity": null,
-      "Resolution": 1024,
+      "Resolution": 4096,
       "ArchUVScale": 1.0
     },
     "Mud": {
@@ -214,7 +214,7 @@
       "ORM": "Materials/Mud/T_Mud_ORM.png",
       "H": null,
       "Opacity": null,
-      "Resolution": 1024,
+      "Resolution": 4096,
       "ArchUVScale": 1.0
     },
     "Netting": {
@@ -224,7 +224,7 @@
       "ORM": "Materials/Netting/T_Netting_ORM.png",
       "H": null,
       "Opacity": "Materials/Netting/T_Netting_Opacity.png",
-      "Resolution": 1024,
+      "Resolution": 4096,
       "ArchUVScale": 2.0,
       "BlendMode": "Masked"
     },
@@ -235,7 +235,7 @@
       "ORM": "Materials/OSB/T_OSB_ORM.png",
       "H": null,
       "Opacity": null,
-      "Resolution": 1024,
+      "Resolution": 4096,
       "ArchUVScale": 1.33333
     },
     "PaintedSteel": {
@@ -245,7 +245,7 @@
       "ORM": "Materials/PaintedSteel/T_PaintedSteel_ORM.png",
       "H": null,
       "Opacity": null,
-      "Resolution": 1024,
+      "Resolution": 4096,
       "ArchUVScale": 2.0
     },
     "Plywood": {
@@ -255,7 +255,7 @@
       "ORM": "Materials/Plywood/T_Plywood_ORM.png",
       "H": null,
       "Opacity": null,
-      "Resolution": 1024,
+      "Resolution": 4096,
       "ArchUVScale": 1.0
     },
     "PlywoodPainted": {
@@ -265,7 +265,7 @@
       "ORM": "Materials/PlywoodPainted/T_PlywoodPainted_ORM.png",
       "H": null,
       "Opacity": null,
-      "Resolution": 1024,
+      "Resolution": 4096,
       "ArchUVScale": 1.0
     },
     "Rubber": {
@@ -275,7 +275,7 @@
       "ORM": "Materials/Rubber/T_Rubber_ORM.png",
       "H": null,
       "Opacity": null,
-      "Resolution": 1024,
+      "Resolution": 4096,
       "ArchUVScale": 2.0
     },
     "Straw": {
@@ -285,7 +285,7 @@
       "ORM": "Materials/Straw/T_Straw_ORM.png",
       "H": null,
       "Opacity": null,
-      "Resolution": 1024,
+      "Resolution": 4096,
       "ArchUVScale": 2.0
     },
     "Timber": {
@@ -295,7 +295,7 @@
       "ORM": "Materials/Timber/T_Timber_ORM.png",
       "H": null,
       "Opacity": null,
-      "Resolution": 1024,
+      "Resolution": 4096,
       "ArchUVScale": 1.0
     },
     "Velvet": {
@@ -305,7 +305,7 @@
       "ORM": "Materials/Velvet/T_Velvet_ORM.png",
       "H": null,
       "Opacity": null,
-      "Resolution": 1024,
+      "Resolution": 4096,
       "ArchUVScale": 2.0
     },
     "Walnut": {
@@ -315,7 +315,7 @@
       "ORM": "Materials/Walnut/T_Walnut_ORM.png",
       "H": null,
       "Opacity": null,
-      "Resolution": 1024,
+      "Resolution": 4096,
       "ArchUVScale": 1.66667
     }
   },

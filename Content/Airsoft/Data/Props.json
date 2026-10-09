@@ -1,6 +1,68 @@
 {
   "Version": 1,
   "Assets": {
+    "Barricade_Plywood_3m": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Barricade_Plywood_3m_Body"
+          ],
+          "Triangles": 3536,
+          "Textures": {
+            "BC": "Props/Barricade_Plywood_3m/T_Barricade_Plywood_3m_Body_BC.png",
+            "N": "Props/Barricade_Plywood_3m/T_Barricade_Plywood_3m_Body_N.png",
+            "ORM": "Props/Barricade_Plywood_3m/T_Barricade_Plywood_3m_Body_ORM.png"
+          },
+          "TextureSize": 512
+        }
+      ],
+      "Collision": "Complex",
+      "Bounds": {
+        "Min": [
+          -120.0,
+          -150.0,
+          0.0
+        ],
+        "Max": [
+          10.0,
+          150.0,
+          206.0
+        ]
+      }
+    },
+    "Barricade_Plywood_4m": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Barricade_Plywood_4m_Body"
+          ],
+          "Triangles": 4128,
+          "Textures": {
+            "BC": "Props/Barricade_Plywood_4m/T_Barricade_Plywood_4m_Body_BC.png",
+            "N": "Props/Barricade_Plywood_4m/T_Barricade_Plywood_4m_Body_N.png",
+            "ORM": "Props/Barricade_Plywood_4m/T_Barricade_Plywood_4m_Body_ORM.png"
+          },
+          "TextureSize": 512
+        }
+      ],
+      "Collision": "Box",
+      "Bounds": {
+        "Min": [
+          -120.0,
+          -200.0,
+          0.0
+        ],
+        "Max": [
+          10.0,
+          200.0,
+          206.0
+        ]
+      }
+    },
     "Bush_A": {
       "Pieces": [
         {
@@ -17,7 +79,7 @@
           "Slots": [
             "M_Bush_A_Leaves"
           ],
-          "Triangles": 3576,
+          "Triangles": 6200,
           "Textures": {
             "BC": "Props/Bush_A/T_Bush_A_Leaves_BC.png",
             "N": "Props/Bush_A/T_Bush_A_Leaves_N.png",
@@ -30,14 +92,265 @@
       "Collision": "Convex",
       "Bounds": {
         "Min": [
-          -129.7,
-          -124.8,
-          -79.8
+          -131.1,
+          -144.0,
+          -75.3
         ],
         "Max": [
-          139.1,
-          134.3,
-          171.5
+          151.4,
+          150.1,
+          200.3
+        ]
+      }
+    },
+    "CableSpool": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_CableSpool_Body"
+          ],
+          "Triangles": 8344,
+          "Textures": {
+            "BC": "Props/CableSpool/T_CableSpool_Body_BC.png",
+            "N": "Props/CableSpool/T_CableSpool_Body_N.png",
+            "ORM": "Props/CableSpool/T_CableSpool_Body_ORM.png"
+          },
+          "TextureSize": 512
+        }
+      ],
+      "Collision": "Convex",
+      "Bounds": {
+        "Min": [
+          -99.6,
+          -64.0,
+          0.0
+        ],
+        "Max": [
+          99.6,
+          64.0,
+          200.0
+        ]
+      }
+    },
+    "ChronoTable": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_ChronoTable_Body"
+          ],
+          "Triangles": 3204,
+          "Textures": {
+            "BC": "Props/ChronoTable/T_ChronoTable_Body_BC.png",
+            "N": "Props/ChronoTable/T_ChronoTable_Body_N.png",
+            "ORM": "Props/ChronoTable/T_ChronoTable_Body_ORM.png"
+          },
+          "TextureSize": 512
+        }
+      ],
+      "Collision": "Box",
+      "Bounds": {
+        "Min": [
+          -38.0,
+          -91.5,
+          -0.1
+        ],
+        "Max": [
+          38.0,
+          91.5,
+          107.6
+        ]
+      }
+    },
+    "Crate_Ammo": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Crate_Ammo_Body"
+          ],
+          "Triangles": 1656,
+          "Textures": {
+            "BC": "Props/Crate_Ammo/T_Crate_Ammo_Body_BC.png",
+            "N": "Props/Crate_Ammo/T_Crate_Ammo_Body_N.png",
+            "ORM": "Props/Crate_Ammo/T_Crate_Ammo_Body_ORM.png"
+          },
+          "TextureSize": 512
+        }
+      ],
+      "Collision": "Box",
+      "Bounds": {
+        "Min": [
+          -46.8,
+          -24.9,
+          0.0
+        ],
+        "Max": [
+          46.8,
+          24.1,
+          38.0
+        ]
+      }
+    },
+    "Crate_Wood": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Crate_Wood_Body"
+          ],
+          "Triangles": 3996,
+          "Textures": {
+            "BC": "Props/Crate_Wood/T_Crate_Wood_Body_BC.png",
+            "N": "Props/Crate_Wood/T_Crate_Wood_Body_N.png",
+            "ORM": "Props/Crate_Wood/T_Crate_Wood_Body_ORM.png"
+          },
+          "TextureSize": 512
+        }
+      ],
+      "Collision": "Box",
+      "Bounds": {
+        "Min": [
+          -52.5,
+          -37.4,
+          0.0
+        ],
+        "Max": [
+          52.5,
+          37.4,
+          62.0
+        ]
+      }
+    },
+    "FlagPole_Objective": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_FlagPole_Objective_Body"
+          ],
+          "Triangles": 23948,
+          "Textures": {
+            "BC": "Props/FlagPole_Objective/T_FlagPole_Objective_Body_BC.png",
+            "N": "Props/FlagPole_Objective/T_FlagPole_Objective_Body_N.png",
+            "ORM": "Props/FlagPole_Objective/T_FlagPole_Objective_Body_ORM.png"
+          },
+          "TextureSize": 512
+        },
+        {
+          "Name": "Flag",
+          "Kind": "Static",
+          "Slots": [
+            "M_FlagPole_Objective_Flag"
+          ],
+          "Triangles": 6712,
+          "Textures": {
+            "BC": "Props/FlagPole_Objective/T_FlagPole_Objective_Flag_BC.png",
+            "N": "Props/FlagPole_Objective/T_FlagPole_Objective_Flag_N.png",
+            "ORM": "Props/FlagPole_Objective/T_FlagPole_Objective_Flag_ORM.png",
+            "M": "Props/FlagPole_Objective/T_FlagPole_Objective_Flag_M.png"
+          },
+          "TextureSize": 512
+        }
+      ],
+      "Collision": "Convex",
+      "TintVariants": {
+        "Red": [
+          0.6,
+          0.05,
+          0.04
+        ],
+        "Blue": [
+          0.04,
+          0.15,
+          0.6
+        ]
+      },
+      "Points": {
+        "FlagTop": [
+          0.0,
+          -0.0,
+          630.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -32.9,
+          -32.9,
+          -0.5
+        ],
+        "Max": [
+          119.2,
+          32.9,
+          630.0
+        ]
+      }
+    },
+    "HayBale_Round": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_HayBale_Round_Body"
+          ],
+          "Triangles": 74752,
+          "Textures": {
+            "BC": "Props/HayBale_Round/T_HayBale_Round_Body_BC.png",
+            "N": "Props/HayBale_Round/T_HayBale_Round_Body_N.png",
+            "ORM": "Props/HayBale_Round/T_HayBale_Round_Body_ORM.png"
+          },
+          "TextureSize": 512
+        }
+      ],
+      "Collision": "Convex",
+      "Bounds": {
+        "Min": [
+          -75.9,
+          -61.3,
+          0.0
+        ],
+        "Max": [
+          75.7,
+          61.4,
+          154.0
+        ]
+      }
+    },
+    "HayBale_Square": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_HayBale_Square_Body"
+          ],
+          "Triangles": 5376,
+          "Textures": {
+            "BC": "Props/HayBale_Square/T_HayBale_Square_Body_BC.png",
+            "N": "Props/HayBale_Square/T_HayBale_Square_Body_N.png",
+            "ORM": "Props/HayBale_Square/T_HayBale_Square_Body_ORM.png"
+          },
+          "TextureSize": 512
+        }
+      ],
+      "Collision": "Box",
+      "Bounds": {
+        "Min": [
+          -50.3,
+          -25.8,
+          -2.4
+        ],
+        "Max": [
+          50.2,
+          25.7,
+          40.0
         ]
       }
     },
@@ -49,7 +362,7 @@
           "Slots": [
             "M_OilDrum_Body"
           ],
-          "Triangles": 3968,
+          "Triangles": 19456,
           "Textures": {
             "BC": "Props/OilDrum/T_OilDrum_Body_BC.png",
             "N": "Props/OilDrum/T_OilDrum_Body_N.png",
@@ -62,26 +375,269 @@
       "Collision": "Convex",
       "TintVariants": {
         "Blue": [
-          0.05,
-          0.16,
-          0.4
+          0.02,
+          0.07,
+          0.26
         ],
         "Red": [
-          0.45,
-          0.05,
-          0.03
+          0.42,
+          0.03,
+          0.02
         ]
       },
       "Bounds": {
         "Min": [
-          -30.1,
-          -29.8,
+          -30.5,
+          -29.9,
           0.0
         ],
         "Max": [
           29.8,
           29.8,
           88.9
+        ]
+      }
+    },
+    "Pallet": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Pallet_Body"
+          ],
+          "Triangles": 2760,
+          "Textures": {
+            "BC": "Props/Pallet/T_Pallet_Body_BC.png",
+            "N": "Props/Pallet/T_Pallet_Body_N.png",
+            "ORM": "Props/Pallet/T_Pallet_Body_ORM.png"
+          },
+          "TextureSize": 512
+        }
+      ],
+      "Collision": "Box",
+      "Bounds": {
+        "Min": [
+          -60.4,
+          -40.6,
+          0.0
+        ],
+        "Max": [
+          60.2,
+          40.2,
+          14.6
+        ]
+      }
+    },
+    "PalletStack": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_PalletStack_Body"
+          ],
+          "Triangles": 11040,
+          "Textures": {
+            "BC": "Props/PalletStack/T_PalletStack_Body_BC.png",
+            "N": "Props/PalletStack/T_PalletStack_Body_N.png",
+            "ORM": "Props/PalletStack/T_PalletStack_Body_ORM.png"
+          },
+          "TextureSize": 512
+        }
+      ],
+      "Collision": "Box",
+      "Bounds": {
+        "Min": [
+          -60.8,
+          -44.9,
+          0.0
+        ],
+        "Max": [
+          64.4,
+          43.2,
+          57.9
+        ]
+      }
+    },
+    "Rock_A": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Rock_A_Body"
+          ],
+          "Triangles": 20480,
+          "Textures": {
+            "BC": "Props/Rock_A/T_Rock_A_Body_BC.png",
+            "N": "Props/Rock_A/T_Rock_A_Body_N.png",
+            "ORM": "Props/Rock_A/T_Rock_A_Body_ORM.png"
+          },
+          "TextureSize": 1024
+        }
+      ],
+      "Collision": "Convex",
+      "Bounds": {
+        "Min": [
+          -97.6,
+          -63.6,
+          -6.0
+        ],
+        "Max": [
+          87.6,
+          73.5,
+          124.4
+        ]
+      }
+    },
+    "Rock_B": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Rock_B_Body"
+          ],
+          "Triangles": 20480,
+          "Textures": {
+            "BC": "Props/Rock_B/T_Rock_B_Body_BC.png",
+            "N": "Props/Rock_B/T_Rock_B_Body_N.png",
+            "ORM": "Props/Rock_B/T_Rock_B_Body_ORM.png"
+          },
+          "TextureSize": 512
+        }
+      ],
+      "Collision": "Convex",
+      "Bounds": {
+        "Min": [
+          -42.1,
+          -45.7,
+          -6.0
+        ],
+        "Max": [
+          58.5,
+          40.6,
+          57.3
+        ]
+      }
+    },
+    "SandbagCorner": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_SandbagCorner_Body"
+          ],
+          "Triangles": 133056,
+          "Textures": {
+            "BC": "Props/SandbagCorner/T_SandbagCorner_Body_BC.png",
+            "N": "Props/SandbagCorner/T_SandbagCorner_Body_N.png",
+            "ORM": "Props/SandbagCorner/T_SandbagCorner_Body_ORM.png"
+          },
+          "TextureSize": 512
+        }
+      ],
+      "Collision": "Complex",
+      "Bounds": {
+        "Min": [
+          -91.3,
+          -102.5,
+          -0.4
+        ],
+        "Max": [
+          98.6,
+          97.4,
+          92.7
+        ]
+      }
+    },
+    "SandbagWall_3m": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_SandbagWall_3m_Body"
+          ],
+          "Triangles": 133056,
+          "Textures": {
+            "BC": "Props/SandbagWall_3m/T_SandbagWall_3m_Body_BC.png",
+            "N": "Props/SandbagWall_3m/T_SandbagWall_3m_Body_N.png",
+            "ORM": "Props/SandbagWall_3m/T_SandbagWall_3m_Body_ORM.png"
+          },
+          "TextureSize": 512
+        }
+      ],
+      "Collision": "Complex",
+      "Bounds": {
+        "Min": [
+          -35.2,
+          -155.5,
+          -0.6
+        ],
+        "Max": [
+          35.6,
+          155.5,
+          92.6
+        ]
+      }
+    },
+    "SteelTarget": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_SteelTarget_Body"
+          ],
+          "Triangles": 1204,
+          "Textures": {
+            "BC": "Props/SteelTarget/T_SteelTarget_Body_BC.png",
+            "N": "Props/SteelTarget/T_SteelTarget_Body_N.png",
+            "ORM": "Props/SteelTarget/T_SteelTarget_Body_ORM.png"
+          },
+          "TextureSize": 512
+        },
+        {
+          "Name": "Plate",
+          "Kind": "Static",
+          "Slots": [
+            "M_SteelTarget_Plate"
+          ],
+          "Triangles": 1228,
+          "Textures": {
+            "BC": "Props/SteelTarget/T_SteelTarget_Plate_BC.png",
+            "N": "Props/SteelTarget/T_SteelTarget_Plate_N.png",
+            "ORM": "Props/SteelTarget/T_SteelTarget_Plate_ORM.png"
+          },
+          "TextureSize": 512
+        }
+      ],
+      "Collision": "Convex",
+      "Points": {
+        "Hinge": [
+          3.0,
+          -0.0,
+          115.0
+        ]
+      },
+      "HingeAxis": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "Bounds": {
+        "Min": [
+          -40.0,
+          -47.5,
+          -0.5
+        ],
+        "Max": [
+          40.0,
+          47.5,
+          129.5
         ]
       }
     },
@@ -93,7 +649,7 @@
           "Slots": [
             "M_Tire_Body"
           ],
-          "Triangles": 8960,
+          "Triangles": 22528,
           "Textures": {
             "BC": "Props/Tire/T_Tire_Body_BC.png",
             "N": "Props/Tire/T_Tire_Body_N.png",
@@ -105,14 +661,45 @@
       "Collision": "Convex",
       "Bounds": {
         "Min": [
-          -33.0,
-          -33.0,
+          -32.9,
+          -32.9,
           -0.5
         ],
         "Max": [
-          33.0,
-          33.0,
+          32.9,
+          32.9,
           21.5
+        ]
+      }
+    },
+    "TireStack": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_TireStack_Body"
+          ],
+          "Triangles": 67584,
+          "Textures": {
+            "BC": "Props/TireStack/T_TireStack_Body_BC.png",
+            "N": "Props/TireStack/T_TireStack_Body_N.png",
+            "ORM": "Props/TireStack/T_TireStack_Body_ORM.png"
+          },
+          "TextureSize": 512
+        }
+      ],
+      "Collision": "Convex",
+      "Bounds": {
+        "Min": [
+          -35.6,
+          -33.2,
+          -0.7
+        ],
+        "Max": [
+          35.9,
+          35.9,
+          62.9
         ]
       }
     },
@@ -132,7 +719,7 @@
           "Slots": [
             "M_Tree_Oak_A_Leaves"
           ],
-          "Triangles": 13368,
+          "Triangles": 29460,
           "Textures": {
             "BC": "Props/Tree_Oak_A/T_Tree_Oak_A_Leaves_BC.png",
             "N": "Props/Tree_Oak_A/T_Tree_Oak_A_Leaves_N.png",
@@ -145,14 +732,14 @@
       "Collision": "Convex",
       "Bounds": {
         "Min": [
-          -724.5,
-          -485.0,
+          -737.0,
+          -476.0,
           -12.2
         ],
         "Max": [
-          540.1,
-          474.5,
-          1054.5
+          510.8,
+          570.7,
+          1051.3
         ]
       }
     },
@@ -193,6 +780,37 @@
           667.7,
           495.7,
           1006.3
+        ]
+      }
+    },
+    "WreckedCar": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_WreckedCar_Body"
+          ],
+          "Triangles": 75768,
+          "Textures": {
+            "BC": "Props/WreckedCar/T_WreckedCar_Body_BC.png",
+            "N": "Props/WreckedCar/T_WreckedCar_Body_N.png",
+            "ORM": "Props/WreckedCar/T_WreckedCar_Body_ORM.png"
+          },
+          "TextureSize": 4096
+        }
+      ],
+      "Collision": "Convex",
+      "Bounds": {
+        "Min": [
+          -238.5,
+          -89.5,
+          0.0
+        ],
+        "Max": [
+          237.5,
+          89.3,
+          144.1
         ]
       }
     }

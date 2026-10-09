@@ -74,9 +74,6 @@ def build(aid, res_cap, do_render=True, render_res=(1920, 1080), samples=40):
     spec["fn"](A)
     out_dir = os.path.join(OUT, aid)
     os.makedirs(out_dir, exist_ok=True)
-    for f in os.listdir(out_dir):
-        if f.endswith((".fbx", ".png")):
-            os.remove(os.path.join(out_dir, f))
     objs = A.finish(out_dir)
     pieces_json = []
     tris = {}
@@ -182,7 +179,22 @@ def lineup(group, res=(3840, 2160), samples=48):
             objs = [o for o in dst.objects if o is not None]
             for o in objs:
                 bpy.context.scene.collection.objects.link(o)
+            # keep memory in check: the 4K sheet only needs ~1K textures per asset
+            for o in objs:
+                for s in o.material_slots:
+                    if s.material is None:
+                        continue
+                    for n in s.material.node_tree.nodes:
+                        if n.bl_idname == "ShaderNodeTexImage" and n.image is not None and n.image.size[0] > 1024:
+                            n.image.scale(1024, 1024)
             lo, hi = pk.bbox_of(objs)
+            if (hi.x - lo.x) > 2.0 * (hi.y - lo.y):  # long vehicles: show them side-on
+                from mathutils import Matrix
+                R = Matrix.Rotation(math.radians(-90), 4, "Z")
+                for o in objs:
+                    o.matrix_world = R @ o.matrix_world
+                bpy.context.view_layer.update()
+                lo, hi = pk.bbox_of(objs)
             items.append((aid, objs, lo, hi))
         if not items:
             continue
@@ -195,8 +207,10 @@ def lineup(group, res=(3840, 2160), samples=48):
             for o in objs:
                 o.location += off
             placed.extend(objs)
+            log(f"  lineup {aid}: row {r} at x={y_cursor + depth / 2:.2f} y={y - w / 2:.2f} size {hi.x - lo.x:.2f}x{w:.2f}x{hi.z - lo.z:.2f}")
             y -= w + gap
         y_cursor += depth + gap * 1.6
+    bpy.context.view_layer.update()
     st = pk.setup_studio()
     lo, hi = pk.bbox_of(placed)
     pk.frame(st, lo, hi, view=(1.0, -0.12, 0.42), lens=50, margin=1.03)
@@ -211,7 +225,7 @@ def main(argv):
     ids = [a for i, a in enumerate(argv) if not a.startswith("--") and (i == 0 or argv[i - 1] not in ("--res", "--lineup", "--samples"))]
     do_render = "--no-render" not in flags
     rr = (1920, 1080) if res >= 2048 or "--full-render" in flags else (768, 432)
-    samples = 16 if res >= 2048 else 14
+    samples = 10 if res >= 2048 else 12
     if "--samples" in argv:
         samples = int(argv[argv.index("--samples") + 1])
     if "--render-only" in flags:
@@ -227,7 +241,7 @@ def main(argv):
     if "--lineup" in flags:
         g = argv[argv.index("--lineup") + 1]
         for grp in (["club", "armory"] if g == "both" else [g]):
-            lineup(grp, (3840, 2160) if res >= 2048 else (1920, 1080), 48 if res >= 2048 else 24)
+            lineup(grp, (3840, 2160) if res >= 2048 else (1280, 720), samples)
 
 
 if __name__ == "__main__":
