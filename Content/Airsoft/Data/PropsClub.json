@@ -184,7 +184,7 @@
       "Points": {
         "LEDTop": [
           2.0,
-          0,
+          0.0,
           246.9
         ]
       },
@@ -202,14 +202,14 @@
       },
       "Collision": "Box",
       "Triangles": {
-        "Body": 15716,
+        "Body": 14744,
         "Emissive": 120,
-        "Glass": 6444
+        "Glass": 4860
       },
       "TextureSize": {
-        "Body": 1024,
-        "Emissive": 128,
-        "Glass": 256
+        "Body": 4096,
+        "Emissive": 512,
+        "Glass": 1024
       }
     },
     "BankersLamp": {
