@@ -567,7 +567,7 @@
             "N": "Props/SandbagWall_3m/T_SandbagWall_3m_Body_N.png",
             "ORM": "Props/SandbagWall_3m/T_SandbagWall_3m_Body_ORM.png"
           },
-          "TextureSize": 512
+          "TextureSize": 2048
         }
       ],
       "Collision": "Complex",

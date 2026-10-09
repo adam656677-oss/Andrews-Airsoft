@@ -23,7 +23,7 @@ python3 Tools/Audio/make_sounds.py --jobs 1        # single process (default is 
   Re-running reproduces the same files, and rebuilding one key never changes another.
 * **Re-runnable:** files are overwritten in place. A full run also deletes stale
   `*.wav` files that no longer belong to any key.
-* **Run time:** about __RUNTIME__ for the full set on this machine with 2 workers. The two
+* **Run time:** about 4-5 minutes for the full set on this machine with 2 workers. The two
   music loops take most of it. One-shots take well under a second each.
 * At the end the script prints a check table for every file: peak, true peak, RMS,
   loudest 50 ms RMS, onset time, spectral centroid, clipped-sample count, and the loop seam
@@ -57,7 +57,7 @@ imported SoundWave, or loop them in a MetaSound / Audio Component.
   with loop-periodic frequencies.
 * The check table's `seam` column is |last sample - first sample| divided by the
   file's 99.9th-percentile sample-to-sample step. Values below 1 mean the seam is an
-  ordinary step. All loops measure __SEAMS__.
+  ordinary step. All loops measure 0.00-0.42.
 
 ## How Unreal imports them
 
@@ -72,21 +72,83 @@ Code resolves `/Game/Airsoft/Audio/<Key>.<Key>`:
 
 Notes for the import script / audio setup:
 
-* Keys flagged **LOOP** should get `looping = True` (Python:
-  `wave.set_editor_property("looping", True)`).
+* Keys flagged **LOOP** are imported with `looping = True`. `airsoft_setup_lib/importers.py`
+  does this via `LOOPING_KEYS`, plus any key starting with `Ambience` or ending in `Music`,
+  so new loops named that way loop automatically. Run the setup script with
+  `--skip-audio` to leave audio alone. `_overview.png` is not imported (only `*.wav` is).
 * Code currently plays the plain `<Key>`. That is the first variation, and it already
   gets per-shot pitch randomisation in code. To use every variation, wrap
   `<Key>_01..N` in a SoundCue Random node, or pick `"%s_%02d"` at random in code.
 * Suggested starting volumes. The loops are peak-normalised like everything else, but their
   average loudness differs: AmbienceField / Street / Interior / Staging RMS is about
-  __AMB_RMS__ dBFS (use about 0.6-1.0). ClubMusic sits at about __CLUB_RMS__ dBFS RMS (use about
-  0.3-0.45 under gameplay). MenuMusic is about __MENU_RMS__ dBFS RMS (about 0.7).
+  -17 (Interior, dense crowd) to -25 (Staging) dBFS (use about 0.6-1.0). ClubMusic sits at about -13.6 dBFS RMS (use about
+  0.3-0.45 under gameplay). MenuMusic is about -21.4 dBFS RMS (about 0.7).
 
 ## Sound list
 
 Durations are measured from the current output.
 
-__TABLE__
+### Gunfire
+
+| Key | Files | Ch | Length | What it is |
+|---|---|---|---|---|
+| `FireRifle` | `FireRifle.wav` + `_01`..`_03` | mono | 0.40 s | AEG (M4/AK): piston slap + receiver ring + air puff + BB snap + gearbox whir and latch ticks |
+| `FireSMG` | `FireSMG.wav` + `_01`..`_03` | mono | 0.30 s | High-ROF compact AEG (P90/MP7/Vector/MP5): lighter, brighter slap, short fast whir |
+| `FireDMR` | `FireDMR.wav` + `_01`..`_03` | mono | 0.47-0.48 s | Upgraded high-FPS AEG: heavier piston slap with steel-head clank, louder snap |
+| `FireLMG` | `FireLMG.wav` + `_01`..`_03` | mono | 0.44-0.45 s | Support AEG: deeper motor + box-mag BB rattle and sound-activated winding buzz |
+| `FirePistol` | `FirePistol.wav` + `_01`..`_03` | mono | 0.34-0.35 s | Gas blowback pistol: pneumatic crack + gas jet, slide clack back and into battery |
+| `FireMagnum` | `FireMagnum.wav` + `_01`..`_03` | mono | 0.46-0.47 s | Big-bore gas pistol (Desert Eagle): deeper crack, more gas, heavier, slower slide |
+| `FireShotgun` | `FireShotgun.wav` + `_01`..`_03` | mono | 0.49-0.52 s | Gas/spring shell shotgun: low whump + triple-BB hiss + receiver clack |
+| `FireSniper` | `FireSniper.wav` + `_01`..`_03` | mono | 0.57-0.58 s | Spring bolt-action: heavy piston thunk + cylinder ring + mainspring twang (muted muzzle) |
+| `FireSuppressed` | `FireSuppressed.wav` + `_01`..`_03` | mono | 0.26-0.27 s | Suppressed AEG (MP5SD): muffled thup, mostly the mechanism |
+
+### Handling & foley
+
+| Key | Files | Ch | Length | What it is |
+|---|---|---|---|---|
+| `DryFire` | `DryFire.wav` | mono | 0.11 s | Trigger pull on an empty gun: plastic trigger travel, sear click, reset tick |
+| `MagOut` | `MagOut.wav` | mono | 0.31 s | Mag release button + latch clack, polymer mag sliding out, BBs shifting |
+| `MagIn` | `MagIn.wav` | mono | 0.24 s | Short insertion slide then a solid polymer seat click with metal catch and palm slap |
+| `BoltCycle` | `BoltCycle.wav` | mono | 0.47 s | Charging handle / bolt / pump rack: unlatch, gritty pull, rear stop, slam forward |
+| `Impact` | `Impact.wav` + `_01`..`_04` | mono | 0.17 s | BB hitting plywood/wood: dry tick over damped board modes |
+| `SteelDing` | `SteelDing.wav` + `_01`..`_03` | mono | 0.76-0.78 s | BB on a steel plate: bright ping, partials 2.3/3.1/4.7 kHz, ~0.6 s ring |
+| `GrenadeBounce` | `GrenadeBounce.wav` + `_01`..`_03` | mono | 0.46-0.47 s | Small polymer BB-grenade canister bouncing on hard ground, BBs rattling inside |
+| `GrenadeBurst` | `GrenadeBurst.wav` | mono | 1.35 s | BB grenade: gas pop + shell split + ~1.2 s shower of BBs pattering on surfaces |
+| `Footstep` | `Footstep.wav` + `_01`..`_06` | mono | 0.27-0.28 s | Boots on gravel over concrete (alternating heavier heel / lighter roll) |
+| `Land` | `Land.wav` | mono | 0.49 s | Jump landing: double boot thud, gravel crunch, gear and pouch rattle |
+
+### Player & UI feedback
+
+| Key | Files | Ch | Length | What it is |
+|---|---|---|---|---|
+| `HitMarker` | `HitMarker.wav` | stereo | 0.08 s | 2D crisp short tick confirming a tag |
+| `HitCall` | `HitCall.wav` | mono | 0.48 s | Positional loud pea-whistle chirp standing in for a 'HIT!' call (whistle only, no voice) |
+| `Tagged` | `Tagged.wav` | stereo | 1.45 s | 2D: low body thud + short tinnitus ring + muffled low-passed breath (~1.5 s) |
+| `Announce` | `Announce.wav` | stereo | 1.82 s | 2D: short reversed swell into a deep cinematic boom (~1.8 s, hit at 0.45 s) |
+| `UIClick` | `UIClick.wav` | stereo | 0.04 s | 2D refined soft click (~40 ms) |
+| `UIHover` | `UIHover.wav` | stereo | 0.03 s | 2D very soft tick (~30 ms) |
+| `RoundStart` | `RoundStart.wav` | stereo | 2.60 s | 2D tense riser into a hit at 2.0 s (~2.6 s) |
+| `Victory` | `Victory.wav` | stereo | 3.05 s | 2D bold brass synth sting in Bb major (~3 s) |
+| `Defeat` | `Defeat.wav` | stereo | 3.06 s | 2D low somber brass sting, Ab -> C minor (~3 s) |
+| `RankUp` | `RankUp.wav` | stereo | 2.05 s | 2D bright ascending bell chime (~2 s) |
+| `CaptureTick` | `CaptureTick.wav` | stereo | 0.11 s | 2D subtle capture-progress beep |
+| `PointCaptured` | `PointCaptured.wav` | stereo | 1.08 s | 2D confirming two-tone chime E5 -> B5 |
+
+### Ambience
+
+| Key | Files | Ch | Length | What it is |
+|---|---|---|---|---|
+| `AmbienceField` **LOOP** | `AmbienceField.wav` | stereo | 60.00 s | 60 s loop: gusting wind + leaves, distant birds, crickets, far-off airsoft bursts and steel pings |
+| `AmbienceClubStreet` **LOOP** | `AmbienceClubStreet.wav` | stereo | 60.00 s | 60 s loop: rain on pavement + drips, distant city, three wet car passes, muffled club bass (122 BPM), neon buzz |
+| `AmbienceClubInterior` **LOOP** | `AmbienceClubInterior.wav` | stereo | 60.00 s | 60 s loop: room tone + HVAC, synthetic crowd murmur, bar glass clinks; no music |
+| `AmbienceStaging` **LOOP** | `AmbienceStaging.wav` | stereo | 60.00 s | 60 s loop: indoor HVAC hum/airflow, faint range shots through walls, metallic clanks |
+
+### Music
+
+| Key | Files | Ch | Length | What it is |
+|---|---|---|---|---|
+| `ClubMusic` **LOOP** | `ClubMusic.wav` | stereo | 125.90 s | 64 bars @ 122 BPM (~125.9 s) dark deep house in A minor: Am9-Fmaj9-Dm9-Em7, sidechained bass/pad, offbeat hats, clap on 2/4, filtered pad, arp from bar 17 (out at bar 57), mixed under gameplay |
+| `MenuMusic` **LOOP** | `MenuMusic.wav` | stereo | 90.00 s | 24 bars @ 64 BPM (90 s) neo-noir in D minor: evolving low drone, sparse piano, soft sub pulse, muted ostinato, string tension |
 
 ## How the recipes work
 
@@ -135,4 +197,12 @@ the check table and the contact sheet. Run with `--only Key` while iterating.
 
 ## Size
 
-__SIZE__
+The full set is **80 files, about 93 MB**. Almost all of it is the six stereo loops:
+4 x 60 s ambience (about 46 MB), ClubMusic 64 bars @ 122 BPM = 125.9 s (about 24 MB), MenuMusic
+90 s (about 17 MB). 48 kHz / 16-bit stereo is 11.5 MB per minute, and the loops total 7.6
+minutes (87.5 MB). The 74 one-shot files are 5.5 MB. That is over the ~60 MB target. The stated loop
+lengths and format were kept, and only the length budget changes the size.
+Ways to get under 60 MB if that matters: shorten the ambiences to 30-40 s, write the
+ambiences at 32 kHz, or keep `Generated/` out of git and regenerate it, as is already done
+for `SourceAssets/` and `Content/Airsoft/Audio/`. Unreal compresses on import either way,
+so the shipped size is much smaller.

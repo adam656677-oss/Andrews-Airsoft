@@ -37,6 +37,7 @@ SPECIAL_MATS = {"Puddle", "Foliage", "Blocker", "Glass"}
 
 def load_layouts():
     """Import layouts.py by path. Guard: stub `unreal` so an accidental import cannot break the checker."""
+    sys.dont_write_bytecode = True          # never drop __pycache__ into Content/Python
     stubbed = False
     try:
         import unreal  # noqa: F401  (only inside the editor)

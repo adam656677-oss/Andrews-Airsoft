@@ -98,10 +98,10 @@ class Builder:
         self.bm.from_mesh(me)
         bpy.data.meshes.remove(me)
 
-    def box(self, mat, size, loc, rot=(0, 0, 0), bevel=0.01, segs=2, grain='x', subdiv=0, uvoff=None):
+    def box(self, mat, size, loc, rot=(0, 0, 0), bevel=0.01, segs=3, grain='x', subdiv=0, uvoff=None):
         self.add(box_bm(size, bevel, segs, subdiv), mat, mtx(loc, rot), grain=grain, uvoff=uvoff)
 
-    def cyl(self, mat, r, h, loc, rot=(0, 0, 0), n=24, bevel=0.005, segs=2, r2=None, cap=True, grain='z'):
+    def cyl(self, mat, r, h, loc, rot=(0, 0, 0), n=32, bevel=0.005, segs=3, r2=None, cap=True, grain='z'):
         self.add(cyl_bm(r, h, n, bevel, segs, r2, cap), mat, mtx(loc, rot), grain=grain)
 
     def between(self, mat, p0, p1, r, n=16, bevel=0.003, kind='cyl', w=None, roll=0.0):

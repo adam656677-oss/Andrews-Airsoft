@@ -250,9 +250,11 @@ def m_Concrete(ctx):
     mott2 = ctx.noise(0.08, oct=4, rough=0.6)
     speck = ctx.noise(0.003, oct=2, rough=0.7)
     base = col('#93918b')
-    bc = base * (1 + 0.07 * mott + 0.03 * mott2 + 0.015 * speck)[..., None]
+    bc = base * (1 + 0.06 * mott + 0.012 * mott2 + 0.006 * speck)[..., None]
+    soft = ctx.noise(1.2, oct=3, rough=0.45)
+    bc = bc * (1 + 0.05 * soft)[..., None]
     bc = lerp(bc, col('#a29e94'), sstep(0.5, 1.5, mott)[..., None] * 0.4)
-    h = mott2 * 0.0004 + speck * 0.00015
+    h = mott2 * 0.00025 + speck * 0.00004
     # bug holes
     rg = ctx.rng()
     F1, F2, ID = worley(n, ctx.cyc(0.03), ctx.cyc(0.03), rg)

@@ -149,7 +149,8 @@ def render_lineup(ids):
         t.rotation_euler = (0, 0, math.radians(90))
         lm = bl.simple_material('LabelMat', (0.03, 0.03, 0.03), 0.6)
         cu.materials.append(lm)
-    bl.cycles_setup(12, 3840, 2160, '1024')
+    bl.cycles_setup(10, 3840, 2160, '1024')
+    bpy.context.view_layer.update()
     pts = bl.bbox_world(objs)
     cam, tgt, d = bl.camera_fit(pts, az_deg=0.0, el_deg=58.0, lens=50, margin=1.04)
     from mathutils import Vector

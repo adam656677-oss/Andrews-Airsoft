@@ -10,7 +10,7 @@ first exactly as any other pair of neighbouring samples would.
 import numpy as np
 
 from . import foley, weapons
-from .dsp import (Mix, bp, burst, colored, conv, env, env_pts, eq, hp, lp, make_ir,
+from .dsp import (SR, Mix, bp, burst, colored, conv, env, env_pts, eq, hp, lp, make_ir,
                   modes, ns, pan, phase, resample_fft, saw, scatter, sine, smooth_random,
                   stft_apply, sweep, thump, tvec, ROOMS)
 from .instruments import kick
@@ -218,7 +218,7 @@ def rain(r, n):
         rate = 15.0 if kind == "tick" else 1.2
         cnt = int(rate * L)
         times = r.uniform(0, L, cnt)
-        gains = r.lognormal(-1.0, 0.7, cnt) * (1.0 if kind == "tick" else 0.5)
+        gains = np.minimum(r.lognormal(-1.0, 0.5, cnt), 0.9) * (1.0 if kind == "tick" else 0.5)  # capped: no freak drops
         pans = r.uniform(-1, 1, cnt)
         for ch, sgn in ((0, -1), (1, 1)):
             w = np.sqrt(0.5 * (1 + sgn * pans))
@@ -232,7 +232,7 @@ def rain(r, n):
         ker = _plink(r, r.uniform(900, 1400), 0.06) + 0.3 * hp(burst(r, 0.06, 0.004), 1500)
         sel = which == j
         drip += scatter(n, times[sel], r.uniform(0.6, 1.0, sel.sum()), ker, circular=True)
-    out += lvl(verb(pan(drip, -0.6), r, "small", 0.5), -34.0)
+    out += lvl(verb(pan(drip, -0.6), r, "small", 0.5), -38.0)
     return out
 
 
@@ -364,7 +364,7 @@ def voice(r, seconds, f0_base, female):
 
     vo = stft_apply(src, mag, frame=512, hop=128)
     fric = hp(r.standard_normal(nv), 2600 * 3.0) * np.interp(tv, tc, nz) * 0.25
-    return resample_fft(vo + fric, 3, 1)
+    return vo + fric  # 16 kHz; the caller sums all voices and upsamples once
 
 
 def babble(r, n, layers=6):
@@ -389,14 +389,15 @@ def club_interior(r, v):
     hum = sum(a * np.sin(2 * np.pi * per(f) * t) for f, a in ((50, 1.0), (100, 0.5), (150, 0.25)))
     hiss = hp(wide_noise(r, n, 0.0, 0.3), 4000, circular=True)
     room = lvl(tone, -40.0) + lvl(np.stack([hum, hum]), -52.0) + lvl(hiss, -54.0)
-    crowd = np.zeros((2, n))
-    for i in range(14):
+    n16 = n * VSR // SR
+    crowd16 = np.zeros((2, n16))
+    for i in range(14):  # voices live at 16 kHz (dsp cutoffs assume 48 kHz, hence * 3)
         female = i % 2 == 1
         vo = voice(np.random.default_rng(r.integers(1 << 30)), L, r.uniform(165, 235) if female else r.uniform(92, 135), female)
-        vo = pad_len(vo, n)
-        vo = lp(vo, r.uniform(2400, 4500))
-        vo = np.roll(vo, int(r.integers(n)))
-        crowd += pan(vo, r.uniform(-0.85, 0.85)) * r.uniform(0.35, 1.0)
+        vo = lp(pad_len(vo, n16), r.uniform(2400, 4500) * SR / VSR)
+        vo = np.roll(vo, int(r.integers(n16)))  # silent margins land at different times per voice
+        crowd16 += pan(vo, r.uniform(-0.85, 0.85)) * r.uniform(0.35, 1.0)
+    crowd = resample_fft(crowd16, SR // VSR, 1)
     crowd = lvl(crowd, -30.0) + lvl(babble(r, n), -31.0)
     crowd *= 0.85 + 0.15 * smooth_random(r, n, 0.03)
     m = Mix(L, stereo=True, circular=True)

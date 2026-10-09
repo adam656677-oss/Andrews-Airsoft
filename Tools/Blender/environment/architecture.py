@@ -156,7 +156,7 @@ def a_Wall_Plywood_2m():
 def a_Wall_Concrete_4m():
     B = Builder(arch=True)
     T = 0.2
-    bm = box_bm((T, 4.0, 3.0), bevel=0.025, segs=3)
+    bm = box_bm((T, 4.0, 3.0), bevel=0.025, segs=3, subdiv=24)
     B.add(bm, 'MI_Concrete', mtx((0, 0, 1.5)))
     # lifting anchors (recessed pockets) and a cast-in drainage notch
     for y in (-1.2, 1.2):
@@ -165,35 +165,6 @@ def a_Wall_Concrete_4m():
     # chamfered kicker / plinth
     B.box('MI_Concrete', (T + 0.06, 4.0, 0.12), (0, 0, 0.06), bevel=0.02, segs=2)
     o = B.finish('Wall_Concrete_4m_Body')
-    # dense remesh + chipped arrises (concrete damage along the edges)
-    import numpy as np
-    for _ in range(4):
-        bm = bmesh.new()
-        bm.from_mesh(o.data)
-        long_e = [e for e in bm.edges if e.calc_length() > 0.08]
-        if not long_e:
-            bm.free()
-            break
-        bmesh.ops.subdivide_edges(bm, edges=long_e, cuts=1, use_grid_fill=True)
-        bm.to_mesh(o.data)
-        bm.free()
-    me = o.data
-    P = geo.verts_np(me)
-    hw = T / 2
-    dx = hw - np.abs(P[:, 0])
-    dy = 2.0 - np.abs(P[:, 1])
-    dz = 3.0 - P[:, 2]
-    near = np.minimum.reduce([np.maximum(dx, dy), np.maximum(dx, dz), np.maximum(dy, dz)])
-    wall = P[:, 2] > 0.125
-    n = geo.fbm3(P * 9.0, 1.0, 4, 0.55, 3)
-    chip = np.clip(n - 0.12, 0, None) * 0.25 * np.clip(1 - near / 0.05, 0, 1) * wall
-    c = np.array([0.0, 0.0, 1.5])
-    dirv = P - c
-    dirv[:, 0] *= 8
-    dirv /= np.linalg.norm(dirv, axis=1, keepdims=True)
-    geo.set_verts(me, P - dirv * chip[:, None])
-    for p in me.polygons:
-        p.use_smooth = True
     return [('Body', 'Body', o)], 50
 
 
@@ -828,7 +799,7 @@ def render_asset(aid, objs, entry, opts):
             az, el = -32.0, 10.0
         if aid == 'Roof_Corrugated_4m' or aid == 'Platform_Timber_4m':
             el = 28.0
-        bl.product_shot(objs, os.path.join(bl.RENDERS, CAT, aid + '.png'), az=az, el=el, samples=opts['samples'] or 10,
+        bl.product_shot(objs, os.path.join(bl.RENDERS, CAT, aid + '.png'), az=az, el=el, samples=opts['samples'] or 7,
                         margin=1.12)
         if aid == 'Wall_Plywood_Door_4m' and not opts['preview']:
             bl.clear_scene_extras()
@@ -874,6 +845,7 @@ def lineup(ids, cat, out_name='_Lineup_4K.png', cols=5, spacing=1.0):
             objs += group
         yrow += maxd + spacing * 1.5
     # recentre
+    bpy.context.view_layer.update()
     pts = bl.bbox_world(objs)
     lo = Vector((min(p.x for p in pts), min(p.y for p in pts), min(p.z for p in pts)))
     hi = Vector((max(p.x for p in pts), max(p.y for p in pts), max(p.z for p in pts)))

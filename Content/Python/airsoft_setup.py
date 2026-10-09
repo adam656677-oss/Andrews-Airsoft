@@ -13,7 +13,8 @@ Options:
     --skip-import     do not import meshes / textures (default textures are still ensured)
     --skip-audio      do not import WAVs
     --skip-materials  do not rebuild master materials / instances / slot assignment
-    --force-import    re-import even when the source files are unchanged
+    --force-import    re-import even when the source files are unchanged (also rebuilds master materials)
+    --rebuild-masters rebuild the master material graphs even if their version tag is current
     --only ID,ID      import only these asset ids
 Examples:
     py airsoft_setup.py --maps Staging --skip-import
@@ -46,6 +47,7 @@ def parse_args(argv):
     ap.add_argument("--skip-audio", action="store_true")
     ap.add_argument("--skip-materials", action="store_true")
     ap.add_argument("--force-import", action="store_true")
+    ap.add_argument("--rebuild-masters", action="store_true")
     ap.add_argument("--only", default="")
     args, unknown = ap.parse_known_args(argv)
     return args, unknown
@@ -97,7 +99,7 @@ def main(argv=None):
         if not args.skip_audio:
             I.import_audio(force=args.force_import)
         if not args.skip_materials:
-            MAT.build_masters()
+            MAT.build_masters(force=args.force_import or args.rebuild_masters)
             MAT.build_tileable_instances(mats)
             MAT.build_piece_instances(reg)
             MAT.assign_mesh_materials(reg)

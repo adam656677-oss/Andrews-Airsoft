@@ -1202,7 +1202,7 @@ def render_asset(aid, objs, entry, opts):
         if aid in ('Tire',):
             el = 30.0
         bl.product_shot(objs, os.path.join(bl.RENDERS, CAT, aid + '.png'), az=az, el=el,
-                        samples=opts['samples'] or 10, margin=1.1)
+                        samples=opts['samples'] or 7, margin=1.1)
         if aid == 'OilDrum':
             pass
     return entry

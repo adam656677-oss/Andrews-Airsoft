@@ -606,6 +606,7 @@ def space(x, rng, room="outdoor", wet=0.2, ch=None, circular=False, tail=True, *
 # ----------------------------------------------------------------- finishing
 
 PEAK_DB = -1.0
+AIR_HZ = 17500.0
 
 
 def true_peak(x, os=4, block=65536):
@@ -626,9 +627,9 @@ def true_peak(x, os=4, block=65536):
 
 
 def finish_oneshot(x, peak_db=PEAK_DB, trim_db=-62.0, fade_ms=5.0, hp_hz=20.0):
-    """DC/rumble high-pass, trim true silence, 5 ms fade-out, normalise to -1 dBTP."""
+    """DC/rumble high-pass, air low-pass, trim true silence, 5 ms fade-out, normalise to -1 dBTP."""
     x = np.asarray(x, float)
-    x = hp(x, hp_hz, order=2)
+    x = lp(hp(x, hp_hz, order=2), AIR_HZ, order=4)  # noise transients otherwise fizz right up to Nyquist
     a = np.max(np.abs(np.atleast_2d(x)), axis=0)
     pk = float(a.max()) or 1.0
     thr = pk * undb(trim_db)
@@ -645,8 +646,8 @@ def finish_oneshot(x, peak_db=PEAK_DB, trim_db=-62.0, fade_ms=5.0, hp_hz=20.0):
 
 
 def finish_loop(x, peak_db=PEAK_DB, hp_hz=20.0):
-    """Circular DC/rumble high-pass (keeps the seam continuous) + normalise."""
-    x = hp(np.asarray(x, float), hp_hz, order=2, circular=True)
+    """Circular DC/rumble high-pass + air low-pass (keeps the seam continuous) + normalise."""
+    x = lp(hp(np.asarray(x, float), hp_hz, order=2, circular=True), AIR_HZ, order=4, circular=True)
     x = x - np.mean(x, axis=-1, keepdims=True)
     tp = true_peak(x)
     return x * (undb(peak_db) / (tp or 1.0))

@@ -20,7 +20,7 @@ COLLISION_OVERRIDE = {
     "Tree_Oak_A": "Complex", "Tree_Oak_B": "Complex", "Tree_Oak_C": "Complex",   # trunk + branches, not a hull
     "RugPersian": "None",
 }
-NO_COLLISION_PIECES = {"Flag", "Rope", "Plaque", "Shrub", "Chain", "Leaves", "Net", "Reticle"}
+NO_COLLISION_PIECES = {"Flag", "Rope", "Plaque", "Shrub", "Chain", "Leaves", "Reticle"}
 
 DEFAULT_TEXTURES = {   # name: (rgba, kind)
     "T_Default_BC": ((255, 255, 255, 255), "BC"),
@@ -277,6 +277,8 @@ def set_collision(sm, mode, big=True):
 def collision_for(entry, aid, piece, role):
     cat = entry["Category"]
     pn = piece.get("Name", "")
+    if pn == "Net" and cat not in C.NO_COLLISION_CATEGORIES:
+        return "Box"            # field netting stops players and BBs
     if cat in C.NO_COLLISION_CATEGORIES or role in ("glass", "emissive", "masked") or pn in NO_COLLISION_PIECES:
         return "None"
     if pn == "Plate":

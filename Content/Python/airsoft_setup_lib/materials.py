@@ -63,20 +63,33 @@ def _split(src):
 
 
 def link(src, dst, inp=""):
+    """connect_material_expressions returns False (it does not raise) on a bad pin name - check it."""
     e, o = _split(src)
+    ok = False
     try:
-        MEL.connect_material_expressions(e, o, dst, inp)
+        ok = MEL.connect_material_expressions(e, o, dst, inp)
     except Exception as ex:
-        C.SUMMARY.once("link:%s:%s" % (type(dst).__name__, inp), "material link %s -> %s.%s failed: %s" %
-                       (type(e).__name__, type(dst).__name__, inp, ex))
+        C.SUMMARY.once("link-ex:%s:%s" % (type(dst).__name__, inp), "material link to %s.%s raised %s" %
+                       (type(dst).__name__, inp, ex))
+        return False
+    if ok is False:
+        C.SUMMARY.once("link:%s:%s:%s" % (type(e).__name__, o, inp), "material link %s.%s -> %s.%s refused" %
+                       (type(e).__name__, o or "<first>", type(dst).__name__, inp or "<first>"))
+    return ok is not False
 
 
-def out(src, prop):
+def out(src, prop, alt_outputs=()):
+    """Connect to a material output; try alternative output pin names (e.g. unnamed font channels)."""
     e, o = _split(src)
-    try:
-        MEL.connect_material_property(e, o, prop)
-    except Exception as ex:
-        C.SUMMARY.once("out:%s" % prop, "material output %s failed: %s" % (prop, ex))
+    for name in (o,) + tuple(alt_outputs):
+        try:
+            if MEL.connect_material_property(e, name, prop) is not False:
+                return True
+        except Exception:
+            pass
+    C.SUMMARY.once("out:%s" % prop, "material output %s from %s.%s could not be connected" %
+                   (prop, type(e).__name__, o))
+    return False
 
 
 class Graph(object):
@@ -400,16 +413,28 @@ def build_sign():
     inten = g.scalar("Intensity", 10.0, -800, 250)
     e = g.mul(g.mul((vc, ""), col, -500, -300), inten, -300, -200)
     out(e, MP.MP_EMISSIVE_COLOR)
-    out((fs, "A"), MP.MP_OPACITY_MASK)
+    out((fs, "A"), MP.MP_OPACITY_MASK, alt_outputs=("Alpha", ""))
     return _finish(m, nanite=False)
 
 
-def build_masters():
+MASTER_VERSION = "1"     # bump when a master graph changes; unchanged masters are not rebuilt (saves shader compiles)
+
+
+def build_masters(force=False):
     built = {}
     for name, fn in (("M_AirsoftPBR", build_pbr), ("M_Tileable", build_tileable), ("M_Emissive", build_emissive),
                      ("M_Glass", build_glass), ("M_Masked", build_masked), ("M_SignText", build_sign)):
+        path = "%s/%s" % (C.MAT_ROOT, name)
+        existing = C.load(path)
+        if existing is not None and not force and C.get_metadata(existing, "AirsoftMaster") == MASTER_VERSION:
+            built[name] = existing
+            C.SUMMARY.inc("master materials unchanged (skipped)")
+            continue
         try:
-            built[name] = fn()
+            m = fn()
+            C.set_metadata(m, "AirsoftMaster", MASTER_VERSION)
+            C.save_asset(m)
+            built[name] = m
         except Exception as e:
             C.SUMMARY.note("building %s failed: %s" % (name, e))
     return built

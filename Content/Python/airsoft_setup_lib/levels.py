@@ -200,8 +200,8 @@ def place_prop(ctx, it):
                     for i in range(nslots):
                         cur = mesh.get_material(i)
                         mats.append(var if cur is not None and cur.get_path_name().split(".")[0] == base_path else None)
-            coll = (role == "opaque" and not it.get("nocoll") and
-                    p["Name"] not in ("Leaves", "Net", "Flag", "Rope", "Plaque", "Shrub"))
+            coll = ((role == "opaque" or p["Name"] == "Net") and not it.get("nocoll") and
+                    p["Name"] not in ("Leaves", "Flag", "Rope", "Plaque", "Shrub"))
             a = spawn_mesh(ctx, mesh, loc, rotation, scale, aid if body is None else "%s_%s" % (aid, p["Name"]),
                            folder, mats, coll=coll)
             if role == "emissive":
