@@ -868,7 +868,7 @@ void UAirsoftCombatComponent::UpdateViewmodel(float DeltaTime)
 	const FRotator ControlRot = C->GetControlRotation();
 	const FRotator RotDelta = (ControlRot - LastControlRotation).GetNormalized();
 	LastControlRotation = ControlRot;
-	const FVector2D TargetSway(FMath::Clamp(-RotDelta.Yaw * 0.6f, -4.f, 4.f), FMath::Clamp(RotDelta.Pitch * 0.6f, -4.f, 4.f));
+	const FVector2D TargetSway(FMath::Clamp(static_cast<float>(-RotDelta.Yaw) * 0.6f, -4.f, 4.f), FMath::Clamp(static_cast<float>(RotDelta.Pitch) * 0.6f, -4.f, 4.f));
 	Sway = FMath::Vector2DInterpTo(Sway, TargetSway, DeltaTime, 10.f);
 
 	const float Speed = C->GetVelocity().Size2D();
@@ -911,6 +911,7 @@ void UAirsoftCombatComponent::UpdateViewmodel(float DeltaTime)
 	FTransform SlideOffset = FTransform::Identity;
 	FTransform BoltOffset = FTransform::Identity;
 	FTransform PumpOffset = FTransform::Identity;
+	FTransform HandOffset = FTransform::Identity;
 	const float SlideBack = bSlideLocked ? 1.f : SlideKick;
 	if (SlideBack > 0.f)
 	{
@@ -953,6 +954,9 @@ void UAirsoftCombatComponent::UpdateViewmodel(float DeltaTime)
 				// Mag drops out, fresh mag comes up and seats.
 				const float Drop = Window(T, 0.18f, 0.4f);
 				const float Insert = Window(T, 0.45f, 0.7f);
+				// Support hand leaves the handguard, strips the mag, fetches a fresh one and returns.
+				const float Reach = Window(T, 0.08f, 0.2f) - Window(T, 0.72f, 0.86f);
+				const FVector ToWell = Gun->MagWellLocal - Gun->LeftHandLocal + FVector(0.f, -2.f, -10.f);
 				if (T < 0.42f)
 				{
 					MagOffset = FTransform(FRotator(-10.f * Drop, 0.f, 25.f * Drop), FVector(-3.f * Drop, 0.f, -40.f * Drop * Drop));
@@ -964,6 +968,7 @@ void UAirsoftCombatComponent::UpdateViewmodel(float DeltaTime)
 					Blend.Blend(From, FTransform::Identity, Insert);
 					MagOffset = Blend;
 				}
+				HandOffset.SetTranslation(ToWell * Reach + MagOffset.GetTranslation() * Reach);
 				Cue(TEXT("Out"), 0.2f, TEXT("MagOut"), 1.f);
 				Cue(TEXT("In"), 0.68f, TEXT("MagIn"), 1.f);
 				if (bAnimEmpty)
@@ -987,6 +992,7 @@ void UAirsoftCombatComponent::UpdateViewmodel(float DeltaTime)
 			if (W.Id == TEXT("M870"))
 			{
 				PumpOffset.SetTranslation(FVector(-9.f * Back, 0.f, 0.f));
+				HandOffset = PumpOffset;
 				Cue(TEXT("Rack"), 0.35f, TEXT("BoltCycle"), 0.85f);
 			}
 			else
@@ -1000,7 +1006,7 @@ void UAirsoftCombatComponent::UpdateViewmodel(float DeltaTime)
 	}
 
 	Gun->SetRelativeLocationAndRotation(Loc, Rot);
-	Gun->SetPartOffsets(MagOffset, SlideOffset, BoltOffset, PumpOffset);
+	Gun->SetPartOffsets(MagOffset, SlideOffset, BoltOffset, PumpOffset, HandOffset);
 	Gun->SetOpticFade(AimAlpha);
 	Gun->SetVisibility(!IsScoped() && !C->IsOut(), true);
 }

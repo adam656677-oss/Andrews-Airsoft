@@ -117,9 +117,36 @@ namespace AirsoftAssets
 		return LoadCached<USoundBase>(*Path);
 	}
 
+	namespace
+	{
+		/** Picks one of <Key>_01..<Key>_06 at random when the variations exist, else <Key>. */
+		USoundBase* SoundVariant(FName Key)
+		{
+			static TMap<FName, TArray<TWeakObjectPtr<USoundBase>>> Variants;
+			TArray<TWeakObjectPtr<USoundBase>>* List = Variants.Find(Key);
+			if (!List || List->ContainsByPredicate([](const TWeakObjectPtr<USoundBase>& S) { return !S.IsValid(); }))
+			{
+				TArray<TWeakObjectPtr<USoundBase>> Found;
+				for (int32 i = 1; i <= 6; ++i)
+				{
+					if (USoundBase* S = Sound(FName(*FString::Printf(TEXT("%s_%02d"), *Key.ToString(), i))))
+					{
+						Found.Add(S);
+					}
+				}
+				List = &Variants.Add(Key, Found);
+			}
+			if (List->Num() > 0)
+			{
+				return (*List)[FMath::RandRange(0, List->Num() - 1)].Get();
+			}
+			return Sound(Key);
+		}
+	}
+
 	void Play2D(const UObject* WorldContext, FName Key, float Volume, float Pitch)
 	{
-		if (USoundBase* S = Sound(Key))
+		if (USoundBase* S = SoundVariant(Key))
 		{
 			UGameplayStatics::PlaySound2D(WorldContext, S, Volume, Pitch);
 		}
@@ -127,7 +154,7 @@ namespace AirsoftAssets
 
 	void Play3D(const UObject* WorldContext, FName Key, const FVector& Location, float Volume, float Pitch)
 	{
-		if (USoundBase* S = Sound(Key))
+		if (USoundBase* S = SoundVariant(Key))
 		{
 			UGameplayStatics::PlaySoundAtLocation(WorldContext, S, Location, Volume, Pitch, 0.f, Attenuation());
 		}

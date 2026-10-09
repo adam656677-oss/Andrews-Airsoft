@@ -49,8 +49,8 @@ public:
 	FVector GetMuzzleWorld() const { return GetComponentTransform().TransformPosition(MuzzleLocal); }
 	FVector GetLaserWorld() const { return GetComponentTransform().TransformPosition(LaserLocal); }
 
-	/** Animation offsets for moving parts, applied about each part's pivot. */
-	void SetPartOffsets(const FTransform& Mag, const FTransform& Slide, const FTransform& Bolt, const FTransform& Pump);
+	/** Animation offsets for moving parts, applied about each part's pivot. LeftHand moves the support hand (first person). */
+	void SetPartOffsets(const FTransform& Mag, const FTransform& Slide, const FTransform& Bolt, const FTransform& Pump, const FTransform& LeftHand = FTransform::Identity);
 
 	void SetLightOn(bool bOn);
 	bool IsLightOn() const { return bLightOn; }
@@ -66,6 +66,9 @@ private:
 	void BuildFallbackAttachment(FName AttachmentId, FName Slot, const FVector& Mount);
 	UStaticMeshComponent* AddBox(const FVector& Center, const FVector& Size, const FLinearColor& Color, FName Kind = TEXT("Body"));
 	void ApplyMaterials(UStaticMeshComponent* Comp);
+	/** First-person gloved hands: Gear/Gloves meshes when imported, otherwise simple stand-ins. */
+	void AddHands(bool bPistol);
+	UStaticMeshComponent* AddLimb(const FVector& From, const FVector& To, float Thickness, const FLinearColor& Color, FName Kind);
 
 	struct FPartInfo
 	{

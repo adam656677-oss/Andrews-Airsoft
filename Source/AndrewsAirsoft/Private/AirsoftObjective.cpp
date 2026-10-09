@@ -1,6 +1,7 @@
 #include "AirsoftObjective.h"
 
 #include "AirsoftAssets.h"
+#include "AirsoftGunVisual.h"
 #include "Components/PointLightComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/TextRenderComponent.h"
@@ -75,9 +76,30 @@ void AAirsoftObjective::BeginPlay()
 	Super::BeginPlay();
 	Ring->SetRelativeScale3D(FVector(Radius * 2.f / 100.f, Radius * 2.f / 100.f, 0.02f));
 	RingMID = AirsoftAssets::MakeEmissive(this, FLinearColor::White, 1.5f);
-	FlagMID = AirsoftAssets::MakeEmissive(this, FLinearColor::White, 0.6f);
 	Ring->SetMaterial(0, RingMID);
-	Flag->SetMaterial(0, FlagMID);
+
+	// Use the 4K flag pole from the asset kit when it has been imported.
+	UStaticMesh* PoleMesh = AirsoftAssets::FindMesh(TEXT("Props"), TEXT("FlagPole_Objective"), TEXT("Body"));
+	UStaticMesh* FlagMesh = AirsoftAssets::FindMesh(TEXT("Props"), TEXT("FlagPole_Objective"), TEXT("Flag"));
+	if (PoleMesh && FlagMesh)
+	{
+		bAssetFlag = true;
+		Pole->SetStaticMesh(PoleMesh);
+		Pole->SetRelativeTransform(FTransform::Identity);
+		Flag->SetStaticMesh(FlagMesh);
+		Flag->SetRelativeTransform(FTransform::Identity);
+		FlagMID = Flag->CreateDynamicMaterialInstance(0);
+		const FAirsoftAssetLayout& L = UAirsoftGunVisual::Layout(TEXT("Props"), TEXT("FlagPole_Objective"));
+		const FVector* Top = L.Point(TEXT("FlagTop"));
+		const float TopZ = Top ? Top->Z : 600.f;
+		Label->SetRelativeLocation(FVector(0.f, 0.f, TopZ + 110.f));
+		Glow->SetRelativeLocation(FVector(0.f, 0.f, TopZ - 40.f));
+	}
+	else
+	{
+		FlagMID = AirsoftAssets::MakeEmissive(this, FLinearColor::White, 0.6f);
+		Flag->SetMaterial(0, FlagMID);
+	}
 	Label->SetText(FText::FromString(Letter));
 	RefreshVisuals();
 }
@@ -87,7 +109,7 @@ void AAirsoftObjective::Tick(float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 	// Flag flutter and a label that always faces the local camera.
 	FlagWave += DeltaSeconds;
-	Flag->SetRelativeRotation(FRotator(0.f, FMath::Sin(FlagWave * 1.7f) * 12.f, FMath::Sin(FlagWave * 3.1f) * 3.f));
+	Flag->SetRelativeRotation(FRotator(0.f, FMath::Sin(FlagWave * 1.7f) * 12.f, bAssetFlag ? 0.f : FMath::Sin(FlagWave * 3.1f) * 3.f));
 	if (const UWorld* World = GetWorld())
 	{
 		if (APlayerController* PC = World->GetFirstPlayerController())
@@ -190,7 +212,7 @@ void AAirsoftObjective::RefreshVisuals()
 	}
 	if (FlagMID)
 	{
-		FlagMID->SetVectorParameterValue(TEXT("Color"), Color);
+		FlagMID->SetVectorParameterValue(bAssetFlag ? TEXT("PrimaryTint") : TEXT("Color"), Color);
 	}
 	Ring->SetVisibility(bActive);
 	Flag->SetVisibility(bActive);

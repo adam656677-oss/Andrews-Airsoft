@@ -125,7 +125,7 @@ void UAirsoftBBSubsystem::Tick(float DeltaTime)
 				BB.Position += Delta;
 				BB.Travelled += Delta.Size();
 				BB.Age += Dt;
-				if (BB.Travelled >= BB.P.MaxRange || BB.Age > 4.f || BB.Velocity.SizeSquared() < 1500.f * 1500.f)
+				if (BB.Travelled >= BB.P.MaxRange || BB.Age > 6.f || BB.Velocity.SizeSquared() < FMath::Square(FMath::Min(1500.f, BB.P.Speed * 0.15f)))
 				{
 					bDone = true;
 				}

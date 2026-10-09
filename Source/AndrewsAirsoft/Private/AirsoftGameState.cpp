@@ -27,7 +27,7 @@ float AAirsoftGameState::GetTimeRemaining() const
 	{
 		return -1.f;
 	}
-	return FMath::Max(0.f, PhaseEndsAt - GetServerWorldTimeSeconds());
+	return FMath::Max(0.f, PhaseEndsAt - static_cast<float>(GetServerWorldTimeSeconds()));
 }
 
 int32 AAirsoftGameState::GetScore(EAirsoftTeam Team) const

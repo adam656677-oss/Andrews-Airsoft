@@ -93,7 +93,7 @@ void AAirsoftGrenade::OnBounce(const FHitResult& ImpactResult, const FVector& Im
 	if (ImpactVelocity.Size() > 120.f && Now - LastBounceSound > 0.12)
 	{
 		LastBounceSound = Now;
-		AirsoftAssets::Play3D(this, TEXT("GrenadeBounce"), ImpactResult.ImpactPoint, FMath::Clamp(ImpactVelocity.Size() / 900.f, 0.15f, 0.7f), FMath::FRandRange(0.9f, 1.15f));
+		AirsoftAssets::Play3D(this, TEXT("GrenadeBounce"), ImpactResult.ImpactPoint, FMath::Clamp(static_cast<float>(ImpactVelocity.Size()) / 900.f, 0.15f, 0.7f), FMath::FRandRange(0.9f, 1.15f));
 	}
 }
 

@@ -246,9 +246,13 @@ void UAirsoftGunVisual::Build(const FAirsoftCustomization& Custom, const FLinear
 		{
 			const FVector* Aim = AL.Point(TEXT("AimOffset"));
 			AimPointLocal = *MountPoint + (Aim ? *Aim : DefaultAimOffset(M.Choice));
+			// Magnified optics hide their housing at full aim so the zoomed sight picture is clear;
+			// open sights (red dot, holo) keep their frame and reticle.
+			const bool bMagnified = M.Choice == TEXT("Scope4x") || M.Choice == TEXT("Magnifier") || M.Choice == TEXT("ScopeLong");
 			for (int32 i = FirstNewPart; i < PartInfo.Num(); ++i)
 			{
-				PartInfo[i].bOptic = PartInfo[i].Kind != TEXT("Glass");
+				const FName K = PartInfo[i].Kind;
+				PartInfo[i].bOptic = bMagnified && K != TEXT("Glass") && K != TEXT("Reticle") && K != TEXT("Emissive");
 			}
 		}
 		else if (M.Slot == AirsoftWeapons::SlotMuzzle)
@@ -279,7 +283,60 @@ void UAirsoftGunVisual::Build(const FAirsoftCustomization& Custom, const FLinear
 			Light->RegisterComponent();
 		}
 	}
+	if (bFP && !bTP)
+	{
+		AddHands(IsPistol(W));
+	}
 	SetOpticFade(OpticFade);
+}
+
+void UAirsoftGunVisual::AddHands(bool bPistol)
+{
+	// Gun space: origin at the grip, barrel +X. The shooter's shoulders sit behind and below.
+	const FVector RightElbow(-30.f, 9.f, -22.f);
+	const FVector LeftElbow = bPistol ? FVector(-30.f, -16.f, -22.f) : FVector(LeftHandLocal.X - 34.f, -24.f, -20.f);
+	const FVector LeftHand = bPistol ? FVector(-1.f, -3.f, -2.f) : LeftHandLocal;
+
+	UStaticMesh* RightMesh = AirsoftAssets::FindMesh(TEXT("Gear"), TEXT("Gloves"), TEXT("RightGrip"));
+	UStaticMesh* LeftMesh = AirsoftAssets::FindMesh(TEXT("Gear"), TEXT("Gloves"), bPistol ? TEXT("LeftPistol") : TEXT("LeftSupport"));
+	if (RightMesh && LeftMesh)
+	{
+		AddPart(RightMesh, TEXT("Hand"), FTransform::Identity, FVector::ZeroVector);
+		AddPart(LeftMesh, TEXT("LeftHand"), FTransform(LeftHand), FVector::ZeroVector);
+		return;
+	}
+
+	// Stand-ins: dark gloves and sleeves.
+	const FLinearColor Glove(0.035f, 0.035f, 0.032f);
+	const FLinearColor Sleeve(0.06f, 0.065f, 0.05f);
+	AddBox(FVector(-1.f, 0.f, -2.f), FVector(6.f, 5.f, 9.f), Glove, TEXT("Hand"));
+	AddLimb(FVector(-3.f, 1.f, -6.f), RightElbow, 7.f, Sleeve, TEXT("Hand"));
+	AddBox(LeftHand + FVector(0.f, -1.f, -2.5f), FVector(7.f, 5.f, 5.f), Glove, TEXT("LeftHand"));
+	AddLimb(LeftHand + FVector(-2.f, -2.f, -4.f), LeftElbow, 7.f, Sleeve, TEXT("LeftHand"));
+}
+
+UStaticMeshComponent* UAirsoftGunVisual::AddLimb(const FVector& From, const FVector& To, float Thickness, const FLinearColor& Color, FName Kind)
+{
+	const FVector Axis = To - From;
+	const float Length = Axis.Size();
+	if (Length < 1.f)
+	{
+		return nullptr;
+	}
+	const FQuat Rotation = FRotationMatrix::MakeFromZ(Axis / Length).ToQuat();
+	const FTransform Relative(Rotation, (From + To) * 0.5f, FVector(Thickness / 100.f, Thickness / 100.f, Length / 100.f));
+	UStaticMeshComponent* Comp = AddPart(AirsoftAssets::Cylinder(), Kind, Relative, FVector::ZeroVector);
+	if (Comp)
+	{
+		if (UMaterialInterface* Mat = BasicShapeMaterial())
+		{
+			if (UMaterialInstanceDynamic* MID = Comp->CreateDynamicMaterialInstance(0, Mat))
+			{
+				MID->SetVectorParameterValue(TEXT("Color"), Color);
+			}
+		}
+	}
+	return Comp;
 }
 
 UStaticMeshComponent* UAirsoftGunVisual::AddPart(UStaticMesh* Mesh, FName Kind, const FTransform& Relative, const FVector& Pivot)
@@ -386,9 +443,17 @@ void UAirsoftGunVisual::BuildFallbackAttachment(FName AttachmentId, FName Slot, 
 		AddBox(Mount + FVector(0.f, 1.6f, 3.6f), FVector(Len, 0.4f, 5.f), Black);
 		AddBox(Mount + FVector(0.f, -1.6f, 3.6f), FVector(Len, 0.4f, 5.f), Black);
 		AddBox(Mount + FVector(0.f, 0.f, 6.3f), FVector(Len, 3.6f, 0.5f), Black);
-		for (int32 i = Parts.Num() - 4; i < Parts.Num(); ++i)
+		for (int32 i = FMath::Max(Parts.Num() - 4, 0); i < Parts.Num(); ++i)
 		{
-			PartInfo[i].bOptic = true;
+			PartInfo[i].bOptic = bScope;
+		}
+		if (!bScope)
+		{
+			// Glowing dot for red dot / holo stand-ins.
+			if (UStaticMeshComponent* Dot = AddPart(AirsoftAssets::Sphere(), TEXT("Reticle"), FTransform(FQuat::Identity, Mount + FVector(Len * 0.5f, 0.f, 3.6f), FVector(0.004f)), FVector::ZeroVector))
+			{
+				Dot->SetMaterial(0, AirsoftAssets::MakeEmissive(Dot, FLinearColor(1.f, 0.05f, 0.03f), 40.f));
+			}
 		}
 	}
 	else if (Slot == AirsoftWeapons::SlotMuzzle)
@@ -411,7 +476,7 @@ void UAirsoftGunVisual::BuildFallbackAttachment(FName AttachmentId, FName Slot, 
 	}
 }
 
-void UAirsoftGunVisual::SetPartOffsets(const FTransform& Mag, const FTransform& Slide, const FTransform& Bolt, const FTransform& Pump)
+void UAirsoftGunVisual::SetPartOffsets(const FTransform& Mag, const FTransform& Slide, const FTransform& Bolt, const FTransform& Pump, const FTransform& LeftHand)
 {
 	for (int32 i = 0; i < Parts.Num(); ++i)
 	{
@@ -426,6 +491,7 @@ void UAirsoftGunVisual::SetPartOffsets(const FTransform& Mag, const FTransform& 
 		else if (Info.Kind == TEXT("Slide")) Offset = &Slide;
 		else if (Info.Kind == TEXT("Bolt")) Offset = &Bolt;
 		else if (Info.Kind == TEXT("Pump")) Offset = &Pump;
+		else if (Info.Kind == TEXT("LeftHand")) Offset = &LeftHand;
 		if (!Offset)
 		{
 			continue;

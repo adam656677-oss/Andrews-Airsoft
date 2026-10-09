@@ -254,7 +254,7 @@ void AAirsoftGameMode::SetPlayerDefaults(APawn* PlayerPawn)
 	PS->RespawnAt = 0.f;
 	C->GetCombat()->ServerInitLoadout(PS->Loadout);
 	const bool bLive = GS->bIsMatchMap && GS->Phase == EAirsoftPhase::Live;
-	PS->ProtectedUntil = bLive ? GS->GetServerWorldTimeSeconds() + UAirsoftSettings::Get()->SpawnProtection : 0.f;
+	PS->ProtectedUntil = bLive ? static_cast<float>(GS->GetServerWorldTimeSeconds()) + UAirsoftSettings::Get()->SpawnProtection : 0.f;
 	C->ServerSetFrozen(GS->bIsMatchMap && IsFrozenPhase(GS->Phase));
 	C->ApplyTeamLook();
 }
@@ -461,7 +461,7 @@ void AAirsoftGameMode::SetPhase(EAirsoftPhase NewPhase, float Duration)
 	if (AAirsoftGameState* GS = GetAirsoftGameState())
 	{
 		GS->Phase = NewPhase;
-		GS->PhaseEndsAt = Duration > 0.f ? GS->GetServerWorldTimeSeconds() + Duration : 0.f;
+		GS->PhaseEndsAt = Duration > 0.f ? static_cast<float>(GS->GetServerWorldTimeSeconds()) + Duration : 0.f;
 	}
 }
 
@@ -819,7 +819,7 @@ bool AAirsoftGameMode::HandleTag(AController* Shooter, AController* Victim, FNam
 	VictimPS->LastTaggedBy = ShooterName;
 	VictimPS->Round.Outs++;
 	VictimPS->Round.Streak = 0;
-	VictimPS->RespawnAt = GS->GetServerWorldTimeSeconds() + S->RespawnTime;
+	VictimPS->RespawnAt = static_cast<float>(GS->GetServerWorldTimeSeconds()) + S->RespawnTime;
 
 	const APawn* ShooterPawn = Shooter ? Shooter->GetPawn() : nullptr;
 	if (ShooterPS && !bSameTeam)
@@ -893,7 +893,7 @@ void AAirsoftGameMode::SpawnGrenade(AController* Thrower, const FVector& Origin,
 // Helpers
 // ---------------------------------------------------------------------------
 
-int32 AAirsoftGameMode::CountPlayers() const
+int32 AAirsoftGameMode::CountPlayers()
 {
 	return GetNumPlayers();
 }

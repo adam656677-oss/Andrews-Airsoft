@@ -65,4 +65,5 @@ protected:
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> FlagMID;
 
 	float FlagWave = 0.f;
+	bool bAssetFlag = false;
 };

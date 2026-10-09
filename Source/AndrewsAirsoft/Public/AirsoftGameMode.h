@@ -66,7 +66,7 @@ protected:
 	void RecountVotes();
 	void ScheduleRespawn(AController* Controller, float Delay);
 	void Respawn(AController* Controller);
-	int32 CountPlayers() const;
+	int32 CountPlayers();
 	void AnnounceAll(const FString& Title, const FString& Sub, const FLinearColor& Color, float Duration);
 	void GiveXP(AController* Controller, int32 Amount, const FString& Reason);
 
