@@ -1,0 +1,118 @@
+{
+  "Version": 1,
+  "Assets": {
+    "Gloves": {
+      "Pieces": [
+        {
+          "Name": "RightGrip",
+          "Kind": "Static",
+          "Slots": [
+            "M_Gloves_RightGrip"
+          ],
+          "Space": "Gun",
+          "Attach": "Origin",
+          "Bounds": {
+            "Min": [
+              -33.6,
+              -4.2,
+              -25.8
+            ],
+            "Max": [
+              7.7,
+              13.2,
+              3.8
+            ]
+          },
+          "Triangles": 132196,
+          "TextureSize": 2048
+        },
+        {
+          "Name": "LeftSupport",
+          "Kind": "Static",
+          "Slots": [
+            "M_Gloves_LeftSupport"
+          ],
+          "Space": "LeftHand",
+          "Attach": "LeftHand",
+          "Bounds": {
+            "Min": [
+              -37.0,
+              -28.6,
+              -24.1
+            ],
+            "Max": [
+              4.4,
+              6.7,
+              7.0
+            ]
+          },
+          "Triangles": 137352,
+          "TextureSize": 2048
+        },
+        {
+          "Name": "LeftPistol",
+          "Kind": "Static",
+          "Slots": [
+            "M_Gloves_LeftPistol"
+          ],
+          "Space": "Gun",
+          "Attach": "Origin",
+          "Bounds": {
+            "Min": [
+              -33.1,
+              -20.3,
+              -26.1
+            ],
+            "Max": [
+              8.7,
+              3.6,
+              1.8
+            ]
+          },
+          "Triangles": 123228,
+          "TextureSize": 2048
+        }
+      ],
+      "Points": {
+        "RightGripAttach": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "LeftPistolAttach": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "RightElbow": [
+          -30.0,
+          9.0,
+          -22.0
+        ],
+        "LeftElbowPistol": [
+          -30.0,
+          -16.0,
+          -22.0
+        ],
+        "LeftElbowSupport": [
+          -34.0,
+          -24.0,
+          -20.0
+        ]
+      },
+      "Notes": "Unreal cm. RightGrip and LeftPistol are authored in gun space (origin = pistol-grip centre, attach at the gun origin); LeftSupport is authored relative to the gun's LeftHand point (attach at Points.LeftHand). LeftElbowSupport is relative to LeftHand. Bounds are per piece in its own space; the asset Bounds is their union.",
+      "Bounds": {
+        "Min": [
+          -37.0,
+          -28.6,
+          -26.1
+        ],
+        "Max": [
+          8.7,
+          13.2,
+          7.0
+        ]
+      }
+    }
+  }
+}
