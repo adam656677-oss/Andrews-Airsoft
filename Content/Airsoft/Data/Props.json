@@ -9,13 +9,13 @@
           "Slots": [
             "M_Barricade_Plywood_3m_Body"
           ],
-          "Triangles": 3536,
+          "Triangles": 5136,
           "Textures": {
             "BC": "Props/Barricade_Plywood_3m/T_Barricade_Plywood_3m_Body_BC.png",
             "N": "Props/Barricade_Plywood_3m/T_Barricade_Plywood_3m_Body_N.png",
             "ORM": "Props/Barricade_Plywood_3m/T_Barricade_Plywood_3m_Body_ORM.png"
           },
-          "TextureSize": 512
+          "TextureSize": 2048
         }
       ],
       "Collision": "Complex",
@@ -40,13 +40,13 @@
           "Slots": [
             "M_Barricade_Plywood_4m_Body"
           ],
-          "Triangles": 4128,
+          "Triangles": 5408,
           "Textures": {
             "BC": "Props/Barricade_Plywood_4m/T_Barricade_Plywood_4m_Body_BC.png",
             "N": "Props/Barricade_Plywood_4m/T_Barricade_Plywood_4m_Body_N.png",
             "ORM": "Props/Barricade_Plywood_4m/T_Barricade_Plywood_4m_Body_ORM.png"
           },
-          "TextureSize": 512
+          "TextureSize": 2048
         }
       ],
       "Collision": "Box",
@@ -117,7 +117,7 @@
             "N": "Props/CableSpool/T_CableSpool_Body_N.png",
             "ORM": "Props/CableSpool/T_CableSpool_Body_ORM.png"
           },
-          "TextureSize": 512
+          "TextureSize": 2048
         }
       ],
       "Collision": "Convex",
@@ -142,13 +142,13 @@
           "Slots": [
             "M_ChronoTable_Body"
           ],
-          "Triangles": 3204,
+          "Triangles": 3764,
           "Textures": {
             "BC": "Props/ChronoTable/T_ChronoTable_Body_BC.png",
             "N": "Props/ChronoTable/T_ChronoTable_Body_N.png",
             "ORM": "Props/ChronoTable/T_ChronoTable_Body_ORM.png"
           },
-          "TextureSize": 512
+          "TextureSize": 1024
         }
       ],
       "Collision": "Box",
@@ -173,13 +173,13 @@
           "Slots": [
             "M_Crate_Ammo_Body"
           ],
-          "Triangles": 1656,
+          "Triangles": 2136,
           "Textures": {
             "BC": "Props/Crate_Ammo/T_Crate_Ammo_Body_BC.png",
             "N": "Props/Crate_Ammo/T_Crate_Ammo_Body_N.png",
             "ORM": "Props/Crate_Ammo/T_Crate_Ammo_Body_ORM.png"
           },
-          "TextureSize": 512
+          "TextureSize": 1024
         }
       ],
       "Collision": "Box",
@@ -204,13 +204,13 @@
           "Slots": [
             "M_Crate_Wood_Body"
           ],
-          "Triangles": 3996,
+          "Triangles": 6956,
           "Textures": {
             "BC": "Props/Crate_Wood/T_Crate_Wood_Body_BC.png",
             "N": "Props/Crate_Wood/T_Crate_Wood_Body_N.png",
             "ORM": "Props/Crate_Wood/T_Crate_Wood_Body_ORM.png"
           },
-          "TextureSize": 512
+          "TextureSize": 1024
         }
       ],
       "Collision": "Box",
@@ -235,13 +235,13 @@
           "Slots": [
             "M_FlagPole_Objective_Body"
           ],
-          "Triangles": 23948,
+          "Triangles": 24028,
           "Textures": {
             "BC": "Props/FlagPole_Objective/T_FlagPole_Objective_Body_BC.png",
             "N": "Props/FlagPole_Objective/T_FlagPole_Objective_Body_N.png",
             "ORM": "Props/FlagPole_Objective/T_FlagPole_Objective_Body_ORM.png"
           },
-          "TextureSize": 512
+          "TextureSize": 1024
         },
         {
           "Name": "Flag",
@@ -256,7 +256,7 @@
             "ORM": "Props/FlagPole_Objective/T_FlagPole_Objective_Flag_ORM.png",
             "M": "Props/FlagPole_Objective/T_FlagPole_Objective_Flag_M.png"
           },
-          "TextureSize": 512
+          "TextureSize": 1024
         }
       ],
       "Collision": "Convex",
@@ -300,25 +300,25 @@
           "Slots": [
             "M_HayBale_Round_Body"
           ],
-          "Triangles": 74752,
+          "Triangles": 76776,
           "Textures": {
             "BC": "Props/HayBale_Round/T_HayBale_Round_Body_BC.png",
             "N": "Props/HayBale_Round/T_HayBale_Round_Body_N.png",
             "ORM": "Props/HayBale_Round/T_HayBale_Round_Body_ORM.png"
           },
-          "TextureSize": 512
+          "TextureSize": 2048
         }
       ],
       "Collision": "Convex",
       "Bounds": {
         "Min": [
           -75.9,
-          -61.3,
+          -61.1,
           0.0
         ],
         "Max": [
           75.7,
-          61.4,
+          61.2,
           154.0
         ]
       }
@@ -369,7 +369,7 @@
             "ORM": "Props/OilDrum/T_OilDrum_Body_ORM.png",
             "M": "Props/OilDrum/T_OilDrum_Body_M.png"
           },
-          "TextureSize": 512
+          "TextureSize": 1024
         }
       ],
       "Collision": "Convex",
@@ -412,7 +412,7 @@
             "N": "Props/Pallet/T_Pallet_Body_N.png",
             "ORM": "Props/Pallet/T_Pallet_Body_ORM.png"
           },
-          "TextureSize": 512
+          "TextureSize": 1024
         }
       ],
       "Collision": "Box",
@@ -443,7 +443,7 @@
             "N": "Props/PalletStack/T_PalletStack_Body_N.png",
             "ORM": "Props/PalletStack/T_PalletStack_Body_ORM.png"
           },
-          "TextureSize": 512
+          "TextureSize": 1024
         }
       ],
       "Collision": "Box",
@@ -474,20 +474,20 @@
             "N": "Props/Rock_A/T_Rock_A_Body_N.png",
             "ORM": "Props/Rock_A/T_Rock_A_Body_ORM.png"
           },
-          "TextureSize": 1024
+          "TextureSize": 2048
         }
       ],
       "Collision": "Convex",
       "Bounds": {
         "Min": [
           -97.6,
-          -63.6,
+          -63.3,
           -6.0
         ],
         "Max": [
-          87.6,
-          73.5,
-          124.4
+          87.7,
+          74.0,
+          125.8
         ]
       }
     },
@@ -505,20 +505,20 @@
             "N": "Props/Rock_B/T_Rock_B_Body_N.png",
             "ORM": "Props/Rock_B/T_Rock_B_Body_ORM.png"
           },
-          "TextureSize": 512
+          "TextureSize": 1024
         }
       ],
       "Collision": "Convex",
       "Bounds": {
         "Min": [
-          -42.1,
-          -45.7,
+          -42.2,
+          -45.4,
           -6.0
         ],
         "Max": [
-          58.5,
+          58.6,
           40.6,
-          57.3
+          57.5
         ]
       }
     },
@@ -536,7 +536,7 @@
             "N": "Props/SandbagCorner/T_SandbagCorner_Body_N.png",
             "ORM": "Props/SandbagCorner/T_SandbagCorner_Body_ORM.png"
           },
-          "TextureSize": 512
+          "TextureSize": 2048
         }
       ],
       "Collision": "Complex",
@@ -592,13 +592,13 @@
           "Slots": [
             "M_SteelTarget_Body"
           ],
-          "Triangles": 1204,
+          "Triangles": 1604,
           "Textures": {
             "BC": "Props/SteelTarget/T_SteelTarget_Body_BC.png",
             "N": "Props/SteelTarget/T_SteelTarget_Body_N.png",
             "ORM": "Props/SteelTarget/T_SteelTarget_Body_ORM.png"
           },
-          "TextureSize": 512
+          "TextureSize": 1024
         },
         {
           "Name": "Plate",
@@ -606,13 +606,13 @@
           "Slots": [
             "M_SteelTarget_Plate"
           ],
-          "Triangles": 1228,
+          "Triangles": 1388,
           "Textures": {
             "BC": "Props/SteelTarget/T_SteelTarget_Plate_BC.png",
             "N": "Props/SteelTarget/T_SteelTarget_Plate_N.png",
             "ORM": "Props/SteelTarget/T_SteelTarget_Plate_ORM.png"
           },
-          "TextureSize": 512
+          "TextureSize": 1024
         }
       ],
       "Collision": "Convex",
@@ -655,7 +655,7 @@
             "N": "Props/Tire/T_Tire_Body_N.png",
             "ORM": "Props/Tire/T_Tire_Body_ORM.png"
           },
-          "TextureSize": 512
+          "TextureSize": 1024
         }
       ],
       "Collision": "Convex",
@@ -686,7 +686,7 @@
             "N": "Props/TireStack/T_TireStack_Body_N.png",
             "ORM": "Props/TireStack/T_TireStack_Body_ORM.png"
           },
-          "TextureSize": 512
+          "TextureSize": 1024
         }
       ],
       "Collision": "Convex",
@@ -759,7 +759,7 @@
           "Slots": [
             "M_Tree_Oak_B_Leaves"
           ],
-          "Triangles": 11128,
+          "Triangles": 24596,
           "Textures": {
             "BC": "Props/Tree_Oak_B/T_Tree_Oak_B_Leaves_BC.png",
             "N": "Props/Tree_Oak_B/T_Tree_Oak_B_Leaves_N.png",
@@ -772,14 +772,54 @@
       "Collision": "Convex",
       "Bounds": {
         "Min": [
-          -478.5,
-          -638.3,
+          -528.5,
+          -628.1,
           -11.8
         ],
         "Max": [
-          667.7,
-          495.7,
-          1006.3
+          669.2,
+          545.9,
+          1008.8
+        ]
+      }
+    },
+    "Tree_Oak_C": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "MI_Bark"
+          ],
+          "Triangles": 33482
+        },
+        {
+          "Name": "Leaves",
+          "Kind": "Static",
+          "Slots": [
+            "M_Tree_Oak_C_Leaves"
+          ],
+          "Triangles": 38120,
+          "Textures": {
+            "BC": "Props/Tree_Oak_C/T_Tree_Oak_C_Leaves_BC.png",
+            "N": "Props/Tree_Oak_C/T_Tree_Oak_C_Leaves_N.png",
+            "ORM": "Props/Tree_Oak_C/T_Tree_Oak_C_Leaves_ORM.png",
+            "Opacity": "Props/Tree_Oak_C/T_Tree_Oak_C_Leaves_Opacity.png"
+          },
+          "BlendMode": "Masked"
+        }
+      ],
+      "Collision": "Convex",
+      "Bounds": {
+        "Min": [
+          -707.4,
+          -769.2,
+          -15.4
+        ],
+        "Max": [
+          608.1,
+          523.9,
+          1167.2
         ]
       }
     },

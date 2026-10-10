@@ -85,7 +85,7 @@
       "Points": {
         "Top": [
           0.0,
-          -0.0,
+          0.0,
           104.5
         ]
       },
@@ -96,17 +96,17 @@
           0.0
         ],
         "Max": [
-          38.3,
+          37.8,
           122.3,
           104.8
         ]
       },
       "Collision": "Box",
       "Triangles": {
-        "Body": 5924
+        "Body": 7288
       },
       "TextureSize": {
-        "Body": 1024
+        "Body": 4096
       }
     },
     "ArmorySign": {
@@ -695,13 +695,13 @@
       ],
       "Points": {
         "CeilingMount": [
-          0,
-          0,
+          0.0,
+          0.0,
           123.0
         ],
         "Light": [
-          0,
-          0,
+          0.0,
+          0.0,
           55.0
         ]
       },
@@ -724,9 +724,9 @@
         "Glass": 4476
       },
       "TextureSize": {
-        "Body": 1024,
-        "Emissive": 128,
-        "Glass": 256
+        "Body": 4096,
+        "Emissive": 512,
+        "Glass": 1024
       }
     },
     "DJBooth": {
@@ -1177,7 +1177,7 @@
         "Body": 55602
       },
       "TextureSize": {
-        "Body": 1024
+        "Body": 4096
       }
     },
     "SpeakerStack": {

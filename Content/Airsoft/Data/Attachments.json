@@ -1,6 +1,270 @@
 {
   "Version": 1,
   "Assets": {
+    "RedDot": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_RedDot_Body"
+          ]
+        },
+        {
+          "Name": "Glass",
+          "Kind": "Glass",
+          "Slots": [
+            "M_RedDot_Glass"
+          ]
+        },
+        {
+          "Name": "Reticle",
+          "Kind": "Static",
+          "Slots": [
+            "M_RedDot_Reticle"
+          ]
+        }
+      ],
+      "AimOffset": [
+        -10.4,
+        0.0,
+        3.8
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -3.5,
+          -2.1,
+          -0.4
+        ],
+        "Max": [
+          3.7,
+          2.0,
+          7.1
+        ]
+      }
+    },
+    "Holo": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Holo_Body"
+          ]
+        },
+        {
+          "Name": "Glass",
+          "Kind": "Glass",
+          "Slots": [
+            "M_Holo_Glass"
+          ]
+        },
+        {
+          "Name": "Reticle",
+          "Kind": "Static",
+          "Slots": [
+            "M_Holo_Reticle"
+          ]
+        }
+      ],
+      "AimOffset": [
+        -10.4,
+        0.0,
+        3.2
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -4.3,
+          -1.7,
+          -0.4
+        ],
+        "Max": [
+          3.0,
+          2.3,
+          5.4
+        ]
+      }
+    },
+    "Scope4x": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Scope4x_Body"
+          ]
+        },
+        {
+          "Name": "Glass",
+          "Kind": "Glass",
+          "Slots": [
+            "M_Scope4x_Glass"
+          ]
+        }
+      ],
+      "AimOffset": [
+        -11.5,
+        0.0,
+        3.6
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -7.0,
+          -2.2,
+          -0.4
+        ],
+        "Max": [
+          6.8,
+          2.1,
+          5.3
+        ]
+      }
+    },
+    "ScopeLong": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_ScopeLong_Body"
+          ]
+        },
+        {
+          "Name": "Glass",
+          "Kind": "Glass",
+          "Slots": [
+            "M_ScopeLong_Glass"
+          ]
+        }
+      ],
+      "AimOffset": [
+        -22.2,
+        0.0,
+        4.5
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -14.8,
+          -2.1,
+          -0.4
+        ],
+        "Max": [
+          14.0,
+          2.6,
+          7.5
+        ]
+      }
+    },
+    "Suppressor": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Suppressor_Body"
+          ]
+        }
+      ],
+      "MuzzleOffset": [
+        16.0,
+        0.0,
+        0.0
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -0.0,
+          -1.3,
+          -1.3
+        ],
+        "Max": [
+          16.0,
+          1.3,
+          1.3
+        ]
+      }
+    },
+    "Compensator": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Compensator_Body"
+          ]
+        }
+      ],
+      "MuzzleOffset": [
+        3.8,
+        0.0,
+        0.0
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -0.0,
+          -0.9,
+          -0.9
+        ],
+        "Max": [
+          3.8,
+          0.9,
+          0.9
+        ]
+      }
+    },
+    "VerticalGrip": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_VerticalGrip_Body"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -2.3,
+          -1.4,
+          -11.5
+        ],
+        "Max": [
+          2.3,
+          1.4,
+          0.4
+        ]
+      }
+    },
+    "AngledGrip": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_AngledGrip_Body"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -4.9,
+          -1.4,
+          -4.5
+        ],
+        "Max": [
+          4.1,
+          1.4,
+          0.4
+        ]
+      }
+    },
     "Laser": {
       "Pieces": [
         {

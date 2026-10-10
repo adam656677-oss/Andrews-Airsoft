@@ -1,6 +1,33 @@
 {
   "Version": 1,
   "Assets": {
+    "Bunker_Logs": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "MI_Bark",
+            "MI_Timber",
+            "MI_Burlap"
+          ],
+          "Triangles": 281528
+        }
+      ],
+      "Snap": 100,
+      "Bounds": {
+        "Min": [
+          -336.4,
+          -312.6,
+          -0.6
+        ],
+        "Max": [
+          340.2,
+          312.6,
+          182.4
+        ]
+      }
+    },
     "Container_20ft": {
       "Pieces": [
         {
@@ -32,6 +59,42 @@
         ]
       }
     },
+    "FloodlightTower": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "MI_Concrete",
+            "MI_PaintedSteel",
+            "MI_CorrodedMetal",
+            "MI_Brass"
+          ],
+          "Triangles": 9588
+        },
+        {
+          "Name": "Glass",
+          "Kind": "Glass",
+          "Slots": [
+            "M_FloodlightTower_Lamp"
+          ],
+          "Triangles": 176
+        }
+      ],
+      "Snap": 100,
+      "Bounds": {
+        "Min": [
+          -50.0,
+          -95.0,
+          -15.0
+        ],
+        "Max": [
+          50.0,
+          95.0,
+          1034.0
+        ]
+      }
+    },
     "Ladder_Metal_4m": {
       "Pieces": [
         {
@@ -42,7 +105,7 @@
             "MI_Rubber",
             "MI_DiamondPlate"
           ],
-          "Triangles": 2996
+          "Triangles": 13972
         }
       ],
       "Snap": 50,
@@ -59,6 +122,41 @@
         ]
       }
     },
+    "NettingFence_4m": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "MI_PaintedSteel",
+            "MI_Concrete",
+            "MI_CorrodedMetal"
+          ],
+          "Triangles": 3072
+        },
+        {
+          "Name": "Net",
+          "Kind": "Static",
+          "Slots": [
+            "MI_Netting"
+          ],
+          "Triangles": 3456
+        }
+      ],
+      "Snap": 400,
+      "Bounds": {
+        "Min": [
+          -15.3,
+          -215.3,
+          -2.0
+        ],
+        "Max": [
+          15.3,
+          215.3,
+          332.5
+        ]
+      }
+    },
     "Platform_Timber_4m": {
       "Pieces": [
         {
@@ -68,7 +166,7 @@
             "MI_Timber",
             "MI_CorrodedMetal"
           ],
-          "Triangles": 5616
+          "Triangles": 8176
         }
       ],
       "Snap": 50,
@@ -122,7 +220,7 @@
             "MI_CorrodedMetal",
             "MI_PaintedSteel"
           ],
-          "Triangles": 60464
+          "Triangles": 60784
         }
       ],
       "Snap": 50,
@@ -139,6 +237,34 @@
         ]
       }
     },
+    "SpawnTent": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "MI_Canvas",
+            "MI_Burlap",
+            "MI_Timber",
+            "MI_PaintedSteel"
+          ],
+          "Triangles": 93944
+        }
+      ],
+      "Snap": 100,
+      "Bounds": {
+        "Min": [
+          -316.2,
+          -341.1,
+          -2.1
+        ],
+        "Max": [
+          317.5,
+          341.1,
+          291.7
+        ]
+      }
+    },
     "Wall_Concrete_4m": {
       "Pieces": [
         {
@@ -148,7 +274,7 @@
             "MI_Concrete",
             "MI_CorrodedMetal"
           ],
-          "Triangles": 3416
+          "Triangles": 10264
         }
       ],
       "Snap": 50,
@@ -165,6 +291,33 @@
         ]
       }
     },
+    "Wall_Plywood_2m": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "MI_Plywood",
+            "MI_Timber",
+            "MI_CorrodedMetal"
+          ],
+          "Triangles": 7032
+        }
+      ],
+      "Snap": 50,
+      "Bounds": {
+        "Min": [
+          -6.0,
+          -100.0,
+          0.0
+        ],
+        "Max": [
+          6.2,
+          100.0,
+          300.0
+        ]
+      }
+    },
     "Wall_Plywood_4m": {
       "Pieces": [
         {
@@ -175,7 +328,7 @@
             "MI_Timber",
             "MI_CorrodedMetal"
           ],
-          "Triangles": 9568
+          "Triangles": 11008
         }
       ],
       "Snap": 50,
@@ -202,7 +355,7 @@
             "MI_Timber",
             "MI_CorrodedMetal"
           ],
-          "Triangles": 8140
+          "Triangles": 10196
         }
       ],
       "Snap": 50,
@@ -229,7 +382,7 @@
             "MI_Timber",
             "MI_CorrodedMetal"
           ],
-          "Triangles": 8616
+          "Triangles": 10804
         }
       ],
       "Snap": 50,
@@ -243,6 +396,35 @@
           8.7,
           200.0,
           300.0
+        ]
+      }
+    },
+    "Watchtower": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "MI_Timber",
+            "MI_Concrete",
+            "MI_PaintedSteel",
+            "MI_CorrodedMetal",
+            "MI_Plywood"
+          ],
+          "Triangles": 51220
+        }
+      ],
+      "Snap": 100,
+      "Bounds": {
+        "Min": [
+          -265.5,
+          -180.1,
+          -10.5
+        ],
+        "Max": [
+          182.2,
+          180.1,
+          795.4
         ]
       }
     }

@@ -163,7 +163,7 @@ def a_Wall_Concrete_4m():
         B.box('MI_CorrodedMetal', (0.05, 0.05, 0.03), (0, y, 3.0 - 0.012), bevel=0.006)
         B.cyl('MI_CorrodedMetal', 0.012, 0.03, (0, y, 3.0 + 0.004), n=12, bevel=0.003)
     # chamfered kicker / plinth
-    B.box('MI_Concrete', (T + 0.06, 4.0, 0.12), (0, 0, 0.06), bevel=0.02, segs=2)
+    B.box('MI_Concrete', (T + 0.06, 3.96, 0.12), (0, 0, 0.06), bevel=0.02, segs=2)
     o = B.finish('Wall_Concrete_4m_Body')
     return [('Body', 'Body', o)], 50
 
