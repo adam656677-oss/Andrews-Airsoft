@@ -1,0 +1,53 @@
+name: Publish to Roblox
+
+# Manually triggered. Builds the place and publishes it straight to your live
+# Roblox experience through Open Cloud.
+#
+# One-time setup (see README → "Publishing"):
+#   Secret   ROBLOX_API_KEY   Open Cloud key with "universe-places:write" for your experience
+#   Variable ROBLOX_UNIVERSE_ID
+#   Variable ROBLOX_PLACE_ID
+
+on:
+  workflow_dispatch:
+    inputs:
+      versionType:
+        description: "Saved (draft) or Published (live)"
+        required: true
+        default: Saved
+        type: choice
+        options: [Saved, Published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rojo
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          curl -sSL -o rojo.zip https://github.com/rojo-rbx/rojo/releases/download/v7.7.1/rojo-7.7.1-linux-x86_64.zip
+          unzip -q rojo.zip -d "$HOME/.local/bin"
+          chmod +x "$HOME/.local/bin/rojo"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Build place file
+        run: rojo build default.project.json -o AndrewsAirsoft.rbxlx
+
+      - name: Publish via Open Cloud
+        env:
+          API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+          UNIVERSE_ID: ${{ vars.ROBLOX_UNIVERSE_ID }}
+          PLACE_ID: ${{ vars.ROBLOX_PLACE_ID }}
+          VERSION_TYPE: ${{ inputs.versionType }}
+        run: |
+          if [ -z "$API_KEY" ] || [ -z "$UNIVERSE_ID" ] || [ -z "$PLACE_ID" ]; then
+            echo "::error::Set the ROBLOX_API_KEY secret and ROBLOX_UNIVERSE_ID / ROBLOX_PLACE_ID variables first."
+            exit 1
+          fi
+          curl --fail-with-body -sS -X POST \
+            "https://apis.roblox.com/universes/v1/${UNIVERSE_ID}/places/${PLACE_ID}/versions?versionType=${VERSION_TYPE}" \
+            -H "x-api-key: ${API_KEY}" \
+            -H "Content-Type: application/xml" \
+            --data-binary @AndrewsAirsoft.rbxlx
