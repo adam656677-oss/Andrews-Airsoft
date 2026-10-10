@@ -6,6 +6,18 @@ Real airsoft rules: BBs are real projectiles (muzzle velocity, drag, hop-up lift
 
 ---
 
+## Gallery (generated 4K art)
+
+| | |
+|---|---|
+| ![Weapons](Docs/Renders/Weapons/_Lineup_4K.jpg) | ![Attachments](Docs/Renders/Attachments/_Lineup_4K.jpg) |
+| ![First-person gloves](Docs/Renders/Gear/Gloves_FirstPerson.jpg) | ![Pistol grip](Docs/Renders/Gear/Gloves_FirstPerson_Pistol.jpg) |
+| ![Velvet Club props](Docs/Renders/PropsClub/_Lineup_Club_4K.jpg) | ![The Armory](Docs/Renders/PropsClub/_Lineup_Armory_4K.jpg) |
+| ![Field props](Docs/Renders/Props/_Lineup_4K.jpg) | ![Architecture kit](Docs/Renders/Architecture/_Lineup_4K.jpg) |
+| ![Materials](Docs/Renders/Materials/_Lineup_4K.jpg) | ![Ironwood Yard plan](Tools/Unreal/Plans/IronwoodYard.png) |
+
+Every asset has its own product shot in `Docs/Renders/<Category>/`.
+
 ## 1. Install (once per PC)
 
 | What | Notes |
