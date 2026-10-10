@@ -78,6 +78,10 @@ public:
 	/** Third person: copy the animated pose and bend both arms onto the gun (called after animation each frame). */
 	void UpdateThirdPersonPose();
 
+	// --- Effects --------------------------------------------------------------
+	/** Shakes this player's own view (Strength 0..1) with an optional upward flinch; local human only, honours the screen-shake option. */
+	void AddViewShake(float Strength, float KickDegrees = 0.f);
+
 	UPROPERTY(ReplicatedUsing = OnRep_Out) bool bIsOutReplicated = false;
 	UPROPERTY(ReplicatedUsing = OnRep_Frozen) bool bFrozen = false;
 	UPROPERTY(Replicated) bool bSprinting = false;
@@ -132,4 +136,11 @@ protected:
 	void SolveArm(FName UpperName, FName LowerName, FName HandName, const FVector& WristTargetWorld, const FVector& PoleWorld);
 	EAirsoftTeam AppliedTeam = EAirsoftTeam::None;
 	bool bTeamApplied = false;
+
+	// Effects: view shake, flinch and the tagged pulse (local human only; see AirsoftEffects.h).
+	void UpdateViewEffects(float DeltaSeconds, FRotator& OutShakeRotation, FVector& OutShakeOffset);
+	float ViewShake = 0.f;
+	float ViewShakeTime = 0.f;
+	float ViewKick = 0.f;
+	float HitPulse = 0.f;
 };

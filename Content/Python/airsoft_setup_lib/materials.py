@@ -15,6 +15,8 @@ MASTER_EMISSIVE = C.MAT_ROOT + "/M_Emissive"
 MASTER_GLASS = C.MAT_ROOT + "/M_Glass"
 MASTER_MASKED = C.MAT_ROOT + "/M_Masked"
 MASTER_SIGN = C.MAT_ROOT + "/M_SignText"
+MASTER_FX_SMOKE = C.MAT_ROOT + "/M_FXSmoke"     # C++ AirsoftEffects: dust / gas puffs, ripples
+MASTER_FX_GLOW = C.MAT_ROOT + "/M_FXGlow"       # C++ AirsoftEffects / BB tracers: additive glow
 DEF = C.TEX_ROOT + "/Defaults/"
 
 # Flat colours for tileables whose textures are not generated yet (multiplied into a white texture).
@@ -29,6 +31,8 @@ FALLBACK_COLOR = {
     "Straw": (0.6, 0.48, 0.25), "Bark": (0.12, 0.09, 0.06), "Granite": (0.35, 0.34, 0.33),
     "MarbleBlack": (0.02, 0.02, 0.025), "Carpet": (0.2, 0.03, 0.05), "Velvet": (0.2, 0.01, 0.03),
     "Leather": (0.12, 0.05, 0.03), "Brass": (0.6, 0.42, 0.15), "Netting": (0.1, 0.12, 0.08),
+    "ConcreteGarage": (0.34, 0.33, 0.31), "ConcreteGarageWet": (0.17, 0.17, 0.17), "PaintLineYellow": (0.6, 0.42, 0.04),
+    "PaintLineWhite": (0.65, 0.65, 0.62),
 }
 METALLIC_TILE = {"Brass": 1.0, "DiamondPlate": 1.0, "CorrodedMetal": 0.6}
 
@@ -42,6 +46,7 @@ GLASS = {
     "WallSconce": ((1.0, 0.8, 0.6), 0.6, 0.4, 8.0), "CeilingLight_Brass": ((1.0, 0.86, 0.68), 0.75, 0.6, 10.0),
     "FloodlightTower": ((1.0, 0.92, 0.8), 0.6, 0.2, 30.0), "MovingHeadLight": ((0.9, 0.9, 1.0), 0.5, 0.1, 6.0),
     "BankersLamp": ((0.05, 0.35, 0.12), 0.85, 0.15, 1.5), "Laser": ((0.6, 0.05, 0.05), 0.4, 0.05, 2.0),
+    "Garage_TicketBooth": ((0.05, 0.07, 0.08), 0.3, 0.03, 0.0),
 }
 # Emissive pieces: (colour override or None = use the baked BC, intensity)
 EMISSIVE = {
@@ -49,6 +54,9 @@ EMISSIVE = {
     "WallSconce": (None, 16.0), "BackBar_4m": (None, 28.0), "DJBooth": (None, 18.0), "Car_Sedan": (None, 9.0),
     "Car_Coupe": (None, 9.0), "BoxTruck": (None, 8.0), "GunDisplayBay": (None, 6.0), "CeilingLight_Brass": (None, 14.0),
     "BankersLamp": (None, 10.0), "ArmorySign": (None, 8.0), "MovingHeadLight": (None, 20.0),
+    "Garage_LightFluo": (None, 16.0), "Garage_LightSodium": (None, 22.0), "Garage_ExitSign": (None, 5.0),
+    "Garage_ElevatorDoors": (None, 5.0), "Garage_PayMachine": (None, 3.0), "Garage_TicketBooth": (None, 5.0),
+    "Garage_BarrierArm": (None, 6.0),
 }
 RETICLE = ((1.0, 0.05, 0.03), 30.0)
 
@@ -417,22 +425,74 @@ def build_sign():
     return _finish(m, nanite=False)
 
 
+def _fx_soft_sphere(g, x, y):
+    """On a sphere mesh: (soft, rim) - soft is 1 facing the camera and 0 at the silhouette, rim the opposite."""
+    rim = g.e(unreal.MaterialExpressionFresnel, x, y, exponent=1.0, base_reflect_fraction=0.0)
+    soft = g.e(unreal.MaterialExpressionOneMinus, x + 150, y)
+    link(rim, soft, "")
+    return soft, rim
+
+
+def build_fx_smoke():
+    """Lit translucent puff on a sphere (C++ sets Color/Opacity/Rim/Emissive per effect). Rim=1 draws only the
+    edge, so a flattened sphere reads as an expanding ripple ring."""
+    m = _new_material(MASTER_FX_SMOKE)
+    C.try_set(m, "blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT)
+    C.try_set(m, "shading_model", unreal.MaterialShadingModel.MSM_DEFAULT_LIT)
+    C.try_set(m, "enable_responsive_aa", True, quiet=True)
+    g = Graph(m)
+    col = g.vector("Color", (0.5, 0.5, 0.5), -900, -300)
+    emi = g.scalar("Emissive", 0.0, -900, -150)
+    opac = g.scalar("Opacity", 0.4, -900, 100)
+    rim_amt = g.scalar("Rim", 0.0, -900, 200)
+    soft, rim = _fx_soft_sphere(g, -900, 350)
+    shape = g.lerp(g.mul(soft, soft, -600, 350), rim, rim_amt, -450, 300)
+    fade = g.e(unreal.MaterialExpressionDepthFade, -600, 500, fade_distance_default=12.0)
+    alpha = g.sat(g.mul(g.mul(shape, opac, -300, 250), fade, -150, 300), 0, 300)
+    out(col, MP.MP_BASE_COLOR)
+    out(g.mul(col, emi, -500, -200), MP.MP_EMISSIVE_COLOR)
+    out(g.const(1.0, -300, 0), MP.MP_ROUGHNESS)
+    out(g.const(0.0, -300, 80), MP.MP_SPECULAR)
+    out(alpha, MP.MP_OPACITY)
+    return _finish(m, nanite=False)
+
+
+def build_fx_glow():
+    """Additive unlit glow on a (stretched) sphere: BB tracers, sparks, flashes (C++ sets Color/Intensity)."""
+    m = _new_material(MASTER_FX_GLOW)
+    C.try_set(m, "blend_mode", unreal.BlendMode.BLEND_ADDITIVE)
+    C.try_set(m, "shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
+    C.try_set(m, "enable_responsive_aa", True, quiet=True)
+    g = Graph(m)
+    col = g.vector("Color", (1.0, 0.6, 0.1), -900, -300)
+    inten = g.scalar("Intensity", 8.0, -900, -150)
+    soft, _rim = _fx_soft_sphere(g, -900, 200)
+    core = g.mul(g.mul(soft, soft, -600, 200), soft, -450, 200)
+    fade = g.e(unreal.MaterialExpressionDepthFade, -600, 350, fade_distance_default=4.0)
+    e = g.mul(g.mul(g.mul(col, inten, -600, -250), core, -300, 0), fade, -150, 100)
+    out(e, MP.MP_EMISSIVE_COLOR)
+    return _finish(m, nanite=False)
+
+
 MASTER_VERSION = "1"     # bump when a master graph changes; unchanged masters are not rebuilt (saves shader compiles)
+FX_MASTER_VERSION = "fx1"  # the M_FX* effects masters only; bump to rebuild just those
 
 
 def build_masters(force=False):
     built = {}
     for name, fn in (("M_AirsoftPBR", build_pbr), ("M_Tileable", build_tileable), ("M_Emissive", build_emissive),
-                     ("M_Glass", build_glass), ("M_Masked", build_masked), ("M_SignText", build_sign)):
+                     ("M_Glass", build_glass), ("M_Masked", build_masked), ("M_SignText", build_sign),
+                     ("M_FXSmoke", build_fx_smoke), ("M_FXGlow", build_fx_glow)):
         path = "%s/%s" % (C.MAT_ROOT, name)
+        version = FX_MASTER_VERSION if name.startswith("M_FX") else MASTER_VERSION
         existing = C.load(path)
-        if existing is not None and not force and C.get_metadata(existing, "AirsoftMaster") == MASTER_VERSION:
+        if existing is not None and not force and C.get_metadata(existing, "AirsoftMaster") == version:
             built[name] = existing
             C.SUMMARY.inc("master materials unchanged (skipped)")
             continue
         try:
             m = fn()
-            C.set_metadata(m, "AirsoftMaster", MASTER_VERSION)
+            C.set_metadata(m, "AirsoftMaster", version)
             C.save_asset(m)
             built[name] = m
         except Exception as e:

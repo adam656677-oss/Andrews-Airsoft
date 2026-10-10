@@ -2,6 +2,7 @@
 
 #include "AirsoftAssets.h"
 #include "AirsoftCombatComponent.h"
+#include "AirsoftEffects.h"
 #include "AirsoftGameInstance.h"
 #include "AirsoftGunVisual.h"
 #include "AirsoftMovementComponent.h"
@@ -612,11 +613,22 @@ void AAirsoftCharacter::OnRep_Out()
 		return;
 	}
 	AirsoftAssets::Play3D(this, TEXT("HitCall"), GetActorLocation() + FVector(0.f, 0.f, 70.f), 0.9f, FMath::FRandRange(0.92f, 1.08f));
+	// Effects: everyone watching sees an orange pop where the BB struck (not on join-in-progress replication).
+	if (!IsLocalHuman() && GetGameTimeSinceCreation() > 0.5f)
+	{
+		if (UAirsoftEffectsSubsystem* FX = UAirsoftEffectsSubsystem::Get(this))
+		{
+			FX->TagPop(this);
+		}
+	}
 	if (IsLocallyControlled())
 	{
 		if (IsLocalHuman())
 		{
 			AirsoftAssets::Play2D(this, TEXT("Tagged"), 0.8f, 1.f);
+			// Effects: the victim's view pulses (desaturate + vignette) and flinches.
+			HitPulse = 1.f;
+			AddViewShake(0.45f, 2.5f);
 		}
 		if (Combat)
 		{
@@ -650,6 +662,51 @@ void AAirsoftCharacter::Landed(const FHitResult& Hit)
 	const float FallSpeed = -GetCharacterMovement()->Velocity.Z;
 	LandDip = FMath::Clamp(FallSpeed / 900.f * 7.f, 0.f, 9.f);
 	AirsoftAssets::Play3D(this, TEXT("Land"), GetActorLocation() - FVector(0.f, 0.f, CapsuleHalfHeight), FMath::Clamp(FallSpeed / 700.f, 0.2f, 0.8f), FMath::FRandRange(0.9f, 1.05f));
+	// Effects: dust off the ground on a hard landing.
+	if (FallSpeed > 350.f)
+	{
+		if (UAirsoftEffectsSubsystem* FX = UAirsoftEffectsSubsystem::Get(this))
+		{
+			FX->LandingDust(Hit, FMath::Clamp((FallSpeed - 350.f) / 700.f, 0.f, 1.f));
+		}
+	}
+}
+
+void AAirsoftCharacter::AddViewShake(float Strength, float KickDegrees)
+{
+	if (!IsLocalHuman() || !AirsoftEffects::ScreenShakeEnabled(this))
+	{
+		return;
+	}
+	const float Scale = UAirsoftEffectsSettings::Get()->ShakeScale;
+	if (ViewShake <= 0.f)
+	{
+		ViewShakeTime = FMath::FRandRange(0.f, 100.f); // a fresh stretch of noise each time
+	}
+	ViewShake = FMath::Clamp(FMath::Max(ViewShake, Strength * Scale), 0.f, 1.f);
+	ViewKick = FMath::Clamp(FMath::Max(ViewKick, KickDegrees * Scale), 0.f, 6.f);
+}
+
+void AAirsoftCharacter::UpdateViewEffects(float DeltaSeconds, FRotator& OutShakeRotation, FVector& OutShakeOffset)
+{
+	OutShakeRotation = FRotator::ZeroRotator;
+	OutShakeOffset = FVector::ZeroVector;
+	HitPulse = FMath::Max(0.f, HitPulse - DeltaSeconds / 0.5f);
+	// Flinch: snaps up, eases back down.
+	ViewKick = FMath::FInterpTo(ViewKick, 0.f, DeltaSeconds, 9.f);
+	OutShakeRotation.Pitch = ViewKick;
+	if (ViewShake <= 0.f)
+	{
+		return;
+	}
+	ViewShakeTime += DeltaSeconds;
+	ViewShake = FMath::Max(0.f, ViewShake - DeltaSeconds * 2.f); // a full-strength shake settles in half a second
+	const float Amount = ViewShake * ViewShake;
+	const float T = ViewShakeTime * 24.f;
+	OutShakeRotation.Pitch += FMath::PerlinNoise1D(T) * 2.4f * Amount;
+	OutShakeRotation.Yaw = FMath::PerlinNoise1D(T + 31.7f) * 1.6f * Amount;
+	OutShakeRotation.Roll = FMath::PerlinNoise1D(T + 67.3f) * 2.8f * Amount;
+	OutShakeOffset = FVector(0.f, FMath::PerlinNoise1D(T + 11.1f) * 1.4f * Amount, FMath::PerlinNoise1D(T + 47.9f) * 1.4f * Amount);
 }
 
 // ---------------------------------------------------------------------------
@@ -705,7 +762,16 @@ void AAirsoftCharacter::Tick(float DeltaSeconds)
 			{
 				StepAccum = 0.f;
 				const float Volume = (bIsCrouched ? 0.12f : bSprint ? 0.55f : 0.32f) * (IsLocalHuman() ? 0.6f : 1.f);
-				AirsoftAssets::Play3D(this, TEXT("Footstep"), GetActorLocation() - FVector(0.f, 0.f, GetCapsuleComponent()->GetScaledCapsuleHalfHeight()), Volume, FMath::FRandRange(0.85f, 1.15f));
+				const FVector Foot = GetActorLocation() - FVector(0.f, 0.f, GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
+				AirsoftAssets::Play3D(this, TEXT("Footstep"), Foot, Volume, FMath::FRandRange(0.85f, 1.15f));
+				// Effects: dust kicked up on dusty ground (others only: your own feet are out of view).
+				if (!bIsCrouched && !IsLocalHuman())
+				{
+					if (UAirsoftEffectsSubsystem* FX = UAirsoftEffectsSubsystem::Get(this))
+					{
+						FX->FootDust(this, Foot, bSprint ? 1.f : 0.4f);
+					}
+				}
 			}
 		}
 	}
@@ -745,10 +811,15 @@ void AAirsoftCharacter::UpdateCamera(float DeltaSeconds)
 
 	const float SlideRoll = bSlidingNow ? -4.f : 0.f;
 	const float Roll = LeanAmount * LeanRoll + SlideRoll;
+	// Shake and flinch ride on the same additive offset as lean roll; the viewmodel follows so the gun stays glued to the view.
+	FRotator ShakeRotation;
+	FVector ShakeOffset;
+	UpdateViewEffects(DeltaSeconds, ShakeRotation, ShakeOffset);
+	const FRotator ViewRotation(ShakeRotation.Pitch, ShakeRotation.Yaw, Roll + ShakeRotation.Roll);
 	Camera->SetRelativeLocation(FVector(0.f, LeanAmount * LeanOffset, EyeHeight - HalfHeight - LandDip));
 	Camera->ClearAdditiveOffset();
-	Camera->AddAdditiveOffset(FTransform(FRotator(0.f, 0.f, Roll)), 0.f);
-	ViewRoot->SetRelativeRotation(FRotator(0.f, 0.f, Roll));
+	Camera->AddAdditiveOffset(FTransform(ViewRotation, ShakeOffset), 0.f);
+	ViewRoot->SetRelativeLocationAndRotation(ShakeOffset, ViewRotation);
 
 	// Field of view: user setting, zoomed by the gun's optic, widened slightly when sprinting.
 	float BaseFOV = 90.f;
@@ -760,13 +831,21 @@ void AAirsoftCharacter::UpdateCamera(float DeltaSeconds)
 	const float TargetFOV = (Combat ? Combat->GetTargetFOV(BaseFOV) : BaseFOV) + Extra;
 	Camera->SetFieldOfView(FMath::FInterpTo(Camera->FieldOfView, TargetFOV, DeltaSeconds, 14.f));
 
-	// Tagged: the world drains of colour until respawn.
+	// Tagged: the world drains of colour until respawn. The moment of the hit lands as a short,
+	// sharp pulse on top: deeper desaturation, a vignette punch, a warm tint and (cinematic) fringing.
 	OutFade = FMath::FInterpTo(OutFade, IsOut() ? 1.f : 0.f, DeltaSeconds, 3.f);
+	const float Pulse = HitPulse * HitPulse;
+	const bool bPulsing = Pulse > 0.001f;
 	FPostProcessSettings& PP = Camera->PostProcessSettings;
 	PP.bOverride_ColorSaturation = true;
-	PP.ColorSaturation = FVector4(1.f, 1.f, 1.f, 1.f - 0.75f * OutFade);
+	PP.ColorSaturation = FVector4(1.f, 1.f, 1.f, FMath::Max(0.f, 1.f - 0.75f * OutFade - 0.6f * Pulse));
 	PP.bOverride_VignetteIntensity = true;
-	PP.VignetteIntensity = 0.4f + 0.6f * OutFade;
+	PP.VignetteIntensity = 0.4f + 0.6f * OutFade + 0.6f * Pulse;
+	// Only override these while pulsing so the map's own grading and chromatic aberration stay in charge.
+	PP.bOverride_ColorGain = bPulsing;
+	PP.ColorGain = FVector4(1.f + 0.12f * Pulse, 1.f - 0.04f * Pulse, 1.f - 0.14f * Pulse, 1.f);
+	PP.bOverride_SceneFringeIntensity = bPulsing && AirsoftEffects::CinematicEnabled(this);
+	PP.SceneFringeIntensity = 0.1f + 3.f * Pulse;
 	Camera->PostProcessBlendWeight = 1.f;
 }
 

@@ -3,6 +3,7 @@
 #include "AirsoftAssets.h"
 #include "AirsoftBallistics.h"
 #include "AirsoftCharacter.h"
+#include "AirsoftEffects.h"
 #include "AirsoftGameInstance.h"
 #include "AirsoftGameMode.h"
 #include "AirsoftGameState.h"
@@ -584,6 +585,15 @@ void UAirsoftCombatComponent::FireOnce()
 
 	// Everyone else sees a bot's third-person gun, so its tracers start there.
 	const FVector Muzzle = bHuman ? C->GetFPGun()->GetMuzzleWorld() : C->GetTPGun()->GetMuzzleWorld();
+	// Effects: muzzle puff on the viewmodel (none while the scope overlay hides it) or a bot's third-person gun.
+	if (UAirsoftEffectsSubsystem* FX = UAirsoftEffectsSubsystem::Get(this))
+	{
+		if (!bHuman || !IsScoped())
+		{
+			const UAirsoftGunVisual* Gun = bHuman ? C->GetFPGun() : C->GetTPGun();
+			FX->MuzzlePuff(Muzzle, Gun->GetForwardVector(), W, W.bQuiet, bHuman, AimAlpha);
+		}
+	}
 	if (UAirsoftBBSubsystem* BBs = GetWorld()->GetSubsystem<UAirsoftBBSubsystem>())
 	{
 		const FLinearColor Color = AirsoftColors::Team(C->GetTeam());
@@ -659,6 +669,8 @@ void UAirsoftCombatComponent::OnLocalBBHit(int32 ShotId, int32 Pellet, const FHi
 	AAirsoftCharacter* Me = GetCharacter();
 	if (AAirsoftCharacter* Victim = Cast<AAirsoftCharacter>(HitActor))
 	{
+		LastVictimHit = Hit.ImpactPoint;
+		LastVictimHitTime = GetWorld()->GetTimeSeconds();
 		if (Me && Victim != Me && !Victim->IsOut() && (Victim->GetTeam() != Me->GetTeam() || UAirsoftSettings::Get()->bFriendlyFire))
 		{
 			ServerReportHit(ShotId, static_cast<uint8>(Pellet), Victim, Hit.ImpactPoint);
@@ -874,6 +886,11 @@ void UAirsoftCombatComponent::MulticastShot_Implementation(FVector_NetQuantize O
 		return;
 	}
 	const FVector Muzzle = C->GetTPGun()->GetMuzzleWorld();
+	// Effects: muzzle puff on their third-person gun (gun type from their replicated loadout).
+	if (UAirsoftEffectsSubsystem* FX = UAirsoftEffectsSubsystem::Get(this))
+	{
+		FX->MuzzlePuff(Muzzle, C->GetTPGun()->GetForwardVector(), Current(), bQuiet, false);
+	}
 	if (UAirsoftBBSubsystem* BBs = GetWorld()->GetSubsystem<UAirsoftBBSubsystem>())
 	{
 		for (const FVector_NetQuantizeNormal& D : Directions)
@@ -932,6 +949,14 @@ void UAirsoftCombatComponent::ClientHitConfirm_Implementation()
 		if (AAirsoftPlayerController* PC = Cast<AAirsoftPlayerController>(C->GetController()))
 		{
 			PC->ShowHitMarker(true);
+		}
+	}
+	// Effects: a small white pop on the spot the confirmed BB struck.
+	if (GetWorld()->GetTimeSeconds() - LastVictimHitTime < 1.5)
+	{
+		if (UAirsoftEffectsSubsystem* FX = UAirsoftEffectsSubsystem::Get(this))
+		{
+			FX->HitConfirmPop(LastVictimHit);
 		}
 	}
 }

@@ -210,4 +210,8 @@ private:
 	FVector2D Sway = FVector2D::ZeroVector;
 	FRotator LastControlRotation = FRotator::ZeroRotator;
 	TSet<FName> FiredCues;
+
+	// Effects: where this player's last BB struck an opponent, for the hit-confirm pop.
+	FVector LastVictimHit = FVector::ZeroVector;
+	double LastVictimHitTime = -100.0;
 };

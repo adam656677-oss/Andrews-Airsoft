@@ -44,6 +44,8 @@ protected:
 	EAirsoftTeam Team = EAirsoftTeam::None;
 	FTimerHandle FuseTimer;
 	float FlashLeft = 0.f;
+	/** Burst light peak in candela (AirsoftEffects settings; dimmer with cinematic effects off). */
+	float FlashPeak = 60.f;
 	bool bDetonated = false;
 	double LastBounceSound = 0.0;
 };

@@ -3,6 +3,7 @@
 #include "AirsoftAssets.h"
 #include "AirsoftBallistics.h"
 #include "AirsoftCharacter.h"
+#include "AirsoftEffects.h"
 #include "AirsoftGameMode.h"
 #include "AirsoftSettings.h"
 #include "AirsoftWeaponData.h"
@@ -85,6 +86,9 @@ void AAirsoftGrenade::BeginPlay()
 		}
 	}
 	Movement->OnProjectileBounce.AddDynamic(this, &AAirsoftGrenade::OnBounce);
+	// Same physical scale as the maps (local lights are a few candela).
+	Flash->SetIntensityUnits(ELightUnits::Candelas);
+	Flash->SetIntensity(0.f);
 	if (HasAuthority())
 	{
 		GetWorldTimerManager().SetTimer(FuseTimer, this, &AAirsoftGrenade::Detonate, AirsoftWeapons::GrenadeFuse, false);
@@ -111,7 +115,7 @@ void AAirsoftGrenade::Tick(float DeltaSeconds)
 	if (FlashLeft > 0.f)
 	{
 		FlashLeft = FMath::Max(0.f, FlashLeft - DeltaSeconds);
-		Flash->SetIntensity(FMath::Square(FlashLeft / 0.25f) * 60000.f);
+		Flash->SetIntensity(FMath::Square(FlashLeft / 0.25f) * FlashPeak);
 	}
 }
 
@@ -184,6 +188,13 @@ void AAirsoftGrenade::MulticastBurst_Implementation(FVector_NetQuantize Location
 	{
 		BBs->Burst(Location, AirsoftWeapons::GrenadeRadius, 90);
 	}
+	// Effects: gas puff, ground dust ring, BB spray and a distance-scaled camera shake. A gas BB grenade
+	// leaves no scorch mark.
+	if (UAirsoftEffectsSubsystem* FX = UAirsoftEffectsSubsystem::Get(this))
+	{
+		FX->GrenadeBurst(Location, AirsoftWeapons::GrenadeRadius);
+	}
+	FlashPeak = UAirsoftEffectsSettings::Get()->GrenadeLightCandela * (AirsoftEffects::CinematicEnabled(this) ? 1.f : 0.35f);
 	FlashLeft = 0.25f;
-	Flash->SetIntensity(60000.f);
+	Flash->SetIntensity(FlashPeak);
 }
