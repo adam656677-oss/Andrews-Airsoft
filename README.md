@@ -51,6 +51,7 @@ Every asset has its own product shot in `Docs/Renders/<Category>/`.
    git reset -q SourceAssets
    ```
    Or run the Blender generators yourself (see [Regenerating art](#7-regenerating-art-and-audio)).
+   **Shortcut for steps 3–6:** double-click **`Airsoft.bat`** in the project folder and choose **6** (*check, build code, build content*). It checks your PC first, compiles the game, then opens the editor, builds all the maps and closes it again. See [The build helper](#the-build-helper-airsoftbat). Do step 5 (Third Person pack) once in the editor afterwards, then run option 3 again.
 3. **Build the code:** right-click `AndrewsAirsoft.uproject` → *Generate Visual Studio project files*. Open `AndrewsAirsoft.sln`, choose **Development Editor / Win64**, then **Build**.
 4. **Open the project:** double-click `AndrewsAirsoft.uproject`. If asked to rebuild modules, click **Yes**.
 5. **Add the character pack:** *Content Drawer → Add → Add Feature or Content Pack → Third Person → Add to Project.* This provides the Manny body and its animations that other players see.
@@ -63,6 +64,22 @@ Every asset has its own product shot in `Docs/Renders/<Category>/`.
 7. **Play:** press **Play** in the editor, or package the game (section 5).
 
 If you have no art yet, the game still runs: guns, targets and maps fall back to simple stand-in shapes until the 4K assets are imported.
+
+### The build helper (`Airsoft.bat`)
+
+Double-click `Airsoft.bat` for a menu:
+
+| Option | What it does |
+|---|---|
+| 1 Check my PC | Finds Unreal 5.8, Visual Studio C++, the Windows SDK, free disk space, GPU and RAM, the 4K art, the Third Person pack and Tailscale (and shows your Tailscale IP). |
+| 2 Build the game code | Compiles the C++ module (close the editor first). |
+| 3 Build the game content | Opens the editor, runs `airsoft_setup.py` (art, sound, materials, all maps) and closes it. The first run can take 30–90 minutes. |
+| 4 Open the editor | |
+| 5 Package the game for friends | Shipping build into `Packaged\Windows`, plus a zip to share. |
+| 6 Do 1, 2 and 3 in order | The first-time path. |
+| 7 Make Visual Studio project files | Only needed to read or debug the code in Visual Studio. |
+
+Each run writes `Saved\BuildReport\latest.txt`. **If anything fails, the report opens in Notepad and is copied to your clipboard: paste it to Claude to get the fix.** Paths in it are shortened so it doesn't include your Windows user name. You can also run one step directly, e.g. `Airsoft.bat build`. If Unreal is installed somewhere unusual, set the environment variable `AIRSOFT_UE_ROOT` to the folder that contains `Engine\`.
 
 ## 3. Playing together
 
@@ -107,7 +124,7 @@ Your profile (rank, XP, stats, loadout, settings) is saved on your own PC: `%LOC
 
 ## 5. Packaging a build for friends
 
-*Platforms → Windows → Package Project* (Development or Shipping). Zip the output folder and share it (e.g. Google Drive). Friends unzip it and run `AndrewsAirsoft.exe`; they don't need Unreal installed. Every player must run the **same build**.
+Easiest: `Airsoft.bat` → **5**. Or in the editor: *Platforms → Windows → Package Project* (Development or Shipping). Zip the output folder and share it (e.g. Google Drive). Friends unzip it and run `AndrewsAirsoft.exe`; they don't need Unreal installed. Every player must run the **same build**.
 
 ## 6. Graphics on an RTX 2070 at 4K
 
@@ -140,6 +157,8 @@ In **Settings**, *Quality: High* with *Render scale: 60%* is the recommended 207
 - round rules (round time, score limits, respawn time, friendly fire): *Project Settings → Game → Airsoft*.
 
 ## 9. Troubleshooting
+
+- **The build or setup failed:** paste `Saved\BuildReport\latest.txt` (already on your clipboard after a failure) to Claude. The code was written without an Unreal install to test against, so a round of compile fixes on the first build is expected.
 
 - **"Couldn't connect":** check that both PCs show as connected in Tailscale, that the host allowed the firewall prompt, and that both run the same build.
 - **Players see grey stand-in bodies:** the Third Person content pack is missing (step 5).

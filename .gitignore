@@ -3,7 +3,7 @@ Binaries/
 Intermediate/
 Saved/
 DerivedDataCache/
-Build/
+/Build/
 .vs/
 .vscode/
 .idea/
@@ -33,3 +33,6 @@ __pycache__/
 
 # Full-size PNG renders stay local; compressed JPG copies are committed instead
 Docs/Renders/**/*.png
+
+# Packaged builds and build-helper reports
+Packaged/

@@ -16,6 +16,7 @@ Options:
     --force-import    re-import even when the source files are unchanged (also rebuilds master materials)
     --rebuild-masters rebuild the master material graphs even if their version tag is current
     --only ID,ID      import only these asset ids
+    --quit            close the editor when finished (used by Airsoft.bat / Tools/Build/AirsoftBuild.ps1)
 Examples:
     py airsoft_setup.py --maps Staging --skip-import
     py airsoft_setup.py --skip-import --skip-materials --maps IronwoodYard,VelvetClub
@@ -49,6 +50,7 @@ def parse_args(argv):
     ap.add_argument("--force-import", action="store_true")
     ap.add_argument("--rebuild-masters", action="store_true")
     ap.add_argument("--only", default="")
+    ap.add_argument("--quit", action="store_true")   # handled at the bottom of this file (Tools/Build/AirsoftBuild.ps1 uses it)
     args, unknown = ap.parse_known_args(argv)
     return args, unknown
 
@@ -125,4 +127,11 @@ def main(argv=None):
 
 
 if __name__ != "airsoft_setup":      # run when executed as a script (py airsoft_setup.py / Execute Python Script)
-    main()
+    _quit_when_done = "--quit" in sys.argv[1:]
+    try:
+        main()
+    finally:
+        if _quit_when_done:          # unattended run from the build helper: close the editor whatever happened
+            import unreal
+            unreal.log("[AirsoftSetup] closing the editor (--quit)")
+            unreal.SystemLibrary.quit_editor()
