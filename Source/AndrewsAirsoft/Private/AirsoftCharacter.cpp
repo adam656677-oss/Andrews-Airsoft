@@ -7,6 +7,7 @@
 #include "AirsoftGunVisual.h"
 #include "AirsoftMovementComponent.h"
 #include "AirsoftPlayerState.h"
+#include "AirsoftTeamGearComponent.h"
 #include "AirsoftSaveGame.h"
 #include "AirsoftSettings.h"
 #include "Animation/AnimInstance.h"
@@ -86,6 +87,7 @@ AAirsoftCharacter::AAirsoftCharacter(const FObjectInitializer& ObjectInitializer
 	TPGun->SetRelativeLocation(FVector(16.f, 17.f, -9.f));
 
 	Combat = CreateDefaultSubobject<UAirsoftCombatComponent>(TEXT("Combat"));
+	TeamGear = CreateDefaultSubobject<UAirsoftTeamGearComponent>(TEXT("TeamGear"));
 
 	FallbackBody = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("FallbackBody"));
 	FallbackBody->SetupAttachment(Capsule);
@@ -420,6 +422,25 @@ void AAirsoftCharacter::ApplyTeamLook()
 		// Muted team-tinted fatigues on the stand-in body.
 		const FLinearColor Fatigue = FMath::Lerp(FLinearColor(0.09f, 0.1f, 0.08f), Color * 0.35f, 0.35f);
 		BodyMID->SetVectorParameterValue(TEXT("Color"), Fatigue);
+	}
+	if (TeamGear)
+	{
+		// Same player id on every machine, so everyone sees the same helmet/cap and colourway.
+		const AAirsoftPlayerState* GearPS = GetAirsoftPlayerState();
+		const int32 GearSeed = GearPS ? GearPS->GetPlayerId() : 0;
+		if (bHasMannequin)
+		{
+			USkinnedMeshComponent* GearBody = bUsePoseMesh ? static_cast<USkinnedMeshComponent*>(PoseMesh.Get()) : GetMesh();
+			TeamGear->ApplyTo(GearBody, Team, GearSeed);
+		}
+		else
+		{
+			TeamGear->ApplyToFallbackHead(FallbackHead, Team, GearSeed);
+		}
+		if (TeamBand)
+		{
+			TeamBand->SetVisibility(!TeamGear->HasArmband()); // the glowing band only when the gear isn't imported
+		}
 	}
 	if (Combat)
 	{

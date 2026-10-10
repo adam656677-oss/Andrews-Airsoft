@@ -16,6 +16,7 @@ class UStaticMeshComponent;
 class UTextRenderComponent;
 class UMaterialInstanceDynamic;
 class UPoseableMeshComponent;
+class UAirsoftTeamGearComponent;
 class AAirsoftPlayerState;
 
 UCLASS()
@@ -114,6 +115,8 @@ protected:
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UTextRenderComponent> HitCall;
 	/** Visible body when the mannequin is used: a copy of the animated mesh with the arms posed onto the gun. */
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UPoseableMeshComponent> PoseMesh;
+	/** Plate carrier, helmet or cap, goggles, mask, armband and knee pads worn by the third-person body. */
+	UPROPERTY(VisibleAnywhere) TObjectPtr<UAirsoftTeamGearComponent> TeamGear;
 
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> TeamMID;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> BodyMID;

@@ -719,7 +719,7 @@ def build_softcap(B):
 
     us = np.linspace(-deg(74) * 0.105, deg(74) * 0.105, 25)
     outer_edge = [(u, 0.074 * max(0.0, math.cos(u / (deg(74) * 0.105) * math.pi / 2)) ** 0.55 + 0.002) for u in us]
-    ol = np.array([(us[-1], -0.006), (us[0], -0.006)] + outer_edge)
+    ol = np.array([(us[-1], -0.032), (us[0], -0.032)] + outer_edge)  # root deep inside the crown: no stitch rows along it
     ol = tg.fillet(tg.ccw(ol), 0.008, 3)
     B.add(tg.pillow(ol, 0.005, brim_map, n=72, kind="round", steps=2, face_insets=(0.0, 0.002, 0.0045, 0.008, 0.013, 0.02), scales=(0.6, 0.3)), "twill_brim")
     # front loop panel + team patch
@@ -1357,7 +1357,7 @@ def import_asset(aid, coll, tints, offset=(0, 0, 0), rot_z=0.0, proxy_res=2048):
             coll.objects.link(o)
             o.matrix_world = Matrix.Translation(Vector(offset)) @ Matrix.Rotation(rot_z, 4, "Z") @ Matrix.Translation(Vector(tuple(tb.bone(bone))))
             if piece == "Glass":
-                m = tbk.glass_material(f"PVG_{aid}", tuple(GLASS["Tint"]))
+                m = bpy.data.materials.get(f"PVG_{aid}") or tbk.glass_material(f"PVG_{aid}", tuple(GLASS["Tint"]))  # shared (fresh_material would replace it)
             else:
                 paths = bk.texture_paths(out_dir, aid, piece)
                 if all(os.path.exists(p) for p in paths.values()):
