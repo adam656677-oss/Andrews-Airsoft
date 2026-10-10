@@ -460,9 +460,9 @@ def _street_level(L, rng):
     it += [prop("Garage_PayMachine", 29.25, 5.4, z, 180.0), prop("Garage_PayMachine", 29.25, 12.6, z, 180.0),
            prop("Garage_JerseyBarrier", 26.4, 9.0, z, 90.0), prop("Car_Coupe", 18.0, -0.4, z, 96.0, tint="DeepRed", pieces=PARKED),
            prop("Garage_JerseyBarrier", 13.4, 1.9, z, 90.0), prop("Garage_Cone", 12.4, -0.2, z, 0.0)]
-    # puddles: under the open sides and at the ramp foot
-    for (x, y, sx, sy) in ((-12.6, -3.4, 1.6, 1.0), (-22.0, -21.4, 2.6, 1.2), (8.0, 21.6, 3.0, 1.0), (-27.4, -3.0, 1.8, 1.3),
-                           (24.0, -21.8, 2.0, 0.8)):
+    # puddles only where rain blows in under the open sides: deep under the deck a mirror patch only shows the
+    # dark soffit and reads as a black sheet
+    for (x, y, sx, sy) in ((-22.0, -21.4, 2.6, 1.2), (8.0, 21.6, 3.0, 1.0), (24.0, -21.8, 2.0, 0.8)):
         it += _puddle(L, x, y, z, sx, sy)
     return it
 
@@ -493,7 +493,7 @@ def _mid_level(L, rng):
            prop("Car_Sedan", 20.2, -3.4, z, 8.0, tint="Gunmetal", pieces=PARKED),
            prop("Car_Sedan", -20.6, 3.6, z, 176.0, tint="Black", pieces=PARKED),
            prop("Garage_PayMachine", 29.25, 12.6, z, 180.0), prop("Dumpster", -29.0, 11.0, z, 0.0, tint="Green")]
-    for (x, y, sx, sy) in ((-12.4, 3.4, 1.4, 1.0), (12.0, -3.6, 1.8, 1.1), (-24.0, 21.6, 2.4, 0.9), (2.0, -21.5, 2.0, 1.0)):
+    for (x, y, sx, sy) in ((-24.0, 21.6, 2.4, 0.9), (2.0, -21.5, 2.0, 1.0)):      # open sides only (see street)
         it += _puddle(L, x, y, z, sx, sy)
     return it
 

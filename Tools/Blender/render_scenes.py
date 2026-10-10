@@ -1032,8 +1032,10 @@ class Builder:
                        "text": it["letter"], "size": 90.0, "glow": 2.0}, unlit_rgb=rgb)
 
     def rain(self, spec):
-        """Shot-only rain (the editor build has no rain: in Unreal it needs a Niagara system): thin streaks along
-        the fall direction, each turned to face the camera, lit only by the scene's own lights."""
+        """Shot-only rain (in game the effects subsystem only rings ripples on wet ground and puddles around the
+        camera - AirsoftEffects RainMapKeywords - there are no falling streaks): thin streaks along the fall
+        direction, each turned to face the camera, lit only by the scene's own lights. Drops nearer than
+        spec["near"] m are left out (a lens would blur them away; sharp they read as scratches)."""
         import random as _random
         rng = _random.Random(spec.get("seed", 3))
         x0, y0, z0, x1, y1, z1 = spec["box"]
@@ -1043,6 +1045,8 @@ class Builder:
         verts, faces = [], []
         for _ in range(int(spec.get("count", 4000))):
             p = bl((rng.uniform(x0, x1), rng.uniform(y0, y1), rng.uniform(z0, z1)))
+            if (p - cam).length < spec.get("near", 0.0):
+                continue
             side = fall.cross(cam - p)
             if side.length < 1e-6:
                 continue
@@ -1447,11 +1451,11 @@ shot("weapon_hero", file="08_Armory_M4_Hero", map="Staging",
      extra=[{"t": "gun", "id": "M4", "fit": {"Optic": "Scope4x", "Muzzle": "Suppressor"}, "skin": "FDE", "team": "Blue",
              "p": (-12.16, 9.06, 1.3), "rot": (0.0, 175.0, 90.0), "rest": True}])
 
-# Nightjar Garage (night, rain). Rain streaks are shot-only geometry: the editor build has wet materials, puddles
-# and fog but no rain particles (that needs a Niagara system).
+# Nightjar Garage (night, rain). Rain streaks are shot-only geometry: the game has wet materials, puddles, fog and
+# ripples on wet ground around the camera (AirsoftEffects), but no falling rain (that needs a Niagara system).
 GARAGE_HAZE = {"rect": (-36, -23, 36, 23), "top": 6.3, "density": 0.0025, "color": (0.78, 0.82, 0.92), "g": 0.55}
 ROOF_HAZE = {"rect": (-170, -170, 170, 170), "top": 45.0, "density": 0.0032, "color": (0.72, 0.74, 0.82), "g": 0.6}
-ROOF_RAIN = {"box": (-31, -23, 6.7, 31, 23, 13.5), "count": 14000, "len": 0.7, "width": 0.007, "alpha": 0.4}
+ROOF_RAIN = {"box": (-31, -23, 6.7, 31, 23, 13.5), "count": 14000, "len": 0.7, "width": 0.007, "alpha": 0.4, "near": 3.0}
 HOLE_RAIN = {"box": (-11, 1.3, 3.4, 11, 5.7, 9.5), "count": 3500, "len": 0.6, "width": 0.006, "alpha": 0.45, "seed": 5}
 
 shot("garage_roof", file="10_NightjarGarage_RoofDeck", map="NightjarGarage",
