@@ -1,0 +1,886 @@
+{
+  "Version": 1,
+  "Assets": {
+    "Garage_BarrierArm": {
+      "Group": "Garage",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Garage_BarrierArm_Body"
+          ]
+        },
+        {
+          "Name": "Emissive",
+          "Kind": "Emissive",
+          "Slots": [
+            "M_Garage_BarrierArm_Emissive"
+          ]
+        },
+        {
+          "Name": "Arm",
+          "Kind": "Static",
+          "Slots": [
+            "M_Garage_BarrierArm_Arm"
+          ]
+        }
+      ],
+      "Points": {
+        "ArmTip": [
+          0.0,
+          388.0,
+          90.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -21.0,
+          -21.0,
+          0.0
+        ],
+        "Max": [
+          21.0,
+          392.0,
+          110.4
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 1104,
+        "Emissive": 224,
+        "Arm": 336
+      },
+      "TextureSize": {
+        "Body": 512,
+        "Emissive": 128,
+        "Arm": 256
+      },
+      "Layout": {
+        "Core": [
+          [
+            -21.0,
+            -21.0
+          ],
+          [
+            21.0,
+            21.0
+          ]
+        ]
+      }
+    },
+    "Garage_BlockPallet": {
+      "Group": "Garage",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Garage_BlockPallet_Body"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -61.0,
+          -53.1,
+          0.0
+        ],
+        "Max": [
+          61.0,
+          53.1,
+          107.7
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 4448
+      },
+      "TextureSize": {
+        "Body": 512
+      }
+    },
+    "Garage_Cone": {
+      "Group": "Garage",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Garage_Cone_Body"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -18.0,
+          -18.0,
+          0.0
+        ],
+        "Max": [
+          18.0,
+          18.0,
+          70.0
+        ]
+      },
+      "Collision": "None",
+      "Triangles": {
+        "Body": 588
+      },
+      "TextureSize": {
+        "Body": 256
+      },
+      "Layout": {
+        "Solid": false,
+        "Los": false,
+        "Cover": false
+      }
+    },
+    "Garage_Drain": {
+      "Group": "Garage",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Garage_Drain_Body"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -75.0,
+          -11.0,
+          -1.8
+        ],
+        "Max": [
+          75.0,
+          11.0,
+          0.3
+        ]
+      },
+      "Collision": "None",
+      "Triangles": {
+        "Body": 3360
+      },
+      "TextureSize": {
+        "Body": 256
+      },
+      "Layout": {
+        "Solid": false,
+        "Los": false,
+        "Cover": false
+      }
+    },
+    "Garage_ElevatorDoors": {
+      "Group": "Garage",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Garage_ElevatorDoors_Body"
+          ]
+        },
+        {
+          "Name": "Emissive",
+          "Kind": "Emissive",
+          "Slots": [
+            "M_Garage_ElevatorDoors_Emissive"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -15.0,
+          -150.0,
+          0.0
+        ],
+        "Max": [
+          27.0,
+          150.0,
+          300.0
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 1996,
+        "Emissive": 570
+      },
+      "TextureSize": {
+        "Body": 512,
+        "Emissive": 128
+      }
+    },
+    "Garage_ExitSign": {
+      "Group": "Garage",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Garage_ExitSign_Body"
+          ]
+        },
+        {
+          "Name": "Emissive",
+          "Kind": "Emissive",
+          "Slots": [
+            "M_Garage_ExitSign_Emissive"
+          ]
+        }
+      ],
+      "Points": {
+        "CeilingMount": [
+          0.0,
+          0.0,
+          35.2
+        ],
+        "Light": [
+          12.0,
+          0.0,
+          10.5
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -4.5,
+          -21.0,
+          0.0
+        ],
+        "Max": [
+          4.5,
+          21.0,
+          35.2
+        ]
+      },
+      "Collision": "None",
+      "Triangles": {
+        "Body": 556,
+        "Emissive": 4
+      },
+      "TextureSize": {
+        "Body": 256,
+        "Emissive": 128
+      },
+      "Layout": {
+        "Solid": false,
+        "Los": false,
+        "Cover": false
+      }
+    },
+    "Garage_HeightBar": {
+      "Group": "Garage",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Garage_HeightBar_Body"
+          ]
+        }
+      ],
+      "Points": {
+        "CeilingMount": [
+          0.0,
+          0.0,
+          73.2
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -6.0,
+          -201.2,
+          -3.0
+        ],
+        "Max": [
+          6.0,
+          201.2,
+          73.2
+        ]
+      },
+      "Collision": "None",
+      "Triangles": {
+        "Body": 14920
+      },
+      "TextureSize": {
+        "Body": 256
+      },
+      "Layout": {
+        "Solid": false,
+        "Los": false,
+        "Cover": false
+      }
+    },
+    "Garage_JerseyBarrier": {
+      "Group": "Garage",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Garage_JerseyBarrier_Body"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -159.1,
+          -30.8,
+          0.0
+        ],
+        "Max": [
+          159.1,
+          30.8,
+          89.6
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 4236
+      },
+      "TextureSize": {
+        "Body": 512
+      }
+    },
+    "Garage_LightFluo": {
+      "Group": "Garage",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Garage_LightFluo_Body"
+          ]
+        },
+        {
+          "Name": "Emissive",
+          "Kind": "Emissive",
+          "Slots": [
+            "M_Garage_LightFluo_Emissive"
+          ]
+        }
+      ],
+      "Points": {
+        "CeilingMount": [
+          0.0,
+          0.0,
+          15.0
+        ],
+        "Light": [
+          0.0,
+          0.0,
+          -2.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -78.0,
+          -6.7,
+          0.6
+        ],
+        "Max": [
+          78.0,
+          6.7,
+          15.0
+        ]
+      },
+      "Collision": "None",
+      "Triangles": {
+        "Body": 2132,
+        "Emissive": 72
+      },
+      "TextureSize": {
+        "Body": 256,
+        "Emissive": 128
+      },
+      "Layout": {
+        "Solid": false,
+        "Los": false,
+        "Cover": false
+      }
+    },
+    "Garage_LightSodium": {
+      "Group": "Garage",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Garage_LightSodium_Body"
+          ]
+        },
+        {
+          "Name": "Emissive",
+          "Kind": "Emissive",
+          "Slots": [
+            "M_Garage_LightSodium_Emissive"
+          ]
+        }
+      ],
+      "Points": {
+        "WallMount": [
+          -18.3,
+          0.0,
+          19.0
+        ],
+        "Light": [
+          16.0,
+          0.0,
+          10.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -18.3,
+          -21.0,
+          2.0
+        ],
+        "Max": [
+          16.9,
+          21.0,
+          43.5
+        ]
+      },
+      "Collision": "None",
+      "Triangles": {
+        "Body": 1028,
+        "Emissive": 756
+      },
+      "TextureSize": {
+        "Body": 256,
+        "Emissive": 128
+      },
+      "Layout": {
+        "Solid": false,
+        "Los": false,
+        "Cover": false
+      }
+    },
+    "Garage_MaintCage": {
+      "Group": "Garage",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Garage_MaintCage_Body"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -150.0,
+          -100.0,
+          0.0
+        ],
+        "Max": [
+          156.0,
+          100.0,
+          240.0
+        ]
+      },
+      "Collision": "Complex",
+      "Triangles": {
+        "Body": 13256
+      },
+      "TextureSize": {
+        "Body": 512
+      },
+      "Layout": {
+        "Los": false,
+        "Cover": false
+      }
+    },
+    "Garage_PayMachine": {
+      "Group": "Garage",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Garage_PayMachine_Body"
+          ]
+        },
+        {
+          "Name": "Emissive",
+          "Kind": "Emissive",
+          "Slots": [
+            "M_Garage_PayMachine_Emissive"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -24.0,
+          -32.0,
+          0.0
+        ],
+        "Max": [
+          35.5,
+          32.0,
+          174.5
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 2934,
+        "Emissive": 14
+      },
+      "TextureSize": {
+        "Body": 512,
+        "Emissive": 128
+      }
+    },
+    "Garage_Pillar": {
+      "Group": "Garage",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Garage_Pillar_Body"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -37.2,
+          -31.2,
+          0.0
+        ],
+        "Max": [
+          31.2,
+          31.2,
+          300.0
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 1320
+      },
+      "TextureSize": {
+        "Body": 512
+      },
+      "Layout": {
+        "Cover": true
+      },
+      "TintVariants": {
+        "Teal": [
+          0.0,
+          0.2,
+          0.22
+        ],
+        "Orange": [
+          0.72,
+          0.24,
+          0.02
+        ],
+        "Red": [
+          0.48,
+          0.03,
+          0.02
+        ],
+        "Blue": [
+          0.03,
+          0.12,
+          0.42
+        ],
+        "Green": [
+          0.05,
+          0.28,
+          0.08
+        ]
+      }
+    },
+    "Garage_PipeRun": {
+      "Group": "Garage",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Garage_PipeRun_Body"
+          ]
+        }
+      ],
+      "Points": {
+        "CeilingMount": [
+          0.0,
+          0.0,
+          55.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -300.0,
+          -70.8,
+          6.6
+        ],
+        "Max": [
+          300.1,
+          50.0,
+          55.0
+        ]
+      },
+      "Collision": "None",
+      "Triangles": {
+        "Body": 7196
+      },
+      "TextureSize": {
+        "Body": 512
+      },
+      "Layout": {
+        "Solid": false,
+        "Los": false,
+        "Cover": false
+      }
+    },
+    "Garage_Railing_3m": {
+      "Group": "Garage",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Garage_Railing_3m_Body"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -7.0,
+          -152.0,
+          0.0
+        ],
+        "Max": [
+          7.0,
+          152.0,
+          107.4
+        ]
+      },
+      "Collision": "Complex",
+      "Triangles": {
+        "Body": 3340
+      },
+      "TextureSize": {
+        "Body": 256
+      },
+      "Layout": {
+        "Los": false,
+        "Cover": false
+      }
+    },
+    "Garage_Ramp": {
+      "Group": "Garage",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "MI_Concrete",
+            "MI_ConcreteGarage",
+            "MI_PaintLineYellow",
+            "MI_PaintLineWhite",
+            "MI_DiamondPlate"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -1102.0,
+          -227.0,
+          0.0
+        ],
+        "Max": [
+          1100.0,
+          227.0,
+          429.9
+        ]
+      },
+      "Collision": "Complex",
+      "Triangles": {
+        "Body": 872
+      },
+      "TextureSize": {},
+      "Layout": {
+        "Ramp": {
+          "X0": -1100.0,
+          "X1": 1100.0,
+          "Y0": -200.0,
+          "Y1": 200.0,
+          "Z0": 0.0,
+          "Z1": 330.0,
+          "Wall": 100.0,
+          "WallT": 25.0
+        }
+      }
+    },
+    "Garage_RoofHVAC": {
+      "Group": "Garage",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Garage_RoofHVAC_Body"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -125.0,
+          -72.4,
+          -0.1
+        ],
+        "Max": [
+          153.9,
+          72.4,
+          177.4
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 9708
+      },
+      "TextureSize": {
+        "Body": 512
+      }
+    },
+    "Garage_Scaffold": {
+      "Group": "Garage",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Garage_Scaffold_Body"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -140.0,
+          -63.0,
+          0.0
+        ],
+        "Max": [
+          140.3,
+          62.5,
+          280.0
+        ]
+      },
+      "Collision": "Complex",
+      "Triangles": {
+        "Body": 4512
+      },
+      "TextureSize": {
+        "Body": 512
+      },
+      "Layout": {
+        "Los": false,
+        "Cover": false
+      }
+    },
+    "Garage_TicketBooth": {
+      "Group": "Garage",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Garage_TicketBooth_Body"
+          ]
+        },
+        {
+          "Name": "Glass",
+          "Kind": "Glass",
+          "Slots": [
+            "M_Garage_TicketBooth_Glass"
+          ]
+        },
+        {
+          "Name": "Emissive",
+          "Kind": "Emissive",
+          "Slots": [
+            "M_Garage_TicketBooth_Emissive"
+          ]
+        }
+      ],
+      "Points": {
+        "Light": [
+          0.0,
+          0.0,
+          225.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -102.5,
+          -93.2,
+          0.0
+        ],
+        "Max": [
+          102.5,
+          93.2,
+          256.0
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 4196,
+        "Glass": 60,
+        "Emissive": 3486
+      },
+      "TextureSize": {
+        "Body": 512,
+        "Glass": 128,
+        "Emissive": 128
+      }
+    },
+    "Garage_WheelStop": {
+      "Group": "Garage",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Garage_WheelStop_Body"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -90.0,
+          -7.6,
+          0.0
+        ],
+        "Max": [
+          90.0,
+          7.6,
+          11.0
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 732
+      },
+      "TextureSize": {
+        "Body": 256
+      }
+    }
+  }
+}

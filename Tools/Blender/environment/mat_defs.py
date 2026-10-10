@@ -54,6 +54,11 @@ SPECS = {
     'Bark': (1.0, 39, True),
     'Straw': (1.0, 40, False),
     'Granite': (1.5, 41, False),
+    # Nightjar Garage (parking decks, wet roof deck, traffic line paint)
+    'ConcreteGarage': (4.0, 42, False),
+    'ConcreteGarageWet': (4.0, 42, False),
+    'PaintLineYellow': (1.0, 43, False),
+    'PaintLineWhite': (1.0, 44, False),
 }
 
 
@@ -1108,6 +1113,158 @@ def m_Granite(ctx):
     h = edge * 0.0002 + fine * 0.0001 + weather * 0.001 + t * 0.0001
     rough = 0.72 + 0.1 * (1 - edge) - 0.15 * (t < 0.12)
     return dict(bc=bc, h=h, rough=rough, metal=0.0, aor=(0.002, 0.01))
+
+
+# ----------------------------------------------------------------------------
+# parking garage
+# ----------------------------------------------------------------------------
+def _tile_dist(ctx, cu, cv):
+    """Periodic distance (metres) from every texel to the point (cu, cv) in tile units."""
+    dx = ((ctx.u - cu + 0.5) % 1.0 - 0.5) * ctx.tile
+    dy = ((ctx.v - cv + 0.5) % 1.0 - 0.5) * ctx.tile
+    return dx, dy
+
+
+def garage_deck(ctx):
+    """Sealed parking-deck concrete (4 m tile): broom finish across the deck, wheel-path wear and
+    tyre scuffs, oil drips under parked cars, a patch repair, hairline cracks and one saw-cut
+    control joint per tile edge (a 4 m joint grid once tiled). Returns layers for the wet variant."""
+    n = ctx.n
+    m1 = ctx.noise(1.6, oct=5, rough=0.55)
+    m2 = ctx.noise(0.22, oct=4, rough=0.6)
+    speck = ctx.noise(0.003, oct=2, rough=0.7)
+    bc = col('#8f8d87') * (1 + 0.07 * m1 + 0.035 * m2 + 0.012 * speck)[..., None]
+    bc = lerp(bc, col('#9c978c'), sstep(0.4, 1.6, m1) * 0.35)
+    # broom texture: fine grooves running along U
+    broom = ctx.noise(0.0035, oct=2, rough=0.5, aniso=14.0)
+    broom_c = ctx.noise(0.012, oct=2, rough=0.5, aniso=10.0)
+    bc = bc * (1 + 0.025 * broom + 0.02 * broom_c)[..., None]
+    # sealer: patchy satin coat (lower roughness where intact)
+    seal = cover(ctx.n01(0.9, oct=4), 0.55, 0.3)
+    # wheel paths along U (two worn bands per tile) + tyre scuffs
+    band = 0.5 + 0.5 * np.cos(2 * math.pi * (ctx.v * 2 + ctx.noise(1.5, oct=2) * 0.05))
+    wheel = sstep(0.55, 0.95, band) * (0.6 + 0.4 * ctx.n01(0.8, oct=3, aniso=4.0))
+    bc = lerp(bc, col('#6d6b67'), wheel * 0.28)
+    scuff = cover(ctx.n01(0.35, oct=3, aniso=9.0), 0.07, 0.18) * (0.4 + 0.6 * wheel)
+    scuff2 = cover(ctx.n01(0.12, oct=3, aniso=16.0), 0.03, 0.12)
+    bc = lerp(bc, col('#3a3936'), np.clip(scuff * 0.55 + scuff2 * 0.4, 0, 1))
+    # oil drips: dark cores, soft halos, a few long drip trails
+    rg = ctx.rng()
+    oil = np.zeros((n, n), F32)
+    halo = np.zeros((n, n), F32)
+    wobble = ctx.noise(0.25, oct=3, rough=0.5)
+    fine_w = ctx.noise(0.05, oct=2, rough=0.5)
+    for _ in range(7):
+        cu, cv = rg.random(2)
+        r = rg.uniform(0.1, 0.3)
+        sx, sy = rg.uniform(0.8, 1.5), rg.uniform(0.7, 1.2)
+        dx, dy = _tile_dist(ctx, cu, cv)
+        d = np.sqrt((dx / sx) ** 2 + (dy / sy) ** 2) / r * (1.0 + 0.16 * wobble + 0.04 * fine_w)
+        k = rg.uniform(0.45, 0.85)
+        oil = np.maximum(oil, sstep(1.0, 0.25, d) * k)
+        halo = np.maximum(halo, np.exp(-((d - 0.95) / 0.1) ** 2) * k * 0.5 + sstep(2.0, 0.9, d) * 0.25)
+    for _ in range(22):  # small drips
+        cu, cv = rg.random(2)
+        r = rg.uniform(0.012, 0.04)
+        dx, dy = _tile_dist(ctx, cu, cv)
+        d = np.sqrt(dx ** 2 + dy ** 2) / r * (1.0 + 0.1 * fine_w)
+        oil = np.maximum(oil, sstep(1.0, 0.4, d) * rg.uniform(0.35, 0.75))
+    bc = lerp(bc, col('#5a5751'), halo * 0.45)
+    bc = lerp(bc, col('#24221f'), oil * 0.8)
+    # patch repair (newer, lighter concrete with a crisp saw-cut edge)
+    cu, cv = rg.random(2)
+    dx, dy = _tile_dist(ctx, cu, cv)
+    pw, ph = rg.uniform(0.5, 0.9), rg.uniform(0.35, 0.6)
+    patch = sstep(0.006, 0.0, np.maximum(np.abs(dx) - pw, np.abs(dy) - ph))
+    pedge = sstep(0.012, 0.0, np.abs(np.maximum(np.abs(dx) - pw, np.abs(dy) - ph)))
+    bc = lerp(bc, col('#a3a097') * (1 + 0.04 * m2)[..., None], patch * 0.55)
+    bc = lerp(bc, col('#4a4844'), pedge * 0.5)
+    # hairline cracks
+    rg2 = ctx.rng()
+    cc = ctx.cyc(1.1)
+    wU = (ctx.u + ctx.noise(0.35, oct=4) * 0.01) % 1
+    wV = (ctx.v + ctx.noise(0.35, oct=4) * 0.01) % 1
+    G1, G2, _ = worley(n, cc, cc, rg2, U=np.broadcast_to(wU, (n, n)), V=np.broadcast_to(wV, (n, n)))
+    crack = sstep(0.0012 / ctx.tile, 0.0, G2 - G1) * cover(ctx.n01(0.7, oct=3), 0.3, 0.1)
+    bc = lerp(bc, col('#4f4d49'), crack * 0.6)
+    # saw-cut control joint on the tile edges, filled with black sealant
+    du = np.minimum(ctx.u, 1 - ctx.u) * ctx.tile
+    dv = np.minimum(ctx.v, 1 - ctx.v) * ctx.tile
+    jd = np.minimum(np.broadcast_to(du, (n, n)), np.broadcast_to(dv, (n, n)))
+    joint = sstep(0.006, 0.003, jd)
+    jedge = sstep(0.014, 0.006, jd) - joint
+    bc = lerp(bc, col('#171615'), joint)
+    bc = lerp(bc, col('#77746e'), np.clip(jedge, 0, 1) * 0.5)
+    # dust / grime and efflorescence near joints
+    grime = cover(ctx.n01(0.5, oct=5), 0.25, 0.3)
+    bc = bc * (1 - 0.1 * grime)[..., None]
+    rough = (0.74 - 0.18 * seal + 0.05 * broom_c * 0.3 + 0.05 * wheel - 0.38 * oil + 0.08 * scuff
+             + 0.1 * crack + 0.05 * patch + 0.1 * joint)
+    h = (broom * 0.00012 + broom_c * 0.0001 + m2 * 0.00006 - crack * 0.0006 - joint * 0.004
+         - pedge * 0.0004 + patch * 0.0002)
+    return dict(bc=bc, h=h, rough=rough, oil=oil, wheel=wheel, joint=joint, crack=crack, m1=m1)
+
+
+def m_ConcreteGarage(ctx):
+    d = garage_deck(ctx)
+    return dict(bc=d['bc'], h=d['h'], rough=d['rough'], metal=0.0, aor=(0.002, 0.008, 0.03), nstr=1.6)
+
+
+def m_ConcreteGarageWet(ctx):
+    """The same deck after rain (roof deck / open ramp): darker saturated concrete, glossy damp film,
+    standing puddles in the low spots and along the joints, oil sheen kept very smooth."""
+    d = garage_deck(ctx)
+    lowf = ctx.noise(1.9, oct=3, rough=0.45) - 0.5 * d['wheel']
+    puddle = cover(-lowf, 0.18, 0.1)
+    damp = cover(-lowf, 0.7, 0.35)
+    bc = d['bc'] * (0.58 - 0.06 * puddle)[..., None]
+    bc = lerp(bc, col('#18191b'), puddle * 0.3)
+    jwet = np.clip(d['joint'] * 1.5 + d['crack'], 0, 1)
+    bc = lerp(bc, col('#141414'), jwet * 0.4)
+    rough = np.clip(d['rough'] * (1 - 0.6 * damp), 0.12, 1) * (1 - puddle) + 0.02 * puddle
+    rough = np.where(d['oil'] > 0.4, np.minimum(rough, 0.08), rough)
+    level = pct(d['h'], 65)
+    h = lerp(d['h'], np.full_like(d['h'], level), puddle)
+    return dict(bc=bc, h=h, rough=rough, metal=0.0, aor=(0.002, 0.008, 0.03), nstr=1.3)
+
+
+def line_paint(ctx, paint_hex):
+    """Thermoplastic / chlorinated-rubber traffic paint on concrete: roller texture, glass-bead
+    sparkle, worn through in tyre paths and chips, black tyre scuffs (1 m tile)."""
+    n = ctx.n
+    tone = ctx.n01(0.5, oct=4)
+    roller = ctx.noise(0.008, oct=3, rough=0.5)
+    paint = col(paint_hex) * (0.9 + 0.12 * tone + 0.04 * roller)[..., None]
+    # concrete showing through
+    conc = col('#8b8983') * (1 + 0.06 * ctx.noise(0.2, oct=4))[..., None]
+    wear = np.clip(cover(ctx.n01(0.08, oct=5, aniso=2.0), 0.05, 0.08) + chips_mask(ctx, 0.012, 0.035, 0.02), 0, 1)
+    thin = cover(ctx.n01(0.3, oct=4, aniso=3.0), 0.3, 0.3) * 0.35          # worn thin: concrete grey shows
+    paint = lerp(paint, paint * 0.55 + conc * 0.45, thin)
+    bc = lerp(paint, conc, wear)
+    ring = np.clip(blur(wear, ctx.px(0.002)) * 1.4 - wear, 0, 1)
+    bc = lerp(bc, col('#5c5a55'), ring * 0.4)
+    # tyre scuffs and dirt
+    scuff = cover(ctx.n01(0.2, oct=4, aniso=10.0), 0.06, 0.15)
+    bc = lerp(bc, col('#3b3a37'), scuff * 0.35)
+    dirt = dirt_layer(ctx, 0.3, 0.35)
+    bc = lerp(bc, col('#6f6b62'), dirt * 0.25)
+    # glass beads: tiny bright specks (lower roughness)
+    rg = ctx.rng()
+    cs = ctx.cyc(0.004)
+    F1, F2, ID = worley(n, cs, cs, rg)
+    bead = sstep(0.0009 / ctx.tile, 0.0004 / ctx.tile, F1) * (cell_rand(ID, cs * cs, rg) > 0.7) * (1 - wear)
+    bc = lerp(bc, col('#e8e6df'), bead * 0.35)
+    rough = 0.55 + 0.1 * tone + 0.15 * wear + 0.08 * scuff - 0.25 * bead
+    h = (1 - wear) * 0.0006 + roller * 0.00003 - ring * 0.0001
+    return dict(bc=bc, h=h, rough=rough, metal=0.0, aor=(0.001, 0.004), nstr=1.5)
+
+
+def m_PaintLineYellow(ctx):
+    return line_paint(ctx, '#d8a114')
+
+
+def m_PaintLineWhite(ctx):
+    return line_paint(ctx, '#dcdbd4')
 
 
 GEN = {k: globals()['m_' + k] for k in SPECS}

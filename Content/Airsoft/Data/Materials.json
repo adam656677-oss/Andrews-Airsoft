@@ -114,6 +114,26 @@
       "Resolution": 4096,
       "ArchUVScale": 0.5
     },
+    "ConcreteGarage": {
+      "TileMeters": 4.0,
+      "BC": "Materials/ConcreteGarage/T_ConcreteGarage_BC.png",
+      "N": "Materials/ConcreteGarage/T_ConcreteGarage_N.png",
+      "ORM": "Materials/ConcreteGarage/T_ConcreteGarage_ORM.png",
+      "H": null,
+      "Opacity": null,
+      "Resolution": 4096,
+      "ArchUVScale": 0.5
+    },
+    "ConcreteGarageWet": {
+      "TileMeters": 4.0,
+      "BC": "Materials/ConcreteGarageWet/T_ConcreteGarageWet_BC.png",
+      "N": "Materials/ConcreteGarageWet/T_ConcreteGarageWet_N.png",
+      "ORM": "Materials/ConcreteGarageWet/T_ConcreteGarageWet_ORM.png",
+      "H": null,
+      "Opacity": null,
+      "Resolution": 4096,
+      "ArchUVScale": 0.5
+    },
     "CorrodedMetal": {
       "TileMeters": 1.0,
       "BC": "Materials/CorrodedMetal/T_CorrodedMetal_BC.png",
@@ -237,6 +257,26 @@
       "Opacity": null,
       "Resolution": 4096,
       "ArchUVScale": 1.33333
+    },
+    "PaintLineWhite": {
+      "TileMeters": 1.0,
+      "BC": "Materials/PaintLineWhite/T_PaintLineWhite_BC.png",
+      "N": "Materials/PaintLineWhite/T_PaintLineWhite_N.png",
+      "ORM": "Materials/PaintLineWhite/T_PaintLineWhite_ORM.png",
+      "H": null,
+      "Opacity": null,
+      "Resolution": 4096,
+      "ArchUVScale": 2.0
+    },
+    "PaintLineYellow": {
+      "TileMeters": 1.0,
+      "BC": "Materials/PaintLineYellow/T_PaintLineYellow_BC.png",
+      "N": "Materials/PaintLineYellow/T_PaintLineYellow_N.png",
+      "ORM": "Materials/PaintLineYellow/T_PaintLineYellow_ORM.png",
+      "H": null,
+      "Opacity": null,
+      "Resolution": 4096,
+      "ArchUVScale": 2.0
     },
     "PaintedSteel": {
       "TileMeters": 1.0,
