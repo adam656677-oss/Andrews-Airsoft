@@ -60,6 +60,8 @@ public:
 	/** Applies the global show flag. */
 	void RefreshVisibility();
 
+	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+
 protected:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
@@ -78,6 +80,8 @@ private:
 	};
 
 	bool Build(USceneComponent* InParent, bool bInFallback, EAirsoftTeam Team, int32 VariantSeed);
+	/** True while the owning player views the world through this body's own camera. */
+	bool IsOwnerViewing() const;
 	bool ComputeRelative(const FPart& Part, FTransform& OutRelative) const;
 	void ApplyMaterials(UStaticMeshComponent* Comp, const FPart& Part, EAirsoftTeam Team) const;
 
@@ -94,4 +98,5 @@ private:
 	bool bApplied = false;
 	bool bFallback = false;
 	bool bWantVisible = true;
+	bool bOwnerViewHidden = false;
 };

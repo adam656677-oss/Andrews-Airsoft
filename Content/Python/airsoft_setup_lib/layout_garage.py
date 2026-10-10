@@ -252,9 +252,14 @@ def build(L=None):
     it += _roof_level(L, rng)
     it += _lighting(L)
 
-    # objectives (A <-> C mirror; B on the Mid median between the ramps)
-    it += [L.objective("A", -4.0, 2.6, Z1, radius=5.0), L.objective("B", 0.0, 0.1, Z2, radius=4.5),
-           L.objective("C", 4.0, -2.6, Z3, radius=5.0)]
+    # objectives (A <-> C mirror; B on the Mid median between the ramps). Capture is a cylinder around the
+    # actor tested on the pawn's capsule centre (feet + 0.92 m standing, + 0.58 crouched); the default 2.5 m
+    # half height would let a player on the deck below (centre 2.38 m under the point) capture it through
+    # the slab, so 1.8 m: own deck incl. jumps counts, the decks above and below do not.
+    hh = 1.8
+    it += [L.objective("A", -4.0, 2.6, Z1, radius=5.0, half_height=hh),
+           L.objective("B", 0.0, 0.1, Z2, radius=4.5, half_height=hh),
+           L.objective("C", 4.0, -2.6, Z3, radius=5.0, half_height=hh)]
 
     # atmosphere, reflections, sound
     it += [L.fogvol(-2.0, 0.0, 1.5, 30.0, 22.0, 1.7, density=0.22, color=(0.55, 0.6, 0.7)),
@@ -458,7 +463,7 @@ def _street_level(L, rng):
     # puddles: under the open sides and at the ramp foot
     for (x, y, sx, sy) in ((-12.6, -3.4, 1.6, 1.0), (-22.0, -21.4, 2.6, 1.2), (8.0, 21.6, 3.0, 1.0), (-27.4, -3.0, 1.8, 1.3),
                            (24.0, -21.8, 2.0, 0.8)):
-        it.append(L.box(x, y, z + 0.004, sx, sy, 0.008, "Puddle", coll=False, cast=False, name="Puddle"))
+        it += _puddle(L, x, y, z, sx, sy)
     return it
 
 
@@ -489,7 +494,7 @@ def _mid_level(L, rng):
            prop("Car_Sedan", -20.6, 3.6, z, 176.0, tint="Black", pieces=PARKED),
            prop("Garage_PayMachine", 29.25, 12.6, z, 180.0), prop("Dumpster", -29.0, 11.0, z, 0.0, tint="Green")]
     for (x, y, sx, sy) in ((-12.4, 3.4, 1.4, 1.0), (12.0, -3.6, 1.8, 1.1), (-24.0, 21.6, 2.4, 0.9), (2.0, -21.5, 2.0, 1.0)):
-        it.append(L.box(x, y, z + 0.004, sx, sy, 0.008, "Puddle", coll=False, cast=False, name="Puddle"))
+        it += _puddle(L, x, y, z, sx, sy)
     return it
 
 
@@ -546,7 +551,7 @@ def _roof_level(L, rng):
     for (x, y, sx, sy) in ((-14.0, -8.0, 3.6, 2.2), (6.0, -19.0, 4.2, 1.8), (-6.0, 8.6, 3.0, 2.0), (16.0, 9.0, 2.8, 2.4),
                            (-24.0, -16.0, 2.4, 3.0), (24.0, 18.0, 3.0, 2.0), (-2.0, -9.2, 2.0, 1.4), (13.0, -9.4, 2.2, 1.6),
                            (-27.6, 1.0, 2.0, 3.2), (2.0, 20.0, 3.2, 1.6)):
-        it.append(L.box(x, y, z + 0.004, sx, sy, 0.008, "Puddle", coll=False, cast=False, name="Puddle"))
+        it += _puddle(L, x, y, z, sx, sy)
     return it
 
 
@@ -591,6 +596,22 @@ def _lighting(L):
 # =============================================================================================
 # Skyline: distant towers with lit window bands (emissive), seen from the roof and the open sides
 # =============================================================================================
+def _puddle(L, x, y, z, sx, sy):
+    """Standing water as three overlapping, differently turned flat boxes, so the outline reads as an
+    irregular polygon instead of a crisp rectangle. Tops step 3 mm apart (no z-fighting where they overlap)."""
+    r = random.Random(int(x * 131 + y * 17 + sx * 7))
+    a = r.uniform(-25.0, 25.0)
+    out = []
+    for k, (fx, fy, ox, oy, da) in enumerate(((1.0, 0.8, 0.0, 0.0, 0.0), (0.75, 0.9, 0.3, -0.2, 32.0),
+                                               (0.6, 0.7, -0.32, 0.25, -27.0))):
+        ca, sa = math.cos(math.radians(a)), math.sin(math.radians(a))
+        dx, dy = ox * sx * ca - oy * sy * sa, ox * sx * sa + oy * sy * ca
+        t = 0.008 + 0.003 * k
+        out.append(L.box(x + dx, y + dy, z + t / 2, sx * fx, sy * fy, t, "Puddle", yaw=a + da + r.uniform(-6, 6),
+                         coll=False, cast=False, name="Puddle"))
+    return out
+
+
 def _skyline(L, rng):
     it = []
     cols = ["Warm", "Warm", "Cool", "Amber", "Warm", "Cool", "Gold"]

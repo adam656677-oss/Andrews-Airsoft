@@ -491,7 +491,7 @@
         "Body": 13256
       },
       "TextureSize": {
-        "Body": 512
+        "Body": 2048
       },
       "Layout": {
         "Los": false,
@@ -755,7 +755,7 @@
         "Body": 9708
       },
       "TextureSize": {
-        "Body": 512
+        "Body": 2048
       }
     },
     "Garage_Scaffold": {
@@ -787,7 +787,7 @@
         "Body": 4512
       },
       "TextureSize": {
-        "Body": 512
+        "Body": 2048
       },
       "Layout": {
         "Los": false,

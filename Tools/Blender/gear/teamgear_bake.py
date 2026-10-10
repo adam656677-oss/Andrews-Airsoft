@@ -68,7 +68,7 @@ PERIODS = {"weave": 0.0011, "fiber": 0.0005, "webbing": 0.0010, "loop": 0.0009, 
            "stitch": 0.0032, "grit": 0.0012, "foam": 0.0012, "mesh": 0.0028}
 
 # strength of the baked low-frequency wrinkles per pattern kind (soft goods only)
-WRINKLE = {"cordura": 0.45, "webbing": 0.25, "loop": 0.3, "elastic": 0.25, "twill": 0.4, "patch": 0.12}
+WRINKLE = {"cordura": 0.9, "webbing": 0.45, "loop": 0.5, "elastic": 0.45, "twill": 0.8, "patch": 0.25}
 
 WAVE_K = 2 * np.pi / 20.0  # Blender wave texture: period = 2*pi / (20 * scale)
 
@@ -296,9 +296,9 @@ def zone_graph(mat, zname, mask_img, seed, tex_m, edge_radius=0.0015):
         uv = nb.node("ShaderNodeUVMap", uv_map="UVMap")
         img = nb.node("ShaderNodeTexImage", image=mask_img, interpolation="Linear")
         nb._in(img.inputs["Vector"], uv.outputs["UV"])
-        m_edge, m_ao, m_convex = nb.separate(img.outputs["Color"])
+        _m_edge, m_ao, m_convex = nb.separate(img.outputs["Color"])
     else:
-        m_edge, m_ao, m_convex = 0.0, 1.0, 0.0
+        m_ao, m_convex = 1.0, 0.0
     pt = pattern(g, Z)
     h, stitch, binding = stitches(g, Z, pt["h"])
     # soft goods: low-frequency wrinkles / padding undulation (a few cm), baked into the normal map
@@ -330,7 +330,7 @@ def zone_graph(mat, zname, mask_img, seed, tex_m, edge_radius=0.0015):
         lum = Z["lum"]
         cv = nb.mul(lum, nb.add(1.0, nb.mul(var, 0.8)))
         if wrinkle:
-            cv = nb.mul(cv, nb.add(0.93, nb.mul(macro, 0.14)))
+            cv = nb.mul(cv, nb.add(0.88, nb.mul(macro, 0.24)))
         cv = nb.add(cv, nb.mul(nb.sub(h, 0.5), 0.06))  # weave shading
         if not isinstance(light, float) or light:
             cv = nb.lerp(light, cv, 0.97)
@@ -346,7 +346,7 @@ def zone_graph(mat, zname, mask_img, seed, tex_m, edge_radius=0.0015):
         gm = nb.add(1.0, nb.mul(var, 2.0))
         col = nb.mixc(1.0, base, nb.combine(gm, gm, gm), "MULTIPLY")
         if wrinkle:
-            mg = nb.add(0.92, nb.mul(macro, 0.16))
+            mg = nb.add(0.88, nb.mul(macro, 0.24))
             col = nb.mixc(1.0, col, nb.combine(mg, mg, mg), "MULTIPLY")
         col = nb.mixc(nb.mul(nb.sub(h, 0.5), 0.12), col, tuple(c * 1.6 for c in base))
         if Z.get("stitch"):
@@ -381,7 +381,7 @@ def zone_graph(mat, zname, mask_img, seed, tex_m, edge_radius=0.0015):
     if wrinkle:
         bm = nb.node("ShaderNodeBump")
         bm.inputs["Strength"].default_value = wrinkle
-        bm.inputs["Distance"].default_value = 0.0025
+        bm.inputs["Distance"].default_value = 0.006
         nb._in(bm.inputs["Height"], macro)
         nb._in(bm.inputs["Normal"], base_n)
         base_n = bm.outputs["Normal"]

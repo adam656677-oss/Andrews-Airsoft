@@ -12,6 +12,8 @@
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "GameFramework/Actor.h"
+#include "GameFramework/Pawn.h"
+#include "GameFramework/PlayerController.h"
 #include "HAL/IConsoleManager.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
@@ -472,8 +474,40 @@ namespace AirsoftTeamGear
 
 UAirsoftTeamGearComponent::UAirsoftTeamGearComponent()
 {
-	using namespace AirsoftTeamGear;
-	PrimaryComponentTick.bCanEverTick = false;
+	// Only polls whether the owner is looking through this body (cheap, 10 Hz).
+	PrimaryComponentTick.bCanEverTick = true;
+	PrimaryComponentTick.bStartWithTickEnabled = true;
+	PrimaryComponentTick.TickInterval = 0.1f;
+}
+
+bool UAirsoftTeamGearComponent::IsOwnerViewing() const
+{
+	if (!UAirsoftGearSettings::Get()->bHideFromOwnerView)
+	{
+		return false;
+	}
+	const APawn* Pawn = Cast<APawn>(GetOwner());
+	if (!Pawn || !Pawn->IsLocallyControlled())
+	{
+		return false;
+	}
+	// Bots are locally controlled on the server too, but never by a PlayerController.
+	const APlayerController* PC = Cast<APlayerController>(Pawn->GetController());
+	return PC && PC->GetViewTarget() == Pawn;
+}
+
+void UAirsoftTeamGearComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	if (Components.Num() > 0)
+	{
+		const bool bHide = IsOwnerViewing();
+		if (bHide != bOwnerViewHidden)
+		{
+			bOwnerViewHidden = bHide;
+			RefreshVisibility();
+		}
+	}
 }
 
 void UAirsoftTeamGearComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -561,6 +595,7 @@ bool UAirsoftTeamGearComponent::Build(USceneComponent* InParent, bool bInFallbac
 	AppliedTeam = Team;
 	bApplied = true;
 
+	bOwnerViewHidden = IsOwnerViewing();
 	static const FName NameHead(TEXT("Head")), NameEyes(TEXT("Eyes")), NameFace(TEXT("Face"));
 	const FGearDatabase& Db = GearDatabase();
 	const int32 Seed = VariantSeed + GSeedOffset;
@@ -634,7 +669,7 @@ bool UAirsoftTeamGearComponent::Build(USceneComponent* InParent, bool bInFallbac
 			{
 				Comp->SetCullDistance(Settings->GlassCullDistance);
 			}
-			Comp->SetVisibility(bWantVisible && GShowGear);
+			Comp->SetVisibility(bWantVisible && GShowGear && !bOwnerViewHidden);
 			Comp->RegisterComponent();
 			ApplyMaterials(Comp, Part, Team);
 			Components.Add(Comp);
@@ -792,7 +827,7 @@ void UAirsoftTeamGearComponent::RefreshVisibility()
 	{
 		if (Comp)
 		{
-			Comp->SetVisibility(bWantVisible && GShowGear);
+			Comp->SetVisibility(bWantVisible && GShowGear && !bOwnerViewHidden);
 		}
 	}
 }

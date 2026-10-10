@@ -21,7 +21,7 @@ Space: each piece is modelled in character space (+X forward, +Z up, Blender +Y 
 character's left) and exported with its origin at its anchor bone's pivot in the assumed
 UE5 Manny reference pose (teamgear_body.SKEL).  The runtime places it from the skeleton's
 reference pose, so bone local axes never matter; Anchor.Offset/Rotation/Scale are tuned
-live with `airsoft.gear.tune`.
+live with `airsoft.gear.tune` (paste the logged Anchor into Gear.json; rebuilding keeps it).
 """
 
 import json
@@ -721,8 +721,7 @@ def build_softcap(B):
     outer_edge = [(u, 0.074 * max(0.0, math.cos(u / (deg(74) * 0.105) * math.pi / 2)) ** 0.55 + 0.002) for u in us]
     ol = np.array([(us[-1], -0.006), (us[0], -0.006)] + outer_edge)
     ol = tg.fillet(tg.ccw(ol), 0.008, 3)
-    bo = B.add(tg.pillow(ol, 0.005, brim_map, n=72, kind="round", steps=2, face_insets=(0.0, 0.002, 0.0045, 0.008, 0.013, 0.02), scales=(0.6, 0.3)), "twill_brim")
-    del bo
+    B.add(tg.pillow(ol, 0.005, brim_map, n=72, kind="round", steps=2, face_insets=(0.0, 0.002, 0.0045, 0.008, 0.013, 0.02), scales=(0.6, 0.3)), "twill_brim")
     # front loop panel + team patch
     fm = shell.panel_map(RadialShell.dirs(0.0, shell.psi_at_z(0.0, H0[2] + 0.152))[0])
     id_panel(B, fm, 0.0, 0.0, 0.078, 0.050, 0.0012)
@@ -807,16 +806,7 @@ def build_goggles(B):
     G = goggle_frame_data(72)
     frame = [("a", 0.0, 0.0012), ("a", 0.0012, 0.0040), ("a", 0.006, 0.0056), ("f", 0.5, 0.0064), ("b", 0.005, 0.0054), ("b", 0.0, 0.0030),
              ("b", 0.0, -0.0012), ("b", 0.003, -0.0028), ("f", 0.5, -0.0034), ("a", 0.006, -0.0038), ("a", 0.0020, -0.0058), ("a", 0.0, -0.0048)]
-    fr = ring_loft(G, frame)
-    # orientation: outward faces
-    V, F_, _ = fr.arrays()
-    f0 = F_[len(F_) // 2]
-    c0 = V[list(f0)].mean(0)
-    fn = np.cross(V[f0[1]] - V[f0[0]], V[f0[2]] - V[f0[0]])
-    ctr = (G["Pf"].mean(0) + G["Pc"].mean(0)) / 2
-    if fn @ (c0 - ctr) < 0 and False:
-        fr.f = [f[::-1] for f in fr.f]
-    B.add(fr, "tpu", smooth_angle=60)
+    B.add(ring_loft(G, frame), "tpu", smooth_angle=60)
     # foam seal against the face
     Gf = dict(G)
     Gf["Pf"] = G["hit"] + G["dirb"] * 0.0125
@@ -854,13 +844,10 @@ def build_goggles(B):
         i = int(np.argmax(O[:, 0] * side))
         cpos = Pf[i] + D[i] * (G["L"][i] * 0.52) + N3[i] * 0.0085
         fx = D[i]
-        fz = np.array([0.0, 0.0, 1.0])
-        fz = _n(fz - fx * (fx @ fz))
-        fy = np.cross(fz, fx)
+        fz = _n(np.array([0.0, 0.0, 1.0]) - fx * fx[2])
         Rm = np.stack([fx, fz, np.cross(fx, fz)], axis=1)
         B.add(tg.rbox(cpos, (0.024, 0.032, 0.007), 0.0025, Rm, 2), "polymer", smooth_angle=45)
         clips[side] = (cpos, fx, N3[i])
-        del fy
     # lens (Glass piece): double-sided thin shell on the lens cylinder, seated in the frame groove
     xc = LENS_X - LENS_R
 
@@ -888,7 +875,7 @@ def build_goggles(B):
         ups[:2] = nn
         B.add(tg.sweep(path, ups, tg.rrect_profile(0.034, 0.0028, 0.0012, 1), caps=True, half_w=0.017), "strap_kit")
     back = head_ring_path(Fh, [math.pi], [0.040], 0.0075)[0]
-    Rm = np.stack([np.array([0.0, 1.0, 0.0]), np.array([0.0, 0.0, 1.0]), np.array([-1.0, 0.0, 0.0])], axis=1)
+    Rm = np.stack([np.array([0.0, -1.0, 0.0]), np.array([0.0, 0.0, 1.0]), np.array([-1.0, 0.0, 0.0])], axis=1)  # right-handed
     B.add(tg.rbox(back, (0.020, 0.040, 0.006), 0.0024, Rm, 2), "polymer", smooth_angle=45)
 
 
@@ -1110,7 +1097,7 @@ def build_kneepad_left(B, piece="Left"):
         ts = np.radians(np.linspace(-180, 180, 49))[:-1]
         P, N = ls.map(ts * 0.06, np.full(len(ts), v), np.full(len(ts), 0.0))
         B.add(tg.sweep(P, N, tg.rrect_profile(0.030, 0.0026, 0.0011, 1), closed=True, half_w=0.015), "elastic", piece)
-        B.add(box_on(ls.map, 0.090 * 0.06 / 0.06 * 1.0, v, 0.004, (0.026, 0.036, 0.006), 0.0025, 2), "polymer", piece, smooth_angle=45)
+        B.add(box_on(ls.map, 0.090, v, 0.004, (0.026, 0.036, 0.006), 0.0025, 2), "polymer", piece, smooth_angle=45)
 
 
 def build_kneepads(B):
@@ -1273,6 +1260,24 @@ def build_asset(aid, res_scale, do_bake, coll, seed):
     return entry
 
 
+TUNED = ("Offset", "Rotation", "Scale")
+
+
+def keep_tuning(old, new):
+    """Keeps Anchor Offset/Rotation/Scale tuned in game (airsoft.gear.tune, pasted into Gear.json) across rebuilds,
+    as long as the anchor bone is unchanged."""
+    if not old:
+        return
+    pairs = [(old.get("Anchor"), new.get("Anchor"))]
+    oldp = {p.get("Name"): p for p in old.get("Pieces", [])}
+    pairs += [(oldp.get(p["Name"], {}).get("Anchor"), p.get("Anchor")) for p in new.get("Pieces", [])]
+    for a, b in pairs:
+        if a and b and a.get("Bone") == b.get("Bone"):
+            for k in TUNED:
+                if k in a:
+                    b[k] = a[k]
+
+
 def write_json(entries):
     path = os.path.join(gl.DATA_DIR, "Gear.json")
     data = {"Version": 1, "Assets": {}}
@@ -1285,6 +1290,7 @@ def write_json(entries):
     data["Version"] = 1
     data.setdefault("Assets", {})
     for aid, e in entries.items():
+        keep_tuning(data["Assets"].get(aid), e)
         data["Assets"][aid] = e
     data["TeamGear"] = {
         "Version": 1,
@@ -1335,7 +1341,6 @@ def tints_for(aid, team, cw_index):
 def import_asset(aid, coll, tints, offset=(0, 0, 0), rot_z=0.0, proxy_res=2048):
     """Imports an asset's exported pieces, placed at their anchor bones (+ offset), with preview materials."""
     out_dir = os.path.join(OUT_ROOT, aid)
-    spec = SPECS[aid]
     names = [os.path.basename(f)[len(f"SM_{aid}_"):-4] for f in sorted(os.listdir(out_dir)) if f.startswith(f"SM_{aid}_") and f.endswith(".fbx")]
     obs = []
     for piece in names:
@@ -1362,7 +1367,6 @@ def import_asset(aid, coll, tints, offset=(0, 0, 0), rot_z=0.0, proxy_res=2048):
             o.data.materials.clear()
             o.data.materials.append(m)
             obs.append(o)
-    del spec
     return obs
 
 

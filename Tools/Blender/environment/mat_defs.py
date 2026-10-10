@@ -1154,16 +1154,16 @@ def garage_deck(ctx):
     halo = np.zeros((n, n), F32)
     wobble = ctx.noise(0.25, oct=3, rough=0.5)
     fine_w = ctx.noise(0.05, oct=2, rough=0.5)
-    for _ in range(7):
+    for _ in range(3):   # a tile repeats every 4 m: a few stains per tile, or the deck reads spotted
         cu, cv = rg.random(2)
-        r = rg.uniform(0.1, 0.3)
+        r = rg.uniform(0.12, 0.3)
         sx, sy = rg.uniform(0.8, 1.5), rg.uniform(0.7, 1.2)
         dx, dy = _tile_dist(ctx, cu, cv)
         d = np.sqrt((dx / sx) ** 2 + (dy / sy) ** 2) / r * (1.0 + 0.16 * wobble + 0.04 * fine_w)
-        k = rg.uniform(0.45, 0.85)
+        k = rg.uniform(0.35, 0.7)
         oil = np.maximum(oil, sstep(1.0, 0.25, d) * k)
         halo = np.maximum(halo, np.exp(-((d - 0.95) / 0.1) ** 2) * k * 0.5 + sstep(2.0, 0.9, d) * 0.25)
-    for _ in range(22):  # small drips
+    for _ in range(12):  # small drips
         cu, cv = rg.random(2)
         r = rg.uniform(0.012, 0.04)
         dx, dy = _tile_dist(ctx, cu, cv)
@@ -1217,14 +1217,14 @@ def m_ConcreteGarageWet(ctx):
     lowf = ctx.noise(1.9, oct=3, rough=0.45) - 0.5 * d['wheel']
     # few, soft-edged mirror patches only: the material tiles every 4 m, so big standing water is placed
     # as separate Puddle decals in the layout instead (a high tiled coverage reads as a leopard print)
-    puddle = cover(-lowf, 0.07, 0.16)
+    puddle = cover(-lowf, 0.03, 0.05)
     damp = cover(-lowf, 0.7, 0.35)
     bc = d['bc'] * (0.58 - 0.06 * puddle)[..., None]
     bc = lerp(bc, col('#18191b'), puddle * 0.3)
     jwet = np.clip(d['joint'] * 1.5 + d['crack'], 0, 1)
     bc = lerp(bc, col('#141414'), jwet * 0.4)
     rough = np.clip(d['rough'] * (1 - 0.6 * damp), 0.12, 1) * (1 - puddle) + 0.02 * puddle
-    rough = np.where(d['oil'] > 0.4, np.minimum(rough, 0.08), rough)
+    rough = np.where(d['oil'] > 0.4, np.minimum(rough, 0.2), rough)
     level = pct(d['h'], 65)
     h = lerp(d['h'], np.full_like(d['h'], level), puddle)
     return dict(bc=bc, h=h, rough=rough, metal=0.0, aor=(0.002, 0.008, 0.03), nstr=1.3)

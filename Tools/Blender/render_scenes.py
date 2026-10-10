@@ -1468,7 +1468,7 @@ shot("garage_row", file="12_NightjarGarage_ParkingRow", map="NightjarGarage",
      exposure=1.7, sun_mult=1.0, haze=GARAGE_HAZE, fog_scale=0.03, bloom=0.45, samples=64)
 shot("garage_objective", file="13_NightjarGarage_ObjectiveB", map="NightjarGarage",
      caption="Nightjar Garage - objective B on the median between the ramps, Blue holding it",
-     cam=(13.5, -0.4, 5.0), target=(-3.0, 0.4, 4.2), lens=24, fstop=4.0, focus=(0.0, 0.1, 4.0),
+     cam=(-13.1, -2.9, 5.05), target=(5.0, -0.9, 3.7), lens=24, fstop=4.0, focus=(0.0, 0.1, 4.0),
      objectives={"B": {"team": "Blue"}}, label_yaw="auto", ring_glow=0.05,
      exposure=1.7, sun_mult=1.0, haze=GARAGE_HAZE, rain=HOLE_RAIN, fog_scale=0.03, bloom=0.5, samples=64)
 

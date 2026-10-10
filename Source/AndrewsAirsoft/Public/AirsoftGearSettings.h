@@ -30,6 +30,13 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category = "Team Gear")
 	bool bOwnerSeesShadow = true;
 
+	/**
+	 * Also hide the gear (keeping its shadow) while its owner looks through this body's own camera. Belt and braces
+	 * for OwnerNoSee, which Nanite meshes may ignore; the gear still shows when the view target is another camera (replays).
+	 */
+	UPROPERTY(Config, EditAnywhere, Category = "Team Gear")
+	bool bHideFromOwnerView = true;
+
 	/** Pieces that follow a limb (armband, knee pads) are turned onto the skeleton's bone direction unless it differs from the modelled one by more than this. */
 	UPROPERTY(Config, EditAnywhere, Category = "Team Gear", meta = (ClampMin = "0", ClampMax = "180"))
 	float MaxAlignAngle = 60.f;
