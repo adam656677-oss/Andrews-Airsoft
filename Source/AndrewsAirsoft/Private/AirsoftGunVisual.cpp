@@ -318,7 +318,8 @@ void UAirsoftGunVisual::AddHands(bool bPistol)
 	if (RightMesh && LeftMesh)
 	{
 		AddPart(RightMesh, TEXT("Hand"), FTransform::Identity, FVector::ZeroVector);
-		AddPart(LeftMesh, TEXT("LeftHand"), FTransform(LeftHand), FVector::ZeroVector);
+		// LeftPistol is authored from the grip centre like RightGrip; LeftSupport from the handguard contact point.
+		AddPart(LeftMesh, TEXT("LeftHand"), bPistol ? FTransform::Identity : FTransform(LeftHandLocal), FVector::ZeroVector);
 		return;
 	}
 
