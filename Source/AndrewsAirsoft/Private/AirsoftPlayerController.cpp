@@ -14,6 +14,7 @@
 #include "AirsoftWeaponData.h"
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
+#include "Components/AudioComponent.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Engine/GameViewportClient.h"
@@ -25,6 +26,7 @@
 #include "InputCoreTypes.h"
 #include "InputMappingContext.h"
 #include "InputModifiers.h"
+#include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
 #include "UI/AirsoftUI.h"
 
@@ -856,6 +858,14 @@ void AAirsoftPlayerController::PlayerTick(float DeltaTime)
 	if (bWantSummary && !SummaryWidget.IsValid())
 	{
 		ShowWidget(SummaryWidget, AirsoftUI::MakeSummary(this), 30);
+		if (!PostRoundMusic)
+		{
+			PostRoundMusic = UGameplayStatics::SpawnSound2D(this, AirsoftAssets::Sound(TEXT("PostRoundMusic")), 0.55f);
+			if (PostRoundMusic)
+			{
+				PostRoundMusic->FadeIn(2.f, 0.55f);
+			}
+		}
 		if (!bSummaryStingPlayed)
 		{
 			bSummaryStingPlayed = true;
@@ -874,6 +884,11 @@ void AAirsoftPlayerController::PlayerTick(float DeltaTime)
 	else if (!bWantSummary && SummaryWidget.IsValid())
 	{
 		HideWidget(SummaryWidget);
+	}
+	if (!bWantSummary && PostRoundMusic)
+	{
+		PostRoundMusic->FadeOut(1.5f, 0.f);
+		PostRoundMusic = nullptr;
 	}
 }
 
@@ -950,6 +965,7 @@ void AAirsoftPlayerController::StartReplay()
 	bReplayFired = false;
 	bReplayHitPlayed = false;
 	SetViewTargetWithBlend(ReplayCamera, 0.4f, VTBlend_EaseInOut, 2.f);
+	AirsoftAssets::Play2D(this, TEXT("ReplayWhoosh"), 0.8f, 1.f);
 	UpdateReplay(0.f);
 }
 
@@ -996,11 +1012,13 @@ void AAirsoftPlayerController::UpdateReplay(float DeltaTime)
 			BBs->Fire(MoveTemp(P));
 		}
 		AirsoftAssets::Play2D(this, TEXT("FireRifle"), 0.5f, 0.55f);
+		AirsoftAssets::Play2D(this, TEXT("SlowMoHeartbeat"), 0.6f, 1.f);
 	}
 	if (!bReplayHitPlayed && T >= ReplayFireAt + ReplayFlight)
 	{
 		bReplayHitPlayed = true;
-		AirsoftAssets::Play2D(this, TEXT("HitCall"), 0.8f, 0.9f);
+		AirsoftAssets::Play2D(this, TEXT("ReplayImpact"), 0.9f, 1.f);
+		AirsoftAssets::Play2D(this, TEXT("HitCall"), 0.7f, 0.9f);
 	}
 
 	FVector CamLoc;

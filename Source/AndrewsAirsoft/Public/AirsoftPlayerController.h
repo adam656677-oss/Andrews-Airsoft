@@ -17,6 +17,7 @@ class AAirsoftArmoryDisplay;
 class AAirsoftGameState;
 class AAirsoftPlayerState;
 class ACameraActor;
+class UAudioComponent;
 class SWidget;
 
 /** Which full-screen UI is open. */
@@ -200,6 +201,8 @@ protected:
 	UPROPERTY() TMap<FName, TObjectPtr<UInputAction>> Actions;
 
 	UPROPERTY() TObjectPtr<ACameraActor> ReplayCamera;
+	/** Music bed under the after-action report. */
+	UPROPERTY() TObjectPtr<UAudioComponent> PostRoundMusic;
 
 	EAirsoftMenu OpenMenu = EAirsoftMenu::None;
 	bool bMainMenu = false;

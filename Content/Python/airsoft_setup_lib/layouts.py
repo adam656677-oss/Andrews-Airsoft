@@ -1195,7 +1195,9 @@ def _staging():
     outer = (X0 - 2.5, Y0 - 2.5, X1 + 2.5, Y1 + 2.5)
     it += scatter(21, 34, (X0 - 30, Y0 - 25, X1 + 30, Y1 + 25), [], 7.5, ["Tree_Oak_A", "Tree_Oak_B", "Tree_Oak_C"],
                   keep_out=[outer])
-    it += [sound("AmbienceStaging", -12, 0, 3)]
+    it += [sound("AmbienceStaging", -12, 0, 3),
+           # low lounge groove playing in the armory
+           sound("StagingMusic", -12, 6.5, 3.2, spatial=True, radius=8, falloff=14, volume=0.45)]
     return {
         "name": "Staging", "path": "/Game/Maps/L_Staging", "kind": "staging",
         "bounds": (X0, Y0, X1, Y1), "lighting": "staging_golden", "game_mode": "AirsoftGameMode",

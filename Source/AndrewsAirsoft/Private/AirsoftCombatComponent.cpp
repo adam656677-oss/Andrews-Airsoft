@@ -3,14 +3,18 @@
 #include "AirsoftAssets.h"
 #include "AirsoftBallistics.h"
 #include "AirsoftCharacter.h"
+#include "AirsoftGameInstance.h"
 #include "AirsoftGameMode.h"
 #include "AirsoftGameState.h"
 #include "AirsoftGunVisual.h"
 #include "AirsoftPlayerController.h"
 #include "AirsoftPlayerState.h"
 #include "AirsoftPracticeTarget.h"
+#include "AirsoftSaveGame.h"
 #include "AirsoftSettings.h"
 #include "Camera/CameraComponent.h"
+#include "Camera/PlayerCameraManager.h"
+#include "GameFramework/PlayerController.h"
 #include "Engine/HitResult.h"
 #include "Engine/World.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -39,6 +43,31 @@ namespace
 	constexpr float HitTolerance = 160.f;      // cm between reported hit and victim
 	constexpr float AngleToleranceDeg = 14.f;  // BB arc + latency
 	constexpr double ShotHistory = 5.0;
+	constexpr float FarGunfireDistance = 4000.f; // cm; beyond this remote shots use the distant variant
+
+	/** Gunfire key for this listener: cinematic (default) or airsoft set, distant variant when far away. */
+	FName GunSoundKey(const UObject* Context, FName Base, bool bFar)
+	{
+		bool bCinematic = true;
+		if (const UWorld* World = Context ? Context->GetWorld() : nullptr)
+		{
+			if (UAirsoftGameInstance* GI = World->GetGameInstance<UAirsoftGameInstance>())
+			{
+				bCinematic = GI->GetUserSettings().bCinematicGunSounds;
+			}
+		}
+		if (!bCinematic)
+		{
+			const FName Airsoft(*(Base.ToString() + TEXT("_Airsoft")));
+			return AirsoftAssets::Sound(Airsoft) ? Airsoft : Base;
+		}
+		if (bFar)
+		{
+			const FName Far(*(Base.ToString() + TEXT("_Far")));
+			return AirsoftAssets::Sound(Far) ? Far : Base;
+		}
+		return Base;
+	}
 }
 
 UAirsoftCombatComponent::UAirsoftCombatComponent()
@@ -480,7 +509,7 @@ void UAirsoftCombatComponent::FireOnce()
 		}
 	}
 
-	AirsoftAssets::Play2D(this, W.Sound, W.bQuiet ? 0.45f : 0.75f, Rng.FRandRange(0.96f, 1.05f));
+	AirsoftAssets::Play2D(this, GunSoundKey(this, W.Sound, false), W.bQuiet ? 0.45f : 0.75f, Rng.FRandRange(0.96f, 1.05f));
 	Kick = FMath::Min(Kick + W.RecoilUp * 0.35f, 1.5f);
 	SlideKick = 1.f;
 	if (AnimKind == KindInspect)
@@ -745,7 +774,15 @@ void UAirsoftCombatComponent::MulticastShot_Implementation(FVector_NetQuantize O
 			BBs->Fire(MoveTemp(P));
 		}
 	}
-	AirsoftAssets::Play3D(this, SoundKey, Muzzle, bQuiet ? 0.35f : 0.9f, FMath::FRandRange(0.96f, 1.05f));
+	bool bFar = false;
+	if (const APlayerController* Listener = GetWorld()->GetFirstPlayerController())
+	{
+		if (Listener->PlayerCameraManager)
+		{
+			bFar = FVector::Dist(Listener->PlayerCameraManager->GetCameraLocation(), Muzzle) > FarGunfireDistance;
+		}
+	}
+	AirsoftAssets::Play3D(this, GunSoundKey(this, SoundKey, bFar), Muzzle, bQuiet ? 0.35f : 0.9f, FMath::FRandRange(0.96f, 1.05f));
 }
 
 void UAirsoftCombatComponent::ClientAmmo_Implementation(EAirsoftSlot Slot, int32 Mag, int32 Reserve)

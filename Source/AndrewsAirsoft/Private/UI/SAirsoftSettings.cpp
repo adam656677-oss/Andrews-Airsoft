@@ -77,6 +77,7 @@ void SAirsoftSettings::Apply()
 	Settings.Quality = Working.Quality;
 	Settings.RenderScale = Working.RenderScale;
 	Settings.MasterVolume = Working.MasterVolume;
+	Settings.bCinematicGunSounds = Working.bCinematicGunSounds;
 	GI->SetUserSettings(Settings);
 }
 
@@ -301,6 +302,12 @@ void SAirsoftSettings::Construct(const FArguments& InArgs, AAirsoftPlayerControl
 	[
 		SliderRow(TEXT("Master volume"), FString(), &FAirsoftUserSettings::MasterVolume, 0.f, 1.f, 0.01f,
 			[](float V) { return FString::Printf(TEXT("%d%%"), FMath::RoundToInt(V * 100.f)); })
+	];
+	Rows->AddSlot().AutoHeight().Padding(FMargin(0.f, 0.f, 0.f, 4.f))
+	[
+		ChoiceRow(TEXT("Gun sounds"), TEXT("Cinematic action-movie gunfire, or realistic airsoft mechanics."), { TEXT("CINEMATIC"), TEXT("AIRSOFT") },
+			[this]() { return Working.bCinematicGunSounds ? 0 : 1; },
+			[this](int32 Index) { Working.bCinematicGunSounds = Index == 0; })
 	];
 
 	ChildSlot

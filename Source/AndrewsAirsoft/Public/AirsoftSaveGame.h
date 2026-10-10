@@ -22,6 +22,8 @@ struct FAirsoftUserSettings
 	/** Internal render resolution percentage before TSR upscaling. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) float RenderScale = 60.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) float MasterVolume = 0.8f;
+	/** Big-screen cinematic gunfire (true) or realistic mechanical airsoft sounds (false). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) bool bCinematicGunSounds = true;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) FString LastJoinAddress;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) FString PlayerName;
 };
