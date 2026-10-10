@@ -1574,9 +1574,9 @@ def build_reddot(g):
     for sx in (-1, 1):
         g.body(side([(-0.06, Z + 0.03), (0.06, Z + 0.03), (0.04, Z + 0.105), (-0.04, Z + 0.105)], 0.012, x=sx * 0.04, bev=0.004))
     g.body(cyl_x(-0.1, -0.06, 0.03, y=0.0, z=Z, seg=16, bev=0.006))
-    # flip-up lens covers (open), cross bolt nut
+    # front flip-up lens cover (open), cross bolt nut. No rear cover: open, it stood ~7 cm from the eye and
+    # filled the top of the aim-down-sights view.
     g.add("Rubber", side([(0.14, Z + 0.06), (0.17, Z + 0.06), (0.2, Z + 0.17), (0.17, Z + 0.18)], 0.12, bev=0.012, seg=2))
-    g.add("Rubber", side([(-0.16, Z + 0.06), (-0.13, Z + 0.06), (-0.16, Z + 0.18), (-0.19, Z + 0.17)], 0.1, bev=0.012, seg=2))
     g.mats["Rubber"] = "rubber"
     g.metal(cyl_x(0.075, 0.105, 0.025, y=0.0, z=0.025, seg=6, bev=0.003))
     g.add("Glass", cyl_y(0.095, 0.1, 0.05, z=Z, seg=24))
