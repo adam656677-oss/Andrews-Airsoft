@@ -777,6 +777,11 @@ void UAirsoftCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType
 	{
 		UpdateLocal(DeltaTime);
 	}
+	// Runs after physics, so this frame's animation pose is ready to copy.
+	if (AAirsoftCharacter* C = GetCharacter())
+	{
+		C->UpdateThirdPersonPose();
+	}
 }
 
 void UAirsoftCombatComponent::UpdateLocal(float DeltaTime)

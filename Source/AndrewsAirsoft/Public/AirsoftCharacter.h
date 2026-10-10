@@ -15,6 +15,7 @@ class UAirsoftMovementComponent;
 class UStaticMeshComponent;
 class UTextRenderComponent;
 class UMaterialInstanceDynamic;
+class UPoseableMeshComponent;
 class AAirsoftPlayerState;
 
 UCLASS()
@@ -68,6 +69,9 @@ public:
 	/** Recolours armband, body and guns for the current team. */
 	void ApplyTeamLook();
 
+	/** Third person: copy the animated pose and bend both arms onto the gun (called after animation each frame). */
+	void UpdateThirdPersonPose();
+
 	UPROPERTY(ReplicatedUsing = OnRep_Out) bool bIsOutReplicated = false;
 	UPROPERTY(ReplicatedUsing = OnRep_Frozen) bool bFrozen = false;
 	UPROPERTY(Replicated) bool bSprinting = false;
@@ -98,6 +102,8 @@ protected:
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> TeamBand;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> DeadRag;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UTextRenderComponent> HitCall;
+	/** Visible body when the mannequin is used: a copy of the animated mesh with the arms posed onto the gun. */
+	UPROPERTY(VisibleAnywhere) TObjectPtr<UPoseableMeshComponent> PoseMesh;
 
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> TeamMID;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> BodyMID;
@@ -116,6 +122,8 @@ protected:
 	float OutFade = 0.f;
 	float StepAccum = 0.f;
 	bool bHasMannequin = false;
+	bool bUsePoseMesh = false;
+	void SolveArm(FName UpperName, FName LowerName, FName HandName, const FVector& WristTargetWorld, const FVector& PoleWorld);
 	EAirsoftTeam AppliedTeam = EAirsoftTeam::None;
 	bool bTeamApplied = false;
 };

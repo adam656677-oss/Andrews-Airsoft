@@ -11,6 +11,7 @@
 #include "Camera/CameraComponent.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/PoseableMeshComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/TextRenderComponent.h"
@@ -121,6 +122,13 @@ AAirsoftCharacter::AAirsoftCharacter(const FObjectInitializer& ObjectInitializer
 	HitCall->SetTextRenderColor(FColor(255, 120, 20));
 	HitCall->SetOwnerNoSee(true);
 	HitCall->SetVisibility(false);
+
+	PoseMesh = CreateDefaultSubobject<UPoseableMeshComponent>(TEXT("PoseMesh"));
+	PoseMesh->SetupAttachment(GetMesh());
+	PoseMesh->SetOwnerNoSee(true);
+	PoseMesh->bCastHiddenShadow = true;
+	PoseMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	PoseMesh->SetVisibility(false);
 
 	MakeBBTarget(FallbackBody);
 	MakeBBTarget(FallbackHead);
@@ -253,6 +261,27 @@ void AAirsoftCharacter::SetupThirdPersonBody()
 			TPGun->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform, Settings->ThirdPersonGunSocket);
 			TPGun->SetRelativeTransform(Settings->ThirdPersonGunOffset);
 		}
+
+		// No rifle animations needed: the animated mesh drives a hidden pose, and a poseable copy
+		// is what everyone sees, with both arms bent onto the gun each frame.
+		bool bHasArmBones = true;
+		for (const TCHAR* Bone : { TEXT("upperarm_r"), TEXT("lowerarm_r"), TEXT("hand_r"), TEXT("upperarm_l"), TEXT("lowerarm_l"), TEXT("hand_l") })
+		{
+			bHasArmBones = bHasArmBones && GetMesh()->DoesSocketExist(Bone);
+		}
+		bUsePoseMesh = bHasArmBones && TPGun->GetAttachParent() == TPAimRoot;
+		if (bUsePoseMesh)
+		{
+			PoseMesh->SetSkinnedAssetAndUpdate(BodyMesh, true);
+			PoseMesh->SetVisibility(true);
+			GetMesh()->SetVisibility(false);
+			GetMesh()->SetCastShadow(false);
+			GetMesh()->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
+			if (TeamBand->GetAttachParent() == GetMesh())
+			{
+				TeamBand->AttachToComponent(PoseMesh, FAttachmentTransformRules::KeepRelativeTransform, TEXT("upperarm_l"));
+			}
+		}
 	}
 	else
 	{
@@ -263,6 +292,85 @@ void AAirsoftCharacter::SetupThirdPersonBody()
 	FallbackHead->SetVisibility(!bHasMannequin);
 	FallbackBody->SetCollisionEnabled(bHasMannequin ? ECollisionEnabled::NoCollision : ECollisionEnabled::QueryOnly);
 	FallbackHead->SetCollisionEnabled(bHasMannequin ? ECollisionEnabled::NoCollision : ECollisionEnabled::QueryOnly);
+}
+
+void AAirsoftCharacter::UpdateThirdPersonPose()
+{
+	if (!bUsePoseMesh || GetNetMode() == NM_DedicatedServer)
+	{
+		return;
+	}
+	PoseMesh->CopyPoseFromSkeletalComponent(GetMesh());
+	// The owner never sees their own body (only its shadow), and tagged players drop the gun pose.
+	if (IsLocallyControlled() || IsOut() || !TPGun->IsVisible())
+	{
+		return;
+	}
+	const FTransform Gun = TPGun->GetComponentTransform();
+	const FVector Up = GetActorUpVector();
+	const FVector Right = GetActorRightVector();
+	const FVector Forward = GetActorForwardVector();
+	// Wrists sit a little behind/below the grip and the support-hand point.
+	const FVector RightWrist = Gun.TransformPosition(FVector(-3.f, 3.f, -5.f));
+	const FVector LeftWrist = Gun.TransformPosition(TPGun->LeftHandLocal + FVector(-2.f, -4.f, -6.f));
+	const FVector RightShoulder = PoseMesh->GetBoneTransformByName(TEXT("upperarm_r"), EBoneSpaces::WorldSpace).GetLocation();
+	const FVector LeftShoulder = PoseMesh->GetBoneTransformByName(TEXT("upperarm_l"), EBoneSpaces::WorldSpace).GetLocation();
+	SolveArm(TEXT("upperarm_r"), TEXT("lowerarm_r"), TEXT("hand_r"), RightWrist, RightShoulder + Right * 25.f - Up * 45.f - Forward * 10.f);
+	SolveArm(TEXT("upperarm_l"), TEXT("lowerarm_l"), TEXT("hand_l"), LeftWrist, LeftShoulder - Right * 30.f - Up * 40.f - Forward * 5.f);
+}
+
+void AAirsoftCharacter::SolveArm(FName UpperName, FName LowerName, FName HandName, const FVector& WristTargetWorld, const FVector& PoleWorld)
+{
+	// Analytic two-bone IK in component space; the elbow bends toward the pole.
+	const FTransform ToWorld = PoseMesh->GetComponentTransform();
+	const FTransform Upper = PoseMesh->GetBoneTransformByName(UpperName, EBoneSpaces::ComponentSpace);
+	const FTransform Lower = PoseMesh->GetBoneTransformByName(LowerName, EBoneSpaces::ComponentSpace);
+	const FTransform Hand = PoseMesh->GetBoneTransformByName(HandName, EBoneSpaces::ComponentSpace);
+	const FVector Shoulder = Upper.GetLocation();
+	const FVector Elbow0 = Lower.GetLocation();
+	const FVector Wrist0 = Hand.GetLocation();
+	const double A = FVector::Dist(Shoulder, Elbow0);
+	const double B = FVector::Dist(Elbow0, Wrist0);
+	if (A < 1.0 || B < 1.0)
+	{
+		return;
+	}
+	const FVector Target = ToWorld.InverseTransformPosition(WristTargetWorld);
+	const FVector Pole = ToWorld.InverseTransformPosition(PoleWorld);
+	const FVector ToTarget = Target - Shoulder;
+	const double Length = ToTarget.Size();
+	if (Length < KINDA_SMALL_NUMBER)
+	{
+		return;
+	}
+	const FVector Dir = ToTarget / Length;
+	const double D = FMath::Clamp(Length, FMath::Abs(A - B) + 1.0, A + B - 0.5);
+	const double CosA = FMath::Clamp((A * A + D * D - B * B) / (2.0 * A * D), -1.0, 1.0);
+	const double SinA = FMath::Sqrt(FMath::Max(0.0, 1.0 - CosA * CosA));
+	FVector Bend = (Pole - Shoulder) - Dir * FVector::DotProduct(Pole - Shoulder, Dir);
+	if (!Bend.Normalize())
+	{
+		Bend = FVector::CrossProduct(Dir, FVector::RightVector).GetSafeNormal();
+	}
+	const FVector Elbow = Shoulder + Dir * (A * CosA) + Bend * (A * SinA);
+	const FVector Wrist = Shoulder + Dir * D;
+
+	const FQuat DeltaUpper = FQuat::FindBetweenNormals((Elbow0 - Shoulder) / A, (Elbow - Shoulder) / A);
+	const FVector LowerAfter = DeltaUpper.RotateVector((Wrist0 - Elbow0) / B);
+	const FQuat DeltaLower = FQuat::FindBetweenNormals(LowerAfter, (Wrist - Elbow).GetSafeNormal());
+
+	FTransform NewUpper = Upper;
+	NewUpper.SetRotation(DeltaUpper * Upper.GetRotation());
+	FTransform NewLower = Lower;
+	NewLower.SetLocation(Elbow);
+	NewLower.SetRotation(DeltaLower * DeltaUpper * Lower.GetRotation());
+	FTransform NewHand = Hand;
+	NewHand.SetLocation(Wrist);
+	NewHand.SetRotation(DeltaLower * DeltaUpper * Hand.GetRotation());
+
+	PoseMesh->SetBoneTransformByName(UpperName, NewUpper, EBoneSpaces::ComponentSpace);
+	PoseMesh->SetBoneTransformByName(LowerName, NewLower, EBoneSpaces::ComponentSpace);
+	PoseMesh->SetBoneTransformByName(HandName, NewHand, EBoneSpaces::ComponentSpace);
 }
 
 void AAirsoftCharacter::PossessedBy(AController* NewController)
@@ -648,6 +756,9 @@ void AAirsoftCharacter::UpdateRemoteVisuals(float DeltaSeconds)
 		const float Pitch = FRotator::NormalizeAxis(GetBaseAimRotation().Pitch);
 		const float Crouch = bIsCrouched ? -24.f : 0.f;
 		TPAimRoot->SetRelativeLocationAndRotation(FVector(0.f, LeanVisual * 22.f, 46.f + Crouch), FRotator(Pitch, 0.f, LeanVisual * 12.f));
+		// Rifles tucked into the shoulder, pistols pushed out at arm's length.
+		const bool bPistol = Combat && Combat->Current().Class == TEXT("Pistol");
+		TPGun->SetRelativeLocation(bPistol ? FVector(38.f, 6.f, -2.f) : FVector(16.f, 17.f, -9.f));
 	}
 
 	if (!IsLocallyControlled())
