@@ -20,7 +20,7 @@
 
 namespace
 {
-	constexpr float CaptureTime = 8.f;
+	constexpr float DominationCaptureTime = 8.f;
 	constexpr float MaxLoadWait = 25.f;
 
 	int32 PickVote(const TArray<int32>& Votes)
@@ -207,7 +207,7 @@ AActor* AAirsoftGameMode::ChoosePlayerStart_Implementation(AController* Player)
 
 	// Furthest from live enemies, never on top of someone, with a little randomness.
 	APlayerStart* Best = nullptr;
-	float BestScore = -MAX_flt;
+	float BestScore = -TNumericLimits<float>::Max();
 	for (APlayerStart* Start : Pool)
 	{
 		const FVector Loc = Start->GetActorLocation();
@@ -674,7 +674,7 @@ void AAirsoftGameMode::TickDomination(float DeltaSeconds)
 				Red += C->GetTeam() == EAirsoftTeam::Red ? 1 : 0;
 			}
 		}
-		const EAirsoftTeam Taken = Obj->ServerUpdate(DeltaSeconds, Blue, Red, CaptureTime);
+		const EAirsoftTeam Taken = Obj->ServerUpdate(DeltaSeconds, Blue, Red, DominationCaptureTime);
 		if (Taken != EAirsoftTeam::None)
 		{
 			for (AAirsoftCharacter* C : Inside)

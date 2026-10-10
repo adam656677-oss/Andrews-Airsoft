@@ -6,6 +6,7 @@
 #include "Engine/DeveloperSettings.h"
 #include "AirsoftSettings.generated.h"
 
+class UAnimInstance;
 class USkeletalMesh;
 class UMaterialInterface;
 

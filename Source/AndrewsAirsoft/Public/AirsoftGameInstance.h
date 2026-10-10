@@ -9,6 +9,8 @@
 #include "AirsoftGameInstance.generated.h"
 
 class UAirsoftSaveGame;
+class UNetDriver;
+class UWorld;
 struct FAirsoftUserSettings;
 
 UCLASS()

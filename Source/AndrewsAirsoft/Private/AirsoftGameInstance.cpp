@@ -5,6 +5,7 @@
 #include "AirsoftWeaponData.h"
 #include "AudioDevice.h"
 #include "Engine/Engine.h"
+#include "Engine/World.h"
 #include "GameFramework/GameUserSettings.h"
 #include "HAL/IConsoleManager.h"
 #include "HAL/PlatformProcess.h"

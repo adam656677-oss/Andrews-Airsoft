@@ -6,6 +6,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Dom/JsonObject.h"
 #include "Engine/StaticMesh.h"
+#include "GameFramework/Actor.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
 
@@ -120,11 +121,11 @@ const FAirsoftAssetLayout& UAirsoftGunVisual::Layout(const FString& Category, FN
 			}
 		}
 		// The generators write attachment offsets next to Points rather than inside it.
-		for (const TCHAR* Key : { TEXT("AimOffset"), TEXT("MuzzleOffset"), TEXT("Hand") })
+		for (const TCHAR* FieldName : { TEXT("AimOffset"), TEXT("MuzzleOffset"), TEXT("Hand") })
 		{
-			if (const TSharedPtr<FJsonValue> Value = (*Asset)->TryGetField(Key))
+			if (const TSharedPtr<FJsonValue> Value = (*Asset)->TryGetField(FieldName))
 			{
-				L.Points.FindOrAdd(FName(Key)) = JsonVector(Value);
+				L.Points.FindOrAdd(FName(FieldName)) = JsonVector(Value);
 			}
 		}
 		const TArray<TSharedPtr<FJsonValue>>* Pieces = nullptr;

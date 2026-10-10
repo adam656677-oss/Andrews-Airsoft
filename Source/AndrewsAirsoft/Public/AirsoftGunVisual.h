@@ -8,6 +8,7 @@
 #include "AirsoftTypes.h"
 #include "AirsoftGunVisual.generated.h"
 
+class UStaticMesh;
 class UStaticMeshComponent;
 class USpotLightComponent;
 class UMaterialInstanceDynamic;

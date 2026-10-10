@@ -9,10 +9,13 @@
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "Tickable.h"
+#include "UObject/WeakObjectPtrTemplates.h"
 #include "AirsoftBallistics.generated.h"
 
+class AActor;
 class UStaticMeshComponent;
 class UMaterialInstanceDynamic;
+struct FHitResult;
 
 struct FAirsoftBBParams
 {

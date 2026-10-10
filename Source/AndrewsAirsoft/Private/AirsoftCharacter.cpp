@@ -8,6 +8,7 @@
 #include "AirsoftPlayerState.h"
 #include "AirsoftSaveGame.h"
 #include "AirsoftSettings.h"
+#include "Animation/AnimInstance.h"
 #include "Camera/CameraComponent.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Components/CapsuleComponent.h"
@@ -15,6 +16,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/TextRenderComponent.h"
+#include "Engine/HitResult.h"
 #include "Engine/SkeletalMesh.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
@@ -350,7 +352,7 @@ void AAirsoftCharacter::SolveArm(FName UpperName, FName LowerName, FName HandNam
 	const FVector Pole = ToWorld.InverseTransformPosition(PoleWorld);
 	const FVector ToTarget = Target - Shoulder;
 	const double Length = ToTarget.Size();
-	if (Length < KINDA_SMALL_NUMBER)
+	if (Length < UE_KINDA_SMALL_NUMBER)
 	{
 		return;
 	}
@@ -765,8 +767,8 @@ void AAirsoftCharacter::UpdateRemoteVisuals(float DeltaSeconds)
 	if (TPGun->GetAttachParent() == TPAimRoot)
 	{
 		const float Pitch = IsOut() ? -55.f : static_cast<float>(FRotator::NormalizeAxis(GetBaseAimRotation().Pitch));
-		const float Crouch = bIsCrouched ? -24.f : 0.f;
-		TPAimRoot->SetRelativeLocationAndRotation(FVector(0.f, LeanVisual * 22.f, 46.f + Crouch), FRotator(Pitch, 0.f, LeanVisual * 12.f));
+		const float CrouchDrop = bIsCrouched ? -24.f : 0.f;
+		TPAimRoot->SetRelativeLocationAndRotation(FVector(0.f, LeanVisual * 22.f, 46.f + CrouchDrop), FRotator(Pitch, 0.f, LeanVisual * 12.f));
 		// Rifles tucked into the shoulder, pistols pushed out at arm's length.
 		const bool bPistol = Combat && Combat->Current().Class == TEXT("Pistol");
 		TPGun->SetRelativeLocation(bPistol ? FVector(38.f, 6.f, -2.f) : FVector(16.f, 17.f, -9.f));

@@ -11,6 +11,7 @@
 #include "AirsoftPracticeTarget.h"
 #include "AirsoftSettings.h"
 #include "Camera/CameraComponent.h"
+#include "Engine/HitResult.h"
 #include "Engine/World.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Net/UnrealNetwork.h"
@@ -26,7 +27,7 @@ namespace
 
 	float Window(float T, float A, float B)
 	{
-		return Ease((T - A) / FMath::Max(B - A, KINDA_SMALL_NUMBER));
+		return Ease((T - A) / FMath::Max(B - A, UE_KINDA_SMALL_NUMBER));
 	}
 
 	const FName KindDraw(TEXT("Draw"));
@@ -616,7 +617,7 @@ void UAirsoftCombatComponent::ServerReportHit_Implementation(int32 ShotId, uint8
 	}
 	if (Distance > 150.f)
 	{
-		const float AngleDeg = FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(FVector::DotProduct(ToHit / Distance, Shot->Directions[Pellet]), -1.f, 1.f)));
+		const float AngleDeg = static_cast<float>(FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(FVector::DotProduct(ToHit / Distance, Shot->Directions[Pellet]), -1.0, 1.0))));
 		if (AngleDeg > AngleToleranceDeg + W.HipSpread)
 		{
 			return;

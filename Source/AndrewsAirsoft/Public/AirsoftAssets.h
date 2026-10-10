@@ -9,6 +9,7 @@ class UMaterialInterface;
 class UMaterialInstanceDynamic;
 class USoundBase;
 class UObject;
+class FJsonObject;
 
 namespace AirsoftAssets
 {
@@ -34,5 +35,5 @@ namespace AirsoftAssets
 	ANDREWSAIRSOFT_API void Play3D(const UObject* WorldContext, FName Key, const FVector& Location, float Volume = 1.f, float Pitch = 1.f);
 
 	/** Loads a JSON file under Content/Airsoft/Data. */
-	ANDREWSAIRSOFT_API TSharedPtr<class FJsonObject> LoadData(const FString& FileName);
+	ANDREWSAIRSOFT_API TSharedPtr<FJsonObject> LoadData(const FString& FileName);
 }

@@ -124,9 +124,9 @@ struct FAirsoftSummaryRow
 
 namespace AirsoftColors
 {
-	inline FLinearColor Team(EAirsoftTeam Team)
+	inline FLinearColor Team(EAirsoftTeam InTeam)
 	{
-		switch (Team)
+		switch (InTeam)
 		{
 		case EAirsoftTeam::Blue: return FLinearColor(0.08f, 0.30f, 1.0f);
 		case EAirsoftTeam::Red: return FLinearColor(1.0f, 0.09f, 0.07f);
@@ -136,9 +136,9 @@ namespace AirsoftColors
 
 	inline FLinearColor Accent() { return FLinearColor(1.0f, 0.55f, 0.05f); }
 
-	inline FString TeamName(EAirsoftTeam Team)
+	inline FString TeamName(EAirsoftTeam InTeam)
 	{
-		switch (Team)
+		switch (InTeam)
 		{
 		case EAirsoftTeam::Blue: return TEXT("Blue Squad");
 		case EAirsoftTeam::Red: return TEXT("Red Squad");

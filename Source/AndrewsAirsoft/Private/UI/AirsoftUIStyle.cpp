@@ -312,7 +312,7 @@ namespace AirsoftUIStyle
 
 	float Pulse(float Hz)
 	{
-		const double Phase = FPlatformTime::Seconds() * Hz * 2.0 * PI;
+		const double Phase = FPlatformTime::Seconds() * Hz * 2.0 * UE_PI;
 		return 0.5f + 0.5f * static_cast<float>(FMath::Sin(Phase));
 	}
 }

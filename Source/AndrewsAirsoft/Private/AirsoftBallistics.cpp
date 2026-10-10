@@ -3,7 +3,9 @@
 #include "AirsoftAssets.h"
 #include "AirsoftTypes.h"
 #include "Components/StaticMeshComponent.h"
+#include "Engine/HitResult.h"
 #include "Engine/World.h"
+#include "GameFramework/Actor.h"
 #include "Materials/MaterialInstanceDynamic.h"
 
 namespace AirsoftBallistics
@@ -28,7 +30,7 @@ namespace AirsoftBallistics
 		}
 		// Uniform within the cone (sqrt for even area distribution).
 		const float Angle = FMath::DegreesToRadians(HalfAngleDeg) * FMath::Sqrt(Rng.GetFraction());
-		const float Roll = Rng.GetFraction() * 2.f * PI;
+		const float Roll = Rng.GetFraction() * 2.f * UE_PI;
 		const FVector Forward = Dir.GetSafeNormal();
 		FVector Right, Up;
 		Forward.FindBestAxisVectors(Right, Up);

@@ -108,7 +108,7 @@ private:
 	TMap<FName, TSharedPtr<SAirsoftButton>> CardButtons;
 	FString Message;
 	double MessageTime = -100.0;
-	mutable uint64 StatsFrame = MAX_uint64;
+	mutable uint64 StatsFrame = TNumericLimits<uint64>::Max();
 	mutable AirsoftArmoryLocal::FStats CachedStats;
 };
 

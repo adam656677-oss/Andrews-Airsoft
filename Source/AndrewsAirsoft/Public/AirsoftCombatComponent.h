@@ -7,12 +7,14 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "Engine/NetSerialization.h"
+#include "TimerManager.h"
 #include "AirsoftTypes.h"
 #include "AirsoftWeaponData.h"
 #include "AirsoftCombatComponent.generated.h"
 
 class AAirsoftCharacter;
 class UAirsoftGunVisual;
+struct FHitResult;
 
 UCLASS(ClassGroup = (Airsoft), meta = (BlueprintSpawnableComponent))
 class ANDREWSAIRSOFT_API UAirsoftCombatComponent : public UActorComponent
