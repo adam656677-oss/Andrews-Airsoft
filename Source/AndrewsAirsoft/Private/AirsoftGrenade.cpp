@@ -65,7 +65,7 @@ void AAirsoftGrenade::Init(AController* InThrower, EAirsoftTeam InTeam, const FV
 void AAirsoftGrenade::BeginPlay()
 {
 	Super::BeginPlay();
-	if (UStaticMesh* Mesh = AirsoftAssets::FindMesh(TEXT("Weapons"), TEXT("Grenade"), TEXT("Body")))
+	if (UStaticMesh* Mesh = AirsoftAssets::FindMesh(TEXT("Weapons"), TEXT("GRENADE"), TEXT("Body")))
 	{
 		Body->SetStaticMesh(Mesh);
 	}

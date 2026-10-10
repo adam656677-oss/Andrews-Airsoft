@@ -67,6 +67,14 @@ namespace
 		return FVector(-12.f, 0.f, 3.6f);
 	}
 
+	/** Where the support hand sits relative to an underbarrel attachment's mount. */
+	FVector DefaultHandOffset(FName Grip)
+	{
+		if (Grip == TEXT("AngledGrip")) return FVector(-0.5f, 0.f, -2.5f);
+		if (Grip == TEXT("Bipod")) return FVector(-12.f, 0.f, -1.f); // hand stays on the handguard behind the clamp
+		return FVector(0.f, 0.f, -6.f);
+	}
+
 	FVector DefaultMuzzleOffset(FName Muzzle)
 	{
 		return Muzzle == TEXT("Suppressor") ? FVector(17.f, 0.f, 0.f) : FVector(5.f, 0.f, 0.f);
@@ -109,6 +117,14 @@ const FAirsoftAssetLayout& UAirsoftGunVisual::Layout(const FString& Category, FN
 			for (const auto& Pair : (*Points)->Values)
 			{
 				L.Points.Add(FName(*Pair.Key), JsonVector(Pair.Value));
+			}
+		}
+		// The generators write attachment offsets next to Points rather than inside it.
+		for (const TCHAR* Key : { TEXT("AimOffset"), TEXT("MuzzleOffset"), TEXT("Hand") })
+		{
+			if (const TSharedPtr<FJsonValue> Value = (*Asset)->TryGetField(Key))
+			{
+				L.Points.FindOrAdd(FName(Key)) = JsonVector(Value);
 			}
 		}
 		const TArray<TSharedPtr<FJsonValue>>* Pieces = nullptr;
@@ -263,7 +279,7 @@ void UAirsoftGunVisual::Build(const FAirsoftCustomization& Custom, const FLinear
 		else if (M.Slot == AirsoftWeapons::SlotGrip)
 		{
 			const FVector* Hand = AL.Point(TEXT("Hand"));
-			LeftHandLocal = *MountPoint + (Hand ? *Hand : FVector(0.f, 0.f, -6.f));
+			LeftHandLocal = *MountPoint + (Hand ? *Hand : DefaultHandOffset(M.Choice));
 		}
 		else if (M.Slot == AirsoftWeapons::SlotLaser)
 		{
