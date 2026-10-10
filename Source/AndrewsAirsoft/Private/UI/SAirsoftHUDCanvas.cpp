@@ -1,6 +1,6 @@
 // Andrew's Airsoft - painted HUD layer: crosshair, hit marker, scope, team-mate
-// name tags, XP popups, Domination capture bar, final-tag letterbox, and the
-// A/B/C objective badges.
+// name tags, XP popups, Domination capture bar, VIP / extraction markers,
+// final-tag letterbox, and the A/B/C objective badges.
 
 #include "SAirsoftHUD.h"
 
@@ -97,12 +97,13 @@ int32 SAirsoftHUDCanvas::OnPaint(const FPaintArgs& Args, const FGeometry& Allott
 		{
 			PaintScope(OutDrawElements, LayerId, AllottedGeometry, Size);
 		}
-		if (bOut)
+		if (bOut && !PC->IsTeamCamActive())
 		{
 			PaintTaggedShade(OutDrawElements, LayerId, AllottedGeometry, Size);
 		}
 		PaintNameTags(PC, OutDrawElements, LayerId, AllottedGeometry, Size);
 		PaintCaptureBar(PC, OutDrawElements, LayerId, AllottedGeometry, Size);
+		PaintVIP(PC, OutDrawElements, LayerId, AllottedGeometry, Size);
 		PaintCrosshair(PC, OutDrawElements, LayerId, AllottedGeometry, Size);
 		PaintHitMarker(PC, OutDrawElements, LayerId, AllottedGeometry, Size);
 		PaintXPPopups(PC, OutDrawElements, LayerId, AllottedGeometry, Size);
@@ -440,9 +441,10 @@ void SAirsoftHUDCanvas::PaintReplay(AAirsoftPlayerController* PC, FSlateWindowEl
 	const FVector2f ReplaySize = AUI::MeasureText(TEXT("REPLAY"), SmallCaps);
 	AUI::PaintText(Out, TextLayer, Geo, TEXT("REPLAY"), SmallCaps, FVector2f(66.f, BarH * 0.5f - ReplaySize.Y * 0.5f), AUI::WithAlpha(AUI::TextColor(), A));
 
-	const FAirsoftFinalTag& FinalTag = PC->GetSummary().FinalTag;
+	const FAirsoftFinalTag& FinalTag = PC->GetReplayTag();
 	const float BottomTop = Size.Y - BarH;
-	AUI::PaintTextCentered(Out, TextLayer, Geo, TEXT("FINAL TAG"), AUI::Heading(12), FVector2f(Size.X * 0.5f, BottomTop + BarH * 0.32f), AUI::WithAlpha(AUI::Accent(), A));
+	const FString Caption = PC->GetReplayCaption().IsEmpty() ? FString(TEXT("FINAL TAG")) : PC->GetReplayCaption();
+	AUI::PaintTextCentered(Out, TextLayer, Geo, Caption, AUI::Heading(12), FVector2f(Size.X * 0.5f, BottomTop + BarH * 0.32f), AUI::WithAlpha(AUI::Accent(), A));
 	if (FinalTag.bValid)
 	{
 		const FSlateFontInfo NameFont = AUI::Font(AUI::EFontWeight::Bold, 17, 120);

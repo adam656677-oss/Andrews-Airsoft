@@ -29,4 +29,7 @@ namespace AirsoftUI
 
 	/** After-action report shown during the post-round phase. */
 	ANDREWSAIRSOFT_API TSharedRef<SWidget> MakeSummary(AAirsoftPlayerController* PC);
+
+	/** The chat line (Enter / Y). Focusable; Enter sends, Tab switches everyone/team, Esc cancels. */
+	ANDREWSAIRSOFT_API TSharedRef<SWidget> MakeChatInput(AAirsoftPlayerController* PC);
 }

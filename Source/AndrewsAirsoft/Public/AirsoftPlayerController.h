@@ -1,6 +1,6 @@
 // Andrew's Airsoft - local input (Enhanced Input, built in code), menus,
-// HUD feed (kill feed, announcements, XP), and the client/server messages
-// between a player and the host.
+// HUD feed (kill feed, announcements, XP, chat), the team camera for players
+// out for the round, and the client/server messages between a player and the host.
 
 #pragma once
 
@@ -57,12 +57,27 @@ struct FAirsoftXPPopup
 	double Time = 0.0;
 };
 
+/** One line in the chat box. */
+struct FAirsoftChatEntry
+{
+	FString Sender;
+	EAirsoftTeam SenderTeam = EAirsoftTeam::None;
+	FString Text;
+	EAirsoftChatKind Kind = EAirsoftChatKind::All;
+	/** Real time it arrived (same clock as the rest of the HUD feed). */
+	double Time = 0.0;
+};
+
 /** Everything the after-action screen shows. */
 struct FAirsoftMatchSummary
 {
 	bool bValid = false;
 	EAirsoftTeam Winner = EAirsoftTeam::None;
 	EAirsoftTeam MyTeam = EAirsoftTeam::None;
+	/** Free-for-all winner (empty = draw or team mode). */
+	FString WinnerName;
+	/** This player won (their team, or them in a free-for-all). */
+	bool bWon = false;
 	TArray<FAirsoftSummaryRow> Rows;
 	FAirsoftFinalTag FinalTag;
 	int32 XPEarned = 0;
@@ -116,16 +131,47 @@ public:
 	FString GetInteractPrompt() const;
 	/** Seconds the final-tag replay has been playing, or -1. */
 	float GetReplayTime() const;
+	/** The tag the replay shows (end of a round or of the match). */
+	const FAirsoftFinalTag& GetReplayTag() const { return ReplayTag; }
+	/** "FINAL TAG" or "ROUND 3  ·  FINAL TAG". */
+	const FString& GetReplayCaption() const { return ReplayCaption; }
 	/** Announce locally (no network). */
 	void Announce(const FString& Title, const FString& Sub, const FLinearColor& Color, float Duration = 3.f);
 
-	// --- Profile / loadout ------------------------------------------------------
-	/** Sends the saved profile loadout to the host and equips it (if allowed right now). */
-	void PushLoadoutToServer();
+	// --- Lobby vote (local) ------------------------------------------------------
+	/** F1 / F2: move this player's vote to the next mode / map in the list (wraps around). */
+	void CycleModeVote(int32 Step = 1);
+	void CycleMapVote(int32 Step = 1);
+	/** Vote for an entry directly (menu buttons). Index into the mode list / AirsoftRules::Maps(). */
 	void VoteMode(int32 ModeIndex);
 	void VoteMap(int32 MapIndex);
 	int32 GetMyModeVote() const { return MyModeVote; }
 	int32 GetMyMapVote() const { return MyMapVote; }
+	/** The lobby vote is open (staging, waiting or intermission). */
+	bool CanVote() const;
+
+	// --- Chat (local) ------------------------------------------------------------
+	bool IsChatOpen() const { return ChatWidget.IsValid(); }
+	bool IsTeamChat() const { return bChatTeam; }
+	/** Enter (everyone) / Y (team): opens the chat line; gameplay input stops while typing. */
+	void OpenChat(bool bTeam);
+	void CloseChat();
+	/** Sends the typed line (empty = just closes). */
+	void SubmitChat(const FString& Text);
+	/** Tab in the chat line: everyone <-> team. */
+	void ToggleChatChannel();
+	const TArray<FAirsoftChatEntry>& GetChatLog() const { return ChatLog; }
+
+	// --- Team camera (local): out for the round in Elimination / VIP ------------
+	bool IsTeamCamActive() const { return TeamCamera != nullptr; }
+	/** Call sign of the teammate being watched. */
+	FString GetTeamCamName() const;
+	/** Fire / jump while watching: the next standing teammate. */
+	void CycleTeamCam();
+
+	// --- Profile / loadout ------------------------------------------------------
+	/** Sends the saved profile loadout to the host and equips it (if allowed right now). */
+	void PushLoadoutToServer();
 
 	// --- Server RPCs ------------------------------------------------------------
 	UFUNCTION(Server, Reliable) void ServerSetProfile(const FString& InName, int32 InCareerXP, const FAirsoftLoadout& InLoadout);
@@ -133,13 +179,18 @@ public:
 	UFUNCTION(Server, Reliable) void ServerVote(int32 ModeIndex, int32 MapIndex);
 	UFUNCTION(Server, Reliable) void ServerForceStart();
 	UFUNCTION(Server, Reliable) void ServerSwitchTeam();
+	/** A chat line (the host cleans, caps and rate-limits it). */
+	UFUNCTION(Server, Reliable) void ServerSendChat(const FString& Text, bool bTeam);
 
 	// --- Client RPCs ------------------------------------------------------------
 	UFUNCTION(Client, Reliable) void ClientAnnounce(const FString& Title, const FString& Sub, FLinearColor Color, float Duration);
 	UFUNCTION(Client, Reliable) void ClientKillFeed(const FString& Shooter, EAirsoftTeam ShooterTeam, const FString& Victim, EAirsoftTeam VictimTeam, FName WeaponId);
 	UFUNCTION(Client, Reliable) void ClientXP(int32 Amount, const FString& Reason);
-	UFUNCTION(Client, Reliable) void ClientMatchEnded(EAirsoftTeam Winner, const TArray<FAirsoftSummaryRow>& Rows, const FAirsoftFinalTag& FinalTag, int32 XPEarned, int32 Captures);
+	UFUNCTION(Client, Reliable) void ClientMatchEnded(EAirsoftTeam Winner, const FString& WinnerName, bool bWon, const TArray<FAirsoftSummaryRow>& Rows, const FAirsoftFinalTag& FinalTag, int32 XPEarned, int32 Captures);
+	/** Round-based modes: a round (not the match) ended - replay its last tag. */
+	UFUNCTION(Client, Reliable) void ClientRoundEnded(EAirsoftTeam RoundWinner, const FString& Reason, const FAirsoftFinalTag& FinalTag);
 	UFUNCTION(Client, Reliable) void ClientResetForNewRound();
+	UFUNCTION(Client, Reliable) void ClientReceiveChat(const FString& Sender, EAirsoftTeam SenderTeam, const FString& Text, EAirsoftChatKind Kind);
 
 protected:
 	void BuildInput();
@@ -155,8 +206,15 @@ protected:
 	/** Phase changes, objective captures and capture ticks -> stings. */
 	void UpdateMatchAudio();
 	void UpdateReplay(float DeltaTime);
-	void StartReplay();
+	void StartReplay(const FAirsoftFinalTag& Tag, const FString& Caption);
 	void StopReplay();
+	/** Stops the character doing anything (menu or chat opened). */
+	void HaltPawnActions();
+	void UpdateChatFocus();
+	void UpdateTeamCam(float DeltaTime);
+	void StopTeamCam();
+	/** Standing teammates to watch, in a stable order. */
+	void GetWatchableTeammates(TArray<AAirsoftCharacter*>& Out) const;
 
 	// Input handlers.
 	void OnMove(const FInputActionValue& Value);
@@ -190,10 +248,10 @@ protected:
 	void OnScoreboardReleased();
 	void OnMenu();
 	void OnLoadout();
-	void OnVote1();
-	void OnVote2();
-	void OnVote3();
-	void OnVote4();
+	void OnVoteModeKey();
+	void OnVoteMapKey();
+	void OnChatKey();
+	void OnTeamChatKey();
 
 	bool CanControlPawn() const;
 
@@ -201,6 +259,8 @@ protected:
 	UPROPERTY() TMap<FName, TObjectPtr<UInputAction>> Actions;
 
 	UPROPERTY() TObjectPtr<ACameraActor> ReplayCamera;
+	/** Follows a standing teammate while this player is out for the round. */
+	UPROPERTY() TObjectPtr<ACameraActor> TeamCamera;
 	/** Music bed under the after-action report. */
 	UPROPERTY() TObjectPtr<UAudioComponent> PostRoundMusic;
 
@@ -218,6 +278,7 @@ protected:
 	TSharedPtr<SWidget> MenuWidget;
 	TSharedPtr<SWidget> ScoreboardWidget;
 	TSharedPtr<SWidget> SummaryWidget;
+	TSharedPtr<SWidget> ChatWidget;
 
 	double HitMarkerTime = -100.0;
 	bool bHitMarkerTag = false;
@@ -225,14 +286,27 @@ protected:
 	FAirsoftAnnouncement Announcement;
 	TArray<FAirsoftXPPopup> XPPopups;
 	FAirsoftMatchSummary Summary;
+	TArray<FAirsoftChatEntry> ChatLog;
+	bool bChatTeam = false;
 
 	TWeakObjectPtr<AAirsoftArmoryDisplay> InteractTarget;
 	TWeakObjectPtr<UWorld> UIWorld;
 	double ReplayStart = -1.0;
 	bool bReplayFired = false;
 	bool bReplayHitPlayed = false;
+	FAirsoftFinalTag ReplayTag;
+	FString ReplayCaption;
 	EAirsoftPhase LastPhase = EAirsoftPhase::Waiting;
 	TMap<TWeakObjectPtr<AActor>, EAirsoftTeam> LastObjectiveOwners;
 	double NextCaptureTick = 0.0;
 	bool bSummaryStingPlayed = false;
+
+	// Team camera.
+	TWeakObjectPtr<AAirsoftCharacter> TeamCamTarget;
+	/** Real time this player was first seen out (or pawnless) during a live one-life round; < 0 = not out. */
+	double OutSince = -1.0;
+
+	// Server only: chat rate limit (token bucket on the platform clock, which survives map changes).
+	float ChatTokens = 0.f;
+	double ChatTokensAt = -1000.0;
 };

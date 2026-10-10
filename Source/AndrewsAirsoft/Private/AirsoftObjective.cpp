@@ -7,6 +7,7 @@
 #include "Components/TextRenderComponent.h"
 #include "Camera/PlayerCameraManager.h"
 #include "GameFramework/PlayerController.h"
+#include "Engine/HitResult.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -77,6 +78,7 @@ void AAirsoftObjective::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	DOREPLIFETIME(AAirsoftObjective, CapturingTeam);
 	DOREPLIFETIME(AAirsoftObjective, bContested);
 	DOREPLIFETIME(AAirsoftObjective, bActive);
+	DOREPLIFETIME(AAirsoftObjective, bExtraction);
 }
 
 void AAirsoftObjective::BeginPlay()
@@ -109,7 +111,49 @@ void AAirsoftObjective::BeginPlay()
 		Flag->SetMaterial(0, FlagMID);
 	}
 	Label->SetText(FText::FromString(Letter));
+	FitUnderCeiling();
 	RefreshVisuals();
+}
+
+void AAirsoftObjective::FitUnderCeiling()
+{
+	UWorld* World = GetWorld();
+	if (!World || !Pole || !Flag || !Label || !Glow)
+	{
+		return;
+	}
+	// Highest part of the marker above the floor point: pole, flag or the letter over them.
+	const FVector Base = GetActorLocation();
+	const double LabelTop = Label->GetComponentLocation().Z + 100.0;
+	const double Top = FMath::Max3(static_cast<double>(Pole->Bounds.GetBox().Max.Z), static_cast<double>(Flag->Bounds.GetBox().Max.Z), LabelTop) - Base.Z;
+	if (Top <= 150.0)
+	{
+		return;
+	}
+	FCollisionQueryParams Query(SCENE_QUERY_STAT(AirsoftObjectiveCeiling), false, this);
+	FHitResult Hit;
+	if (!World->LineTraceSingleByChannel(Hit, Base + FVector(0.0, 0.0, 60.0), Base + FVector(0.0, 0.0, Top + 30.0), ECC_Visibility, Query))
+	{
+		return; // open sky, or a ceiling above the full-height pole
+	}
+	const double Clear = FMath::Max(static_cast<double>(Hit.ImpactPoint.Z - Base.Z) - 25.0, 120.0);
+	const float Scale = static_cast<float>(FMath::Clamp(Clear / Top, 0.2, 1.0));
+	if (Scale >= 0.999f)
+	{
+		return;
+	}
+	// Pole and flag pivot on the floor point: scaling offsets and sizes together keeps the flag on the pole.
+	for (UStaticMeshComponent* Comp : { Pole.Get(), Flag.Get() })
+	{
+		Comp->SetRelativeLocation(Comp->GetRelativeLocation() * Scale);
+		Comp->SetRelativeScale3D(Comp->GetRelativeScale3D() * Scale);
+	}
+	const float LabelSize = FMath::Max(50.f, 90.f * Scale);
+	Label->SetWorldSize(LabelSize);
+	const float ClearF = static_cast<float>(Clear);
+	Label->SetRelativeLocation(FVector(0.f, 0.f, FMath::Min(static_cast<float>(Label->GetRelativeLocation().Z), ClearF - LabelSize - 10.f)));
+	Glow->SetRelativeLocation(FVector(0.f, 0.f, FMath::Min(static_cast<float>(Glow->GetRelativeLocation().Z), ClearF - 40.f)));
+	Glow->SetAttenuationRadius(600.f);
 }
 
 void AAirsoftObjective::Tick(float DeltaSeconds)
@@ -138,9 +182,14 @@ bool AAirsoftObjective::IsInside(const FVector& Location) const
 	return FVector2D(Delta.X, Delta.Y).Size() <= Radius && FMath::Abs(Delta.Z) <= HalfHeight;
 }
 
+bool AAirsoftObjective::IsExtractionOnly() const
+{
+	return Letter.Equals(TEXT("X"), ESearchCase::IgnoreCase) || Letter.Equals(TEXT("EXTRACT"), ESearchCase::IgnoreCase);
+}
+
 EAirsoftTeam AAirsoftObjective::ServerUpdate(float DeltaSeconds, int32 BlueCount, int32 RedCount, float CaptureTime)
 {
-	if (!bActive)
+	if (!bActive || bExtraction)
 	{
 		return EAirsoftTeam::None;
 	}
@@ -184,6 +233,18 @@ void AAirsoftObjective::ServerReset(bool bEnable)
 	CapturingTeam = EAirsoftTeam::None;
 	bContested = false;
 	bActive = bEnable;
+	bExtraction = false;
+	RefreshVisuals();
+}
+
+void AAirsoftObjective::ServerSetExtraction(EAirsoftTeam AttackingTeam)
+{
+	OwnerTeam = AttackingTeam; // tints the ring, flag and light in the escorts' colour
+	Progress = 0.f;
+	CapturingTeam = EAirsoftTeam::None;
+	bContested = false;
+	bActive = true;
+	bExtraction = true;
 	RefreshVisuals();
 }
 
@@ -227,6 +288,7 @@ void AAirsoftObjective::RefreshVisuals()
 	Pole->SetVisibility(bActive);
 	Pole->SetCollisionEnabled(bActive ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
 	Label->SetVisibility(bActive);
+	Label->SetText(FText::FromString(bExtraction ? FString(TEXT("EXTRACT")) : Letter));
 	Label->SetTextRenderColor(Color.ToFColor(true));
 	Glow->SetLightColor(Color);
 	Glow->SetVisibility(bActive);

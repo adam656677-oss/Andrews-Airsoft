@@ -67,6 +67,9 @@ ZONES = {
 PERIODS = {"weave": 0.0011, "fiber": 0.0005, "webbing": 0.0010, "loop": 0.0009, "elastic": 0.0012, "stipple": 0.0016, "twill": 0.0011,
            "stitch": 0.0032, "grit": 0.0012, "foam": 0.0012, "mesh": 0.0028}
 
+# strength of the baked low-frequency wrinkles per pattern kind (soft goods only)
+WRINKLE = {"cordura": 0.45, "webbing": 0.25, "loop": 0.3, "elastic": 0.25, "twill": 0.4, "patch": 0.12}
+
 WAVE_K = 2 * np.pi / 20.0  # Blender wave texture: period = 2*pi / (20 * scale)
 
 
@@ -298,6 +301,13 @@ def zone_graph(mat, zname, mask_img, seed, tex_m, edge_radius=0.0015):
         m_edge, m_ao, m_convex = 0.0, 1.0, 0.0
     pt = pattern(g, Z)
     h, stitch, binding = stitches(g, Z, pt["h"])
+    # soft goods: low-frequency wrinkles / padding undulation (a few cm), baked into the normal map
+    wrinkle = Z.get("wrinkle", WRINKLE.get(Z["kind"], 0.0))
+    macro = 0.5
+    if wrinkle:
+        m1 = nb.noise(g.p, 24.0, 3.0, 0.55, 0.5)
+        m2 = nb.noise(g.p, 70.0, 2.0, 0.5)
+        macro = nb.add(nb.mul(m1, 0.75), nb.mul(m2, 0.25))
     if Z.get("stitch"):
         # binding tape near the edge: finer webbing texture
         bw = nb.wave(g.p, wave_scale(g.per(PERIODS["webbing"])), "DIAGONAL")
@@ -318,7 +328,9 @@ def zone_graph(mat, zname, mask_img, seed, tex_m, edge_radius=0.0015):
     light = pt["light"]
     if role:
         lum = Z["lum"]
-        cv = nb.add(lum, nb.mul(var, 0.3))
+        cv = nb.mul(lum, nb.add(1.0, nb.mul(var, 0.8)))
+        if wrinkle:
+            cv = nb.mul(cv, nb.add(0.93, nb.mul(macro, 0.14)))
         cv = nb.add(cv, nb.mul(nb.sub(h, 0.5), 0.06))  # weave shading
         if not isinstance(light, float) or light:
             cv = nb.lerp(light, cv, 0.97)
@@ -333,6 +345,9 @@ def zone_graph(mat, zname, mask_img, seed, tex_m, edge_radius=0.0015):
         base = Z["col"]
         gm = nb.add(1.0, nb.mul(var, 2.0))
         col = nb.mixc(1.0, base, nb.combine(gm, gm, gm), "MULTIPLY")
+        if wrinkle:
+            mg = nb.add(0.92, nb.mul(macro, 0.16))
+            col = nb.mixc(1.0, col, nb.combine(mg, mg, mg), "MULTIPLY")
         col = nb.mixc(nb.mul(nb.sub(h, 0.5), 0.12), col, tuple(c * 1.6 for c in base))
         if Z.get("stitch"):
             col = nb.mixc(nb.mul(stitch, 0.8), col, tuple(min(1.0, c * 2.2) for c in base))
@@ -362,11 +377,19 @@ def zone_graph(mat, zname, mask_img, seed, tex_m, edge_radius=0.0015):
     # normal: bevel rounding + micro height
     bev2 = nb.node("ShaderNodeBevel", samples=5)
     bev2.inputs["Radius"].default_value = edge_radius
+    base_n = bev2.outputs["Normal"]
+    if wrinkle:
+        bm = nb.node("ShaderNodeBump")
+        bm.inputs["Strength"].default_value = wrinkle
+        bm.inputs["Distance"].default_value = 0.0025
+        nb._in(bm.inputs["Height"], macro)
+        nb._in(bm.inputs["Normal"], base_n)
+        base_n = bm.outputs["Normal"]
     bump = nb.node("ShaderNodeBump")
     bump.inputs["Strength"].default_value = min(1.0, Z.get("bump", 0.5))
     bump.inputs["Distance"].default_value = max(0.00025, 0.6 * g.tex_m)
     nb._in(bump.inputs["Height"], h)
-    nb._in(bump.inputs["Normal"], bev2.outputs["Normal"])
+    nb._in(bump.inputs["Normal"], base_n)
     bsdf = nb.node("ShaderNodeBsdfDiffuse")
     nb._in(bsdf.inputs["Normal"], bump.outputs["Normal"])
     outs["normal"] = bsdf.outputs[0]
@@ -501,6 +524,6 @@ def glass_material(name, tint=(0.03, 0.032, 0.036), rough=0.04):
     b.inputs["Roughness"].default_value = rough
     b.inputs["Transmission Weight"].default_value = 1.0
     b.inputs["IOR"].default_value = 1.5
-    b.inputs["Specular IOR Level"].default_value = 0.3
+    b.inputs["Specular IOR Level"].default_value = 0.12
     nt.links.new(b.outputs[0], outn.inputs["Surface"])
     return m

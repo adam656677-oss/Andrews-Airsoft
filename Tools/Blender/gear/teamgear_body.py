@@ -132,9 +132,10 @@ def _limb_prims(F):
         M = hk.frame_from(fd, side_ax)  # thin axis across the palm
         F.add(_ell("hand", wr + fd * 0.085, (0.092, 0.046, 0.024), M), 0.02)
         th, kn, an = bone("thigh_" + side), bone("calf_" + side), bone("foot_" + side)
-        F.add(_cone("thigh", th, kn, 0.090, 0.057), 0.035)
+        F.add(_cone("thigh", th, kn, 0.096, 0.058), 0.035)
+        F.add(_ell("quad", lerp(th, kn, 0.45) + (0.022, 0.0, 0.0), (0.070, 0.068, 0.150)), 0.04)
         F.add(_cone("calf", kn, an, 0.055, 0.036), 0.025)
-        F.add(_ell("calfm", kn + (-0.022, 0.0, -0.130), (0.054, 0.050, 0.095)), 0.03)
+        F.add(_ell("calfm", kn + (-0.022, 0.0, -0.130), (0.056, 0.052, 0.098)), 0.03)
         F.add(_box("foot", an + (0.060, 0.0, -0.048), (0.125, 0.048, 0.038), 0.030), 0.02)
 
 
@@ -165,9 +166,10 @@ def field(kind="full"):
         elif kind == "leg_l":
             F = hk.Field()
             th, kn, an = bone("thigh_l"), bone("calf_l"), bone("foot_l")
-            F.add(_cone("thigh", th, kn, 0.090, 0.057))
+            F.add(_cone("thigh", th, kn, 0.096, 0.058))
+            F.add(_ell("quad", lerp(th, kn, 0.45) + (0.022, 0.0, 0.0), (0.070, 0.068, 0.150)), 0.04)
             F.add(_cone("calf", kn, an, 0.055, 0.036), 0.025)
-            F.add(_ell("calfm", kn + (-0.022, 0.0, -0.130), (0.054, 0.050, 0.095)), 0.03)
+            F.add(_ell("calfm", kn + (-0.022, 0.0, -0.130), (0.056, 0.052, 0.098)), 0.03)
             _CACHE[kind] = F
         elif kind == "arm_l":
             F = hk.Field()

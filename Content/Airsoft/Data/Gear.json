@@ -135,7 +135,7 @@
             ]
           },
           "Triangles": 2352,
-          "TextureSize": 256
+          "TextureSize": 1024
         }
       ],
       "Points": {
@@ -211,8 +211,8 @@
               25.2
             ]
           },
-          "Triangles": 25708,
-          "TextureSize": 1024
+          "Triangles": 24796,
+          "TextureSize": 4096
         }
       ],
       "Points": {
@@ -283,7 +283,7 @@
             ]
           },
           "Triangles": 16068,
-          "TextureSize": 512
+          "TextureSize": 2048
         }
       ],
       "Points": {
@@ -353,8 +353,8 @@
               21.4
             ]
           },
-          "Triangles": 8968,
-          "TextureSize": 512
+          "Triangles": 8376,
+          "TextureSize": 2048
         }
       ],
       "Points": {
@@ -420,12 +420,12 @@
             ],
             "Max": [
               15.4,
-              9.3,
+              9.2,
               10.9
             ]
           },
           "Triangles": 4356,
-          "TextureSize": 512
+          "TextureSize": 2048
         },
         {
           "Name": "Glass",
@@ -463,7 +463,7 @@
         ],
         "Max": [
           15.4,
-          9.3,
+          9.2,
           10.9
         ]
       },
@@ -525,7 +525,7 @@
             ]
           },
           "Triangles": 6128,
-          "TextureSize": 512
+          "TextureSize": 2048
         }
       ],
       "Points": {
@@ -585,18 +585,18 @@
           ],
           "Bounds": {
             "Min": [
-              -8.5,
-              -7.6,
+              -8.7,
+              -7.9,
               -12.9
             ],
             "Max": [
-              10.1,
-              7.6,
-              10.8
+              10.2,
+              8.0,
+              10.7
             ]
           },
           "Triangles": 5012,
-          "TextureSize": 512,
+          "TextureSize": 2048,
           "Anchor": {
             "Bone": "calf_l",
             "Offset": [
@@ -631,18 +631,18 @@
           ],
           "Bounds": {
             "Min": [
-              -8.5,
-              -7.6,
+              -8.7,
+              -8.0,
               -12.9
             ],
             "Max": [
-              10.1,
-              7.6,
-              10.8
+              10.2,
+              7.9,
+              10.7
             ]
           },
           "Triangles": 5012,
-          "TextureSize": 512,
+          "TextureSize": 2048,
           "Anchor": {
             "Bone": "calf_r",
             "Offset": [
@@ -679,14 +679,14 @@
       },
       "Bounds": {
         "Min": [
-          -8.5,
-          -7.6,
+          -8.7,
+          -8.0,
           -12.9
         ],
         "Max": [
-          10.1,
-          7.6,
-          10.8
+          10.2,
+          8.0,
+          10.7
         ]
       },
       "Anchor": {

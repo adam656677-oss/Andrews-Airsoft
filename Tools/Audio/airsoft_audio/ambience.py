@@ -444,9 +444,130 @@ def staging(r, v):
     return hvac + lvl(shots, -37.0) + lvl(clanks, -38.0)
 
 
+# ----------------------------------------------------------------- parking garage (Nightjar Garage)
+
+GARAGE_VERB = dict(t60=2.4, hf=0.35, lf=1.25)   # bare concrete decks: long, dark tail
+
+
+def fluo_hum(r, n):
+    """Fluorescent battens: 100 Hz ballast hum + harmonics, a gritty buzz, and one failing tube that
+    stutters (starter ticks) a few times a minute."""
+    t = tvec(n)
+    hum = sum(a * np.sin(2 * np.pi * per(100.0 * k) * t + r.uniform(0, 6))
+              for k, a in ((1, 1.0), (2, 0.5), (3, 0.28), (4, 0.12), (6, 0.06)))
+    buzz = bp(saw(per(100.0), n), 3100, 2.2, circular=True) * (0.75 + 0.25 * smooth_random(r, n, 0.5))
+    m = Mix(L, circular=True)
+    tick = pad_len(hp(burst(r, 0.025, 0.003), 2200), ns(0.06)) + 0.4 * bp(burst(r, 0.06, 0.02), 700, 1.5)
+    for _ in range(7):
+        at = r.uniform(0, L)
+        for i in range(int(r.integers(3, 8))):
+            m.add(tick, at + i * r.uniform(0.05, 0.16), r.uniform(0.3, 0.9))
+    return pan(0.7 * hum + 0.25 * buzz, -0.25) + pan(m.out(), 0.45) * 0.6
+
+
+def drips(r, n, rate=0.9):
+    """Water dripping off slab edges into puddles: pitched plinks, a few close, most far."""
+    times = np.cumsum(r.uniform(0.25, 2.0 / rate, int(L * rate * 1.6) + 4))
+    times = times[times < L]
+    out = np.zeros((2, n))
+    for k in range(5):
+        pl = _plink(r, r.uniform(700, 1900), r.uniform(0.05, 0.12))
+        ker = pl + 0.2 * pad_len(hp(burst(r, 0.05, 0.004), 1800), len(pl))
+        sel = (np.arange(len(times)) % 5) == k
+        p = r.uniform(-0.9, 0.9)
+        out += pan(scatter(n, times[sel], r.uniform(0.25, 1.0, sel.sum()), ker, circular=True), p)
+    return out
+
+
+def car_alarm_chirp(r):
+    """Lock 'chirp' of a car somewhere on the deck: two short bright beeps (original, synthetic)."""
+    parts = []
+    for i in range(2):
+        d = 0.075
+        nn = ns(d)
+        f = sweep(2900, 3300, nn)
+        s = (np.sign(np.sin(2 * np.pi * phase(f, nn))) * 0.6 + np.sin(2 * np.pi * phase(f * 2, nn)) * 0.2)
+        parts.append(lp(s, 7000) * env_pts(nn, [(0, 0), (0.004, 1), (d - 0.01, 0.9), (d, 0)]))
+        parts.append(np.zeros(ns(0.09)))
+    return np.concatenate(parts)
+
+
+def door_slam(r):
+    """Car door shutting far away on concrete: low thump + latch click + panel rattle."""
+    d = 0.6
+    x = thump(d, 95, 55, 0.09) + 0.35 * bp(burst(r, d, 0.03), 900, 1.2) + 0.25 * pad_len(hp(burst(r, 0.03, 0.004), 3000), ns(d))
+    return lp(x, 4000)
+
+
+def tyre_squeal(r):
+    """Distant tyre squeal on painted concrete as a car takes a ramp too fast."""
+    d = r.uniform(0.9, 1.4)
+    nn = ns(d)
+    t = tvec(nn)
+    f = 1150 + 220 * np.sin(2 * np.pi * 3.1 * t) + 120 * smooth_random(r, nn, 6.0)
+    tone = np.sin(2 * np.pi * phase(f, nn)) + 0.35 * np.sin(2 * np.pi * phase(f * 2.03, nn))
+    noise = bp(r.standard_normal(nn), 2400, 1.5)
+    a = env_pts(nn, [(0, 0), (0.12, 0.8), (d * 0.5, 1.0), (d - 0.15, 0.6), (d, 0)])
+    return lp((tone * 0.6 + noise * 0.4) * a, 5000)
+
+
+def garage(r, v):
+    """Inside the decks: concrete room tone, battens humming, rain washing past the open sides, drips,
+    muffled traffic on the street below, and now and then a chirp, a door, a squeal - all in a long
+    concrete tail."""
+    n = ns(L)
+    room = lp(wide_noise(r, n, -4.5, 0.75), 600, circular=True) * (0.8 + 0.2 * smooth_random(r, n, 0.07))
+    air = bp(wide_noise(r, n, -3.0, 0.5), 260, 0.8, circular=True)
+    wash = lp(rain(r, n), 2600, circular=True)            # rain heard through the open sides
+    m = Mix(L, stereo=True, circular=True)
+    for at in (L * 0.2 + r.uniform(0, 4), L * 0.62 + r.uniform(0, 4)):
+        m.add(lp(car_pass(r), 1400), at, 0.8)
+    events = Mix(L, stereo=True, circular=True)
+    events.add(car_alarm_chirp(r), r.uniform(3, 15), 0.5, pan_pos=r.uniform(-0.8, 0.8))
+    events.add(car_alarm_chirp(r), r.uniform(33, 45), 0.35, pan_pos=r.uniform(-0.8, 0.8))
+    for _ in range(3):
+        events.add(door_slam(r), r.uniform(0, L), r.uniform(0.4, 0.8), pan_pos=r.uniform(-0.9, 0.9))
+    events.add(tyre_squeal(r), r.uniform(20, 30), 0.35, pan_pos=r.uniform(-0.7, 0.7))
+    wet = verb(lvl(drips(r, n), -30.0) + lvl(events.out(), -31.0) + lvl(m.out(), -33.0), r, "hall", 0.55, **GARAGE_VERB)
+    return (lvl(room, -36.0) + lvl(air, -46.0) + lvl(fluo_hum(r, n), -45.0) + lvl(wash, -32.0)
+            + lvl(city(r, n), -40.0) + wet)
+
+
+def rain_on_cars(r, n):
+    """Rain on parked car roofs and bonnets: denser, more metallic ticks than on concrete."""
+    out = np.zeros((2, n))
+    for _ in range(6):
+        ker = bp(burst(r, 0.006, r.uniform(0.0004, 0.0012), attack=0.00003), r.uniform(3500, 7500), 2.5)
+        cnt = int(r.uniform(18, 30) * L)
+        times = r.uniform(0, L, cnt)
+        gains = np.minimum(r.lognormal(-1.2, 0.5, cnt), 0.8)
+        out += pan(scatter(n, times, gains, ker, circular=True), r.uniform(-0.9, 0.9))
+    return out
+
+
+def garage_roof(r, v):
+    """Open roof deck in the rain: rain on wet concrete and on car roofs, gusts over the parapet, the city
+    all around (horns, a siren), cars hissing past on the street below, one far-off roll of thunder."""
+    n = ns(L)
+    m = Mix(L, stereo=True, circular=True)
+    for at in (L * 0.1 + r.uniform(0, 3), L * 0.4 + r.uniform(0, 3), L * 0.75 + r.uniform(0, 3)):
+        m.add(car_pass(r), at, 0.9)
+    cars = verb(lp(m.out(), 3500, circular=True), r, "outdoor", 0.3)
+    td = 7.0
+    tn = ns(td)
+    thunder = lp(r.standard_normal(tn), 120) * env_pts(tn, [(0, 0), (0.4, 0.6), (1.2, 1.0), (3.0, 0.5), (td, 0)])
+    thunder += 0.3 * lp(r.standard_normal(tn), 400) * env_pts(tn, [(0, 0), (0.6, 0.5), (1.5, 0.2), (td, 0)])
+    tm = Mix(L, stereo=True, circular=True)
+    tm.add(thunder, r.uniform(25, 40), 1.0, pan_pos=r.uniform(-0.6, 0.6))
+    return (lvl(rain(r, n), -19.0) + lvl(rain_on_cars(r, n), -27.0) + lvl(wind(r, n), -31.0)
+            + lvl(city(r, n), -30.0) + lvl(cars, -29.0) + lvl(verb(tm.out(), r, "field_far", 0.6), -30.0))
+
+
 RECIPES = {
     "AmbienceField": (field, 1, "60 s loop: gusting wind + leaves, distant birds, crickets, far-off airsoft bursts and steel pings", LOOP),
     "AmbienceClubStreet": (club_street, 1, "60 s loop: rain on pavement + drips, distant city, three wet car passes, muffled club bass (128 BPM), neon buzz", LOOP),
     "AmbienceClubInterior": (club_interior, 1, "60 s loop: room tone + HVAC, synthetic crowd murmur, bar glass clinks; no music", LOOP),
     "AmbienceStaging": (staging, 1, "60 s loop: indoor HVAC hum/airflow, faint range shots through walls, metallic clanks", LOOP),
+    "AmbienceGarage": (garage, 1, "60 s loop: garage decks - concrete room tone, fluorescent hum + failing tube, rain through the open sides, drips, muffled traffic, a car chirp / door / tyre squeal in a long concrete tail", LOOP),
+    "AmbienceGarageRoof": (garage_roof, 1, "60 s loop: rooftop deck in the rain - rain on concrete and car roofs, gusts, distant city and siren, wet car passes below, far thunder", LOOP),
 }

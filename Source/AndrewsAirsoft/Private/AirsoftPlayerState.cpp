@@ -25,6 +25,7 @@ void AAirsoftPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& 
 	DOREPLIFETIME(AAirsoftPlayerState, bLoadoutReceived);
 	DOREPLIFETIME(AAirsoftPlayerState, ModeVote);
 	DOREPLIFETIME(AAirsoftPlayerState, MapVote);
+	DOREPLIFETIME(AAirsoftPlayerState, GunLevel);
 }
 
 void AAirsoftPlayerState::CopyProperties(APlayerState* PlayerState)
@@ -37,6 +38,8 @@ void AAirsoftPlayerState::CopyProperties(APlayerState* PlayerState)
 		Next->Loadout = Loadout;
 		Next->bLoadoutReceived = bLoadoutReceived;
 		Next->Team = Team;
+		Next->SavedTeam = SavedTeam;
+		Next->bJoinAnnounced = bJoinAnnounced;
 	}
 }
 
@@ -55,10 +58,18 @@ bool AAirsoftPlayerState::IsProtected() const
 void AAirsoftPlayerState::ResetRound()
 {
 	Round = FAirsoftRoundStats();
+	ResetLife();
+	ModeVote = -1;
+	MapVote = -1;
+	VoteAnnounceAt = 0.0;
+	GunLevel = 0;
+	VIPTurns = 0;
+}
+
+void AAirsoftPlayerState::ResetLife()
+{
 	bOut = false;
 	ProtectedUntil = 0.f;
 	RespawnAt = 0.f;
 	LastTaggedBy.Reset();
-	ModeVote = -1;
-	MapVote = -1;
 }

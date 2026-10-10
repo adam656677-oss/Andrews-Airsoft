@@ -43,6 +43,8 @@ private:
 	void PaintHitMarker(AAirsoftPlayerController* PC, FSlateWindowElementList& Out, int32 Layer, const FGeometry& Geo, const FVector2f& Size) const;
 	void PaintXPPopups(AAirsoftPlayerController* PC, FSlateWindowElementList& Out, int32 Layer, const FGeometry& Geo, const FVector2f& Size) const;
 	void PaintCaptureBar(AAirsoftPlayerController* PC, FSlateWindowElementList& Out, int32 Layer, const FGeometry& Geo, const FVector2f& Size) const;
+	/** VIP: the marker over the VIP (teammates always, enemies when in sight), the extraction marker and its progress bar. */
+	void PaintVIP(AAirsoftPlayerController* PC, FSlateWindowElementList& Out, int32 Layer, const FGeometry& Geo, const FVector2f& Size) const;
 	void PaintReplay(AAirsoftPlayerController* PC, FSlateWindowElementList& Out, int32 Layer, const FGeometry& Geo, const FVector2f& Size) const;
 
 	TWeakObjectPtr<AAirsoftPlayerController> WeakPC;
@@ -83,6 +85,8 @@ public:
 private:
 	TSharedRef<SWidget> BuildTopCenter();
 	TSharedRef<SWidget> BuildTeamScore(uint8 TeamValue);
+	/** Gun Game: "YOU" (level) or "LEADER" (name, level) box in place of a team score. */
+	TSharedRef<SWidget> BuildFreeForAllBox(bool bLeader);
 	TSharedRef<SWidget> BuildKillFeed();
 	TSharedRef<SWidget> BuildKillFeedRow(int32 Row);
 	TSharedRef<SWidget> BuildWeaponPanel();
@@ -90,11 +94,16 @@ private:
 	TSharedRef<SWidget> BuildTaggedOverlay();
 	TSharedRef<SWidget> BuildBottomCenter();
 	TSharedRef<SWidget> BuildVotePanel();
-	TSharedRef<SWidget> BuildVoteRow(const FText& Key, const FText& Label, TFunction<int32()> Count, TFunction<bool()> IsMine);
+	TSharedRef<SWidget> BuildVoteRow(const FText& Label, const FText& Detail, TFunction<int32()> Count, TFunction<bool()> IsMine,
+		TFunction<bool()> IsLeading, TFunction<bool()> IsDimmed);
 
 	/** True when gameplay HUD elements should be hidden (menu, summary, replay, main menu map). */
 	bool IsHidden() const;
 	bool IsOut() const;
+	/** Caption under the timer ("FIRST TO 40", "ROUND 3 · FIRST TO 5", "LEVEL 4 / 13"...). */
+	FText PhaseCaption() const;
+	/** Mode-specific line under the mode / map ("VIP: X · ESCORT TO EXTRACT", "NEXT GUN: ..."), empty for none. */
+	FString ModeLine() const;
 	float AnnouncementAlpha() const;
 	const FAirsoftKillFeedEntry* FeedEntry(int32 Row) const;
 	float FeedAlpha(int32 Row) const;

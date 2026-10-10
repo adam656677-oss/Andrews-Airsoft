@@ -50,8 +50,12 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category = "Maps")
 	FString MainMenuMap = TEXT("/Game/Maps/L_MainMenu");
 
+	/**
+	 * Match maps offered in the lobby vote, in vote order: key, display name, level, the modes each
+	 * one runs (empty = all) and the recommended head count. Empty list = the built-in three.
+	 */
 	UPROPERTY(Config, EditAnywhere, Category = "Maps")
-	TMap<FName, FString> MatchMaps = { { TEXT("Field"), TEXT("/Game/Maps/L_IronwoodYard") }, { TEXT("Club"), TEXT("/Game/Maps/L_VelvetClub") } };
+	TArray<FAirsoftMapInfo> MatchMaps = DefaultMatchMaps();
 
 	UPROPERTY(Config, EditAnywhere, Category = "Rules")
 	int32 MinPlayers = 2;
@@ -82,6 +86,59 @@ public:
 
 	UPROPERTY(Config, EditAnywhere, Category = "Rules")
 	bool bFriendlyFire = false;
+
+	/** Round-based modes (Elimination, VIP): frozen at the start of every round - time to pick a loadout. */
+	UPROPERTY(Config, EditAnywhere, Category = "Rules|Rounds", meta = (ClampMin = "2"))
+	float RoundFreezeTime = 8.f;
+
+	/** Round-based modes: pause between rounds (the final-tag replay plays in it). */
+	UPROPERTY(Config, EditAnywhere, Category = "Rules|Rounds", meta = (ClampMin = "3"))
+	float RoundOverTime = 7.f;
+
+	/** Elimination: rounds a side needs to win the match. */
+	UPROPERTY(Config, EditAnywhere, Category = "Rules|Elimination", meta = (ClampMin = "1"))
+	int32 EliminationRoundsToWin = 5;
+
+	UPROPERTY(Config, EditAnywhere, Category = "Rules|Elimination", meta = (ClampMin = "20"))
+	float EliminationRoundTime = 120.f;
+
+	/** VIP: rounds per half. Sides swap at half time; the side with more round wins takes the match. */
+	UPROPERTY(Config, EditAnywhere, Category = "Rules|VIP", meta = (ClampMin = "1"))
+	int32 VIPRoundsPerHalf = 3;
+
+	UPROPERTY(Config, EditAnywhere, Category = "Rules|VIP", meta = (ClampMin = "20"))
+	float VIPRoundTime = 150.f;
+
+	/** VIP: seconds the VIP must stand in the extraction zone. */
+	UPROPERTY(Config, EditAnywhere, Category = "Rules|VIP", meta = (ClampMin = "0.5"))
+	float VIPExtractTime = 3.f;
+
+	/** Gun Game: match length (the highest level when time runs out wins). */
+	UPROPERTY(Config, EditAnywhere, Category = "Rules|Gun Game", meta = (ClampMin = "30"))
+	float GunGameTime = 600.f;
+
+	UPROPERTY(Config, EditAnywhere, Category = "Rules|Gun Game", meta = (ClampMin = "0.5"))
+	float GunGameRespawnTime = 3.f;
+
+	/** Gun Game: weapon ids from first to last (a tag with the last one wins). Unknown ids are skipped. */
+	UPROPERTY(Config, EditAnywhere, Category = "Rules|Gun Game")
+	TArray<FName> GunGameLadder = DefaultGunGameLadder();
+
+	/** Chat: longest message the host accepts (longer ones are cut). */
+	UPROPERTY(Config, EditAnywhere, Category = "Chat", meta = (ClampMin = "8"))
+	int32 ChatMaxLength = 120;
+
+	/** Chat rate limit: messages a player may send back to back... */
+	UPROPERTY(Config, EditAnywhere, Category = "Chat", meta = (ClampMin = "1"))
+	int32 ChatBurst = 4;
+
+	/** ...and the seconds it takes to earn one more. */
+	UPROPERTY(Config, EditAnywhere, Category = "Chat", meta = (ClampMin = "0.1"))
+	float ChatRefillSeconds = 1.5f;
+
+	/** Bots now and then say a short line in chat. */
+	UPROPERTY(Config, EditAnywhere, Category = "Chat")
+	bool bBotChatter = true;
 
 	/** Bot behaviour per difficulty. The host turns bots on and picks the difficulty in Settings > Host. */
 	UPROPERTY(Config, EditAnywhere, Category = "Bots")
@@ -114,6 +171,12 @@ public:
 		default: return BotNormal;
 		}
 	}
+
+	/** Ironwood Yard, Velvet Club and Nightjar Garage (AirsoftSettings.cpp). */
+	static TArray<FAirsoftMapInfo> DefaultMatchMaps();
+
+	/** Pistols -> SMGs -> rifles -> shotgun -> sniper -> a final pistol. */
+	static TArray<FName> DefaultGunGameLadder();
 
 	static const UAirsoftSettings* Get() { return GetDefault<UAirsoftSettings>(); }
 };

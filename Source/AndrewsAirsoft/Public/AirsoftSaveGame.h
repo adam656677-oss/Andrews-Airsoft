@@ -24,6 +24,10 @@ struct FAirsoftUserSettings
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) float MasterVolume = 0.8f;
 	/** Big-screen cinematic gunfire (true) or realistic mechanical airsoft sounds (false). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) bool bCinematicGunSounds = true;
+	/** Cinematic muzzle puffs, flashes and hit pulses (true) or airsoft-authentic: gas-gun vapour only, no flashes (false). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) bool bCinematicEffects = true;
+	/** Camera shake from nearby grenades and when you are tagged. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) bool bScreenShake = true;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) FString LastJoinAddress;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) FString PlayerName;
 	/** When hosting: fill both teams with bots on match maps (AirsoftBots::TeamSize: 0 off, 1 4v4, 2 6v6, 3 8v8, 4 10v10). */

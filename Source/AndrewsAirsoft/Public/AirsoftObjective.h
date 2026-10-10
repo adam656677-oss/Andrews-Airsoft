@@ -1,4 +1,7 @@
-// Andrew's Airsoft - Domination capture point (A/B/C).
+// Andrew's Airsoft - Domination capture point (A/B/C), also the VIP extraction
+// zone. A map may place a dedicated extraction point with Letter "X": it is
+// never a Domination point. Under a low ceiling (the garage's lower decks) the
+// pole, flag and label shrink to fit so nothing pokes through the deck above.
 
 #pragma once
 
@@ -41,18 +44,26 @@ public:
 	UPROPERTY(ReplicatedUsing = OnRep_State, BlueprintReadOnly) EAirsoftTeam CapturingTeam = EAirsoftTeam::None;
 	UPROPERTY(ReplicatedUsing = OnRep_State, BlueprintReadOnly) bool bContested = false;
 	UPROPERTY(ReplicatedUsing = OnRep_State, BlueprintReadOnly) bool bActive = false;
+	/** VIP extraction zone this round (shown in the attackers' colour, labelled EXTRACT). */
+	UPROPERTY(ReplicatedUsing = OnRep_State, BlueprintReadOnly) bool bExtraction = false;
 
 	bool IsInside(const FVector& Location) const;
+	/** Placed only as a VIP extraction point (Letter "X"): never a Domination point. */
+	bool IsExtractionOnly() const;
 
 	/** Server: advance capture. Returns the team that just took the point, or None. */
 	EAirsoftTeam ServerUpdate(float DeltaSeconds, int32 BlueCount, int32 RedCount, float CaptureTime);
 	void ServerReset(bool bEnable);
+	/** Server: show this point as the VIP extraction zone for AttackingTeam. */
+	void ServerSetExtraction(EAirsoftTeam AttackingTeam);
 
 	FLinearColor CurrentColor() const;
 
 protected:
 	UFUNCTION() void OnRep_State();
 	void RefreshVisuals();
+	/** Shrinks the pole, flag, label and light under a ceiling lower than the full-height pole. */
+	void FitUnderCeiling();
 
 	UPROPERTY(VisibleAnywhere) TObjectPtr<USceneComponent> Root;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> Ring;

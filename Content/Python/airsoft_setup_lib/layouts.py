@@ -1263,14 +1263,34 @@ def _transition():
             "bounds": (-1, -1, 1, 1), "lighting": None, "game_mode": None, "kill_z": -10.0, "items": []}
 
 
+def _garage():
+    """L_NightjarGarage (multi-storey) lives in layout_garage.py, imported lazily (no import cycle): it gets
+    this module's helpers passed in. Path-loaded copies of this file (check_layouts.py, render_scenes.py)
+    load it by path."""
+    import importlib.util
+    import os
+    import types
+    try:
+        from . import layout_garage as G
+    except ImportError:
+        spec = importlib.util.spec_from_file_location(
+            "airsoft_layout_garage", os.path.join(os.path.dirname(os.path.abspath(__file__)), "layout_garage.py"))
+        G = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(G)
+    me = types.ModuleType(__name__)
+    me.__dict__.update(globals())
+    return dict(G.MAP, items=G.build(me))
+
+
 _BUILDERS = {"MainMenu": _menu, "Transition": _transition, "Staging": _staging, "IronwoodYard": _ironwood,
-             "VelvetClub": _velvet}
-MAP_ORDER = ["MainMenu", "Transition", "Staging", "IronwoodYard", "VelvetClub"]
+             "VelvetClub": _velvet, "NightjarGarage": _garage}
+MAP_ORDER = ["MainMenu", "Transition", "Staging", "IronwoodYard", "VelvetClub", "NightjarGarage"]
 MAP_ALIASES = {"menu": "MainMenu", "mainmenu": "MainMenu", "l_mainmenu": "MainMenu", "transition": "Transition",
                "l_transition": "Transition", "staging": "Staging", "l_staging": "Staging", "lobby": "Staging",
                "ironwood": "IronwoodYard", "ironwoodyard": "IronwoodYard", "l_ironwoodyard": "IronwoodYard",
                "field": "IronwoodYard", "velvet": "VelvetClub", "velvetclub": "VelvetClub",
-               "l_velvetclub": "VelvetClub", "club": "VelvetClub"}
+               "l_velvetclub": "VelvetClub", "club": "VelvetClub", "nightjar": "NightjarGarage",
+               "nightjargarage": "NightjarGarage", "l_nightjargarage": "NightjarGarage", "garage": "NightjarGarage"}
 
 
 def resolve_map_name(name):

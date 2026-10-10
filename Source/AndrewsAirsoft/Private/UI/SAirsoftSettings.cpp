@@ -78,6 +78,8 @@ void SAirsoftSettings::Apply()
 	Settings.RenderScale = Working.RenderScale;
 	Settings.MasterVolume = Working.MasterVolume;
 	Settings.bCinematicGunSounds = Working.bCinematicGunSounds;
+	Settings.bCinematicEffects = Working.bCinematicEffects;
+	Settings.bScreenShake = Working.bScreenShake;
 	Settings.BotFill = Working.BotFill;
 	Settings.BotSkill = Working.BotSkill;
 	GI->SetUserSettings(Settings);
@@ -310,6 +312,18 @@ void SAirsoftSettings::Construct(const FArguments& InArgs, AAirsoftPlayerControl
 		ChoiceRow(TEXT("Gun sounds"), TEXT("Cinematic action-movie gunfire, or realistic airsoft mechanics."), { TEXT("CINEMATIC"), TEXT("AIRSOFT") },
 			[this]() { return Working.bCinematicGunSounds ? 0 : 1; },
 			[this](int32 Index) { Working.bCinematicGunSounds = Index == 0; })
+	];
+	Rows->AddSlot().AutoHeight().Padding(FMargin(0.f, 0.f, 0.f, 4.f))
+	[
+		ChoiceRow(TEXT("Effects"), TEXT("Cinematic puffs, flashes and hit pulses, or airsoft-authentic (gas vapour only, no flashes)."), { TEXT("CINEMATIC"), TEXT("AIRSOFT") },
+			[this]() { return Working.bCinematicEffects ? 0 : 1; },
+			[this](int32 Index) { Working.bCinematicEffects = Index == 0; })
+	];
+	Rows->AddSlot().AutoHeight().Padding(FMargin(0.f, 0.f, 0.f, 4.f))
+	[
+		ChoiceRow(TEXT("Screen shake"), TEXT("Camera shake from nearby grenades and when you are tagged."), { TEXT("ON"), TEXT("OFF") },
+			[this]() { return Working.bScreenShake ? 0 : 1; },
+			[this](int32 Index) { Working.bScreenShake = Index == 0; })
 	];
 
 	// Host-side: only the host's choice matters (the match runs on their PC).

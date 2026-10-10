@@ -6,6 +6,7 @@
 #include "AirsoftGameInstance.h"
 #include "AirsoftGameState.h"
 #include "AirsoftGrenade.h"
+#include "AirsoftModeRules.h"
 #include "AirsoftObjective.h"
 #include "AirsoftPlayerController.h"
 #include "AirsoftPlayerState.h"
@@ -21,33 +22,69 @@
 #include "Misc/PackageName.h"
 #include "TimerManager.h"
 
-namespace
+// Named (not anonymous) so nothing here can collide with other files in a unity build.
+namespace AirsoftGameModeLocal
 {
 	constexpr float DominationCaptureTime = 8.f;
 	constexpr float MaxLoadWait = 25.f;
+	/** Lobby: a vote is posted in chat once the player stops cycling for this long. */
+	constexpr double VoteAnnounceDelay = 1.5;
+	constexpr double BotChatterCooldown = 25.0;
 
+	/** Index with the most votes (ties at random); negative entries are not candidates. INDEX_NONE if none. */
 	int32 PickVote(const TArray<int32>& Votes)
 	{
 		int32 Best = -1;
 		TArray<int32> Ties;
 		for (int32 i = 0; i < Votes.Num(); ++i)
 		{
-			if (Votes[i] > Best)
+			const int32 V = Votes[i];
+			if (V < 0)
 			{
-				Best = Votes[i];
-				Ties = { i };
+				continue;
 			}
-			else if (Votes[i] == Best)
+			if (V > Best)
+			{
+				Best = V;
+				Ties.Reset();
+				Ties.Add(i);
+			}
+			else if (V == Best)
 			{
 				Ties.Add(i);
 			}
 		}
-		return Ties.Num() > 0 ? Ties[FMath::RandRange(0, Ties.Num() - 1)] : 0;
+		return Ties.Num() > 0 ? Ties[FMath::RandRange(0, Ties.Num() - 1)] : INDEX_NONE;
 	}
 
 	bool IsFrozenPhase(EAirsoftPhase Phase)
 	{
 		return Phase == EAirsoftPhase::Waiting || Phase == EAirsoftPhase::Briefing || Phase == EAirsoftPhase::PostRound;
+	}
+
+	EAirsoftTeam OtherTeam(EAirsoftTeam Team)
+	{
+		return Team == EAirsoftTeam::Blue ? EAirsoftTeam::Red : (Team == EAirsoftTeam::Red ? EAirsoftTeam::Blue : EAirsoftTeam::None);
+	}
+
+	/** Grenade rule: none in Gun Game (the ladder decides the weapon), none for the VIP. */
+	bool CarriesGrenade(const AAirsoftGameState* GS, const AAirsoftPlayerState* PS)
+	{
+		if (!GS || !GS->bIsMatchMap)
+		{
+			return true;
+		}
+		if (!AirsoftRules::AllowsGrenades(GS->Mode))
+		{
+			return false;
+		}
+		return !(GS->Mode == EAirsoftMode::VIP && PS && GS->VIPPlayer.Get() == PS);
+	}
+
+	FString WeaponDisplayName(FName WeaponId)
+	{
+		const FAirsoftWeaponDef* Def = AirsoftWeapons::Find(WeaponId);
+		return Def ? Def->Name : WeaponId.ToString();
 	}
 }
 
@@ -68,7 +105,7 @@ namespace AirsoftBotNames
 		return Names;
 	}
 
-	/** Primary weapon weights for bot loadouts: open field vs. close quarters (Velvet Club). */
+	/** Primary weapon weights for bot loadouts: open field vs. close quarters (Velvet Club, Nightjar Garage). */
 	struct FPrimaryWeight
 	{
 		const TCHAR* Id;
@@ -84,6 +121,21 @@ namespace AirsoftBotNames
 			{ TEXT("P90"), 2, 3 }, { TEXT("M870"), 1, 2 }
 		};
 		return Weights;
+	}
+
+	/** Short, friendly chat lines. Situation 0: tagged someone (team), 1: got tagged (everyone), 2: round start (team). */
+	const TArray<FString>& ChatterLines(int32 Situation)
+	{
+		static const TArray<FString> Tagged = {
+			TEXT("Got one."), TEXT("One down, keep moving."), TEXT("Hit called on mine."), TEXT("Clear here."), TEXT("That lane is ours.")
+		};
+		static const TArray<FString> Out = {
+			TEXT("Good shot."), TEXT("Hit. Fair one."), TEXT("Didn't even see that."), TEXT("Walking off, nice."), TEXT("Ouch. Well placed.")
+		};
+		static const TArray<FString> Start = {
+			TEXT("Moving up."), TEXT("Watch the flanks."), TEXT("Stick together."), TEXT("I'll take the left."), TEXT("Quiet start, eyes open.")
+		};
+		return Situation == 0 ? Tagged : (Situation == 1 ? Out : Start);
 	}
 }
 
@@ -111,18 +163,23 @@ void AAirsoftGameMode::InitGame(const FString& MapName, const FString& Options, 
 {
 	Super::InitGame(MapName, Options, ErrorMessage);
 
-	const FString ModeOption = UGameplayStatics::ParseOption(Options, TEXT("Mode"));
-	PendingMode = ModeOption.Equals(TEXT("Domination"), ESearchCase::IgnoreCase) ? EAirsoftMode::Domination : EAirsoftMode::TDM;
+	PendingMode = AirsoftRules::ModeFromOption(UGameplayStatics::ParseOption(Options, TEXT("Mode")));
 
 	const FString Current = FPackageName::GetShortName(UWorld::RemovePIEPrefix(MapName));
 	bPendingMatchMap = false;
 	PendingMapId = NAME_None;
-	for (const TPair<FName, FString>& Pair : UAirsoftSettings::Get()->MatchMaps)
+	for (const FAirsoftMapInfo& Info : AirsoftRules::Maps())
 	{
-		if (FPackageName::GetShortName(Pair.Value).Equals(Current, ESearchCase::IgnoreCase))
+		if (!Info.LevelPath.IsEmpty() && FPackageName::GetShortName(Info.LevelPath).Equals(Current, ESearchCase::IgnoreCase))
 		{
 			bPendingMatchMap = true;
-			PendingMapId = Pair.Key;
+			PendingMapId = Info.Key;
+			// Opened directly (e.g. Play-In-Editor) with a mode this map doesn't list: use one it does.
+			if (!Info.SupportsMode(PendingMode))
+			{
+				PendingMode = Info.Modes.Num() > 0 ? Info.Modes[0] : EAirsoftMode::TDM;
+			}
+			break;
 		}
 	}
 }
@@ -132,13 +189,13 @@ void AAirsoftGameMode::InitGameState()
 	Super::InitGameState();
 	if (AAirsoftGameState* GS = GetAirsoftGameState())
 	{
-		const UAirsoftSettings* S = UAirsoftSettings::Get();
 		GS->bIsMatchMap = bPendingMatchMap;
 		GS->Mode = PendingMode;
 		GS->MapId = PendingMapId;
-		GS->ScoreLimit = PendingMode == EAirsoftMode::Domination ? S->DominationScoreLimit : S->TDMScoreLimit;
-		GS->ModeVotes.Init(0, 2);
-		GS->MapVotes.Init(0, AAirsoftGameState::MapIds().Num());
+		GS->ScoreLimit = AirsoftRules::ScoreLimit(PendingMode);
+		GS->MaxRounds = bPendingMatchMap ? AirsoftRules::MaxRounds(PendingMode) : 0;
+		GS->ModeVotes.Init(0, AirsoftRules::NumModes);
+		GS->MapVotes.Init(0, AirsoftRules::NumMaps());
 		GS->BlueScore = 0;
 		GS->RedScore = 0;
 	}
@@ -163,7 +220,7 @@ void AAirsoftGameMode::StartPlay()
 	{
 		if (Obj)
 		{
-			Obj->ServerReset(bDomination);
+			Obj->ServerReset(bDomination && !Obj->IsExtractionOnly());
 		}
 	}
 	WaitingSince = GetWorld()->GetTimeSeconds();
@@ -197,6 +254,11 @@ void AAirsoftGameMode::Logout(AController* Exiting)
 	else if (Cast<APlayerController>(Exiting))
 	{
 		bBotsDirty = true; // a person left: top the bots back up (next tick, not from inside Logout)
+		const APlayerState* LeavingPS = Exiting->GetPlayerState<APlayerState>();
+		if (LeavingPS && !bTravelling)
+		{
+			BroadcastSystem(FString::Printf(TEXT("%s left"), *LeavingPS->GetPlayerName()));
+		}
 	}
 	Super::Logout(Exiting);
 	RecountVotes();
@@ -220,12 +282,32 @@ void AAirsoftGameMode::HandleStartingNewPlayer_Implementation(APlayerController*
 	{
 		PS->bOut = false;
 		PS->RespawnAt = 0.f;
-		if (PS->Team == EAirsoftTeam::None)
+		const AAirsoftGameState* GS = GetAirsoftGameState();
+		if (GS && GS->IsFreeForAll())
+		{
+			// No teams in a free-for-all; remember the lobby team for the trip back.
+			if (PS->Team != EAirsoftTeam::None)
+			{
+				PS->SavedTeam = PS->Team;
+				PS->Team = EAirsoftTeam::None;
+			}
+		}
+		else if (PS->Team == EAirsoftTeam::None)
 		{
 			AssignTeam(PS);
 		}
 	}
 	Super::HandleStartingNewPlayer_Implementation(NewPlayer);
+}
+
+bool AAirsoftGameMode::PlayerCanRestart_Implementation(APlayerController* Player)
+{
+	const AAirsoftGameState* GS = GetAirsoftGameState();
+	if (GS && GS->bIsMatchMap && GS->Phase == EAirsoftPhase::Live && !AirsoftRules::HasRespawns(GS->Mode))
+	{
+		return false; // one life per round: someone joining mid-round watches until the next one
+	}
+	return Super::PlayerCanRestart_Implementation(Player);
 }
 
 // ---------------------------------------------------------------------------
@@ -238,6 +320,7 @@ AActor* AAirsoftGameMode::ChoosePlayerStart_Implementation(AController* Player)
 	const AAirsoftPlayerState* PS = Player ? Player->GetPlayerState<AAirsoftPlayerState>() : nullptr;
 	const EAirsoftTeam Team = PS ? PS->Team : EAirsoftTeam::None;
 	const bool bMatch = GS && GS->bIsMatchMap;
+	const bool bFreeForAll = GS && GS->IsFreeForAll();
 
 	TArray<APlayerStart*> TeamStarts;
 	TArray<APlayerStart*> NeutralStarts;
@@ -257,8 +340,9 @@ AActor* AAirsoftGameMode::ChoosePlayerStart_Implementation(AController* Player)
 			TeamStarts.Add(Start);
 		}
 	}
+	// Free-for-all uses every start on the map (both teams' and any neutral ones).
 	const TArray<APlayerStart*>& Pool = bMatch
-		? (TeamStarts.Num() > 0 ? TeamStarts : (NeutralStarts.Num() > 0 ? NeutralStarts : AllStarts))
+		? (bFreeForAll ? AllStarts : (TeamStarts.Num() > 0 ? TeamStarts : (NeutralStarts.Num() > 0 ? NeutralStarts : AllStarts)))
 		: (NeutralStarts.Num() > 0 ? NeutralStarts : AllStarts);
 	if (Pool.Num() == 0)
 	{
@@ -280,12 +364,12 @@ AActor* AAirsoftGameMode::ChoosePlayerStart_Implementation(AController* Player)
 			{
 				continue;
 			}
-			const float Dist = FVector::Dist(Other->GetActorLocation(), Loc);
+			const float Dist = static_cast<float>(FVector::Dist(Other->GetActorLocation(), Loc));
 			if (Dist < 110.f)
 			{
 				bOccupied = true;
 			}
-			if (!Other->IsOut() && Other->GetTeam() != Team)
+			if (!Other->IsOut() && (bFreeForAll || Other->GetTeam() != Team))
 			{
 				NearestEnemy = FMath::Min(NearestEnemy, Dist);
 			}
@@ -312,11 +396,87 @@ void AAirsoftGameMode::SetPlayerDefaults(APawn* PlayerPawn)
 	}
 	PS->bOut = false;
 	PS->RespawnAt = 0.f;
-	C->GetCombat()->ServerInitLoadout(PS->Loadout);
+	C->GetCombat()->ServerInitLoadout(GetEffectiveLoadout(PS));
+	if (!AirsoftGameModeLocal::CarriesGrenade(GS, PS))
+	{
+		C->GetCombat()->Grenades = 0;
+	}
 	const bool bLive = GS->bIsMatchMap && GS->Phase == EAirsoftPhase::Live;
 	PS->ProtectedUntil = bLive ? static_cast<float>(GS->GetServerWorldTimeSeconds()) + UAirsoftSettings::Get()->SpawnProtection : 0.f;
-	C->ServerSetFrozen(GS->bIsMatchMap && IsFrozenPhase(GS->Phase));
+	C->ServerSetFrozen(GS->bIsMatchMap && AirsoftGameModeLocal::IsFrozenPhase(GS->Phase));
 	C->ApplyTeamLook();
+}
+
+FAirsoftLoadout AAirsoftGameMode::GetEffectiveLoadout(const AAirsoftPlayerState* PS) const
+{
+	if (!PS)
+	{
+		return AirsoftWeapons::DefaultLoadout();
+	}
+	FAirsoftLoadout Out = PS->Loadout;
+	const AAirsoftGameState* GS = GetAirsoftGameState();
+	if (!GS || !GS->bIsMatchMap)
+	{
+		return Out;
+	}
+	// The same gun in both slots, so swapping can't get around the rule.
+	auto Single = [](const FAirsoftCustomization& Custom)
+	{
+		FAirsoftLoadout L;
+		L.Primary = AirsoftWeapons::Clean(Custom);
+		L.Secondary = L.Primary;
+		return L;
+	};
+	if (GS->Mode == EAirsoftMode::GunGame)
+	{
+		const TArray<FName> Ladder = AirsoftRules::GunGameLadder();
+		if (Ladder.Num() > 0)
+		{
+			const FName WeaponId = Ladder[FMath::Clamp(PS->GunLevel, 0, Ladder.Num() - 1)];
+			// The player's own attachments when the rung is a gun they carry, the gun's defaults otherwise.
+			if (PS->Loadout.Primary.WeaponId == WeaponId)
+			{
+				return Single(PS->Loadout.Primary);
+			}
+			if (PS->Loadout.Secondary.WeaponId == WeaponId)
+			{
+				return Single(PS->Loadout.Secondary);
+			}
+			FAirsoftCustomization Custom;
+			Custom.WeaponId = WeaponId;
+			Custom.Skin = PS->Loadout.Primary.Skin;
+			return Single(Custom);
+		}
+	}
+	else if (GS->Mode == EAirsoftMode::VIP && GS->VIPPlayer.Get() == PS)
+	{
+		// Pistol only: their own sidearm, or a G17.
+		const FAirsoftWeaponDef* Sidearm = AirsoftWeapons::Find(PS->Loadout.Secondary.WeaponId);
+		if (Sidearm && Sidearm->Class == TEXT("Pistol"))
+		{
+			return Single(PS->Loadout.Secondary);
+		}
+		FAirsoftCustomization Custom;
+		Custom.WeaponId = TEXT("G17");
+		Custom.Skin = PS->Loadout.Secondary.Skin;
+		return Single(Custom);
+	}
+	return Out;
+}
+
+void AAirsoftGameMode::ApplyModeLoadout(AController* Controller)
+{
+	AAirsoftCharacter* C = Controller ? Cast<AAirsoftCharacter>(Controller->GetPawn()) : nullptr;
+	AAirsoftPlayerState* PS = Controller ? Controller->GetPlayerState<AAirsoftPlayerState>() : nullptr;
+	if (!C || !PS || C->IsOut() || !C->GetCombat())
+	{
+		return;
+	}
+	C->GetCombat()->ServerInitLoadout(GetEffectiveLoadout(PS));
+	if (!AirsoftGameModeLocal::CarriesGrenade(GetAirsoftGameState(), PS))
+	{
+		C->GetCombat()->Grenades = 0;
+	}
 }
 
 void AAirsoftGameMode::ScheduleRespawn(AController* Controller, float Delay)
@@ -421,7 +581,8 @@ void AAirsoftGameMode::BalanceTeams()
 			}
 			if (PS->Team == EAirsoftTeam::None)
 			{
-				PS->Team = Blue.Num() <= Red.Num() ? EAirsoftTeam::Blue : EAirsoftTeam::Red;
+				// Back from a free-for-all (or new): the lobby team if we kept one.
+				PS->Team = PS->SavedTeam != EAirsoftTeam::None ? PS->SavedTeam : (Blue.Num() <= Red.Num() ? EAirsoftTeam::Blue : EAirsoftTeam::Red);
 			}
 			(PS->Team == EAirsoftTeam::Blue ? Blue : Red).Add(PS);
 		}
@@ -442,6 +603,27 @@ void AAirsoftGameMode::BalanceTeams()
 	}
 }
 
+void AAirsoftGameMode::ClearTeamsForFreeForAll()
+{
+	AAirsoftGameState* GS = GetAirsoftGameState();
+	if (!GS)
+	{
+		return;
+	}
+	for (APlayerState* P : GS->PlayerArray)
+	{
+		AAirsoftPlayerState* PS = Cast<AAirsoftPlayerState>(P);
+		if (PS && PS->Team != EAirsoftTeam::None)
+		{
+			if (!PS->IsABot())
+			{
+				PS->SavedTeam = PS->Team;
+			}
+			PS->Team = EAirsoftTeam::None; // pawns pick up the neutral look on their next tick
+		}
+	}
+}
+
 void AAirsoftGameMode::SwitchTeam(AAirsoftPlayerController* PC)
 {
 	const AAirsoftGameState* GS = GetAirsoftGameState();
@@ -458,9 +640,14 @@ void AAirsoftGameMode::SwitchTeam(AAirsoftPlayerController* PC)
 	PC->ClientAnnounce(AirsoftColors::TeamName(PS->Team).ToUpper(), TEXT("Team switched"), AirsoftColors::Team(PS->Team), 2.f);
 }
 
-void AAirsoftGameMode::OnVotesChanged()
+void AAirsoftGameMode::OnVotesChanged(AAirsoftPlayerController* VoteFrom)
 {
 	RecountVotes();
+	AAirsoftPlayerState* PS = VoteFrom ? VoteFrom->GetPlayerState<AAirsoftPlayerState>() : nullptr;
+	if (PS && GetWorld())
+	{
+		PS->VoteAnnounceAt = GetWorld()->GetTimeSeconds() + AirsoftGameModeLocal::VoteAnnounceDelay;
+	}
 }
 
 void AAirsoftGameMode::RecountVotes()
@@ -472,8 +659,8 @@ void AAirsoftGameMode::RecountVotes()
 	}
 	TArray<int32> Modes;
 	TArray<int32> Maps;
-	Modes.Init(0, 2);
-	Maps.Init(0, AAirsoftGameState::MapIds().Num());
+	Modes.Init(0, AirsoftRules::NumModes);
+	Maps.Init(0, AirsoftRules::NumMaps());
 	for (APlayerState* P : GS->PlayerArray)
 	{
 		const AAirsoftPlayerState* PS = Cast<AAirsoftPlayerState>(P);
@@ -500,19 +687,99 @@ void AAirsoftGameMode::RecountVotes()
 	}
 }
 
-void AAirsoftGameMode::OnLoadoutChanged(AAirsoftPlayerController* PC)
+void AAirsoftGameMode::PostPendingVotes()
 {
-	const AAirsoftGameState* GS = GetAirsoftGameState();
-	AAirsoftPlayerState* PS = PC ? PC->GetPlayerState<AAirsoftPlayerState>() : nullptr;
-	AAirsoftCharacter* C = PC ? Cast<AAirsoftCharacter>(PC->GetPawn()) : nullptr;
-	if (!GS || !PS || !C || C->IsOut())
+	AAirsoftGameState* GS = GetAirsoftGameState();
+	if (!GS || !GetWorld())
 	{
 		return;
 	}
-	// In the staging area and before a round goes live the change is instant.
+	const double Now = GetWorld()->GetTimeSeconds();
+	const TArray<FAirsoftMapInfo>& Maps = AirsoftRules::Maps();
+	for (APlayerState* P : GS->PlayerArray)
+	{
+		AAirsoftPlayerState* PS = Cast<AAirsoftPlayerState>(P);
+		if (!IsValid(PS) || PS->VoteAnnounceAt <= 0.0 || Now < PS->VoteAnnounceAt)
+		{
+			continue;
+		}
+		PS->VoteAnnounceAt = 0.0;
+		TArray<FString> Parts;
+		if (PS->ModeVote >= 0 && PS->ModeVote < AirsoftRules::NumModes)
+		{
+			Parts.Add(AirsoftRules::ModeName(AirsoftRules::ModeFromIndex(PS->ModeVote)));
+		}
+		if (Maps.IsValidIndex(PS->MapVote))
+		{
+			Parts.Add(AirsoftRules::MapDisplayName(Maps[PS->MapVote].Key));
+		}
+		if (Parts.Num() > 0)
+		{
+			BroadcastSystem(FString::Printf(TEXT("%s votes %s"), *PS->GetPlayerName(), *FString::Join(Parts, TEXT(" · "))));
+		}
+	}
+}
+
+bool AAirsoftGameMode::PickNextMatch(EAirsoftMode& OutMode, int32& OutMapIndex)
+{
+	using namespace AirsoftGameModeLocal;
+	AAirsoftGameState* GS = GetAirsoftGameState();
+	const TArray<FAirsoftMapInfo>& Maps = AirsoftRules::Maps();
+	RecountVotes();
+
+	const int32 ModePick = GS ? PickVote(GS->ModeVotes) : INDEX_NONE;
+	OutMode = AirsoftRules::ModeFromIndex(ModePick == INDEX_NONE ? 0 : ModePick);
+	OutMapIndex = INDEX_NONE;
+
+	TArray<int32> Votes;
+	Votes.Init(0, Maps.Num());
+	for (int32 i = 0; GS && i < Maps.Num() && i < GS->MapVotes.Num(); ++i)
+	{
+		Votes[i] = GS->MapVotes[i];
+	}
+	auto Usable = [&Maps](int32 Index, EAirsoftMode InMode)
+	{
+		// A map the setup script hasn't built yet is skipped instead of failing the travel.
+		return Maps.IsValidIndex(Index) && !Maps[Index].LevelPath.IsEmpty() && Maps[Index].SupportsMode(InMode)
+			&& FPackageName::DoesPackageExist(Maps[Index].LevelPath);
+	};
+	for (int32 Attempt = 0; Attempt < 2; ++Attempt)
+	{
+		// The mode won the vote: take the best-voted map that runs it.
+		TArray<int32> Allowed = Votes;
+		for (int32 i = 0; i < Allowed.Num(); ++i)
+		{
+			if (!Usable(i, OutMode))
+			{
+				Allowed[i] = -1;
+			}
+		}
+		const int32 MapPick = PickVote(Allowed);
+		if (MapPick != INDEX_NONE)
+		{
+			OutMapIndex = MapPick;
+			return true;
+		}
+		OutMode = EAirsoftMode::TDM; // no built map runs the voted mode: fall back to the plainest one
+	}
+	return false;
+}
+
+void AAirsoftGameMode::OnLoadoutChanged(AAirsoftPlayerController* PC)
+{
+	const AAirsoftGameState* GS = GetAirsoftGameState();
+	if (!GS || !PC)
+	{
+		return;
+	}
+	// In the staging area and before a round goes live the change is instant (Gun Game: the ladder decides).
 	if (!GS->bIsMatchMap || GS->Phase != EAirsoftPhase::Live)
 	{
-		C->GetCombat()->ServerInitLoadout(PS->Loadout);
+		if (GS->bIsMatchMap && GS->Mode == EAirsoftMode::GunGame)
+		{
+			return;
+		}
+		ApplyModeLoadout(PC);
 	}
 }
 
@@ -530,8 +797,105 @@ void AAirsoftGameMode::ForceStart(AAirsoftPlayerController* Requester)
 	EAirsoftBotSkill BotSkill = EAirsoftBotSkill::Normal;
 	GetBotSettings(BotTeamSize, BotSkill);
 	const bool bAloneWithoutBots = BotTeamSize == 0 && CountPlayers() <= 1;
-	AnnounceAll(TEXT("HOST IS STARTING"), bAloneWithoutBots ? TEXT("Deploying in 5 seconds  ·  bots are off (Menu > Bots)") : TEXT("Deploying in 5 seconds"),
+	AnnounceAll(TEXT("HOST IS STARTING"), bAloneWithoutBots ? TEXT("Deploying in 5 seconds  ·  bots are off (Menu > Bots)") : TEXT("Deploying in 5 seconds  ·  leading vote wins"),
 		AirsoftColors::Accent(), 3.f);
+}
+
+void AAirsoftGameMode::OnPlayerProfileReady(AAirsoftPlayerController* PC)
+{
+	AAirsoftPlayerState* PS = PC ? PC->GetPlayerState<AAirsoftPlayerState>() : nullptr;
+	if (!PS || PS->bJoinAnnounced)
+	{
+		return;
+	}
+	PS->bJoinAnnounced = true;
+	BroadcastSystem(FString::Printf(TEXT("%s joined"), *PS->GetPlayerName()));
+}
+
+// ---------------------------------------------------------------------------
+// Chat
+// ---------------------------------------------------------------------------
+
+void AAirsoftGameMode::BroadcastChat(APlayerState* From, const FString& Text, bool bTeamOnly)
+{
+	if (!From || Text.IsEmpty())
+	{
+		return;
+	}
+	const AAirsoftPlayerState* FromPS = Cast<AAirsoftPlayerState>(From);
+	const AAirsoftGameState* GS = GetAirsoftGameState();
+	const EAirsoftTeam Team = FromPS ? FromPS->Team : EAirsoftTeam::None;
+	// Free-for-all has no teams: "team" chat goes to everyone.
+	const bool bTeam = bTeamOnly && Team != EAirsoftTeam::None && !(GS && GS->IsFreeForAll());
+	const FString Name = From->GetPlayerName();
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		AAirsoftPlayerController* PC = Cast<AAirsoftPlayerController>(It->Get());
+		if (!PC)
+		{
+			continue;
+		}
+		const AAirsoftPlayerState* PS = PC->GetPlayerState<AAirsoftPlayerState>();
+		if (bTeam && (!PS || PS->Team != Team))
+		{
+			continue;
+		}
+		PC->ClientReceiveChat(Name, Team, Text, bTeam ? EAirsoftChatKind::Team : EAirsoftChatKind::All);
+	}
+	UE_LOG(LogTemp, Log, TEXT("Airsoft chat%s %s: %s"), bTeam ? TEXT(" [team]") : TEXT(""), *Name, *Text);
+}
+
+void AAirsoftGameMode::BroadcastSystem(const FString& Text)
+{
+	if (Text.IsEmpty() || !GetWorld())
+	{
+		return;
+	}
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		if (AAirsoftPlayerController* PC = Cast<AAirsoftPlayerController>(It->Get()))
+		{
+			PC->ClientReceiveChat(FString(), EAirsoftTeam::None, Text, EAirsoftChatKind::System);
+		}
+	}
+}
+
+void AAirsoftGameMode::BotChatter(AController* Speaker, int32 Situation)
+{
+	UWorld* World = GetWorld();
+	if (!Speaker || !World || !UAirsoftSettings::Get()->bBotChatter)
+	{
+		return;
+	}
+	const double Now = World->GetTimeSeconds();
+	if (Now < NextBotChatterAt)
+	{
+		return;
+	}
+	const float Chance = Situation == 0 ? 0.12f : (Situation == 1 ? 0.1f : 0.35f);
+	if (FMath::FRand() > Chance)
+	{
+		return;
+	}
+	const TArray<FString>& Lines = AirsoftBotNames::ChatterLines(Situation);
+	APlayerState* PS = Speaker->GetPlayerState<APlayerState>();
+	if (!PS || Lines.Num() == 0)
+	{
+		return;
+	}
+	NextBotChatterAt = Now + AirsoftGameModeLocal::BotChatterCooldown * FMath::FRandRange(0.8f, 1.5f);
+	const FString Line = Lines[FMath::RandRange(0, Lines.Num() - 1)];
+	const bool bTeamOnly = Situation != 1; // a good-sport "nice shot" goes to everyone
+	TWeakObjectPtr<APlayerState> WeakPS(PS);
+	FTimerHandle Handle;
+	// A moment's delay: nobody types that fast.
+	GetWorldTimerManager().SetTimer(Handle, FTimerDelegate::CreateWeakLambda(this, [this, WeakPS, Line, bTeamOnly]()
+	{
+		if (WeakPS.IsValid())
+		{
+			BroadcastChat(WeakPS.Get(), Line, bTeamOnly);
+		}
+	}), FMath::FRandRange(0.8f, 2.2f), false);
 }
 
 // ---------------------------------------------------------------------------
@@ -572,6 +936,7 @@ void AAirsoftGameMode::TickStaging(float DeltaSeconds)
 	// People only: bots never count toward starting the vote (and only exist on match maps).
 	const int32 Players = CountPlayers();
 	RecountVotes();
+	PostPendingVotes();
 	if (Bots.Num() > 0)
 	{
 		RemoveAllBots();
@@ -583,7 +948,8 @@ void AAirsoftGameMode::TickStaging(float DeltaSeconds)
 		if (Players >= S->MinPlayers)
 		{
 			SetPhase(EAirsoftPhase::Intermission, S->IntermissionTime);
-			AnnounceAll(TEXT("SQUAD UP"), TEXT("Vote for the next match. Deploying soon."), AirsoftColors::Accent(), 4.f);
+			AnnounceAll(TEXT("SQUAD UP"), TEXT("Vote for the next match: F1 mode, F2 map. Deploying soon."), AirsoftColors::Accent(), 4.f);
+			BroadcastSystem(TEXT("Vote is open: F1 cycles the mode, F2 the map (or Menu > Next match)."));
 		}
 	}
 	else if (GS->Phase == EAirsoftPhase::Intermission)
@@ -593,7 +959,7 @@ void AAirsoftGameMode::TickStaging(float DeltaSeconds)
 			SetPhase(EAirsoftPhase::Waiting, 0.f);
 			return;
 		}
-		GS->StatusMessage = TEXT("Vote now  ·  F1 TDM  ·  F2 Domination  ·  F3 Ironwood Yard  ·  F4 Velvet Club");
+		GS->StatusMessage = TEXT("Vote now  ·  F1 mode  ·  F2 map  ·  Enter chat");
 		if (GS->GetTimeRemaining() <= 0.f)
 		{
 			TravelToMatch();
@@ -608,25 +974,25 @@ void AAirsoftGameMode::TickStaging(float DeltaSeconds)
 void AAirsoftGameMode::TravelToMatch()
 {
 	AAirsoftGameState* GS = GetAirsoftGameState();
-	const UAirsoftSettings* S = UAirsoftSettings::Get();
-	RecountVotes();
-	const EAirsoftMode Mode = PickVote(GS->ModeVotes) == 1 ? EAirsoftMode::Domination : EAirsoftMode::TDM;
-	const TArray<FName>& Ids = AAirsoftGameState::MapIds();
-	const int32 MapIndex = PickVote(GS->MapVotes);
-	const FName MapId = Ids.IsValidIndex(MapIndex) ? Ids[MapIndex] : Ids[0];
-	const FString* Path = S->MatchMaps.Find(MapId);
-	if (!Path || Path->IsEmpty())
+	EAirsoftMode Mode = EAirsoftMode::TDM;
+	int32 MapIndex = INDEX_NONE;
+	const TArray<FAirsoftMapInfo>& Maps = AirsoftRules::Maps();
+	if (!PickNextMatch(Mode, MapIndex) || !Maps.IsValidIndex(MapIndex))
 	{
 		GS->StatusMessage = TEXT("Match map missing - run the setup script");
+		bForceStarted = false;
 		SetPhase(EAirsoftPhase::Waiting, 0.f);
 		return;
 	}
+	const FAirsoftMapInfo& Map = Maps[MapIndex];
 	bTravelling = true;
 	BalanceTeams();
 	GS->StatusMessage = TEXT("Deploying...");
-	AnnounceAll(TEXT("DEPLOYING"), FString::Printf(TEXT("%s  ·  %s"), *AAirsoftGameState::ModeDisplayName(Mode), *AAirsoftGameState::MapDisplayName(MapId)), AirsoftColors::Accent(), 3.f);
+	const FString MapName = AirsoftRules::MapDisplayName(Map.Key);
+	AnnounceAll(TEXT("DEPLOYING"), FString::Printf(TEXT("%s  ·  %s"), *AirsoftRules::ModeName(Mode), *MapName), AirsoftColors::Accent(), 3.f);
+	BroadcastSystem(FString::Printf(TEXT("Next match: %s on %s"), *AirsoftRules::ModeName(Mode), *MapName));
 
-	const FString URL = FString::Printf(TEXT("%s?Mode=%s"), **Path, Mode == EAirsoftMode::Domination ? TEXT("Domination") : TEXT("TDM"));
+	const FString URL = FString::Printf(TEXT("%s?Mode=%s"), *Map.LevelPath, *AirsoftRules::ModeOption(Mode));
 	FTimerHandle Handle;
 	GetWorldTimerManager().SetTimer(Handle, FTimerDelegate::CreateWeakLambda(this, [this, URL]()
 	{
@@ -653,9 +1019,9 @@ void AAirsoftGameMode::TickMatch(float DeltaSeconds)
 	case EAirsoftPhase::Waiting:
 	case EAirsoftPhase::Intermission:
 		GS->StatusMessage = TEXT("Squad loading in...");
-		if (NumTravellingPlayers <= 0 || GetWorld()->GetTimeSeconds() - WaitingSince > MaxLoadWait)
+		if (NumTravellingPlayers <= 0 || GetWorld()->GetTimeSeconds() - WaitingSince > AirsoftGameModeLocal::MaxLoadWait)
 		{
-			BeginBriefing();
+			BeginMatch();
 		}
 		break;
 
@@ -667,47 +1033,112 @@ void AAirsoftGameMode::TickMatch(float DeltaSeconds)
 		break;
 
 	case EAirsoftPhase::Live:
-		if (GS->Mode == EAirsoftMode::Domination)
+		UpdateAliveCounts();
+		switch (GS->Mode)
 		{
-			TickDomination(DeltaSeconds);
+		case EAirsoftMode::Domination: TickDomination(DeltaSeconds); break;
+		case EAirsoftMode::Elimination: TickElimination(DeltaSeconds); break;
+		case EAirsoftMode::VIP: TickVIP(DeltaSeconds); break;
+		default: break; // TDM and Gun Game score in HandleTag
 		}
 		if (GS->Phase == EAirsoftPhase::Live && GS->GetTimeRemaining() <= 0.f)
 		{
-			const EAirsoftTeam Winner = GS->BlueScore == GS->RedScore ? EAirsoftTeam::None
-				: (GS->BlueScore > GS->RedScore ? EAirsoftTeam::Blue : EAirsoftTeam::Red);
-			EndRound(Winner);
+			HandleTimeUp();
 		}
 		break;
 
 	case EAirsoftPhase::PostRound:
 		if (GS->GetTimeRemaining() <= 0.f)
 		{
-			ReturnToStaging();
+			if (GS->bMatchOver)
+			{
+				ReturnToStaging();
+			}
+			else
+			{
+				BeginRound();
+			}
 		}
 		break;
 	}
 }
 
-void AAirsoftGameMode::BeginBriefing()
+void AAirsoftGameMode::BeginMatch()
 {
 	AAirsoftGameState* GS = GetAirsoftGameState();
-	const UAirsoftSettings* S = UAirsoftSettings::Get();
-	BalanceTeams();
+	if (GS->IsFreeForAll())
+	{
+		ClearTeamsForFreeForAll();
+	}
+	else
+	{
+		BalanceTeams();
+	}
 	GS->BlueScore = 0;
 	GS->RedScore = 0;
 	GS->Winner = EAirsoftTeam::None;
-	GS->StatusMessage = TEXT("Briefing");
+	GS->WinnerName.Reset();
+	GS->bMatchOver = false;
+	GS->RoundNumber = 0;
+	GS->RoundWinner = EAirsoftTeam::None;
+	GS->ScoreLimit = AirsoftRules::ScoreLimit(GS->Mode);
+	GS->MaxRounds = AirsoftRules::MaxRounds(GS->Mode);
+	GS->VIPPlayer = nullptr;
+	GS->ExtractionPoint = nullptr;
+	GS->ExtractProgress = 0.f;
+	GS->AttackingTeam = GS->Mode == EAirsoftMode::VIP ? (FMath::RandBool() ? EAirsoftTeam::Blue : EAirsoftTeam::Red) : EAirsoftTeam::None;
+	for (APlayerState* P : GS->PlayerArray)
+	{
+		if (AAirsoftPlayerState* PS = Cast<AAirsoftPlayerState>(P))
+		{
+			PS->ResetRound();
+		}
+	}
+	BeginRound();
+}
+
+void AAirsoftGameMode::BeginRound()
+{
+	AAirsoftGameState* GS = GetAirsoftGameState();
+	const bool bRounds = GS->IsRoundBased();
+	const bool bFreeForAll = GS->IsFreeForAll();
+	const float Freeze = AirsoftRules::FreezeTime(GS->Mode);
+
+	GS->RoundNumber++;
+	GS->RoundWinner = EAirsoftTeam::None;
+	GS->VIPPlayer = nullptr; // last round's VIP gets a normal loadout on respawn
+	GS->ExtractProgress = 0.f;
+	ExtractClock = 0.f;
 	LastTag = FAirsoftFinalTag();
 	DominationScoreClock = 0.f;
+	bLastStandAnnounced[0] = false;
+	bLastStandAnnounced[1] = false;
+
+	// VIP: sides swap at half time.
+	const int32 PerHalf = AirsoftRules::RoundsPerHalf(GS->Mode);
+	const bool bHalfTime = PerHalf > 0 && GS->RoundNumber == PerHalf + 1;
+	if (bHalfTime)
+	{
+		GS->AttackingTeam = AirsoftGameModeLocal::OtherTeam(GS->AttackingTeam);
+		BroadcastSystem(TEXT("Half time: sides switched."));
+	}
+
 	for (AAirsoftObjective* Obj : GS->Objectives)
 	{
 		if (Obj)
 		{
-			Obj->ServerReset(GS->Mode == EAirsoftMode::Domination);
+			Obj->ServerReset(GS->Mode == EAirsoftMode::Domination && !Obj->IsExtractionOnly());
 		}
 	}
-	SetPhase(EAirsoftPhase::Briefing, S->BriefingTime);
+	if (GS->Mode == EAirsoftMode::VIP)
+	{
+		ChooseExtraction();
+	}
 
+	SetPhase(EAirsoftPhase::Briefing, Freeze); // before the respawns: Respawn() refuses during PostRound
+	GS->StatusMessage = bRounds ? FString::Printf(TEXT("Round %d  ·  frozen: pick your loadout (L)"), GS->RoundNumber) : FString(TEXT("Briefing"));
+
+	const FString MapName = AirsoftRules::MapDisplayName(GS->MapId);
 	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
 	{
 		AAirsoftPlayerController* PC = Cast<AAirsoftPlayerController>(It->Get());
@@ -716,12 +1147,34 @@ void AAirsoftGameMode::BeginBriefing()
 		{
 			continue;
 		}
-		PS->ResetRound();
+		PS->ResetLife();
 		PC->ClientResetForNewRound();
 		Respawn(PC); // everyone starts at their own team's spawn, frozen
-		PC->ClientAnnounce(AAirsoftGameState::ModeDisplayName(GS->Mode).ToUpper(),
-			FString::Printf(TEXT("%s  ·  You're on %s  ·  %s"), *AAirsoftGameState::MapDisplayName(GS->MapId), *AirsoftColors::TeamName(PS->Team), *AAirsoftGameState::ModeBlurb(GS->Mode)),
-			AirsoftColors::Team(PS->Team), S->BriefingTime);
+
+		FString Title = AirsoftRules::ModeName(GS->Mode).ToUpper();
+		FString Sub;
+		if (bFreeForAll)
+		{
+			Sub = FString::Printf(TEXT("%s  ·  Everyone for themselves  ·  %d guns to climb"), *MapName, GS->ScoreLimit);
+		}
+		else if (GS->Mode == EAirsoftMode::VIP)
+		{
+			Title = FString::Printf(TEXT("ROUND %d / %d"), GS->RoundNumber, GS->MaxRounds);
+			const bool bAttack = PS->Team == GS->AttackingTeam;
+			Sub = FString::Printf(TEXT("%s%s  ·  %s"), bHalfTime ? TEXT("Sides switched  ·  ") : TEXT(""),
+				bAttack ? TEXT("ATTACK: walk the VIP to EXTRACT") : TEXT("DEFEND: tag the VIP or hold out"), *AirsoftColors::TeamName(PS->Team));
+		}
+		else if (bRounds)
+		{
+			Title = FString::Printf(TEXT("ROUND %d"), GS->RoundNumber);
+			Sub = FString::Printf(TEXT("Blue %d – %d Red  ·  You're on %s  ·  One life  ·  first to %d"),
+				GS->BlueScore, GS->RedScore, *AirsoftColors::TeamName(PS->Team), GS->ScoreLimit);
+		}
+		else
+		{
+			Sub = FString::Printf(TEXT("%s  ·  You're on %s  ·  %s"), *MapName, *AirsoftColors::TeamName(PS->Team), *AirsoftRules::ModeBlurb(GS->Mode));
+		}
+		PC->ClientAnnounce(Title, Sub, AirsoftColors::Team(PS->Team), Freeze);
 	}
 	// Bots already here start over too; then fill both sides up around the people (new bots spawn frozen).
 	const TArray<TObjectPtr<AAirsoftBotController>> ExistingBots = Bots;
@@ -729,20 +1182,24 @@ void AAirsoftGameMode::BeginBriefing()
 	{
 		if (AAirsoftPlayerState* BotPS = IsValid(Bot) ? Bot->GetPlayerState<AAirsoftPlayerState>() : nullptr)
 		{
-			BotPS->ResetRound();
+			BotPS->ResetLife();
 			Respawn(Bot);
 		}
 	}
 	bBotsDirty = false;
 	BotClock = 0.f;
 	UpdateBots();
+	if (GS->Mode == EAirsoftMode::VIP)
+	{
+		ChooseVIP(); // after the bots: a side of only bots still gets a VIP
+	}
 	FreezeAll(true);
 }
 
 void AAirsoftGameMode::BeginLive()
 {
 	AAirsoftGameState* GS = GetAirsoftGameState();
-	SetPhase(EAirsoftPhase::Live, UAirsoftSettings::Get()->RoundTime);
+	SetPhase(EAirsoftPhase::Live, AirsoftRules::RoundTime(GS->Mode));
 	GS->StatusMessage.Reset();
 	FreezeAll(false);
 	for (APlayerState* P : GS->PlayerArray)
@@ -752,7 +1209,44 @@ void AAirsoftGameMode::BeginLive()
 			PS->ProtectedUntil = 0.f;
 		}
 	}
-	AnnounceAll(TEXT("GAME ON"), GS->Mode == EAirsoftMode::Domination ? TEXT("Take the points") : TEXT("Call your hits"), AirsoftColors::Accent(), 2.5f);
+	// Who is in this round (an empty side never "loses" by elimination: practice runs on the clock).
+	CountAlive(RoundStartBlue, RoundStartRed);
+	UpdateAliveCounts();
+
+	if (GS->Mode == EAirsoftMode::VIP)
+	{
+		for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+		{
+			AAirsoftPlayerController* PC = Cast<AAirsoftPlayerController>(It->Get());
+			const AAirsoftPlayerState* PS = PC ? PC->GetPlayerState<AAirsoftPlayerState>() : nullptr;
+			if (PC && PS)
+			{
+				const bool bVIP = GS->VIPPlayer.Get() == PS;
+				const bool bAttack = PS->Team == GS->AttackingTeam;
+				PC->ClientAnnounce(TEXT("GAME ON"), bVIP ? TEXT("Get to EXTRACT") : (bAttack ? TEXT("Get the VIP out") : TEXT("Find the VIP")), AirsoftColors::Accent(), 2.5f);
+			}
+		}
+	}
+	else
+	{
+		FString Go = TEXT("Call your hits");
+		switch (GS->Mode)
+		{
+		case EAirsoftMode::Domination: Go = TEXT("Take the points"); break;
+		case EAirsoftMode::Elimination: Go = TEXT("One life - make it count"); break;
+		case EAirsoftMode::GunGame: Go = TEXT("Climb the ladder"); break;
+		default: break;
+		}
+		AnnounceAll(TEXT("GAME ON"), Go, AirsoftColors::Accent(), 2.5f);
+	}
+	if (Bots.Num() > 0)
+	{
+		AAirsoftBotController* Speaker = Bots[FMath::RandRange(0, Bots.Num() - 1)];
+		if (IsValid(Speaker))
+		{
+			BotChatter(Speaker, 2);
+		}
+	}
 }
 
 void AAirsoftGameMode::TickDomination(float DeltaSeconds)
@@ -785,7 +1279,7 @@ void AAirsoftGameMode::TickDomination(float DeltaSeconds)
 				Red += C->GetTeam() == EAirsoftTeam::Red ? 1 : 0;
 			}
 		}
-		const EAirsoftTeam Taken = Obj->ServerUpdate(DeltaSeconds, Blue, Red, DominationCaptureTime);
+		const EAirsoftTeam Taken = Obj->ServerUpdate(DeltaSeconds, Blue, Red, AirsoftGameModeLocal::DominationCaptureTime);
 		if (Taken != EAirsoftTeam::None)
 		{
 			for (AAirsoftCharacter* C : Inside)
@@ -818,20 +1312,242 @@ void AAirsoftGameMode::TickDomination(float DeltaSeconds)
 	}
 	if (GS->BlueScore >= GS->ScoreLimit || GS->RedScore >= GS->ScoreLimit)
 	{
-		EndRound(GS->BlueScore == GS->RedScore ? EAirsoftTeam::None : (GS->BlueScore > GS->RedScore ? EAirsoftTeam::Blue : EAirsoftTeam::Red));
+		FinishMatch(GS->BlueScore == GS->RedScore ? EAirsoftTeam::None : (GS->BlueScore > GS->RedScore ? EAirsoftTeam::Blue : EAirsoftTeam::Red), nullptr);
 	}
 }
 
-void AAirsoftGameMode::EndRound(EAirsoftTeam Winner)
+void AAirsoftGameMode::TickElimination(float DeltaSeconds)
+{
+	AAirsoftGameState* GS = GetAirsoftGameState();
+	if (!GS || GS->Phase != EAirsoftPhase::Live || RoundStartBlue <= 0 || RoundStartRed <= 0)
+	{
+		return; // a side with nobody on it: the clock decides (practice)
+	}
+	int32 Blue = 0;
+	int32 Red = 0;
+	CountAlive(Blue, Red);
+
+	// The last player standing on a side hears about it once.
+	for (int32 Index = 0; Index < 2; ++Index)
+	{
+		const EAirsoftTeam Team = Index == 0 ? EAirsoftTeam::Blue : EAirsoftTeam::Red;
+		const int32 Standing = Index == 0 ? Blue : Red;
+		const int32 Started = Index == 0 ? RoundStartBlue : RoundStartRed;
+		if (Standing != 1 || Started < 2 || bLastStandAnnounced[Index])
+		{
+			continue;
+		}
+		bLastStandAnnounced[Index] = true;
+		for (TActorIterator<AAirsoftCharacter> It(GetWorld()); It; ++It)
+		{
+			if (!It->IsOut() && It->GetTeam() == Team)
+			{
+				if (AAirsoftPlayerController* PC = Cast<AAirsoftPlayerController>(It->GetController()))
+				{
+					const int32 Facing = Index == 0 ? Red : Blue;
+					PC->ClientAnnounce(TEXT("LAST ONE STANDING"), FString::Printf(TEXT("%d against you"), Facing), AirsoftColors::Team(Team), 2.5f);
+				}
+				break;
+			}
+		}
+	}
+
+	if (Blue == 0 || Red == 0)
+	{
+		const EAirsoftTeam Winner = Blue == Red ? EAirsoftTeam::None : (Blue > 0 ? EAirsoftTeam::Blue : EAirsoftTeam::Red);
+		EndRound(Winner, Winner == EAirsoftTeam::None ? TEXT("both sides out") : TEXT("last side standing"));
+	}
+}
+
+void AAirsoftGameMode::TickVIP(float DeltaSeconds)
+{
+	AAirsoftGameState* GS = GetAirsoftGameState();
+	if (!GS || GS->Phase != EAirsoftPhase::Live)
+	{
+		return;
+	}
+	const EAirsoftTeam Attackers = GS->AttackingTeam;
+	const EAirsoftTeam Defenders = GS->DefendingTeam();
+	int32 Blue = 0;
+	int32 Red = 0;
+	CountAlive(Blue, Red);
+	const int32 DefendersUp = Defenders == EAirsoftTeam::Blue ? Blue : Red;
+	const int32 DefendersStarted = Defenders == EAirsoftTeam::Blue ? RoundStartBlue : RoundStartRed;
+
+	AAirsoftPlayerState* VIPPS = GS->VIPPlayer.Get();
+	if (!VIPPS)
+	{
+		// Nobody to escort (the attacking side is empty): defenders hold on for the clock.
+		if (DefendersStarted > 0 && DefendersUp == 0)
+		{
+			EndRound(Attackers, TEXT("defenders wiped out"));
+		}
+		return;
+	}
+	if (!IsValid(VIPPS))
+	{
+		EndRound(EAirsoftTeam::None, TEXT("the VIP left"));
+		return;
+	}
+	AAirsoftCharacter* VIPChar = FindCharacterFor(VIPPS);
+	if (!VIPChar || VIPChar->IsOut())
+	{
+		EndRound(Defenders, TEXT("VIP tagged"));
+		return;
+	}
+	if (DefendersStarted > 0 && DefendersUp == 0)
+	{
+		EndRound(Attackers, TEXT("defenders wiped out"));
+		return;
+	}
+
+	// Extraction: the VIP has to stand in the zone for a few seconds (stepping out bleeds it back).
+	const AAirsoftObjective* Extract = GS->ExtractionPoint.Get();
+	if (Extract && Extract->IsInside(VIPChar->GetActorLocation()))
+	{
+		ExtractClock += DeltaSeconds;
+	}
+	else
+	{
+		ExtractClock = FMath::Max(0.f, ExtractClock - DeltaSeconds * 2.f);
+	}
+	const float Needed = FMath::Max(UAirsoftSettings::Get()->VIPExtractTime, 0.5f);
+	const float Progress = FMath::Clamp(ExtractClock / Needed, 0.f, 1.f);
+	if (!FMath::IsNearlyEqual(GS->ExtractProgress, Progress, 0.01f) || (Progress <= 0.f && GS->ExtractProgress > 0.f))
+	{
+		GS->ExtractProgress = Progress;
+	}
+	if (ExtractClock >= Needed)
+	{
+		VIPPS->Round.Captures++;
+		GiveXP(VIPPS->GetOwningController(), 300, TEXT("VIP EXTRACTED"));
+		for (TActorIterator<AAirsoftCharacter> It(GetWorld()); It; ++It)
+		{
+			if (*It != VIPChar && !It->IsOut() && It->GetTeam() == Attackers)
+			{
+				GiveXP(It->GetController(), 100, TEXT("ESCORT"));
+			}
+		}
+		EndRound(Attackers, TEXT("VIP extracted"));
+	}
+}
+
+void AAirsoftGameMode::HandleTimeUp()
+{
+	AAirsoftGameState* GS = GetAirsoftGameState();
+	switch (GS->Mode)
+	{
+	case EAirsoftMode::Elimination:
+	{
+		int32 Blue = 0;
+		int32 Red = 0;
+		CountAlive(Blue, Red);
+		EndRound(Blue == Red ? EAirsoftTeam::None : (Blue > Red ? EAirsoftTeam::Blue : EAirsoftTeam::Red), TEXT("time: most players standing"));
+		break;
+	}
+	case EAirsoftMode::VIP:
+		EndRound(GS->DefendingTeam(), TEXT("time: the VIP never made it"));
+		break;
+	case EAirsoftMode::GunGame:
+	{
+		// Highest level wins; a tie on level and tags is a draw.
+		AAirsoftPlayerState* Leader = GS->GetGunGameLeader();
+		for (APlayerState* P : GS->PlayerArray)
+		{
+			const AAirsoftPlayerState* PS = Cast<AAirsoftPlayerState>(P);
+			if (Leader && PS && PS != Leader && !PS->IsInactive() && PS->GunLevel == Leader->GunLevel && PS->Round.Tags == Leader->Round.Tags)
+			{
+				Leader = nullptr;
+				break;
+			}
+		}
+		FinishMatch(EAirsoftTeam::None, Leader);
+		break;
+	}
+	default:
+		FinishMatch(GS->BlueScore == GS->RedScore ? EAirsoftTeam::None : (GS->BlueScore > GS->RedScore ? EAirsoftTeam::Blue : EAirsoftTeam::Red), nullptr);
+		break;
+	}
+}
+
+void AAirsoftGameMode::EndRound(EAirsoftTeam RoundWinnerTeam, const FString& Reason)
+{
+	AAirsoftGameState* GS = GetAirsoftGameState();
+	if (!GS || GS->Phase != EAirsoftPhase::Live)
+	{
+		return; // once per round, and only from a live round
+	}
+	if (!GS->IsRoundBased())
+	{
+		FinishMatch(RoundWinnerTeam, nullptr);
+		return;
+	}
+	GS->RoundWinner = RoundWinnerTeam;
+	GS->BlueScore += RoundWinnerTeam == EAirsoftTeam::Blue ? 1 : 0;
+	GS->RedScore += RoundWinnerTeam == EAirsoftTeam::Red ? 1 : 0;
+	GS->ExtractProgress = 0.f;
+	ExtractClock = 0.f;
+	UpdateAliveCounts();
+
+	if (RoundWinnerTeam != EAirsoftTeam::None)
+	{
+		for (APlayerState* P : GS->PlayerArray)
+		{
+			const AAirsoftPlayerState* PS = Cast<AAirsoftPlayerState>(P);
+			if (PS && PS->Team == RoundWinnerTeam)
+			{
+				GiveXP(PS->GetOwningController(), 100, TEXT("ROUND WON"));
+			}
+		}
+	}
+	const FString TeamLine = RoundWinnerTeam == EAirsoftTeam::None ? FString(TEXT("Round drawn"))
+		: FString::Printf(TEXT("%s takes the round"), *AirsoftColors::TeamName(RoundWinnerTeam));
+	BroadcastSystem(FString::Printf(TEXT("Round %d: %s, %s (Blue %d – %d Red)"), GS->RoundNumber, *TeamLine, *Reason, GS->BlueScore, GS->RedScore));
+
+	// Match over? A side reached the target, or the rounds ran out.
+	const bool bClinched = GS->BlueScore >= GS->ScoreLimit || GS->RedScore >= GS->ScoreLimit;
+	const bool bOutOfRounds = GS->MaxRounds > 0 && GS->RoundNumber >= GS->MaxRounds;
+	if (bClinched || bOutOfRounds)
+	{
+		FinishMatch(GS->BlueScore == GS->RedScore ? EAirsoftTeam::None : (GS->BlueScore > GS->RedScore ? EAirsoftTeam::Blue : EAirsoftTeam::Red), nullptr);
+		return;
+	}
+
+	// Between rounds: frozen, the round's last tag replays, then the next round's freeze.
+	SetPhase(EAirsoftPhase::PostRound, FMath::Max(UAirsoftSettings::Get()->RoundOverTime, 3.f));
+	GS->bMatchOver = false;
+	GS->StatusMessage = FString::Printf(TEXT("Round %d  ·  %s"), GS->RoundNumber, *TeamLine);
+	FreezeAll(true);
+	for (TPair<TWeakObjectPtr<AController>, FTimerHandle>& Pair : RespawnTimers)
+	{
+		GetWorldTimerManager().ClearTimer(Pair.Value);
+	}
+	RespawnTimers.Reset();
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		if (AAirsoftPlayerController* PC = Cast<AAirsoftPlayerController>(It->Get()))
+		{
+			PC->ClientRoundEnded(RoundWinnerTeam, Reason, LastTag);
+		}
+	}
+}
+
+void AAirsoftGameMode::FinishMatch(EAirsoftTeam WinnerTeam, AAirsoftPlayerState* WinnerPlayer)
 {
 	AAirsoftGameState* GS = GetAirsoftGameState();
 	if (!GS || GS->Phase == EAirsoftPhase::PostRound)
 	{
 		return;
 	}
+	const bool bFreeForAll = GS->IsFreeForAll();
 	SetPhase(EAirsoftPhase::PostRound, UAirsoftSettings::Get()->PostRoundTime);
-	GS->Winner = Winner;
-	GS->StatusMessage = Winner == EAirsoftTeam::None ? TEXT("Draw") : FString::Printf(TEXT("%s wins"), *AirsoftColors::TeamName(Winner));
+	GS->bMatchOver = true;
+	GS->Winner = bFreeForAll ? EAirsoftTeam::None : WinnerTeam;
+	GS->WinnerName = WinnerPlayer ? WinnerPlayer->GetPlayerName() : FString();
+	GS->ExtractProgress = 0.f;
+	const bool bDraw = bFreeForAll ? WinnerPlayer == nullptr : WinnerTeam == EAirsoftTeam::None;
+	GS->StatusMessage = bDraw ? FString(TEXT("Draw"))
+		: FString::Printf(TEXT("%s wins"), bFreeForAll ? *GS->WinnerName : *AirsoftColors::TeamName(WinnerTeam));
 	FreezeAll(true);
 	for (TPair<TWeakObjectPtr<AController>, FTimerHandle>& Pair : RespawnTimers)
 	{
@@ -839,13 +1555,19 @@ void AAirsoftGameMode::EndRound(EAirsoftTeam Winner)
 	}
 	RespawnTimers.Reset();
 
+	auto IsWinner = [bFreeForAll, WinnerTeam, WinnerPlayer](const AAirsoftPlayerState* PS)
+	{
+		return PS && (bFreeForAll ? PS == WinnerPlayer : (WinnerTeam != EAirsoftTeam::None && PS->Team == WinnerTeam));
+	};
+
 	// Match bonus XP first so the report includes it.
 	for (APlayerState* P : GS->PlayerArray)
 	{
 		if (AAirsoftPlayerState* PS = Cast<AAirsoftPlayerState>(P))
 		{
-			const int32 Bonus = Winner == EAirsoftTeam::None ? 250 : (PS->Team == Winner ? 500 : 200);
-			GiveXP(PS->GetOwningController(), Bonus, Winner == EAirsoftTeam::None ? TEXT("DRAW") : (PS->Team == Winner ? TEXT("VICTORY") : TEXT("MATCH COMPLETE")));
+			const bool bWon = IsWinner(PS);
+			const int32 Bonus = bDraw ? 250 : (bWon ? 500 : 200);
+			GiveXP(PS->GetOwningController(), Bonus, bDraw ? TEXT("DRAW") : (bWon ? TEXT("VICTORY") : TEXT("MATCH COMPLETE")));
 		}
 	}
 
@@ -859,10 +1581,28 @@ void AAirsoftGameMode::EndRound(EAirsoftTeam Winner)
 			Row.Team = PS->Team;
 			Row.Stats = PS->Round;
 			Row.bBot = PS->IsABot();
+			Row.Level = GS->Mode == EAirsoftMode::GunGame ? PS->GunLevel + 1 : 0;
 			Rows.Add(Row);
 		}
 	}
-	Rows.Sort([](const FAirsoftSummaryRow& A, const FAirsoftSummaryRow& B) { return A.Stats.XP > B.Stats.XP; });
+	Rows.Sort([](const FAirsoftSummaryRow& A, const FAirsoftSummaryRow& B)
+	{
+		if (A.Level != B.Level)
+		{
+			return A.Level > B.Level;
+		}
+		return A.Stats.XP > B.Stats.XP;
+	});
+
+	if (bDraw)
+	{
+		BroadcastSystem(TEXT("Match over: a draw."));
+	}
+	else
+	{
+		BroadcastSystem(FString::Printf(TEXT("Match over: %s wins%s"), bFreeForAll ? *GS->WinnerName : *AirsoftColors::TeamName(WinnerTeam),
+			GS->IsRoundBased() ? *FString::Printf(TEXT(" (Blue %d – %d Red)"), GS->BlueScore, GS->RedScore) : TEXT("")));
+	}
 
 	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
 	{
@@ -870,7 +1610,7 @@ void AAirsoftGameMode::EndRound(EAirsoftTeam Winner)
 		const AAirsoftPlayerState* PS = PC ? PC->GetPlayerState<AAirsoftPlayerState>() : nullptr;
 		if (PC && PS)
 		{
-			PC->ClientMatchEnded(Winner, Rows, LastTag, PS->Round.XP, PS->Round.Captures);
+			PC->ClientMatchEnded(GS->Winner, GS->WinnerName, IsWinner(PS), Rows, LastTag, PS->Round.XP, PS->Round.Captures);
 		}
 	}
 }
@@ -879,12 +1619,18 @@ void AAirsoftGameMode::ReturnToStaging()
 {
 	AAirsoftGameState* GS = GetAirsoftGameState();
 	bTravelling = true;
+	const bool bFreeForAll = GS->IsFreeForAll();
 	for (APlayerState* P : GS->PlayerArray)
 	{
 		if (AAirsoftPlayerState* PS = Cast<AAirsoftPlayerState>(P))
 		{
 			PS->CareerXP += PS->Round.XP;
 			PS->ResetRound();
+			// Back to the lobby team after a free-for-all (None = the lobby assigns one).
+			if (bFreeForAll && !PS->IsABot() && PS->Team == EAirsoftTeam::None)
+			{
+				PS->Team = PS->SavedTeam;
+			}
 		}
 	}
 	GS->StatusMessage = TEXT("Returning to staging...");
@@ -899,6 +1645,130 @@ void AAirsoftGameMode::FreezeAll(bool bFreeze)
 	{
 		It->ServerSetFrozen(bFreeze);
 	}
+}
+
+// ---------------------------------------------------------------------------
+// VIP
+// ---------------------------------------------------------------------------
+
+AAirsoftCharacter* AAirsoftGameMode::FindCharacterFor(const APlayerState* PS) const
+{
+	if (!PS)
+	{
+		return nullptr;
+	}
+	for (TActorIterator<AAirsoftCharacter> It(GetWorld()); It; ++It)
+	{
+		if (It->GetPlayerState() == PS)
+		{
+			return *It;
+		}
+	}
+	return nullptr;
+}
+
+void AAirsoftGameMode::ChooseExtraction()
+{
+	AAirsoftGameState* GS = GetAirsoftGameState();
+	if (!GS)
+	{
+		return;
+	}
+	GS->ExtractionPoint = nullptr;
+	if (GS->Mode != EAirsoftMode::VIP)
+	{
+		return;
+	}
+	// A dedicated extraction point (Letter "X") if the map has one...
+	AAirsoftObjective* Best = nullptr;
+	for (AAirsoftObjective* Obj : GS->Objectives)
+	{
+		if (Obj && Obj->IsExtractionOnly())
+		{
+			Best = Obj;
+			break;
+		}
+	}
+	// ...otherwise the objective furthest from the attackers' spawn: C when Blue attacks on the stock maps,
+	// A when Red attacks after the swap, so both halves walk the same distance.
+	if (!Best)
+	{
+		FVector Home = FVector::ZeroVector;
+		int32 NumHome = 0;
+		for (TActorIterator<AAirsoftTeamStart> It(GetWorld()); It; ++It)
+		{
+			if (It->Team == GS->AttackingTeam)
+			{
+				Home += It->GetActorLocation();
+				++NumHome;
+			}
+		}
+		if (NumHome > 0)
+		{
+			Home /= static_cast<double>(NumHome);
+		}
+		double BestDist = -1.0;
+		for (AAirsoftObjective* Obj : GS->Objectives)
+		{
+			if (!Obj)
+			{
+				continue;
+			}
+			const double Dist = NumHome > 0 ? FVector::Dist(Obj->GetActorLocation(), Home) : static_cast<double>(Obj->Letter.Compare(TEXT("A")));
+			if (Dist > BestDist)
+			{
+				BestDist = Dist;
+				Best = Obj;
+			}
+		}
+	}
+	if (Best)
+	{
+		Best->ServerSetExtraction(GS->AttackingTeam);
+		GS->ExtractionPoint = Best;
+	}
+}
+
+void AAirsoftGameMode::ChooseVIP()
+{
+	AAirsoftGameState* GS = GetAirsoftGameState();
+	if (!GS || GS->Mode != EAirsoftMode::VIP)
+	{
+		return;
+	}
+	// A person on the attacking side who has been VIP the least; a bot only if the side has no people.
+	TArray<AAirsoftPlayerState*> Humans;
+	TArray<AAirsoftPlayerState*> BotCandidates;
+	for (APlayerState* P : GS->PlayerArray)
+	{
+		AAirsoftPlayerState* PS = Cast<AAirsoftPlayerState>(P);
+		if (!IsValid(PS) || PS->IsInactive() || PS->Team != GS->AttackingTeam || !FindCharacterFor(PS))
+		{
+			continue;
+		}
+		(PS->IsABot() ? BotCandidates : Humans).Add(PS);
+	}
+	TArray<AAirsoftPlayerState*>& Pool = Humans.Num() > 0 ? Humans : BotCandidates;
+	if (Pool.Num() == 0)
+	{
+		GS->VIPPlayer = nullptr;
+		return;
+	}
+	int32 Fewest = MAX_int32;
+	for (const AAirsoftPlayerState* PS : Pool)
+	{
+		Fewest = FMath::Min(Fewest, PS->VIPTurns);
+	}
+	Pool.RemoveAll([Fewest](const AAirsoftPlayerState* PS) { return PS->VIPTurns > Fewest; });
+	AAirsoftPlayerState* Pick = Pool[FMath::RandRange(0, Pool.Num() - 1)];
+	Pick->VIPTurns++;
+	GS->VIPPlayer = Pick;
+	ApplyModeLoadout(Pick->GetOwningController()); // pistol only, no grenade
+	if (AAirsoftPlayerController* PC = Cast<AAirsoftPlayerController>(Pick->GetOwningController()))
+	{
+		PC->ClientAnnounce(TEXT("YOU ARE THE VIP"), TEXT("Pistol only. Your squad walks you to EXTRACT."), AirsoftColors::Accent(), AirsoftRules::FreezeTime(GS->Mode));
+	}
+	BroadcastSystem(FString::Printf(TEXT("%s is the VIP for %s"), *Pick->GetPlayerName(), *AirsoftColors::TeamName(GS->AttackingTeam)));
 }
 
 // ---------------------------------------------------------------------------
@@ -919,23 +1789,37 @@ bool AAirsoftGameMode::HandleTag(AController* Shooter, AController* Victim, FNam
 	{
 		return false;
 	}
-	const bool bSameTeam = ShooterPS && ShooterPS->Team == VictimPS->Team;
-	if (bSameTeam && !UAirsoftSettings::Get()->bFriendlyFire)
+	const UAirsoftSettings* S = UAirsoftSettings::Get();
+	const bool bFreeForAll = GS->IsFreeForAll();
+	const bool bSameTeam = ShooterPS && !bFreeForAll && ShooterPS->Team == VictimPS->Team;
+	if (bSameTeam && !S->bFriendlyFire)
 	{
 		return false;
 	}
 
-	const UAirsoftSettings* S = UAirsoftSettings::Get();
+	const bool bRespawns = AirsoftRules::HasRespawns(GS->Mode);
+	const float RespawnDelay = AirsoftRules::RespawnTime(GS->Mode);
 	const FString ShooterName = ShooterPS ? ShooterPS->GetPlayerName() : FString(TEXT("Grenade"));
 	const int32 VictimStreak = VictimPS->Round.Streak;
+	const bool bVictimWasVIP = GS->Mode == EAirsoftMode::VIP && GS->VIPPlayer.Get() == VictimPS;
 
 	VictimChar->ServerMarkOut(ShooterName);
 	VictimPS->LastTaggedBy = ShooterName;
 	VictimPS->Round.Outs++;
 	VictimPS->Round.Streak = 0;
-	VictimPS->RespawnAt = static_cast<float>(GS->GetServerWorldTimeSeconds()) + S->RespawnTime;
+	VictimPS->RespawnAt = bRespawns ? static_cast<float>(GS->GetServerWorldTimeSeconds()) + RespawnDelay : 0.f;
 
+	// The replay needs this tag before anything below can end the round.
 	const APawn* ShooterPawn = Shooter ? Shooter->GetPawn() : nullptr;
+	LastTag.bValid = true;
+	LastTag.Shooter = ShooterName;
+	LastTag.Victim = VictimPS->GetPlayerName();
+	LastTag.ShooterTeam = ShooterPS ? ShooterPS->Team : EAirsoftTeam::None;
+	LastTag.VictimTeam = VictimPS->Team;
+	LastTag.To = VictimChar->GetActorLocation() + FVector(0.f, 0.f, 40.f);
+	LastTag.From = ShooterPawn ? ShooterPawn->GetPawnViewLocation() : LastTag.To + FVector(-300.f, 0.f, 100.f);
+	LastTag.WeaponId = WeaponId;
+
 	if (ShooterPS && !bSameTeam)
 	{
 		ShooterPS->Round.Tags++;
@@ -955,21 +1839,16 @@ bool AAirsoftGameMode::HandleTag(AController* Shooter, AController* Victim, FNam
 		{
 			GiveXP(Shooter, 75, TEXT("STREAK ENDED"));
 		}
+		if (bVictimWasVIP)
+		{
+			GiveXP(Shooter, 250, TEXT("VIP TAGGED"));
+		}
 		if (GS->Mode == EAirsoftMode::TDM)
 		{
 			GS->BlueScore += ShooterPS->Team == EAirsoftTeam::Blue ? 1 : 0;
 			GS->RedScore += ShooterPS->Team == EAirsoftTeam::Red ? 1 : 0;
 		}
 	}
-
-	LastTag.bValid = true;
-	LastTag.Shooter = ShooterName;
-	LastTag.Victim = VictimPS->GetPlayerName();
-	LastTag.ShooterTeam = ShooterPS ? ShooterPS->Team : EAirsoftTeam::None;
-	LastTag.VictimTeam = VictimPS->Team;
-	LastTag.To = VictimChar->GetActorLocation() + FVector(0.f, 0.f, 40.f);
-	LastTag.From = ShooterPawn ? ShooterPawn->GetPawnViewLocation() : LastTag.To + FVector(-300.f, 0.f, 100.f);
-	LastTag.WeaponId = WeaponId;
 
 	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
 	{
@@ -979,13 +1858,88 @@ bool AAirsoftGameMode::HandleTag(AController* Shooter, AController* Victim, FNam
 		}
 	}
 
-	ScheduleRespawn(Victim, S->RespawnTime);
-
-	if (GS->Mode == EAirsoftMode::TDM && (GS->BlueScore >= GS->ScoreLimit || GS->RedScore >= GS->ScoreLimit))
+	if (bRespawns)
 	{
-		EndRound(GS->BlueScore >= GS->ScoreLimit ? EAirsoftTeam::Blue : EAirsoftTeam::Red);
+		ScheduleRespawn(Victim, RespawnDelay);
+	}
+
+	if (ShooterPS && !bSameTeam && ShooterPS->IsABot())
+	{
+		BotChatter(Shooter, 0);
+	}
+	else if (VictimPS->IsABot())
+	{
+		BotChatter(Victim, 1);
+	}
+
+	// What the tag means for the match.
+	switch (GS->Mode)
+	{
+	case EAirsoftMode::TDM:
+		if (GS->BlueScore >= GS->ScoreLimit || GS->RedScore >= GS->ScoreLimit)
+		{
+			FinishMatch(GS->BlueScore >= GS->ScoreLimit ? EAirsoftTeam::Blue : EAirsoftTeam::Red, nullptr);
+		}
+		break;
+	case EAirsoftMode::GunGame:
+		if (ShooterPS && !bSameTeam && WeaponId != TEXT("Grenade"))
+		{
+			AdvanceGunGame(Shooter, ShooterPS);
+		}
+		break;
+	case EAirsoftMode::VIP:
+		if (bVictimWasVIP)
+		{
+			EndRound(GS->DefendingTeam(), FString::Printf(TEXT("VIP tagged by %s"), *ShooterName));
+		}
+		break;
+	case EAirsoftMode::Elimination:
+		TickElimination(0.f); // end the round straight away when a side is out
+		break;
+	default:
+		break;
 	}
 	return true;
+}
+
+void AAirsoftGameMode::AdvanceGunGame(AController* Shooter, AAirsoftPlayerState* ShooterPS)
+{
+	const TArray<FName> Ladder = AirsoftRules::GunGameLadder();
+	const int32 Last = Ladder.Num() - 1;
+	if (!ShooterPS || Last < 0)
+	{
+		return;
+	}
+	if (ShooterPS->GunLevel >= Last)
+	{
+		// A tag with the final gun wins the match.
+		GiveXP(Shooter, 300, TEXT("GUN GAME WIN"));
+		FinishMatch(EAirsoftTeam::None, ShooterPS);
+		return;
+	}
+	ShooterPS->GunLevel = FMath::Clamp(ShooterPS->GunLevel + 1, 0, Last);
+	GiveXP(Shooter, 50, TEXT("LEVEL UP"));
+	const FName Next = Ladder[ShooterPS->GunLevel];
+	const bool bFinal = ShooterPS->GunLevel == Last;
+	if (AAirsoftPlayerController* PC = Cast<AAirsoftPlayerController>(Shooter))
+	{
+		PC->ClientAnnounce(FString::Printf(TEXT("LEVEL %d / %d"), ShooterPS->GunLevel + 1, Ladder.Num()),
+			bFinal ? FString::Printf(TEXT("%s  ·  FINAL WEAPON: one tag wins"), *AirsoftGameModeLocal::WeaponDisplayName(Next)) : AirsoftGameModeLocal::WeaponDisplayName(Next),
+			AirsoftColors::Accent(), 1.6f);
+	}
+	if (bFinal)
+	{
+		BroadcastSystem(FString::Printf(TEXT("%s is on the final weapon"), *ShooterPS->GetPlayerName()));
+	}
+	// Hand the next gun over once this hit has finished processing (we are inside the shooter's hit check).
+	TWeakObjectPtr<AController> WeakShooter(Shooter);
+	GetWorldTimerManager().SetTimerForNextTick(FTimerDelegate::CreateWeakLambda(this, [this, WeakShooter]()
+	{
+		if (WeakShooter.IsValid())
+		{
+			ApplyModeLoadout(WeakShooter.Get());
+		}
+	}));
 }
 
 void AAirsoftGameMode::SpawnGrenade(AController* Thrower, const FVector& Origin, const FVector& Direction)
@@ -1010,6 +1964,43 @@ void AAirsoftGameMode::SpawnGrenade(AController* Thrower, const FVector& Origin,
 int32 AAirsoftGameMode::CountPlayers()
 {
 	return GetNumPlayers();
+}
+
+void AAirsoftGameMode::CountAlive(int32& OutBlue, int32& OutRed) const
+{
+	OutBlue = 0;
+	OutRed = 0;
+	for (TActorIterator<AAirsoftCharacter> It(GetWorld()); It; ++It)
+	{
+		const AAirsoftCharacter* C = *It;
+		if (!IsValid(C) || C->IsOut() || !C->GetController())
+		{
+			continue;
+		}
+		const EAirsoftTeam Team = C->GetTeam();
+		OutBlue += Team == EAirsoftTeam::Blue ? 1 : 0;
+		OutRed += Team == EAirsoftTeam::Red ? 1 : 0;
+	}
+}
+
+void AAirsoftGameMode::UpdateAliveCounts()
+{
+	AAirsoftGameState* GS = GetAirsoftGameState();
+	if (!GS)
+	{
+		return;
+	}
+	int32 Blue = 0;
+	int32 Red = 0;
+	CountAlive(Blue, Red);
+	if (GS->BlueAlive != Blue)
+	{
+		GS->BlueAlive = Blue;
+	}
+	if (GS->RedAlive != Red)
+	{
+		GS->RedAlive = Red;
+	}
 }
 
 void AAirsoftGameMode::AnnounceAll(const FString& Title, const FString& Sub, const FLinearColor& Color, float Duration)
@@ -1080,36 +2071,13 @@ void AAirsoftGameMode::UpdateBots()
 	{
 		TeamSize = 0;
 	}
+	const bool bFreeForAll = GS->IsFreeForAll();
 
-	// People per side, and the bots we already have per side.
-	int32 Humans[2] = { 0, 0 };
-	TArray<AAirsoftBotController*> TeamBots[2];
-	for (APlayerState* P : GS->PlayerArray)
+	// Removes bots past Want (a tagged-out or pawnless one first, so nobody vanishes mid-fight), adds up to Want.
+	auto TrimAndFill = [this, Skill](TArray<AAirsoftBotController*>& Have, int32 Want, EAirsoftTeam Team)
 	{
-		const AAirsoftPlayerState* PS = Cast<AAirsoftPlayerState>(P);
-		if (!IsValid(PS) || PS->IsABot() || PS->IsInactive())
-		{
-			continue;
-		}
-		Humans[0] += PS->Team == EAirsoftTeam::Blue ? 1 : 0;
-		Humans[1] += PS->Team == EAirsoftTeam::Red ? 1 : 0;
-	}
-	for (AAirsoftBotController* Bot : Bots)
-	{
-		const AAirsoftPlayerState* BotPS = Bot->GetPlayerState<AAirsoftPlayerState>();
-		TeamBots[(BotPS && BotPS->Team == EAirsoftTeam::Red) ? 1 : 0].Add(Bot);
-	}
-
-	// Both sides end up with max(fill size, people on the bigger side): even teams, bots make up the gap.
-	const int32 Side = TeamSize > 0 ? FMath::Max3(TeamSize, Humans[0], Humans[1]) : 0;
-	for (int32 Index = 0; Index < 2; ++Index)
-	{
-		const EAirsoftTeam Team = Index == 0 ? EAirsoftTeam::Blue : EAirsoftTeam::Red;
-		const int32 Want = FMath::Max(0, Side - Humans[Index]);
-		TArray<AAirsoftBotController*>& Have = TeamBots[Index];
 		while (Have.Num() > Want)
 		{
-			// Remove a tagged-out (or pawnless) bot first so nobody vanishes mid-fight.
 			int32 Pick = Have.Num() - 1;
 			for (int32 i = 0; i < Have.Num(); ++i)
 			{
@@ -1132,6 +2100,51 @@ void AAirsoftGameMode::UpdateBots()
 				break;
 			}
 			Have.Add(Added);
+		}
+	};
+
+	// People per side, and the bots we already have per side.
+	int32 Humans[2] = { 0, 0 };
+	int32 HumansTotal = 0;
+	for (APlayerState* P : GS->PlayerArray)
+	{
+		const AAirsoftPlayerState* PS = Cast<AAirsoftPlayerState>(P);
+		if (!IsValid(PS) || PS->IsABot() || PS->IsInactive())
+		{
+			continue;
+		}
+		++HumansTotal;
+		Humans[0] += PS->Team == EAirsoftTeam::Blue ? 1 : 0;
+		Humans[1] += PS->Team == EAirsoftTeam::Red ? 1 : 0;
+	}
+
+	if (bFreeForAll)
+	{
+		// Free-for-all: the same head count a team fill would give (2 x team size), nobody on a team.
+		TArray<AAirsoftBotController*> Have;
+		for (AAirsoftBotController* Bot : Bots)
+		{
+			Have.Add(Bot);
+			if (AAirsoftPlayerState* BotPS = Bot->GetPlayerState<AAirsoftPlayerState>())
+			{
+				BotPS->Team = EAirsoftTeam::None;
+			}
+		}
+		TrimAndFill(Have, TeamSize > 0 ? FMath::Max(0, TeamSize * 2 - HumansTotal) : 0, EAirsoftTeam::None);
+	}
+	else
+	{
+		TArray<AAirsoftBotController*> TeamBots[2];
+		for (AAirsoftBotController* Bot : Bots)
+		{
+			const AAirsoftPlayerState* BotPS = Bot->GetPlayerState<AAirsoftPlayerState>();
+			TeamBots[(BotPS && BotPS->Team == EAirsoftTeam::Red) ? 1 : 0].Add(Bot);
+		}
+		// Both sides end up with max(fill size, people on the bigger side): even teams, bots make up the gap.
+		const int32 Side = TeamSize > 0 ? FMath::Max3(TeamSize, Humans[0], Humans[1]) : 0;
+		for (int32 Index = 0; Index < 2; ++Index)
+		{
+			TrimAndFill(TeamBots[Index], FMath::Max(0, Side - Humans[Index]), Index == 0 ? EAirsoftTeam::Blue : EAirsoftTeam::Red);
 		}
 	}
 
@@ -1163,7 +2176,7 @@ AAirsoftBotController* AAirsoftGameMode::AddBot(EAirsoftTeam Team, EAirsoftBotSk
 {
 	UWorld* World = GetWorld();
 	const AAirsoftGameState* GS = GetAirsoftGameState();
-	if (!World || !GS || Team == EAirsoftTeam::None)
+	if (!World || !GS || (Team == EAirsoftTeam::None && !GS->IsFreeForAll()))
 	{
 		return nullptr;
 	}
@@ -1189,7 +2202,9 @@ AAirsoftBotController* AAirsoftGameMode::AddBot(EAirsoftTeam Team, EAirsoftBotSk
 	PS->CareerXP = 0;
 	Bot->SetSkill(Skill);
 	Bots.Add(Bot);
-	if (GS->bIsMatchMap && (GS->Phase == EAirsoftPhase::Briefing || GS->Phase == EAirsoftPhase::Live))
+	// Mid-round in a one-life mode the newcomer waits for the next round like everyone else.
+	const bool bCanSpawnNow = GS->Phase == EAirsoftPhase::Briefing || (GS->Phase == EAirsoftPhase::Live && AirsoftRules::HasRespawns(GS->Mode));
+	if (GS->bIsMatchMap && bCanSpawnNow)
 	{
 		RestartPlayer(Bot); // SetPlayerDefaults hands out the loadout, spawn protection and the freeze
 	}
@@ -1289,7 +2304,8 @@ FAirsoftLoadout AAirsoftGameMode::MakeBotLoadout() const
 	};
 
 	const AAirsoftGameState* GS = GetAirsoftGameState();
-	const bool bCloseQuarters = GS && GS->MapId == TEXT("Club");
+	const FAirsoftMapInfo* MapInfo = GS ? AirsoftRules::FindMap(GS->MapId) : nullptr;
+	const bool bCloseQuarters = MapInfo && MapInfo->bCloseQuarters;
 	const TArray<AirsoftBotNames::FPrimaryWeight>& Weights = AirsoftBotNames::PrimaryWeights();
 	int32 Total = 0;
 	for (const AirsoftBotNames::FPrimaryWeight& Entry : Weights)

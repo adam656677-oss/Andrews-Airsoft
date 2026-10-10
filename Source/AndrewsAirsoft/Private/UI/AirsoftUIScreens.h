@@ -17,4 +17,7 @@ namespace AirsoftUIScreens
 	TSharedRef<SWidget> CreateSettings(AAirsoftPlayerController* PC);
 	TSharedRef<SWidget> CreateScoreboard(AAirsoftPlayerController* PC);
 	TSharedRef<SWidget> CreateSummary(AAirsoftPlayerController* PC);
+	/** SAirsoftChat.cpp: the typing line, and the fading message box the HUD embeds. */
+	TSharedRef<SWidget> CreateChatInput(AAirsoftPlayerController* PC);
+	TSharedRef<SWidget> CreateChatBox(AAirsoftPlayerController* PC);
 }

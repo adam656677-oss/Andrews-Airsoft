@@ -695,10 +695,12 @@ def build_softcap(B):
     B.add(M, "twill")
     inner, _, _ = shell_grid(shell, z_rim, 48, 6, inset=0.0025)
     B.add(inner, "twill")
-    rim, rn = shell.point(shell.dirs(phis, psi0))
+    # rim binding (not under the brim, where it would cut through the visor)
+    back = (phis > deg(68)) & (phis < deg(292))
+    rim, rn = shell.point(shell.dirs(phis[back], psi0[back]))
     prof = tg.rrect(0.008, 0.0045, 0.0018, 1)
     prof[:, 1] -= 0.0012
-    B.add(tg.sweep(rim, rn, prof, closed=True, half_w=0.004), "binding")
+    B.add(tg.sweep(rim, rn, prof, closed=False, caps=True, half_w=0.004), "binding")
     # top button
     B.add(tg.lathe([(0.0, 0.0), (0.0075, 0.0), (0.0072, 0.0025), (0.0045, 0.0048), (0.0, 0.0055)], 16, Nt[0], top[0] - Nt[0] * 0.0015), "twill")
     # brim: crescent, arched across, tilted down
@@ -754,8 +756,12 @@ def goggle_frame_data(n=72):
     Pf = H0 + np.stack([xf, y, z], -1)
     cin = H0 + np.array([-0.015, 0.0, 0.068])
     hit = tb.march(Fh, Pf, cin - Pf)
-    # smooth the face contact line around the outline (the stand-in face is lumpy at this scale)
-    for _ in range(6):
+    # smooth the face contact line around the outline (the stand-in face is lumpy at this scale),
+    # symmetric left/right (the outline is resampled symmetrically about y = 0)
+    mirror_idx = np.array([int(np.argmin(np.linalg.norm(O - np.array([-y_, z_]), axis=1))) for y_, z_ in O])
+    hm = hit[mirror_idx] * np.array([1.0, -1.0, 1.0]) + np.array([0.0, 2 * H0[1], 0.0])
+    hit = 0.5 * (hit + hm)
+    for _ in range(24):
         hit = 0.5 * hit + 0.25 * (np.roll(hit, 1, axis=0) + np.roll(hit, -1, axis=0))
     dirb = _n(Pf - hit)
     for _ in range(4):
@@ -1311,6 +1317,9 @@ PRODUCT = {
 }
 
 
+FRAME_ZMIN = {"Helmet": 0.035}
+
+
 def tints_for(aid, team, cw_index):
     group = SPECS[aid]["colorway"]
     t = {"A": tuple(TEAM[team])}
@@ -1417,6 +1426,8 @@ def render_products(ids, samples, res=(1920, 1080)):
             continue
         rig = setup_studio()
         lo, hi = studio.bbox(obs)
+        if aid in FRAME_ZMIN:  # frame the shell, let the harness hang out of shot
+            lo = Vector((lo.x, lo.y, max(lo.z, tb.bone(SPECS[aid]["bone"])[2] + FRAME_ZMIN[aid])))
         studio.frame(rig, lo, hi, view_dir=vd, lens=70, margin=1.12)
         png = os.path.join(SCRATCH, f"{aid}.png")
         t0 = time.time()

@@ -1031,6 +1031,44 @@ class Builder:
             self.text({"p": (it["p"][0], it["p"][1], it["p"][2] + (top + 110.0) / 100.0), "yaw": lab,
                        "text": it["letter"], "size": 90.0, "glow": 2.0}, unlit_rgb=rgb)
 
+    def rain(self, spec):
+        """Shot-only rain (the editor build has no rain: in Unreal it needs a Niagara system): thin streaks along
+        the fall direction, each turned to face the camera, lit only by the scene's own lights."""
+        import random as _random
+        rng = _random.Random(spec.get("seed", 3))
+        x0, y0, z0, x1, y1, z1 = spec["box"]
+        tx, ty = spec.get("tilt", (0.08, 0.03))
+        fall = bl((tx, ty, -1.0)).normalized()
+        cam = bl(self.cam_pos)
+        verts, faces = [], []
+        for _ in range(int(spec.get("count", 4000))):
+            p = bl((rng.uniform(x0, x1), rng.uniform(y0, y1), rng.uniform(z0, z1)))
+            side = fall.cross(cam - p)
+            if side.length < 1e-6:
+                continue
+            side = side.normalized() * spec.get("width", 0.006) * rng.uniform(0.7, 1.3) * 0.5
+            b = p + fall * spec.get("len", 0.6) * rng.uniform(0.6, 1.3)
+            k = len(verts)
+            verts += [tuple(p - side), tuple(p + side), tuple(b + side), tuple(b - side)]
+            faces.append((k, k + 1, k + 2, k + 3))
+        me = bpy.data.meshes.new("Rain")
+        me.from_pydata(verts, [], faces)
+        m, nb, out = new_mat("Rain")
+        p = nb.node("ShaderNodeBsdfPrincipled")
+        p.inputs["Base Color"].default_value = (0.8, 0.82, 0.86, 1.0)
+        p.inputs["Roughness"].default_value = 0.2
+        mix = nb.node("ShaderNodeMixShader")
+        mix.inputs[0].default_value = spec.get("alpha", 0.35)
+        m.node_tree.links.new(nb.node("ShaderNodeBsdfTransparent").outputs[0], mix.inputs[1])
+        m.node_tree.links.new(p.outputs[0], mix.inputs[2])
+        m.node_tree.links.new(mix.outputs[0], out.inputs["Surface"])
+        me.materials.append(m)
+        o = bpy.data.objects.new("Rain", me)
+        o.visible_shadow = False
+        o.visible_diffuse = False
+        self.coll.objects.link(o)
+        print(f"  rain: {len(faces)} streaks", flush=True)
+
     # ---- whole map ------------------------------------------------------------------------
     def build(self, extra=()):
         items = list(self.map["items"]) + list(extra)
@@ -1409,6 +1447,31 @@ shot("weapon_hero", file="08_Armory_M4_Hero", map="Staging",
      extra=[{"t": "gun", "id": "M4", "fit": {"Optic": "Scope4x", "Muzzle": "Suppressor"}, "skin": "FDE", "team": "Blue",
              "p": (-12.16, 9.06, 1.3), "rot": (0.0, 175.0, 90.0), "rest": True}])
 
+# Nightjar Garage (night, rain). Rain streaks are shot-only geometry: the editor build has wet materials, puddles
+# and fog but no rain particles (that needs a Niagara system).
+GARAGE_HAZE = {"rect": (-36, -23, 36, 23), "top": 6.3, "density": 0.0025, "color": (0.78, 0.82, 0.92), "g": 0.55}
+ROOF_HAZE = {"rect": (-170, -170, 170, 170), "top": 45.0, "density": 0.0032, "color": (0.72, 0.74, 0.82), "g": 0.6}
+ROOF_RAIN = {"box": (-31, -23, 6.7, 31, 23, 13.5), "count": 14000, "len": 0.7, "width": 0.007, "alpha": 0.4}
+HOLE_RAIN = {"box": (-11, 1.3, 3.4, 11, 5.7, 9.5), "count": 3500, "len": 0.6, "width": 0.006, "alpha": 0.45, "seed": 5}
+
+shot("garage_roof", file="10_NightjarGarage_RoofDeck", map="NightjarGarage",
+     caption="Nightjar Garage - the roof deck in the rain: wet concrete, sodium poles, the east tower and the city beyond",
+     cam=(-29.0, -15.2, 8.35), target=(6.0, -2.5, 7.3), lens=24, fstop=4.0, focus=(-10.0, -9.0, 7.4),
+     exposure=1.6, sun_mult=1.0, haze=ROOF_HAZE, rain=ROOF_RAIN, fog_scale=0.03, bloom=0.5, samples=64)
+shot("garage_ramp", file="11_NightjarGarage_Ramp", map="NightjarGarage",
+     caption="Nightjar Garage - ramp R2 climbing from the mid deck to the roof, sodium wallpacks and rain through the opening",
+     cam=(-17.0, 3.2, 4.75), target=(6.0, 3.6, 6.1), lens=26, fstop=4.0, focus=(-6.0, 3.5, 4.4),
+     exposure=1.7, sun_mult=1.0, haze=GARAGE_HAZE, rain=HOLE_RAIN, fog_scale=0.03, bloom=0.5, samples=64)
+shot("garage_row", file="12_NightjarGarage_ParkingRow", map="NightjarGarage",
+     caption="Nightjar Garage - first-person height down the mid-deck north aisle: fluorescent battens, painted bays, a fender-bender",
+     cam=(-27.5, -14.0, 4.92), target=(10.0, -14.6, 4.6), hfov=80.0, fstop=0, clip_start=0.05,
+     exposure=1.7, sun_mult=1.0, haze=GARAGE_HAZE, fog_scale=0.03, bloom=0.45, samples=64)
+shot("garage_objective", file="13_NightjarGarage_ObjectiveB", map="NightjarGarage",
+     caption="Nightjar Garage - objective B on the median between the ramps, Blue holding it",
+     cam=(13.5, -0.4, 5.0), target=(-3.0, 0.4, 4.2), lens=24, fstop=4.0, focus=(0.0, 0.1, 4.0),
+     objectives={"B": {"team": "Blue"}}, label_yaw="auto", ring_glow=0.05,
+     exposure=1.7, sun_mult=1.0, haze=GARAGE_HAZE, rain=HOLE_RAIN, fog_scale=0.03, bloom=0.5, samples=64)
+
 
 # --------------------------------------------------------------------------------------
 # Main
@@ -1427,6 +1490,8 @@ def build_scene(sh, opts):
         place_first_person(b, sh)
     for it in sh.get("extra_lights", []):
         b.item_light(dict(it, t="light"))
+    for spec in ([sh["rain"]] if isinstance(sh.get("rain"), dict) else sh.get("rain", [])):
+        b.rain(spec)
     return b, cam
 
 

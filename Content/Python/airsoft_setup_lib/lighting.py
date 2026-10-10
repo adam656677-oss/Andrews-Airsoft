@@ -34,6 +34,16 @@ PRESETS = {
         "exposure": (-2.5, 1.0, 0.6), "white_temp": 6500.0, "bloom": 0.8, "vignette": 0.35, "grain": 0.15,
         "ca": 0.1, "saturation": 1.05, "contrast": 1.06, "local_exposure": (0.7, 0.85),
     },
+    # Nightjar Garage: rainy night, overcast moon, wet haze; sodium + cold fluorescent practicals do the work.
+    # Exposure range matches velvet_night so both night maps meter alike.
+    "nightjar_rain": {
+        "sun": {"pitch": -35.0, "yaw": 200.0, "lux": 0.2, "temp": 9000, "angle": 1.5},
+        "sky": {"intensity": 0.3, "lower": (0.012, 0.011, 0.012)}, "clouds": True,
+        "fog": {"density": 0.08, "falloff": 0.3, "start": 200.0, "inscatter": (0.055, 0.05, 0.06),
+                "vol_scatter": 0.65, "vol_albedo": (205, 200, 212), "vol_extinction": 2.4, "vol_distance": 6000.0},
+        "exposure": (-2.5, 1.0, 0.6), "white_temp": 6300.0, "bloom": 0.85, "vignette": 0.35, "grain": 0.18,
+        "ca": 0.1, "saturation": 1.0, "contrast": 1.07, "local_exposure": (0.7, 0.85),
+    },
     "menu_armory": {
         "sun": {"pitch": -30.0, "yaw": 40.0, "lux": 0.05, "temp": 6500, "angle": 1.0, "shadows": False},
         "sky": {"intensity": 0.15, "lower": (0.02, 0.015, 0.01)}, "clouds": False,
@@ -64,6 +74,15 @@ FIXTURES = {
                         "pitch": 22.0, "shadows": False, "vol": 6.0},
     "BackBar_4m": {"kind": "rect", "point": "LEDTop", "color": "Amber", "cd": 6.0, "radius": 4.0, "w": 380.0, "h": 12.0,
                    "pitch": -90.0, "shadows": False},
+    # Nightjar Garage kit (Tools/Blender/garage). Rect: w across the tube (local Y), h along it (local X after pitch).
+    "Garage_LightFluo": {"kind": "rect", "point": "Light", "color": "Cool", "cd": 6.0, "radius": 9.0, "w": 14.0,
+                         "h": 140.0, "pitch": -90.0, "shadows": False, "vol": 0.6},
+    "Garage_LightSodium": {"kind": "spot", "point": "Light", "color": "Sodium", "cd": 12.0, "radius": 13.0,
+                           "cone": (45, 75), "pitch": -40.0, "src": 8.0, "shadows": False, "vol": 1.4},
+    "Garage_ExitSign": {"kind": "point", "point": "Light", "color": "Green", "cd": 0.4, "radius": 3.0, "src": 10.0,
+                        "shadows": False},
+    "Garage_TicketBooth": {"kind": "point", "point": "Light", "color": "Warm", "cd": 1.6, "radius": 5.0, "src": 15.0,
+                           "shadows": False},
 }
 SHADOW_BUDGET = 12
 

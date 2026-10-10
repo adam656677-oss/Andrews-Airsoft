@@ -1,5 +1,39 @@
 #include "AirsoftSettings.h"
 
+TArray<FAirsoftMapInfo> UAirsoftSettings::DefaultMatchMaps()
+{
+	auto Map = [](const TCHAR* Key, const TCHAR* Name, const TCHAR* Path, int32 MinPlayers, int32 MaxPlayers, bool bCloseQuarters)
+	{
+		FAirsoftMapInfo Info;
+		Info.Key = FName(Key);
+		Info.DisplayName = Name;
+		Info.LevelPath = Path;
+		Info.MinPlayers = MinPlayers;
+		Info.MaxPlayers = MaxPlayers;
+		Info.bCloseQuarters = bCloseQuarters;
+		// Modes left empty: every map runs every mode (each has team starts and objectives A/B/C).
+		return Info;
+	};
+	TArray<FAirsoftMapInfo> Maps;
+	Maps.Add(Map(TEXT("Field"), TEXT("Ironwood Yard"), TEXT("/Game/Maps/L_IronwoodYard"), 6, 20, false));
+	Maps.Add(Map(TEXT("Club"), TEXT("Velvet Club"), TEXT("/Game/Maps/L_VelvetClub"), 4, 14, true));
+	// Three storeys of parking garage at night: close fights on each deck, long ramps between them.
+	Maps.Add(Map(TEXT("Garage"), TEXT("Nightjar Garage"), TEXT("/Game/Maps/L_NightjarGarage"), 4, 18, true));
+	return Maps;
+}
+
+TArray<FName> UAirsoftSettings::DefaultGunGameLadder()
+{
+	return {
+		TEXT("G18"), TEXT("DEAGLE"),                                // pistols
+		TEXT("MP7"), TEXT("VECTOR"), TEXT("P90"), TEXT("MP5"),      // SMGs
+		TEXT("M4"), TEXT("AK74"), TEXT("M249"), TEXT("SR25"),       // rifles
+		TEXT("M870"),                                               // shotgun
+		TEXT("VSR"),                                                // sniper
+		TEXT("M1911")                                               // the final pistol: tag with it to win
+	};
+}
+
 FAirsoftBotTuning FAirsoftBotTuning::Preset(EAirsoftBotSkill Skill)
 {
 	// Normal is the struct's defaults; the others scale reaction, accuracy, awareness and nerve.

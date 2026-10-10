@@ -41,4 +41,9 @@ namespace AirsoftUI
 	{
 		return AirsoftUIScreens::CreateSummary(PC);
 	}
+
+	TSharedRef<SWidget> MakeChatInput(AAirsoftPlayerController* PC)
+	{
+		return AirsoftUIScreens::CreateChatInput(PC);
+	}
 }

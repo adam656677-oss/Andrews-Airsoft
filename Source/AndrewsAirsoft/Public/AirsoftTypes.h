@@ -26,11 +26,53 @@ enum class EAirsoftPhase : uint8
 	PostRound
 };
 
+/**
+ * Game modes, in lobby-vote order (AirsoftModeRules.h holds every rule per mode).
+ * New modes go at the end: the index is what PlayerStates vote with.
+ */
 UENUM(BlueprintType)
 enum class EAirsoftMode : uint8
 {
 	TDM,
-	Domination
+	Domination,
+	/** Rounds, one life each: the side with players left takes the round. */
+	Elimination,
+	/** Free-for-all up a fixed weapon ladder: every tag hands you the next gun. */
+	GunGame,
+	/** Rounds: attackers escort a pistol-only VIP to extraction, defenders tag the VIP or run the clock. */
+	VIP
+};
+
+/** Which channel a chat line came through. */
+UENUM(BlueprintType)
+enum class EAirsoftChatKind : uint8
+{
+	All,
+	Team,
+	/** Joins, leaves, votes, round results (no sender). */
+	System
+};
+
+/** One match map as listed in Project Settings > Game > Airsoft > Maps (shown in the lobby vote). */
+USTRUCT(BlueprintType)
+struct FAirsoftMapInfo
+{
+	GENERATED_BODY()
+
+	/** Short id used by votes and logs, e.g. "Garage". */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) FName Key;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) FString DisplayName;
+	/** Long package name of the level, e.g. /Game/Maps/L_NightjarGarage. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) FString LevelPath;
+	/** Modes this map can run. Empty = every mode. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) TArray<EAirsoftMode> Modes;
+	/** Recommended head count, shown next to the map in the vote. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 MinPlayers = 2;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 MaxPlayers = 20;
+	/** Tight interiors: bots favour SMGs and shotguns here. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) bool bCloseQuarters = false;
+
+	bool SupportsMode(EAirsoftMode InMode) const { return Modes.Num() == 0 || Modes.Contains(InMode); }
 };
 
 UENUM(BlueprintType)
@@ -122,6 +164,8 @@ struct FAirsoftSummaryRow
 	UPROPERTY(BlueprintReadOnly) FAirsoftRoundStats Stats;
 	/** Computer-controlled player (shown with a BOT tag, never matched to a human profile). */
 	UPROPERTY(BlueprintReadOnly) bool bBot = false;
+	/** Gun Game: ladder level reached (1-based). */
+	UPROPERTY(BlueprintReadOnly) int32 Level = 0;
 };
 
 UENUM(BlueprintType)

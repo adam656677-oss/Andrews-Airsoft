@@ -1215,7 +1215,9 @@ def m_ConcreteGarageWet(ctx):
     standing puddles in the low spots and along the joints, oil sheen kept very smooth."""
     d = garage_deck(ctx)
     lowf = ctx.noise(1.9, oct=3, rough=0.45) - 0.5 * d['wheel']
-    puddle = cover(-lowf, 0.18, 0.1)
+    # few, soft-edged mirror patches only: the material tiles every 4 m, so big standing water is placed
+    # as separate Puddle decals in the layout instead (a high tiled coverage reads as a leopard print)
+    puddle = cover(-lowf, 0.07, 0.16)
     damp = cover(-lowf, 0.7, 0.35)
     bc = d['bc'] * (0.58 - 0.06 * puddle)[..., None]
     bc = lerp(bc, col('#18191b'), puddle * 0.3)

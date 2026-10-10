@@ -5,13 +5,17 @@
 #include "AirsoftBallistics.h"
 #include "AirsoftCharacter.h"
 #include "AirsoftCombatComponent.h"
+#include "AirsoftEffects.h"
 #include "AirsoftGameInstance.h"
 #include "AirsoftGameMode.h"
 #include "AirsoftGameState.h"
+#include "AirsoftModeRules.h"
 #include "AirsoftObjective.h"
 #include "AirsoftPlayerState.h"
 #include "AirsoftSaveGame.h"
+#include "AirsoftSettings.h"
 #include "AirsoftWeaponData.h"
+#include "Algo/Sort.h"
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
 #include "Components/AudioComponent.h"
@@ -21,7 +25,9 @@
 #include "Engine/HitResult.h"
 #include "Engine/LocalPlayer.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
 #include "Framework/Application/SlateApplication.h"
+#include "HAL/PlatformTime.h"
 #include "InputAction.h"
 #include "InputCoreTypes.h"
 #include "InputMappingContext.h"
@@ -29,8 +35,10 @@
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
 #include "UI/AirsoftUI.h"
+#include "Widgets/SWidget.h"
 
-namespace
+// Named (not anonymous) so nothing here can collide with other files in a unity build.
+namespace AirsoftPCLocal
 {
 	constexpr float MouseDegreesPerCount = 0.07f;
 	constexpr float StickYawRate = 210.f;
@@ -38,6 +46,9 @@ namespace
 	constexpr double ReplayLength = 4.6;
 	constexpr double ReplayFireAt = 0.6;
 	constexpr double ReplayFlight = 2.0;
+	/** Seconds a player out for the round sees their own "HIT" before the team camera takes over. */
+	constexpr double TeamCamDelay = 2.5;
+	constexpr int32 MaxChatLines = 60;
 
 	const FName IA_Move(TEXT("IA_Move"));
 	const FName IA_LookMouse(TEXT("IA_LookMouse"));
@@ -63,14 +74,27 @@ namespace
 	const FName IA_Scoreboard(TEXT("IA_Scoreboard"));
 	const FName IA_Menu(TEXT("IA_Menu"));
 	const FName IA_Loadout(TEXT("IA_Loadout"));
-	const FName IA_Vote1(TEXT("IA_Vote1"));
-	const FName IA_Vote2(TEXT("IA_Vote2"));
-	const FName IA_Vote3(TEXT("IA_Vote3"));
-	const FName IA_Vote4(TEXT("IA_Vote4"));
+	const FName IA_VoteMode(TEXT("IA_VoteMode"));
+	const FName IA_VoteMap(TEXT("IA_VoteMap"));
+	const FName IA_Chat(TEXT("IA_Chat"));
+	const FName IA_TeamChat(TEXT("IA_TeamChat"));
 
 	float StickCurve(float V)
 	{
 		return FMath::Sign(V) * FMath::Pow(FMath::Abs(V), 1.8f);
+	}
+
+	/** Chat text as the host accepts it: control characters become spaces, trimmed, capped. */
+	FString CleanChat(const FString& Text, int32 MaxLength)
+	{
+		FString Clean;
+		Clean.Reserve(Text.Len());
+		for (int32 Index = 0; Index < Text.Len(); ++Index)
+		{
+			const TCHAR Ch = Text[Index];
+			Clean.AppendChar(Ch < TEXT(' ') ? TEXT(' ') : Ch);
+		}
+		return Clean.TrimStartAndEnd().Left(FMath::Max(MaxLength, 1));
 	}
 }
 
@@ -121,6 +145,8 @@ void AAirsoftPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	if (IsLocalController())
 	{
 		StopReplay();
+		StopTeamCam();
+		HideWidget(ChatWidget);
 		HideWidget(MenuWidget);
 		HideWidget(ScoreboardWidget);
 		HideWidget(SummaryWidget);
@@ -131,6 +157,7 @@ void AAirsoftPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 
 void AAirsoftPlayerController::RebuildUI()
 {
+	HideWidget(ChatWidget);
 	HideWidget(MenuWidget);
 	HideWidget(ScoreboardWidget);
 	HideWidget(SummaryWidget);
@@ -139,6 +166,16 @@ void AAirsoftPlayerController::RebuildUI()
 	bScoreboard = false;
 	InteractTarget.Reset();
 	StopReplay();
+	StopTeamCam();
+	OutSince = -1.0;
+	// A new map: the host has a fresh vote (votes are reset on the way back to staging).
+	MyModeVote = -1;
+	MyMapVote = -1;
+	// Chat history carries over, but each world's clock starts again: mark old lines as old.
+	for (FAirsoftChatEntry& Entry : ChatLog)
+	{
+		Entry.Time = -1000.0;
+	}
 
 	bMainMenu = GetWorld() && GetWorld()->GetAuthGameMode<AAirsoftMenuGameMode>() != nullptr;
 	if (bMainMenu)
@@ -195,6 +232,7 @@ void AAirsoftPlayerController::OnRep_Pawn()
 
 void AAirsoftPlayerController::BuildInput()
 {
+	using namespace AirsoftPCLocal;
 	if (Mapping)
 	{
 		return;
@@ -275,10 +313,12 @@ void AAirsoftPlayerController::BuildInput()
 	// Escape stops Play-In-Editor, so P opens the menu too.
 	Button(IA_Menu, { EKeys::Escape, EKeys::P, EKeys::Gamepad_Special_Right });
 	Button(IA_Loadout, { EKeys::L });
-	Button(IA_Vote1, { EKeys::F1 });
-	Button(IA_Vote2, { EKeys::F2 });
-	Button(IA_Vote3, { EKeys::F3 });
-	Button(IA_Vote4, { EKeys::F4 });
+	// Lobby vote: F1 steps your vote through the modes, F2 through the maps (any number of either).
+	Button(IA_VoteMode, { EKeys::F1 });
+	Button(IA_VoteMap, { EKeys::F2 });
+	// Chat: Enter = everyone, Y = your team (T is the weapon light).
+	Button(IA_Chat, { EKeys::Enter });
+	Button(IA_TeamChat, { EKeys::Y });
 }
 
 void AAirsoftPlayerController::AddMappingContext()
@@ -297,6 +337,7 @@ void AAirsoftPlayerController::AddMappingContext()
 
 void AAirsoftPlayerController::SetupInputComponent()
 {
+	using namespace AirsoftPCLocal;
 	Super::SetupInputComponent();
 	BuildInput();
 	UEnhancedInputComponent* EIC = Cast<UEnhancedInputComponent>(InputComponent);
@@ -338,15 +379,15 @@ void AAirsoftPlayerController::SetupInputComponent()
 	EIC->BindAction(Get(IA_Scoreboard), ETriggerEvent::Completed, this, &AAirsoftPlayerController::OnScoreboardReleased);
 	EIC->BindAction(Get(IA_Menu), ETriggerEvent::Started, this, &AAirsoftPlayerController::OnMenu);
 	EIC->BindAction(Get(IA_Loadout), ETriggerEvent::Started, this, &AAirsoftPlayerController::OnLoadout);
-	EIC->BindAction(Get(IA_Vote1), ETriggerEvent::Started, this, &AAirsoftPlayerController::OnVote1);
-	EIC->BindAction(Get(IA_Vote2), ETriggerEvent::Started, this, &AAirsoftPlayerController::OnVote2);
-	EIC->BindAction(Get(IA_Vote3), ETriggerEvent::Started, this, &AAirsoftPlayerController::OnVote3);
-	EIC->BindAction(Get(IA_Vote4), ETriggerEvent::Started, this, &AAirsoftPlayerController::OnVote4);
+	EIC->BindAction(Get(IA_VoteMode), ETriggerEvent::Started, this, &AAirsoftPlayerController::OnVoteModeKey);
+	EIC->BindAction(Get(IA_VoteMap), ETriggerEvent::Started, this, &AAirsoftPlayerController::OnVoteMapKey);
+	EIC->BindAction(Get(IA_Chat), ETriggerEvent::Started, this, &AAirsoftPlayerController::OnChatKey);
+	EIC->BindAction(Get(IA_TeamChat), ETriggerEvent::Started, this, &AAirsoftPlayerController::OnTeamChatKey);
 }
 
 bool AAirsoftPlayerController::CanControlPawn() const
 {
-	return !IsMenuOpen() && ReplayStart < 0.0 && GetAirsoftCharacter() != nullptr;
+	return !IsMenuOpen() && !IsChatOpen() && ReplayStart < 0.0 && !IsTeamCamActive() && GetAirsoftCharacter() != nullptr;
 }
 
 void AAirsoftPlayerController::OnMove(const FInputActionValue& Value)
@@ -370,7 +411,7 @@ void AAirsoftPlayerController::OnLookMouse(const FInputActionValue& Value)
 		Sens = GI->GetUserSettings().Sensitivity;
 		bInvert = GI->GetUserSettings().bInvertY;
 	}
-	const FVector2D Delta = Value.Get<FVector2D>() * MouseDegreesPerCount * Sens;
+	const FVector2D Delta = Value.Get<FVector2D>() * AirsoftPCLocal::MouseDegreesPerCount * Sens;
 	GetAirsoftCharacter()->LookInput(Delta.X, Delta.Y * (bInvert ? -1.f : 1.f));
 }
 
@@ -387,6 +428,7 @@ void AAirsoftPlayerController::OnLookStick(const FInputActionValue& Value)
 		Sens = GI->GetUserSettings().Sensitivity;
 		bInvert = GI->GetUserSettings().bInvertY;
 	}
+	using namespace AirsoftPCLocal;
 	const FVector2D Stick = Value.Get<FVector2D>();
 	const float Dt = GetWorld()->GetDeltaSeconds();
 	GetAirsoftCharacter()->LookInput(StickCurve(Stick.X) * StickYawRate * Sens * Dt, StickCurve(Stick.Y) * StickPitchRate * Sens * Dt * (bInvert ? -1.f : 1.f));
@@ -394,6 +436,11 @@ void AAirsoftPlayerController::OnLookStick(const FInputActionValue& Value)
 
 void AAirsoftPlayerController::OnJump()
 {
+	if (IsTeamCamActive())
+	{
+		CycleTeamCam();
+		return;
+	}
 	if (CanControlPawn())
 	{
 		GetAirsoftCharacter()->JumpInput();
@@ -450,6 +497,11 @@ void AAirsoftPlayerController::OnCrouchHoldReleased()
 
 void AAirsoftPlayerController::OnFirePressed()
 {
+	if (IsTeamCamActive())
+	{
+		CycleTeamCam();
+		return;
+	}
 	if (CanControlPawn())
 	{
 		GetAirsoftCharacter()->CancelSprint();
@@ -575,7 +627,7 @@ void AAirsoftPlayerController::OnLeanRightReleased() { bLeanRight = false; }
 
 void AAirsoftPlayerController::OnScoreboardPressed()
 {
-	if (bMainMenu || IsMenuOpen())
+	if (bMainMenu || IsMenuOpen() || IsChatOpen())
 	{
 		return;
 	}
@@ -610,33 +662,277 @@ void AAirsoftPlayerController::OnLoadout()
 	}
 }
 
-void AAirsoftPlayerController::OnVote1() { VoteMode(0); }
-void AAirsoftPlayerController::OnVote2() { VoteMode(1); }
-void AAirsoftPlayerController::OnVote3() { VoteMap(0); }
-void AAirsoftPlayerController::OnVote4() { VoteMap(1); }
+void AAirsoftPlayerController::OnVoteModeKey()
+{
+	CycleModeVote(1);
+}
 
-void AAirsoftPlayerController::VoteMode(int32 ModeIndex)
+void AAirsoftPlayerController::OnVoteMapKey()
+{
+	CycleMapVote(1);
+}
+
+void AAirsoftPlayerController::OnChatKey()
+{
+	OpenChat(false);
+}
+
+void AAirsoftPlayerController::OnTeamChatKey()
+{
+	OpenChat(true);
+}
+
+// ---------------------------------------------------------------------------
+// Lobby vote
+// ---------------------------------------------------------------------------
+
+bool AAirsoftPlayerController::CanVote() const
 {
 	const AAirsoftGameState* GS = GetAirsoftGameState();
-	if (!GS || GS->bIsMatchMap || bMainMenu)
+	return GS && !GS->bIsMatchMap && !bMainMenu && (GS->Phase == EAirsoftPhase::Waiting || GS->Phase == EAirsoftPhase::Intermission);
+}
+
+void AAirsoftPlayerController::CycleModeVote(int32 Step)
+{
+	const int32 Num = AirsoftRules::NumModes;
+	if (!CanVote() || Num <= 0)
 	{
 		return;
 	}
-	MyModeVote = FMath::Clamp(ModeIndex, 0, 1);
+	// First press lands on the first entry; after that each press moves one along and wraps.
+	const int32 From = MyModeVote < 0 ? (Step > 0 ? -1 : 0) : MyModeVote;
+	VoteMode(((From + Step) % Num + Num) % Num);
+}
+
+void AAirsoftPlayerController::CycleMapVote(int32 Step)
+{
+	const int32 Num = AirsoftRules::NumMaps();
+	if (!CanVote() || Num <= 0)
+	{
+		return;
+	}
+	const int32 From = MyMapVote < 0 ? (Step > 0 ? -1 : 0) : MyMapVote;
+	VoteMap(((From + Step) % Num + Num) % Num);
+}
+
+void AAirsoftPlayerController::VoteMode(int32 ModeIndex)
+{
+	if (!CanVote())
+	{
+		return;
+	}
+	MyModeVote = FMath::Clamp(ModeIndex, 0, AirsoftRules::NumModes - 1);
 	ServerVote(MyModeVote, MyMapVote);
 	AirsoftAssets::Play2D(this, TEXT("UIClick"), 0.5f, 1.1f);
 }
 
 void AAirsoftPlayerController::VoteMap(int32 MapIndex)
 {
-	const AAirsoftGameState* GS = GetAirsoftGameState();
-	if (!GS || GS->bIsMatchMap || bMainMenu)
+	const int32 NumMaps = AirsoftRules::NumMaps();
+	if (!CanVote() || NumMaps <= 0)
 	{
 		return;
 	}
-	MyMapVote = FMath::Clamp(MapIndex, 0, AAirsoftGameState::MapIds().Num() - 1);
+	MyMapVote = FMath::Clamp(MapIndex, 0, NumMaps - 1);
 	ServerVote(MyModeVote, MyMapVote);
 	AirsoftAssets::Play2D(this, TEXT("UIClick"), 0.5f, 1.1f);
+}
+
+// ---------------------------------------------------------------------------
+// Chat
+// ---------------------------------------------------------------------------
+
+void AAirsoftPlayerController::OpenChat(bool bTeam)
+{
+	if (!IsLocalController() || bMainMenu || IsMenuOpen() || IsChatOpen())
+	{
+		return;
+	}
+	bChatTeam = bTeam;
+	HaltPawnActions();
+	bScoreboard = false;
+	HideWidget(ScoreboardWidget);
+	// Release everything held (W, Shift, mouse) so the character doesn't run on while we type.
+	FlushPressedKeys();
+	ShowWidget(ChatWidget, AirsoftUI::MakeChatInput(this), 45);
+	RefreshInputMode();
+	if (ChatWidget.IsValid() && FSlateApplication::IsInitialized())
+	{
+		FSlateApplication::Get().SetKeyboardFocus(ChatWidget, EFocusCause::SetDirectly);
+	}
+}
+
+void AAirsoftPlayerController::CloseChat()
+{
+	if (!ChatWidget.IsValid())
+	{
+		return;
+	}
+	HideWidget(ChatWidget);
+	FlushPressedKeys(); // Enter / Escape went to the text box: don't leave them "held" for gameplay
+	RefreshInputMode();
+}
+
+void AAirsoftPlayerController::SubmitChat(const FString& Text)
+{
+	const bool bTeam = bChatTeam;
+	const FString Clean = AirsoftPCLocal::CleanChat(Text, UAirsoftSettings::Get()->ChatMaxLength);
+	CloseChat();
+	if (!Clean.IsEmpty())
+	{
+		ServerSendChat(Clean, bTeam);
+	}
+}
+
+void AAirsoftPlayerController::ToggleChatChannel()
+{
+	bChatTeam = !bChatTeam;
+}
+
+void AAirsoftPlayerController::UpdateChatFocus()
+{
+	// Clicking the viewport (the cursor is hidden while typing) must not strand the chat line without focus.
+	if (ChatWidget.IsValid() && FSlateApplication::IsInitialized() && !ChatWidget->HasKeyboardFocus() && !ChatWidget->HasFocusedDescendants())
+	{
+		FSlateApplication::Get().SetKeyboardFocus(ChatWidget, EFocusCause::SetDirectly);
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Team camera (out for the round)
+// ---------------------------------------------------------------------------
+
+void AAirsoftPlayerController::GetWatchableTeammates(TArray<AAirsoftCharacter*>& Out) const
+{
+	Out.Reset();
+	const AAirsoftPlayerState* MyPS = GetAirsoftPlayerState();
+	UWorld* World = GetWorld();
+	if (!MyPS || !World || MyPS->Team == EAirsoftTeam::None)
+	{
+		return;
+	}
+	const APawn* MyPawn = GetPawn();
+	for (TActorIterator<AAirsoftCharacter> It(World); It; ++It)
+	{
+		AAirsoftCharacter* C = *It;
+		if (IsValid(C) && C != MyPawn && !C->IsOut() && C->GetTeam() == MyPS->Team)
+		{
+			Out.Add(C);
+		}
+	}
+	Algo::Sort(Out, [](const AAirsoftCharacter* A, const AAirsoftCharacter* B) { return A->GetDisplayName() < B->GetDisplayName(); });
+}
+
+FString AAirsoftPlayerController::GetTeamCamName() const
+{
+	const AAirsoftCharacter* Target = TeamCamTarget.Get();
+	return Target ? Target->GetDisplayName() : FString();
+}
+
+void AAirsoftPlayerController::CycleTeamCam()
+{
+	TArray<AAirsoftCharacter*> Mates;
+	GetWatchableTeammates(Mates);
+	if (Mates.Num() == 0)
+	{
+		return;
+	}
+	const int32 Current = Mates.IndexOfByKey(TeamCamTarget.Get());
+	TeamCamTarget = Mates[(Current + 1) % Mates.Num()];
+	AirsoftAssets::Play2D(this, TEXT("UIClick"), 0.35f, 1.2f);
+}
+
+void AAirsoftPlayerController::UpdateTeamCam(float DeltaTime)
+{
+	using namespace AirsoftPCLocal;
+	UWorld* World = GetWorld();
+	const AAirsoftGameState* GS = GetAirsoftGameState();
+	const AAirsoftCharacter* Me = GetAirsoftCharacter();
+	const bool bOneLifeRound = GS && GS->bIsMatchMap && GS->Phase == EAirsoftPhase::Live && !AirsoftRules::HasRespawns(GS->Mode);
+	const bool bOut = !Me || Me->IsOut();
+	if (!World || bMainMenu || !bOneLifeRound || !bOut)
+	{
+		OutSince = -1.0;
+		StopTeamCam();
+		return;
+	}
+	const double Now = World->GetRealTimeSeconds();
+	if (OutSince < 0.0)
+	{
+		OutSince = Now;
+	}
+	// A moment to see who got you before the camera moves on (none for a late joiner without a body);
+	// the round-end replay owns the view while it plays.
+	if ((Me && Now - OutSince < TeamCamDelay) || ReplayStart >= 0.0)
+	{
+		return;
+	}
+	TArray<AAirsoftCharacter*> Mates;
+	GetWatchableTeammates(Mates);
+	AAirsoftCharacter* Target = TeamCamTarget.Get();
+	if (!Target || !Mates.Contains(Target))
+	{
+		Target = Mates.Num() > 0 ? Mates[0] : nullptr;
+	}
+	if (!Target)
+	{
+		StopTeamCam(); // nobody left standing on our side
+		return;
+	}
+	TeamCamTarget = Target;
+
+	// Over the shoulder of where they are looking, pulled in against walls.
+	FRotator Aim = Target->GetBaseAimRotation();
+	Aim.Pitch = FMath::Clamp(FRotator::NormalizeAxis(Aim.Pitch), -40.0, 40.0);
+	Aim.Roll = 0.0;
+	const FVector Head = Target->GetPawnViewLocation();
+	const FVector Forward = Aim.Vector();
+	const FVector Right = FRotationMatrix(FRotator(0.0, Aim.Yaw, 0.0)).GetUnitAxis(EAxis::Y);
+	FVector Desired = Head - Forward * 230.0 + Right * 40.0 + FVector(0.0, 0.0, 25.0);
+	FCollisionQueryParams Query(SCENE_QUERY_STAT(AirsoftTeamCam), false, Target);
+	Query.AddIgnoredActor(GetPawn());
+	FHitResult Hit;
+	if (World->SweepSingleByChannel(Hit, Head, Desired, FQuat::Identity, ECC_Visibility, FCollisionShape::MakeSphere(12.f), Query))
+	{
+		Desired = Hit.Location;
+	}
+	const FRotator Look = (Head + Forward * 1000.0 - Desired).Rotation();
+
+	if (!IsValid(TeamCamera))
+	{
+		FActorSpawnParameters Params;
+		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		TeamCamera = World->SpawnActor<ACameraActor>(ACameraActor::StaticClass(), Desired, Look, Params);
+		if (!TeamCamera)
+		{
+			return;
+		}
+		TeamCamera->GetCameraComponent()->SetFieldOfView(80.f);
+		TeamCamera->GetCameraComponent()->bConstrainAspectRatio = false;
+		SetViewTargetWithBlend(TeamCamera, 0.35f, VTBlend_EaseInOut, 2.f);
+		return;
+	}
+	TeamCamera->SetActorLocationAndRotation(FMath::VInterpTo(TeamCamera->GetActorLocation(), Desired, DeltaTime, 12.f),
+		FMath::RInterpTo(TeamCamera->GetActorRotation(), Look, DeltaTime, 14.f));
+	if (GetViewTarget() != TeamCamera.Get())
+	{
+		SetViewTargetWithBlend(TeamCamera, 0.25f, VTBlend_EaseInOut, 2.f);
+	}
+}
+
+void AAirsoftPlayerController::StopTeamCam()
+{
+	const bool bWasWatching = TeamCamera != nullptr;
+	if (IsValid(TeamCamera))
+	{
+		TeamCamera->Destroy();
+	}
+	TeamCamera = nullptr;
+	TeamCamTarget.Reset();
+	if (bWasWatching && ReplayStart < 0.0 && GetPawn())
+	{
+		SetViewTargetWithBlend(GetPawn(), 0.3f, VTBlend_EaseInOut, 2.f);
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -674,6 +970,7 @@ void AAirsoftPlayerController::ShowMenu(EAirsoftMenu Menu)
 		return;
 	}
 	HideWidget(MenuWidget);
+	HideWidget(ChatWidget); // a menu takes over the keyboard
 	OpenMenu = Menu;
 	TSharedPtr<SWidget> Widget;
 	switch (Menu)
@@ -689,12 +986,7 @@ void AAirsoftPlayerController::ShowMenu(EAirsoftMenu Menu)
 		ShowWidget(MenuWidget, Widget.ToSharedRef(), 50);
 		HideWidget(ScoreboardWidget);
 		bScoreboard = false;
-		if (AAirsoftCharacter* C = GetAirsoftCharacter())
-		{
-			C->GetCombat()->CancelActions();
-			C->SetSprintHeld(false);
-			C->SetLeanInput(0.f);
-		}
+		HaltPawnActions();
 		AirsoftAssets::Play2D(this, TEXT("UIClick"), 0.35f, 0.9f);
 	}
 	RefreshInputMode();
@@ -735,13 +1027,34 @@ void AAirsoftPlayerController::OpenArmory(FName FocusWeapon)
 	ShowMenu(EAirsoftMenu::Armory);
 }
 
+void AAirsoftPlayerController::HaltPawnActions()
+{
+	bLeanLeft = false;
+	bLeanRight = false;
+	if (AAirsoftCharacter* C = GetAirsoftCharacter())
+	{
+		C->GetCombat()->CancelActions();
+		C->SetSprintHeld(false);
+		C->SetLeanInput(0.f);
+	}
+}
+
 void AAirsoftPlayerController::RefreshInputMode()
 {
 	if (!IsLocalController())
 	{
 		return;
 	}
-	if (IsMenuOpen())
+	if (IsChatOpen())
+	{
+		// UI only: the game viewport ignores input entirely, so typing never moves, fires or opens menus.
+		FInputModeUIOnly Mode;
+		Mode.SetWidgetToFocus(ChatWidget);
+		Mode.SetLockMouseToViewportBehavior(EMouseLockMode::LockAlways);
+		SetInputMode(Mode);
+		SetShowMouseCursor(false);
+	}
+	else if (IsMenuOpen())
 	{
 		FInputModeGameAndUI Mode;
 		Mode.SetWidgetToFocus(MenuWidget);
@@ -852,7 +1165,9 @@ void AAirsoftPlayerController::PlayerTick(float DeltaTime)
 
 	UpdateInteraction();
 	UpdateReplay(DeltaTime);
+	UpdateTeamCam(DeltaTime);
 	UpdateMatchAudio();
+	UpdateChatFocus();
 
 	const bool bWantSummary = IsSummaryVisible();
 	if (bWantSummary && !SummaryWidget.IsValid())
@@ -944,10 +1259,13 @@ void AAirsoftPlayerController::UpdateMatchAudio()
 // Final-tag replay
 // ---------------------------------------------------------------------------
 
-void AAirsoftPlayerController::StartReplay()
+void AAirsoftPlayerController::StartReplay(const FAirsoftFinalTag& InTag, const FString& Caption)
 {
 	StopReplay();
-	const FAirsoftFinalTag& Tag = Summary.FinalTag;
+	StopTeamCam();
+	ReplayTag = InTag;
+	ReplayCaption = Caption;
+	const FAirsoftFinalTag& Tag = ReplayTag;
 	if (!Tag.bValid || FVector::Dist(Tag.From, Tag.To) < 50.f)
 	{
 		return;
@@ -973,11 +1291,11 @@ void AAirsoftPlayerController::StopReplay()
 {
 	const bool bWasPlaying = ReplayStart >= 0.0;
 	ReplayStart = -1.0;
-	if (ReplayCamera)
+	if (IsValid(ReplayCamera))
 	{
 		ReplayCamera->Destroy();
-		ReplayCamera = nullptr;
 	}
+	ReplayCamera = nullptr;
 	if (bWasPlaying && GetPawn())
 	{
 		SetViewTargetWithBlend(GetPawn(), 0.5f, VTBlend_EaseInOut, 2.f);
@@ -986,11 +1304,12 @@ void AAirsoftPlayerController::StopReplay()
 
 void AAirsoftPlayerController::UpdateReplay(float DeltaTime)
 {
+	using namespace AirsoftPCLocal;
 	if (ReplayStart < 0.0 || !ReplayCamera)
 	{
 		return;
 	}
-	const FAirsoftFinalTag& Tag = Summary.FinalTag;
+	const FAirsoftFinalTag& Tag = ReplayTag;
 	const double T = GetWorld()->GetRealTimeSeconds() - ReplayStart;
 	const FVector Dir = (Tag.To - Tag.From).GetSafeNormal();
 	const FVector Side = FVector::CrossProduct(FVector::UpVector, Dir).GetSafeNormal();
@@ -1019,6 +1338,10 @@ void AAirsoftPlayerController::UpdateReplay(float DeltaTime)
 		bReplayHitPlayed = true;
 		AirsoftAssets::Play2D(this, TEXT("ReplayImpact"), 0.9f, 1.f);
 		AirsoftAssets::Play2D(this, TEXT("HitCall"), 0.7f, 0.9f);
+		if (UAirsoftEffectsSubsystem* FX = UAirsoftEffectsSubsystem::Get(this))
+		{
+			FX->TagPopAt(Tag.To);
+		}
 	}
 
 	FVector CamLoc;
@@ -1112,6 +1435,10 @@ void AAirsoftPlayerController::ServerSetProfile_Implementation(const FString& In
 	}
 	PS->CareerXP = FMath::Clamp(InCareerXP, 0, 50000000);
 	ApplyLoadout(InLoadout);
+	if (AAirsoftGameMode* AirsoftGM = GetWorld()->GetAuthGameMode<AAirsoftGameMode>())
+	{
+		AirsoftGM->OnPlayerProfileReady(this); // "<call sign> joined", once per session
+	}
 }
 
 void AAirsoftPlayerController::ServerSetLoadout_Implementation(const FAirsoftLoadout& InLoadout)
@@ -1126,12 +1453,44 @@ void AAirsoftPlayerController::ServerVote_Implementation(int32 ModeIndex, int32 
 	{
 		return;
 	}
-	PS->ModeVote = FMath::Clamp(ModeIndex, -1, 1);
-	PS->MapVote = FMath::Clamp(MapIndex, -1, AAirsoftGameState::MapIds().Num() - 1);
+	const int32 NewMode = FMath::Clamp(ModeIndex, -1, AirsoftRules::NumModes - 1);
+	const int32 NewMap = FMath::Clamp(MapIndex, -1, AirsoftRules::NumMaps() - 1);
+	const bool bChanged = NewMode != PS->ModeVote || NewMap != PS->MapVote;
+	PS->ModeVote = NewMode;
+	PS->MapVote = NewMap;
 	if (AAirsoftGameMode* GM = GetWorld()->GetAuthGameMode<AAirsoftGameMode>())
 	{
-		GM->OnVotesChanged();
+		GM->OnVotesChanged(bChanged ? this : nullptr);
 	}
+}
+
+void AAirsoftPlayerController::ServerSendChat_Implementation(const FString& Text, bool bTeam)
+{
+	AAirsoftPlayerState* PS = GetAirsoftPlayerState();
+	AAirsoftGameMode* GM = GetWorld() ? GetWorld()->GetAuthGameMode<AAirsoftGameMode>() : nullptr;
+	if (!PS || !GM)
+	{
+		return;
+	}
+	const UAirsoftSettings* S = UAirsoftSettings::Get();
+	const FString Clean = AirsoftPCLocal::CleanChat(Text, S->ChatMaxLength);
+	if (Clean.IsEmpty())
+	{
+		return;
+	}
+	// Token bucket: a short burst, then one message per refill period.
+	const double Now = FPlatformTime::Seconds();
+	const float Burst = static_cast<float>(FMath::Max(S->ChatBurst, 1));
+	const double Refill = FMath::Max(static_cast<double>(S->ChatRefillSeconds), 0.1);
+	ChatTokens = FMath::Min(Burst, ChatTokens + static_cast<float>((Now - ChatTokensAt) / Refill));
+	ChatTokensAt = Now;
+	if (ChatTokens < 1.f)
+	{
+		ClientReceiveChat(FString(), EAirsoftTeam::None, TEXT("Easy - you're sending messages too fast."), EAirsoftChatKind::System);
+		return;
+	}
+	ChatTokens -= 1.f;
+	GM->BroadcastChat(PS, Clean, bTeam);
 }
 
 void AAirsoftPlayerController::ServerForceStart_Implementation()
@@ -1190,12 +1549,14 @@ void AAirsoftPlayerController::ClientXP_Implementation(int32 Amount, const FStri
 	XPPopups.Add(Popup);
 }
 
-void AAirsoftPlayerController::ClientMatchEnded_Implementation(EAirsoftTeam Winner, const TArray<FAirsoftSummaryRow>& Rows, const FAirsoftFinalTag& FinalTag, int32 XPEarned, int32 Captures)
+void AAirsoftPlayerController::ClientMatchEnded_Implementation(EAirsoftTeam Winner, const FString& WinnerName, bool bWon, const TArray<FAirsoftSummaryRow>& Rows, const FAirsoftFinalTag& FinalTag, int32 XPEarned, int32 Captures)
 {
 	const AAirsoftPlayerState* PS = GetAirsoftPlayerState();
 	Summary = FAirsoftMatchSummary();
 	Summary.bValid = true;
 	Summary.Winner = Winner;
+	Summary.WinnerName = WinnerName;
+	Summary.bWon = bWon;
 	Summary.MyTeam = PS ? PS->Team : EAirsoftTeam::None;
 	Summary.Rows = Rows;
 	Summary.FinalTag = FinalTag;
@@ -1212,7 +1573,7 @@ void AAirsoftPlayerController::ClientMatchEnded_Implementation(EAirsoftTeam Winn
 			Profile->XP += FMath::Max(XPEarned, 0);
 			Profile->Matches++;
 			Profile->Captures += Captures;
-			if (Winner != EAirsoftTeam::None && Winner == Summary.MyTeam)
+			if (bWon)
 			{
 				Profile->Wins++;
 			}
@@ -1240,7 +1601,23 @@ void AAirsoftPlayerController::ClientMatchEnded_Implementation(EAirsoftTeam Winn
 	{
 		CloseMenus();
 	}
-	StartReplay();
+	StartReplay(FinalTag, TEXT("FINAL TAG"));
+}
+
+void AAirsoftPlayerController::ClientRoundEnded_Implementation(EAirsoftTeam RoundWinner, const FString& Reason, const FAirsoftFinalTag& FinalTag)
+{
+	const AAirsoftGameState* GS = GetAirsoftGameState();
+	const int32 Round = GS ? GS->RoundNumber : 0;
+	if (AAirsoftCharacter* C = GetAirsoftCharacter())
+	{
+		C->GetCombat()->CancelActions();
+	}
+	// The armory may stay open: the next round's freeze is the time to change loadout.
+	const FString Title = RoundWinner == EAirsoftTeam::None ? FString(TEXT("ROUND DRAWN"))
+		: FString::Printf(TEXT("%s TAKES ROUND %d"), *AirsoftColors::TeamName(RoundWinner).ToUpper(), Round);
+	const float Hold = FMath::Max(UAirsoftSettings::Get()->RoundOverTime - 0.5f, 2.f);
+	Announce(Title, Reason.IsEmpty() ? FString() : Reason.Left(1).ToUpper() + Reason.Mid(1), AirsoftColors::Team(RoundWinner), Hold);
+	StartReplay(FinalTag, FString::Printf(TEXT("ROUND %d  ·  FINAL TAG"), Round));
 }
 
 void AAirsoftPlayerController::ClientResetForNewRound_Implementation()
@@ -1250,5 +1627,27 @@ void AAirsoftPlayerController::ClientResetForNewRound_Implementation()
 	KillFeed.Reset();
 	XPPopups.Reset();
 	StopReplay();
+	StopTeamCam();
+	OutSince = -1.0;
 	HideWidget(SummaryWidget);
+}
+
+void AAirsoftPlayerController::ClientReceiveChat_Implementation(const FString& Sender, EAirsoftTeam SenderTeam, const FString& Text, EAirsoftChatKind Kind)
+{
+	FAirsoftChatEntry Entry;
+	Entry.Sender = Sender;
+	Entry.SenderTeam = SenderTeam;
+	Entry.Text = Text;
+	Entry.Kind = Kind;
+	Entry.Time = GetWorld() ? GetWorld()->GetRealTimeSeconds() : 0.0;
+	ChatLog.Add(Entry);
+	while (ChatLog.Num() > AirsoftPCLocal::MaxChatLines)
+	{
+		ChatLog.RemoveAt(0);
+	}
+	const AAirsoftPlayerState* PS = GetAirsoftPlayerState();
+	if (Kind != EAirsoftChatKind::System && !(PS && PS->GetPlayerName() == Sender))
+	{
+		AirsoftAssets::Play2D(this, TEXT("UIClick"), 0.25f, 1.45f);
+	}
 }

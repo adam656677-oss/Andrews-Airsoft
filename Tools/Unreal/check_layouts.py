@@ -14,6 +14,10 @@ Checks:
     no enemy-spawn -> spawn sight lines, spawn exposure and cover-spacing stats, bot nav bounds cover
     the playable area, every start and every objective
   * staging: >= 16 neutral starts, 14 armory displays (one per weapon), practice targets at 10/25/40/60 m
+  * multi-storey match maps (map key "levels"): the same match rules on a 3D walk graph instead of the flat
+    grid - walkable surfaces per 0.5 m cell (decks, ramps, stair treads), capsule headroom, 0.45 m steps,
+    one-way drops <= 4 m through clear air only, sight lines tested against yaw/pitch-oriented boxes and the
+    JSON "Layout" hints (Los / Cover / Solid / Ramp); one plan row per level
 Exit code 1 when any error is found.
 """
 
@@ -817,6 +821,18 @@ def analyse_levels(L, m, assets, materials, errors, warns, info, plans=True):
     def near_h(c, h):
         return any(abs(h2 - h) <= STEP for h2 in nodes.get(c, ()))
 
+    def column_clear(c, z0, z1):
+        """Nothing solid between z0 and z1 above cell c (a player can fall through it)."""
+        x, y = bx0 + (c[0] + 0.5) * cell, by0 + (c[1] + 0.5) * cell
+        for i in midx.near(x, y, 1.2):
+            v = move[i]
+            if v["z1"] <= z0 or v["z0"] >= z1:
+                continue
+            sp = vol_span_at(v, x, y, 0.2)
+            if sp and sp[1] > z0 and sp[0] < z1:
+                return False
+        return True
+
     adj = {}
     for (i, j), hs in nodes.items():
         for k, h in enumerate(hs):
@@ -828,7 +844,7 @@ def analyse_levels(L, m, assets, materials, errors, warns, info, plans=True):
                     continue
                 for k2, h2 in enumerate(hs2):
                     dh = h2 - h
-                    if abs(dh) <= STEP or -MAX_DROP <= dh < -STEP:
+                    if abs(dh) <= STEP or (-MAX_DROP <= dh < -STEP and column_clear(c2, h2 + STEP + 0.01, h + CAPSULE_H)):
                         if di and dj and not (near_h((i + di, j), h) or near_h((i + di, j), h2)) or \
                                 di and dj and not (near_h((i, j + dj), h) or near_h((i, j + dj), h2)):
                             continue
@@ -1064,8 +1080,8 @@ def render_levels(L, m, levels, vols, surfs, nodes, cell, exposure, cover_dist, 
                 continue
             if not (v["z0"] < lz + 2.0 and v["z1"] > lz + L.STEP_HEIGHT and v["z0"] > lz - 0.6):
                 continue
-            if v["kind"] == "box" and v["z1"] - v["z0"] < 0.05:
-                continue
+            if v["kind"] == "box" and (v["pitch"] or v["z1"] - v["z0"] <= 0.35):
+                continue                  # slabs, steps, landings, kerbs, stair soffits: shown by the walkable cells
             if not v["solid"]:
                 ax.add_patch(Polygon(rect(v), closed=True, fill=False, ec="#9c8f6a", lw=0.5))
                 continue

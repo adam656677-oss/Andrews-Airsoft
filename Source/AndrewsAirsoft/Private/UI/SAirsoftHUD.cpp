@@ -1,13 +1,14 @@
 // Andrew's Airsoft - HUD layout: timer/scores/objectives, kill feed, weapon
-// panel, announcements, tagged overlay, prompts and the staging vote panel.
-// Text is STextBlocks bound to lambdas so everything updates live; shapes are
-// painted by SAirsoftHUDCanvas underneath.
+// panel, announcements, tagged overlay / team camera, prompts, chat box and
+// the staging vote panel. Text is STextBlocks bound to lambdas so everything
+// updates live; shapes are painted by SAirsoftHUDCanvas underneath.
 
 #include "SAirsoftHUD.h"
 
 #include "AirsoftCharacter.h"
 #include "AirsoftCombatComponent.h"
 #include "AirsoftGameState.h"
+#include "AirsoftModeRules.h"
 #include "AirsoftObjective.h"
 #include "AirsoftPlayerController.h"
 #include "AirsoftPlayerState.h"
@@ -60,6 +61,25 @@ namespace AirsoftHUDLocal
 				Content
 			];
 	}
+
+	/** Index of the most votes (lowest index on a tie, so the highlight doesn't flicker), or INDEX_NONE when nobody voted. */
+	int32 LeadingVote(const TArray<int32>& Votes)
+	{
+		int32 Best = INDEX_NONE;
+		for (int32 i = 0; i < Votes.Num(); ++i)
+		{
+			if (Votes[i] > 0 && (Best == INDEX_NONE || Votes[i] > Votes[Best]))
+			{
+				Best = i;
+			}
+		}
+		return Best;
+	}
+
+	FString WeaponLabel(FName WeaponId)
+	{
+		return AUI::WeaponName(WeaponId).ToUpper();
+	}
 }
 
 using AirsoftHUDLocal::HudVis;
@@ -105,10 +125,17 @@ void SAirsoftHUD::Construct(const FArguments& InArgs, AAirsoftPlayerController* 
 		]
 		+ SOverlay::Slot()
 		.HAlign(HAlign_Left)
-		.VAlign(VAlign_Center)
-		.Padding(FMargin(32.f, 0.f, 0.f, 0.f))
+		.VAlign(VAlign_Top)
+		.Padding(FMargin(32.f, 110.f, 0.f, 0.f))
 		[
 			BuildVotePanel()
+		]
+		+ SOverlay::Slot()
+		.HAlign(HAlign_Left)
+		.VAlign(VAlign_Bottom)
+		.Padding(FMargin(32.f, 0.f, 0.f, 200.f))
+		[
+			AirsoftUIScreens::CreateChatBox(InPC)
 		]
 		+ SOverlay::Slot()
 		.HAlign(HAlign_Center)
@@ -177,7 +204,7 @@ TSharedRef<SWidget> SAirsoftHUD::BuildTeamScore(uint8 TeamValue)
 		.Visibility_Lambda([this]() -> EVisibility
 		{
 			const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
-			return HudVis(GS && GS->bIsMatchMap);
+			return HudVis(GS && GS->bIsMatchMap && !GS->IsFreeForAll());
 		})
 		[
 			SNew(SBorder)
@@ -200,6 +227,7 @@ TSharedRef<SWidget> SAirsoftHUD::BuildTeamScore(uint8 TeamValue)
 					.ColorAndOpacity(FLinearColor::White)
 					.Text_Lambda([this, Team]()
 					{
+						// Tags, points or round wins, depending on the mode.
 						const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
 						return FText::AsNumber(GS ? GS->GetScore(Team) : 0);
 					})
@@ -207,20 +235,171 @@ TSharedRef<SWidget> SAirsoftHUD::BuildTeamScore(uint8 TeamValue)
 				+ SVerticalBox::Slot()
 				.AutoHeight()
 				.HAlign(HAlign_Center)
-				.Padding(FMargin(0.f, 0.f, 0.f, 7.f))
+				.Padding(FMargin(0.f, 0.f, 0.f, 2.f))
 				[
 					SNew(STextBlock)
 					.Font(AUI::Caption(8))
 					.ColorAndOpacity(Col)
 					.Text_Lambda([this, Team, TeamLabel]()
 					{
+						const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
 						const AAirsoftPlayerState* PS = AUI::GetPlayerState(WeakPC.Get());
-						const bool bMine = PS && PS->Team == Team;
-						return FText::FromString(bMine ? TeamLabel + TEXT(" \u00B7 YOU") : TeamLabel);
+						FString Label = PS && PS->Team == Team ? TeamLabel + TEXT(" \u00B7 YOU") : TeamLabel;
+						if (GS && GS->Mode == EAirsoftMode::VIP && GS->AttackingTeam != EAirsoftTeam::None)
+						{
+							Label += GS->AttackingTeam == Team ? TEXT(" \u00B7 ATK") : TEXT(" \u00B7 DEF");
+						}
+						return FText::FromString(Label);
+					})
+				]
+				// Players still standing this round (one-life modes).
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.HAlign(HAlign_Center)
+				.Padding(FMargin(0.f, 0.f, 0.f, 6.f))
+				[
+					SNew(STextBlock)
+					.Font(AUI::Font(AUI::EFontWeight::Bold, 9, 160))
+					.ColorAndOpacity(AUI::TextColor())
+					.Visibility_Lambda([this]() -> EVisibility
+					{
+						const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
+						return HudVis(GS && GS->IsRoundBased() && (GS->Phase == EAirsoftPhase::Live || GS->Phase == EAirsoftPhase::PostRound));
+					})
+					.Text_Lambda([this, Team]()
+					{
+						const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
+						return FText::FromString(FString::Printf(TEXT("%d STANDING"), GS ? GS->GetAlive(Team) : 0));
 					})
 				]
 			]
 		];
+}
+
+TSharedRef<SWidget> SAirsoftHUD::BuildFreeForAllBox(bool bLeader)
+{
+	return SNew(SBox)
+		.WidthOverride(150.f)
+		.Visibility_Lambda([this]() -> EVisibility
+		{
+			const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
+			return HudVis(GS && GS->IsFreeForAll());
+		})
+		[
+			SNew(SBorder)
+			.BorderImage(AUI::PanelBrush())
+			.Padding(FMargin(0.f))
+			[
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				[
+					AirsoftUIWidgets::Rule(AUI::Accent(), 2.f)
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.HAlign(HAlign_Center)
+				.Padding(FMargin(0.f, 3.f, 0.f, 0.f))
+				[
+					SNew(STextBlock)
+					.Font(AUI::Font(AUI::EFontWeight::Bold, 26))
+					.ColorAndOpacity(FLinearColor::White)
+					.Text_Lambda([this, bLeader]()
+					{
+						const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
+						const AAirsoftPlayerState* PS = bLeader ? (GS ? GS->GetGunGameLeader() : nullptr) : AUI::GetPlayerState(WeakPC.Get());
+						return FText::FromString(FString::Printf(TEXT("%d/%d"), PS ? PS->GunLevel + 1 : 0, GS ? GS->ScoreLimit : 0));
+					})
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.HAlign(HAlign_Center)
+				.Padding(FMargin(6.f, 0.f, 6.f, 7.f))
+				[
+					SNew(STextBlock)
+					.Font(AUI::Caption(8))
+					.ColorAndOpacity(AUI::Accent())
+					.Text_Lambda([this, bLeader]()
+					{
+						if (!bLeader)
+						{
+							return FText::FromString(TEXT("YOUR LEVEL"));
+						}
+						const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
+						const AAirsoftPlayerState* Leader = GS ? GS->GetGunGameLeader() : nullptr;
+						return Leader ? AUI::Upper(Leader->GetPlayerName().Left(14)) : FText::FromString(TEXT("LEADER"));
+					})
+				]
+			]
+		];
+}
+
+FText SAirsoftHUD::PhaseCaption() const
+{
+	const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
+	if (!GS)
+	{
+		return FText::FromString(TEXT("CONNECTING"));
+	}
+	switch (GS->Phase)
+	{
+	case EAirsoftPhase::Waiting: return FText::FromString(GS->bIsMatchMap ? TEXT("STANDBY") : TEXT("WAITING FOR PLAYERS"));
+	case EAirsoftPhase::Intermission: return FText::FromString(TEXT("NEXT MATCH IN"));
+	case EAirsoftPhase::Briefing:
+		return GS->IsRoundBased() ? FText::FromString(FString::Printf(TEXT("ROUND %d \u00B7 FREEZE"), GS->RoundNumber)) : FText::FromString(TEXT("BRIEFING"));
+	case EAirsoftPhase::Live:
+		if (!GS->bIsMatchMap)
+		{
+			return FText::FromString(TEXT("STAGING"));
+		}
+		switch (GS->Mode)
+		{
+		case EAirsoftMode::Elimination: return FText::FromString(FString::Printf(TEXT("ROUND %d \u00B7 FIRST TO %d"), GS->RoundNumber, GS->ScoreLimit));
+		case EAirsoftMode::VIP: return FText::FromString(FString::Printf(TEXT("ROUND %d / %d"), GS->RoundNumber, GS->MaxRounds));
+		case EAirsoftMode::GunGame: return FText::FromString(FString::Printf(TEXT("%d GUNS TO CLIMB"), GS->ScoreLimit));
+		default: return FText::FromString(FString::Printf(TEXT("FIRST TO %d"), GS->ScoreLimit));
+		}
+	case EAirsoftPhase::PostRound:
+		return FText::FromString(GS->bMatchOver ? TEXT("MATCH OVER") : TEXT("ROUND OVER"));
+	}
+	return FText::GetEmpty();
+}
+
+FString SAirsoftHUD::ModeLine() const
+{
+	const AAirsoftPlayerController* PC = WeakPC.Get();
+	const AAirsoftGameState* GS = AUI::GetGameState(PC);
+	const AAirsoftPlayerState* PS = AUI::GetPlayerState(PC);
+	if (!GS || !GS->bIsMatchMap || GS->Phase == EAirsoftPhase::Waiting)
+	{
+		return FString();
+	}
+	if (GS->Mode == EAirsoftMode::VIP)
+	{
+		const AAirsoftPlayerState* VIP = GS->VIPPlayer.Get();
+		if (VIP && VIP == PS)
+		{
+			return TEXT("YOU ARE THE VIP \u00B7 PISTOL ONLY \u00B7 GET TO EXTRACT");
+		}
+		const bool bAttack = PS && PS->Team == GS->AttackingTeam;
+		const FString Who = VIP ? VIP->GetPlayerName().ToUpper() : FString(TEXT("NO VIP"));
+		return bAttack ? FString::Printf(TEXT("ESCORT %s TO EXTRACT"), *Who) : FString::Printf(TEXT("STOP %s \u00B7 DEFEND EXTRACT"), *Who);
+	}
+	if (GS->Mode == EAirsoftMode::GunGame && PS)
+	{
+		const TArray<FName> Ladder = AirsoftRules::GunGameLadder();
+		if (Ladder.Num() == 0)
+		{
+			return FString();
+		}
+		const int32 Level = FMath::Clamp(PS->GunLevel, 0, Ladder.Num() - 1);
+		if (Level >= Ladder.Num() - 1)
+		{
+			return TEXT("FINAL WEAPON \u00B7 ONE TAG WINS");
+		}
+		return FString::Printf(TEXT("NEXT GUN: %s"), *AirsoftHUDLocal::WeaponLabel(Ladder[Level + 1]));
+	}
+	return FString();
 }
 
 TSharedRef<SWidget> SAirsoftHUD::BuildTopCenter()
@@ -257,6 +436,11 @@ TSharedRef<SWidget> SAirsoftHUD::BuildTopCenter()
 			.AutoWidth()
 			[
 				BuildTeamScore(static_cast<uint8>(EAirsoftTeam::Blue))
+			]
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			[
+				BuildFreeForAllBox(false)
 			]
 			+ SHorizontalBox::Slot()
 			.AutoWidth()
@@ -311,23 +495,7 @@ TSharedRef<SWidget> SAirsoftHUD::BuildTopCenter()
 							SNew(STextBlock)
 							.Font(AUI::Caption(8))
 							.ColorAndOpacity(AUI::TextDim())
-							.Text_Lambda([this]()
-							{
-								const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
-								if (!GS)
-								{
-									return FText::FromString(TEXT("CONNECTING"));
-								}
-								switch (GS->Phase)
-								{
-								case EAirsoftPhase::Waiting: return FText::FromString(GS->bIsMatchMap ? TEXT("STANDBY") : TEXT("WAITING FOR PLAYERS"));
-								case EAirsoftPhase::Intermission: return FText::FromString(TEXT("NEXT MATCH IN"));
-								case EAirsoftPhase::Briefing: return FText::FromString(TEXT("BRIEFING"));
-								case EAirsoftPhase::Live: return GS->bIsMatchMap ? FText::FromString(FString::Printf(TEXT("FIRST TO %d"), GS->ScoreLimit)) : FText::FromString(TEXT("STAGING"));
-								case EAirsoftPhase::PostRound: return FText::FromString(TEXT("ROUND OVER"));
-								}
-								return FText::GetEmpty();
-							})
+							.Text_Lambda([this]() { return PhaseCaption(); })
 						]
 					]
 				]
@@ -336,6 +504,11 @@ TSharedRef<SWidget> SAirsoftHUD::BuildTopCenter()
 			.AutoWidth()
 			[
 				BuildTeamScore(static_cast<uint8>(EAirsoftTeam::Red))
+			]
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			[
+				BuildFreeForAllBox(true)
 			]
 		]
 		+ SVerticalBox::Slot()
@@ -357,6 +530,29 @@ TSharedRef<SWidget> SAirsoftHUD::BuildTopCenter()
 				}
 				return FText::FromString(FString::Printf(TEXT("%s  \u00B7  %s"),
 					*AAirsoftGameState::ModeDisplayName(GS->Mode).ToUpper(), *AAirsoftGameState::MapDisplayName(GS->MapId).ToUpper()));
+			})
+		]
+		// VIP role / Gun Game next weapon.
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.HAlign(HAlign_Center)
+		.Padding(FMargin(0.f, 4.f, 0.f, 0.f))
+		[
+			SNew(STextBlock)
+			.Font(AUI::Font(AUI::EFontWeight::Bold, 10, 200))
+			.ShadowOffset(FVector2D(1.f, 1.f))
+			.ShadowColorAndOpacity(FLinearColor(0.f, 0.f, 0.f, 0.7f))
+			.Visibility_Lambda([this]() -> EVisibility { return HudVis(!ModeLine().IsEmpty()); })
+			.Text_Lambda([this]() { return FText::FromString(ModeLine()); })
+			.ColorAndOpacity_Lambda([this]() -> FSlateColor
+			{
+				const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
+				const AAirsoftPlayerState* PS = AUI::GetPlayerState(WeakPC.Get());
+				if (GS && GS->Mode == EAirsoftMode::VIP && PS)
+				{
+					return GS->VIPPlayer.Get() == PS ? AUI::Accent() : AUI::TeamColor(PS->Team);
+				}
+				return AUI::Accent();
 			})
 		]
 		+ SVerticalBox::Slot()
@@ -845,7 +1041,11 @@ TSharedRef<SWidget> SAirsoftHUD::BuildAnnouncement()
 TSharedRef<SWidget> SAirsoftHUD::BuildTaggedOverlay()
 {
 	return SNew(SVerticalBox)
-		.Visibility_Lambda([this]() -> EVisibility { return HudVis(!IsHidden() && IsOut()); })
+		.Visibility_Lambda([this]() -> EVisibility
+		{
+			const AAirsoftPlayerController* PC = WeakPC.Get();
+			return HudVis(!IsHidden() && IsOut() && PC && !PC->IsTeamCamActive());
+		})
 		+ SVerticalBox::Slot()
 		.AutoHeight()
 		.HAlign(HAlign_Center)
@@ -936,6 +1136,24 @@ TSharedRef<SWidget> SAirsoftHUD::BuildTaggedOverlay()
 				}
 				return FText::FromString(FString::Printf(TEXT("BACK IN %d"), FMath::CeilToInt(static_cast<float>(Remaining))));
 			})
+		]
+		// One-life modes: no respawn until the next round.
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.HAlign(HAlign_Center)
+		.Padding(FMargin(0.f, 12.f, 0.f, 0.f))
+		[
+			SNew(STextBlock)
+			.Font(AUI::Font(AUI::EFontWeight::Bold, 13, 300))
+			.ColorAndOpacity(AUI::Accent())
+			.ShadowOffset(FVector2D(1.f, 1.f))
+			.ShadowColorAndOpacity(FLinearColor(0.f, 0.f, 0.f, 0.8f))
+			.Visibility_Lambda([this]() -> EVisibility
+			{
+				const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
+				return HudVis(GS && GS->bIsMatchMap && !AirsoftRules::HasRespawns(GS->Mode));
+			})
+			.Text(FText::FromString(TEXT("OUT FOR THE ROUND · WATCHING YOUR TEAM IN A MOMENT")))
 		];
 }
 
@@ -963,9 +1181,63 @@ TSharedRef<SWidget> SAirsoftHUD::BuildBottomCenter()
 			.Padding(FMargin(18.f, 8.f))
 			[
 				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("FROZEN \u2014 BRIEFING")))
+				.Text_Lambda([this]()
+				{
+					const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
+					if (GS && GS->IsRoundBased())
+					{
+						return FText::FromString(FString::Printf(TEXT("ROUND %d \u2014 FROZEN \u00b7 PICK YOUR LOADOUT [L]"), GS->RoundNumber));
+					}
+					if (GS && GS->IsFreeForAll())
+					{
+						return FText::FromString(TEXT("FROZEN \u2014 EVERYONE IS AN ENEMY"));
+					}
+					return FText::FromString(TEXT("FROZEN \u2014 BRIEFING"));
+				})
 				.Font(AUI::Font(AUI::EFontWeight::Bold, 11, 320))
 				.ColorAndOpacity(AUI::TextColor())
+			]
+		]
+		// Team camera: who we are watching and how to switch.
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.HAlign(HAlign_Center)
+		.Padding(FMargin(0.f, 0.f, 0.f, 10.f))
+		[
+			SNew(SBorder)
+			.Visibility_Lambda([this]() -> EVisibility
+			{
+				const AAirsoftPlayerController* PC = WeakPC.Get();
+				return HudVis(PC && PC->IsTeamCamActive());
+			})
+			.BorderImage(AUI::PanelBrush())
+			.Padding(FMargin(16.f, 8.f))
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.VAlign(VAlign_Center)
+				.Padding(FMargin(0.f, 0.f, 12.f, 0.f))
+				[
+					SNew(STextBlock)
+					.Font(AUI::Font(AUI::EFontWeight::Bold, 11, 260))
+					.Text_Lambda([this]()
+					{
+						const AAirsoftPlayerController* PC = WeakPC.Get();
+						return FText::FromString(FString::Printf(TEXT("WATCHING %s"), PC ? *PC->GetTeamCamName().ToUpper() : TEXT("")));
+					})
+					.ColorAndOpacity_Lambda([this]() -> FSlateColor
+					{
+						const AAirsoftPlayerState* PS = AUI::GetPlayerState(WeakPC.Get());
+						return AUI::TeamColor(PS ? PS->Team : EAirsoftTeam::None);
+					})
+				]
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.VAlign(VAlign_Center)
+				[
+					AirsoftUIWidgets::Hint(FText::FromString(TEXT("LMB")), FText::FromString(TEXT("NEXT TEAMMATE")))
+				]
 			]
 		]
 		+ SVerticalBox::Slot()
@@ -1034,25 +1306,34 @@ TSharedRef<SWidget> SAirsoftHUD::BuildBottomCenter()
 // Staging vote panel
 // ---------------------------------------------------------------------------
 
-TSharedRef<SWidget> SAirsoftHUD::BuildVoteRow(const FText& Key, const FText& Label, TFunction<int32()> Count, TFunction<bool()> IsMine)
+
+TSharedRef<SWidget> SAirsoftHUD::BuildVoteRow(const FText& Label, const FText& Detail, TFunction<int32()> Count, TFunction<bool()> IsMine,
+	TFunction<bool()> IsLeading, TFunction<bool()> IsDimmed)
 {
 	return SNew(SBorder)
 		.BorderImage(AUI::RoundedBrush())
-		.BorderBackgroundColor_Lambda([IsMine]() -> FSlateColor
+		.BorderBackgroundColor_Lambda([IsMine, IsLeading]() -> FSlateColor
 		{
-			return IsMine() ? FLinearColor(1.f, 0.55f, 0.05f, 0.16f) : FLinearColor(0.f, 0.f, 0.f, 0.f);
+			if (IsMine())
+			{
+				return FLinearColor(1.f, 0.55f, 0.05f, 0.16f);
+			}
+			return IsLeading() ? FLinearColor(1.f, 1.f, 1.f, 0.06f) : FLinearColor(0.f, 0.f, 0.f, 0.f);
 		})
-		.Padding(FMargin(8.f, 5.f))
+		.Padding(FMargin(0.f, 4.f, 8.f, 4.f))
 		[
 			SNew(SHorizontalBox)
+			// Leading entry: amber edge.
 			+ SHorizontalBox::Slot()
 			.AutoWidth()
-			.VAlign(VAlign_Center)
 			[
 				SNew(SBox)
-				.MinDesiredWidth(30.f)
+				.WidthOverride(2.f)
 				[
-					AirsoftUIWidgets::KeyCap(Key, 8)
+					SNew(SBorder)
+					.BorderImage(AUI::WhiteBrush())
+					.Padding(FMargin(0.f))
+					.BorderBackgroundColor_Lambda([IsLeading]() -> FSlateColor { return IsLeading() ? AUI::Accent() : FLinearColor(0.f, 0.f, 0.f, 0.f); })
 				]
 			]
 			+ SHorizontalBox::Slot()
@@ -1060,10 +1341,34 @@ TSharedRef<SWidget> SAirsoftHUD::BuildVoteRow(const FText& Key, const FText& Lab
 			.VAlign(VAlign_Center)
 			.Padding(FMargin(10.f, 0.f))
 			[
-				SNew(STextBlock)
-				.Text(Label)
-				.Font(AUI::Font(AUI::EFontWeight::Bold, 10, 160))
-				.ColorAndOpacity_Lambda([IsMine]() -> FSlateColor { return IsMine() ? AUI::Accent() : AUI::TextColor(); })
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.VAlign(VAlign_Center)
+				[
+					SNew(STextBlock)
+					.Text(Label)
+					.Font(AUI::Font(AUI::EFontWeight::Bold, 10, 160))
+					.ColorAndOpacity_Lambda([IsMine, IsDimmed]() -> FSlateColor
+					{
+						if (IsMine())
+						{
+							return AUI::Accent();
+						}
+						return IsDimmed() ? AUI::TextMuted() : AUI::TextColor();
+					})
+				]
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.VAlign(VAlign_Center)
+				.Padding(FMargin(8.f, 0.f, 0.f, 0.f))
+				[
+					SNew(STextBlock)
+					.Visibility(Detail.IsEmpty() ? EVisibility::Collapsed : EVisibility::HitTestInvisible)
+					.Text(Detail)
+					.Font(AUI::Caption(7))
+					.ColorAndOpacity(AUI::TextDim())
+				]
 			]
 			+ SHorizontalBox::Slot()
 			.AutoWidth()
@@ -1079,27 +1384,54 @@ TSharedRef<SWidget> SAirsoftHUD::BuildVoteRow(const FText& Key, const FText& Lab
 
 TSharedRef<SWidget> SAirsoftHUD::BuildVotePanel()
 {
+	auto Header = [](const TCHAR* Key, const TCHAR* Label, const TCHAR* Hint) -> TSharedRef<SWidget>
+	{
+		return SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.VAlign(VAlign_Center)
+			[
+				AirsoftUIWidgets::KeyCap(FText::FromString(Key), 8)
+			]
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.VAlign(VAlign_Center)
+			.Padding(FMargin(8.f, 0.f, 0.f, 0.f))
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(Label))
+				.Font(AUI::Caption(8))
+				.ColorAndOpacity(AUI::TextColor())
+			]
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.VAlign(VAlign_Center)
+			.Padding(FMargin(8.f, 0.f, 0.f, 0.f))
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(Hint))
+				.Font(AUI::Caption(7))
+				.ColorAndOpacity(AUI::TextDim())
+			];
+	};
+
 	TSharedRef<SVerticalBox> Rows = SNew(SVerticalBox);
 	Rows->AddSlot()
 	.AutoHeight()
 	.Padding(FMargin(0.f, 0.f, 0.f, 4.f))
 	[
-		SNew(STextBlock)
-		.Text(FText::FromString(TEXT("MODE")))
-		.Font(AUI::Caption(8))
-		.ColorAndOpacity(AUI::TextDim())
+		Header(TEXT("F1"), TEXT("MODE"), TEXT("NEXT MODE"))
 	];
-
-	const EAirsoftMode Modes[2] = { EAirsoftMode::TDM, EAirsoftMode::Domination };
-	for (int32 i = 0; i < 2; ++i)
+	for (int32 i = 0; i < AirsoftRules::NumModes; ++i)
 	{
+		const EAirsoftMode RowMode = AirsoftRules::ModeFromIndex(i);
 		Rows->AddSlot()
 		.AutoHeight()
 		.Padding(FMargin(0.f, 0.f, 0.f, 2.f))
 		[
 			BuildVoteRow(
-				FText::FromString(FString::Printf(TEXT("F%d"), i + 1)),
-				AUI::Upper(AAirsoftGameState::ModeDisplayName(Modes[i])),
+				AUI::Upper(AirsoftRules::ModeName(RowMode)),
+				FText::FromString(AirsoftRules::IsFreeForAll(RowMode) ? TEXT("FFA") : (AirsoftRules::IsRoundBased(RowMode) ? TEXT("ROUNDS") : TEXT(""))),
 				[this, i]() -> int32
 				{
 					const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
@@ -1109,7 +1441,13 @@ TSharedRef<SWidget> SAirsoftHUD::BuildVotePanel()
 				{
 					const AAirsoftPlayerController* PC = WeakPC.Get();
 					return PC && PC->GetMyModeVote() == i;
-				})
+				},
+				[this, i]() -> bool
+				{
+					const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
+					return GS && AirsoftHUDLocal::LeadingVote(GS->ModeVotes) == i;
+				},
+				[]() -> bool { return false; })
 		];
 	}
 
@@ -1117,22 +1455,20 @@ TSharedRef<SWidget> SAirsoftHUD::BuildVotePanel()
 	.AutoHeight()
 	.Padding(FMargin(0.f, 10.f, 0.f, 4.f))
 	[
-		SNew(STextBlock)
-		.Text(FText::FromString(TEXT("MAP")))
-		.Font(AUI::Caption(8))
-		.ColorAndOpacity(AUI::TextDim())
+		Header(TEXT("F2"), TEXT("MAP"), TEXT("NEXT MAP"))
 	];
-
-	const TArray<FName>& Maps = AAirsoftGameState::MapIds();
-	for (int32 i = 0; i < Maps.Num() && i < 2; ++i)
+	const TArray<FAirsoftMapInfo>& Maps = AirsoftRules::Maps();
+	for (int32 i = 0; i < Maps.Num(); ++i)
 	{
+		const FAirsoftMapInfo& Info = Maps[i];
+		const FString Players = FString::Printf(TEXT("%d–%d PLAYERS"), Info.MinPlayers, Info.MaxPlayers);
 		Rows->AddSlot()
 		.AutoHeight()
 		.Padding(FMargin(0.f, 0.f, 0.f, 2.f))
 		[
 			BuildVoteRow(
-				FText::FromString(FString::Printf(TEXT("F%d"), i + 3)),
-				AUI::Upper(AAirsoftGameState::MapDisplayName(Maps[i])),
+				AUI::Upper(AirsoftRules::MapDisplayName(Info.Key)),
+				FText::FromString(Players),
 				[this, i]() -> int32
 				{
 					const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
@@ -1142,12 +1478,24 @@ TSharedRef<SWidget> SAirsoftHUD::BuildVotePanel()
 				{
 					const AAirsoftPlayerController* PC = WeakPC.Get();
 					return PC && PC->GetMyMapVote() == i;
+				},
+				[this, i]() -> bool
+				{
+					const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
+					return GS && AirsoftHUDLocal::LeadingVote(GS->MapVotes) == i;
+				},
+				[this, i]() -> bool
+				{
+					// Dim maps that can't run the mode this player picked.
+					const AAirsoftPlayerController* PC = WeakPC.Get();
+					const TArray<FAirsoftMapInfo>& List = AirsoftRules::Maps();
+					return PC && PC->GetMyModeVote() >= 0 && List.IsValidIndex(i) && !List[i].SupportsMode(AirsoftRules::ModeFromIndex(PC->GetMyModeVote()));
 				})
 		];
 	}
 
 	return SNew(SBox)
-		.WidthOverride(300.f)
+		.WidthOverride(340.f)
 		.Visibility_Lambda([this]() -> EVisibility
 		{
 			const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
@@ -1170,7 +1518,8 @@ TSharedRef<SWidget> SAirsoftHUD::BuildVotePanel()
 				.Padding(FMargin(0.f, 6.f, 0.f, 12.f))
 				[
 					SNew(STextBlock)
-					.Text(FText::FromString(TEXT("Vote with the function keys.")))
+					.AutoWrapText(true)
+					.Text(FText::FromString(TEXT("F1 and F2 step your vote along each list. Or open the menu (Esc / P) and click.")))
 					.Font(AUI::Font(AUI::EFontWeight::Regular, 10))
 					.ColorAndOpacity(AUI::TextDim())
 				]
@@ -1195,6 +1544,15 @@ TSharedRef<SWidget> SAirsoftHUD::BuildVotePanel()
 						}
 						return FText::FromString(TEXT("WAITING FOR PLAYERS"));
 					})
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(FMargin(0.f, 4.f, 0.f, 0.f))
+				[
+					SNew(STextBlock)
+					.Font(AUI::Caption(7))
+					.ColorAndOpacity(AUI::TextDim())
+					.Text(FText::FromString(TEXT("MOST VOTES WINS (TIES AT RANDOM)  ·  ENTER CHAT  ·  Y TEAM")))
 				]
 			]
 		];
