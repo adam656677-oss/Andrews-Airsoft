@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DeveloperSettings.h"
+#include "AirsoftTypes.h"
 #include "AirsoftSettings.generated.h"
 
 class UAnimInstance;
@@ -81,6 +82,38 @@ public:
 
 	UPROPERTY(Config, EditAnywhere, Category = "Rules")
 	bool bFriendlyFire = false;
+
+	/** Bot behaviour per difficulty. The host turns bots on and picks the difficulty in Settings > Host. */
+	UPROPERTY(Config, EditAnywhere, Category = "Bots")
+	FAirsoftBotTuning BotEasy = FAirsoftBotTuning::Preset(EAirsoftBotSkill::Easy);
+
+	UPROPERTY(Config, EditAnywhere, Category = "Bots")
+	FAirsoftBotTuning BotNormal = FAirsoftBotTuning::Preset(EAirsoftBotSkill::Normal);
+
+	UPROPERTY(Config, EditAnywhere, Category = "Bots")
+	FAirsoftBotTuning BotHard = FAirsoftBotTuning::Preset(EAirsoftBotSkill::Hard);
+
+	UPROPERTY(Config, EditAnywhere, Category = "Bots")
+	FAirsoftBotTuning BotExpert = FAirsoftBotTuning::Preset(EAirsoftBotSkill::Expert);
+
+	/** How far bots hear an ordinary shot (cm, before the difficulty's HearingScale). */
+	UPROPERTY(Config, EditAnywhere, Category = "Bots")
+	float BotHearingRange = 4500.f;
+
+	/** How far bots hear a quiet shot (suppressor, MP5 SD, spring sniper). */
+	UPROPERTY(Config, EditAnywhere, Category = "Bots")
+	float BotQuietHearingRange = 1500.f;
+
+	const FAirsoftBotTuning& GetBotTuning(EAirsoftBotSkill Skill) const
+	{
+		switch (Skill)
+		{
+		case EAirsoftBotSkill::Easy: return BotEasy;
+		case EAirsoftBotSkill::Hard: return BotHard;
+		case EAirsoftBotSkill::Expert: return BotExpert;
+		default: return BotNormal;
+		}
+	}
 
 	static const UAirsoftSettings* Get() { return GetDefault<UAirsoftSettings>(); }
 };

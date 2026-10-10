@@ -3,6 +3,7 @@
 #include "AirsoftCharacter.h"
 #include "AirsoftCombatComponent.h"
 #include "GameFramework/Character.h"
+#include "GameFramework/Controller.h"
 
 namespace
 {
@@ -153,7 +154,13 @@ bool UAirsoftMovementComponent::CanSprint() const
 		return false;
 	}
 	// Only sprint forwards (or diagonally forwards).
-	const FVector Wish = Acceleration.GetSafeNormal2D();
+	FVector Wish = Acceleration.GetSafeNormal2D();
+	const AController* OwnerController = CharacterOwner->GetController();
+	if (Wish.IsNearlyZero() && OwnerController && !OwnerController->IsPlayerController())
+	{
+		// Bots: path following requests a velocity instead of adding input acceleration.
+		Wish = Velocity.GetSafeNormal2D();
+	}
 	return !Wish.IsNearlyZero() && FVector::DotProduct(Wish, CharacterOwner->GetActorForwardVector().GetSafeNormal2D()) > 0.5f;
 }
 

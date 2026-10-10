@@ -1,12 +1,15 @@
 #include "AirsoftGameMode.h"
 
+#include "AirsoftBotController.h"
 #include "AirsoftCharacter.h"
 #include "AirsoftCombatComponent.h"
+#include "AirsoftGameInstance.h"
 #include "AirsoftGameState.h"
 #include "AirsoftGrenade.h"
 #include "AirsoftObjective.h"
 #include "AirsoftPlayerController.h"
 #include "AirsoftPlayerState.h"
+#include "AirsoftSaveGame.h"
 #include "AirsoftSettings.h"
 #include "AirsoftTeamStart.h"
 #include "AirsoftWeaponData.h"
@@ -45,6 +48,42 @@ namespace
 	bool IsFrozenPhase(EAirsoftPhase Phase)
 	{
 		return Phase == EAirsoftPhase::Waiting || Phase == EAirsoftPhase::Briefing || Phase == EAirsoftPhase::PostRound;
+	}
+}
+
+namespace AirsoftBotNames
+{
+	/** Original call signs for bots (rain, sodium light and back alleys). */
+	const TArray<FString>& CallSigns()
+	{
+		static const TArray<FString> Names = {
+			TEXT("Sodium"), TEXT("Rainline"), TEXT("Coldwire"), TEXT("Neon Hush"), TEXT("Gutter Halo"),
+			TEXT("Brass Lantern"), TEXT("Low Tide"), TEXT("Kerbside"), TEXT("Dusk Relay"), TEXT("Glasswork"),
+			TEXT("Signal Nine"), TEXT("Overpass"), TEXT("Tin Saint"), TEXT("Velvet Fuse"), TEXT("Ember Docket"),
+			TEXT("Rust Choir"), TEXT("Lamplight"), TEXT("Cinder Grid"), TEXT("Static Bloom"), TEXT("Fogbank"),
+			TEXT("Sable Key"), TEXT("Graveshift"), TEXT("Halogen"), TEXT("Moth Signal"), TEXT("Downpour"),
+			TEXT("Cobalt Nine"), TEXT("Red Ledger"), TEXT("Ash Meridian"), TEXT("Underpass"), TEXT("Quiet Meter"),
+			TEXT("Wet Asphalt"), TEXT("Ninefold")
+		};
+		return Names;
+	}
+
+	/** Primary weapon weights for bot loadouts: open field vs. close quarters (Velvet Club). */
+	struct FPrimaryWeight
+	{
+		const TCHAR* Id;
+		int32 Field;
+		int32 CloseQuarters;
+	};
+
+	const TArray<FPrimaryWeight>& PrimaryWeights()
+	{
+		static const TArray<FPrimaryWeight> Weights = {
+			{ TEXT("M4"), 4, 2 }, { TEXT("AK74"), 4, 2 }, { TEXT("SR25"), 2, 1 }, { TEXT("VSR"), 1, 0 },
+			{ TEXT("M249"), 1, 1 }, { TEXT("MP5"), 2, 3 }, { TEXT("VECTOR"), 2, 3 }, { TEXT("MP7"), 2, 3 },
+			{ TEXT("P90"), 2, 3 }, { TEXT("M870"), 1, 2 }
+		};
+		return Weights;
 	}
 }
 
@@ -141,6 +180,7 @@ void AAirsoftGameMode::PostLogin(APlayerController* NewPlayer)
 {
 	Super::PostLogin(NewPlayer);
 	RecountVotes();
+	bBotsDirty = true; // a bot on the newcomer's team makes room
 }
 
 void AAirsoftGameMode::Logout(AController* Exiting)
@@ -150,8 +190,28 @@ void AAirsoftGameMode::Logout(AController* Exiting)
 		GetWorldTimerManager().ClearTimer(*Handle);
 		RespawnTimers.Remove(Exiting);
 	}
+	if (AAirsoftBotController* Bot = Cast<AAirsoftBotController>(Exiting))
+	{
+		Bots.Remove(Bot);
+	}
+	else if (Cast<APlayerController>(Exiting))
+	{
+		bBotsDirty = true; // a person left: top the bots back up (next tick, not from inside Logout)
+	}
 	Super::Logout(Exiting);
 	RecountVotes();
+}
+
+void AAirsoftGameMode::GetSeamlessTravelActorList(bool bToTransition, TArray<AActor*>& ActorList)
+{
+	Super::GetSeamlessTravelActorList(bToTransition, ActorList);
+	// The base class keeps every PlayerState so people stay on their teams. Bots are rebuilt on every
+	// match map, so their PlayerStates (whose controllers don't travel) must not tag along.
+	ActorList.RemoveAll([](const AActor* Actor)
+	{
+		const APlayerState* PS = Cast<APlayerState>(Actor);
+		return (PS && PS->IsABot()) || Cast<AAirsoftBotController>(Actor) != nullptr;
+	});
 }
 
 void AAirsoftGameMode::HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer)
@@ -303,6 +363,8 @@ EAirsoftTeam AAirsoftGameMode::SmallerTeam() const
 {
 	int32 Blue = 0;
 	int32 Red = 0;
+	int32 BlueHumans = 0;
+	int32 RedHumans = 0;
 	if (const AAirsoftGameState* GS = GetAirsoftGameState())
 	{
 		for (APlayerState* P : GS->PlayerArray)
@@ -311,8 +373,18 @@ EAirsoftTeam AAirsoftGameMode::SmallerTeam() const
 			{
 				Blue += PS->Team == EAirsoftTeam::Blue ? 1 : 0;
 				Red += PS->Team == EAirsoftTeam::Red ? 1 : 0;
+				if (!PS->IsABot())
+				{
+					BlueHumans += PS->Team == EAirsoftTeam::Blue ? 1 : 0;
+					RedHumans += PS->Team == EAirsoftTeam::Red ? 1 : 0;
+				}
 			}
 		}
+	}
+	// People are spread evenly first (bots fill in around them), then by head count.
+	if (BlueHumans != RedHumans)
+	{
+		return BlueHumans < RedHumans ? EAirsoftTeam::Blue : EAirsoftTeam::Red;
 	}
 	if (Blue != Red)
 	{
@@ -343,6 +415,10 @@ void AAirsoftGameMode::BalanceTeams()
 	{
 		if (AAirsoftPlayerState* PS = Cast<AAirsoftPlayerState>(P))
 		{
+			if (PS->IsABot())
+			{
+				continue; // only people are balanced; UpdateBots refills the bots around them
+			}
 			if (PS->Team == EAirsoftTeam::None)
 			{
 				PS->Team = Blue.Num() <= Red.Num() ? EAirsoftTeam::Blue : EAirsoftTeam::Red;
@@ -449,7 +525,13 @@ void AAirsoftGameMode::ForceStart(AAirsoftPlayerController* Requester)
 	}
 	bForceStarted = true;
 	SetPhase(EAirsoftPhase::Intermission, 5.f);
-	AnnounceAll(TEXT("HOST IS STARTING"), TEXT("Deploying in 5 seconds"), AirsoftColors::Accent(), 3.f);
+	// Practising alone with bots off would be an empty field: point at the switch.
+	int32 BotTeamSize = 0;
+	EAirsoftBotSkill BotSkill = EAirsoftBotSkill::Normal;
+	GetBotSettings(BotTeamSize, BotSkill);
+	const bool bAloneWithoutBots = BotTeamSize == 0 && CountPlayers() <= 1;
+	AnnounceAll(TEXT("HOST IS STARTING"), bAloneWithoutBots ? TEXT("Deploying in 5 seconds  ·  bots are off (Menu > Bots)") : TEXT("Deploying in 5 seconds"),
+		AirsoftColors::Accent(), 3.f);
 }
 
 // ---------------------------------------------------------------------------
@@ -487,8 +569,13 @@ void AAirsoftGameMode::TickStaging(float DeltaSeconds)
 {
 	AAirsoftGameState* GS = GetAirsoftGameState();
 	const UAirsoftSettings* S = UAirsoftSettings::Get();
+	// People only: bots never count toward starting the vote (and only exist on match maps).
 	const int32 Players = CountPlayers();
 	RecountVotes();
+	if (Bots.Num() > 0)
+	{
+		RemoveAllBots();
+	}
 
 	if (GS->Phase == EAirsoftPhase::Waiting)
 	{
@@ -550,6 +637,17 @@ void AAirsoftGameMode::TravelToMatch()
 void AAirsoftGameMode::TickMatch(float DeltaSeconds)
 {
 	AAirsoftGameState* GS = GetAirsoftGameState();
+	if (GS->Phase == EAirsoftPhase::Briefing || GS->Phase == EAirsoftPhase::Live)
+	{
+		// Keep the bot count right as people join, leave or the host changes the setting.
+		BotClock += DeltaSeconds;
+		if (bBotsDirty || BotClock >= 1.f)
+		{
+			BotClock = 0.f;
+			bBotsDirty = false;
+			UpdateBots();
+		}
+	}
 	switch (GS->Phase)
 	{
 	case EAirsoftPhase::Waiting:
@@ -625,6 +723,19 @@ void AAirsoftGameMode::BeginBriefing()
 			FString::Printf(TEXT("%s  ·  You're on %s  ·  %s"), *AAirsoftGameState::MapDisplayName(GS->MapId), *AirsoftColors::TeamName(PS->Team), *AAirsoftGameState::ModeBlurb(GS->Mode)),
 			AirsoftColors::Team(PS->Team), S->BriefingTime);
 	}
+	// Bots already here start over too; then fill both sides up around the people (new bots spawn frozen).
+	const TArray<TObjectPtr<AAirsoftBotController>> ExistingBots = Bots;
+	for (AAirsoftBotController* Bot : ExistingBots)
+	{
+		if (AAirsoftPlayerState* BotPS = IsValid(Bot) ? Bot->GetPlayerState<AAirsoftPlayerState>() : nullptr)
+		{
+			BotPS->ResetRound();
+			Respawn(Bot);
+		}
+	}
+	bBotsDirty = false;
+	BotClock = 0.f;
+	UpdateBots();
 	FreezeAll(true);
 }
 
@@ -747,6 +858,7 @@ void AAirsoftGameMode::EndRound(EAirsoftTeam Winner)
 			Row.Name = PS->GetPlayerName();
 			Row.Team = PS->Team;
 			Row.Stats = PS->Round;
+			Row.bBot = PS->IsABot();
 			Rows.Add(Row);
 		}
 	}
@@ -776,6 +888,8 @@ void AAirsoftGameMode::ReturnToStaging()
 		}
 	}
 	GS->StatusMessage = TEXT("Returning to staging...");
+	// Bots are server-only and made fresh on each match map: never carry them (or their PlayerStates) over.
+	RemoveAllBots();
 	GetWorld()->ServerTravel(UAirsoftSettings::Get()->StagingMap, false, false);
 }
 
@@ -921,6 +1035,284 @@ void AAirsoftGameMode::GiveXP(AController* Controller, int32 Amount, const FStri
 	{
 		PC->ClientXP(Amount, Reason);
 	}
+}
+
+// ---------------------------------------------------------------------------
+// Bots
+// ---------------------------------------------------------------------------
+
+void AAirsoftGameMode::NotifyShotFired(AAirsoftCharacter* Shooter, const FVector& Origin, const FVector& Direction, bool bQuiet)
+{
+	for (AAirsoftBotController* Bot : Bots)
+	{
+		if (IsValid(Bot))
+		{
+			Bot->HearShot(Shooter, Origin, Direction, bQuiet);
+		}
+	}
+}
+
+void AAirsoftGameMode::GetBotSettings(int32& OutTeamSize, EAirsoftBotSkill& OutSkill) const
+{
+	// Listen server: the host's own saved settings decide (clients' settings never reach here).
+	OutTeamSize = 0;
+	OutSkill = EAirsoftBotSkill::Normal;
+	if (UAirsoftGameInstance* GI = GetGameInstance<UAirsoftGameInstance>())
+	{
+		const FAirsoftUserSettings& Settings = GI->GetUserSettings();
+		OutTeamSize = AirsoftBots::TeamSize(Settings.BotFill);
+		OutSkill = AirsoftBots::SkillFromIndex(Settings.BotSkill);
+	}
+}
+
+void AAirsoftGameMode::UpdateBots()
+{
+	AAirsoftGameState* GS = GetAirsoftGameState();
+	if (!GS || bTravelling)
+	{
+		return;
+	}
+	Bots.RemoveAll([](const TObjectPtr<AAirsoftBotController>& Bot) { return !IsValid(Bot); });
+	int32 TeamSize = 0;
+	EAirsoftBotSkill Skill = EAirsoftBotSkill::Normal;
+	GetBotSettings(TeamSize, Skill);
+	if (!GS->bIsMatchMap)
+	{
+		TeamSize = 0;
+	}
+
+	// People per side, and the bots we already have per side.
+	int32 Humans[2] = { 0, 0 };
+	TArray<AAirsoftBotController*> TeamBots[2];
+	for (APlayerState* P : GS->PlayerArray)
+	{
+		const AAirsoftPlayerState* PS = Cast<AAirsoftPlayerState>(P);
+		if (!IsValid(PS) || PS->IsABot() || PS->IsInactive())
+		{
+			continue;
+		}
+		Humans[0] += PS->Team == EAirsoftTeam::Blue ? 1 : 0;
+		Humans[1] += PS->Team == EAirsoftTeam::Red ? 1 : 0;
+	}
+	for (AAirsoftBotController* Bot : Bots)
+	{
+		const AAirsoftPlayerState* BotPS = Bot->GetPlayerState<AAirsoftPlayerState>();
+		TeamBots[(BotPS && BotPS->Team == EAirsoftTeam::Red) ? 1 : 0].Add(Bot);
+	}
+
+	// Both sides end up with max(fill size, people on the bigger side): even teams, bots make up the gap.
+	const int32 Side = TeamSize > 0 ? FMath::Max3(TeamSize, Humans[0], Humans[1]) : 0;
+	for (int32 Index = 0; Index < 2; ++Index)
+	{
+		const EAirsoftTeam Team = Index == 0 ? EAirsoftTeam::Blue : EAirsoftTeam::Red;
+		const int32 Want = FMath::Max(0, Side - Humans[Index]);
+		TArray<AAirsoftBotController*>& Have = TeamBots[Index];
+		while (Have.Num() > Want)
+		{
+			// Remove a tagged-out (or pawnless) bot first so nobody vanishes mid-fight.
+			int32 Pick = Have.Num() - 1;
+			for (int32 i = 0; i < Have.Num(); ++i)
+			{
+				const AAirsoftCharacter* C = Cast<AAirsoftCharacter>(Have[i]->GetPawn());
+				if (!C || C->IsOut())
+				{
+					Pick = i;
+					break;
+				}
+			}
+			AAirsoftBotController* Leaving = Have[Pick];
+			Have.RemoveAt(Pick);
+			RemoveBot(Leaving);
+		}
+		while (Have.Num() < Want)
+		{
+			AAirsoftBotController* Added = AddBot(Team, Skill);
+			if (!Added)
+			{
+				break;
+			}
+			Have.Add(Added);
+		}
+	}
+
+	// Difficulty changes apply straight away; keep call signs clear of people's names.
+	TSet<FString> HumanNames;
+	for (APlayerState* P : GS->PlayerArray)
+	{
+		if (IsValid(P) && !P->IsABot())
+		{
+			HumanNames.Add(P->GetPlayerName().ToLower());
+		}
+	}
+	for (AAirsoftBotController* Bot : Bots)
+	{
+		if (!IsValid(Bot))
+		{
+			continue;
+		}
+		Bot->SetSkill(Skill);
+		APlayerState* BotPS = Bot->GetPlayerState<APlayerState>();
+		if (BotPS && HumanNames.Contains(BotPS->GetPlayerName().ToLower()))
+		{
+			BotPS->SetPlayerName(MakeBotName());
+		}
+	}
+}
+
+AAirsoftBotController* AAirsoftGameMode::AddBot(EAirsoftTeam Team, EAirsoftBotSkill Skill)
+{
+	UWorld* World = GetWorld();
+	const AAirsoftGameState* GS = GetAirsoftGameState();
+	if (!World || !GS || Team == EAirsoftTeam::None)
+	{
+		return nullptr;
+	}
+	FActorSpawnParameters Params;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	Params.ObjectFlags |= RF_Transient; // never saved into a map
+	AAirsoftBotController* Bot = World->SpawnActor<AAirsoftBotController>(AAirsoftBotController::StaticClass(), FVector::ZeroVector, FRotator::ZeroRotator, Params);
+	if (!Bot)
+	{
+		return nullptr;
+	}
+	AAirsoftPlayerState* PS = Bot->GetPlayerState<AAirsoftPlayerState>();
+	if (!PS)
+	{
+		Bot->Destroy();
+		return nullptr;
+	}
+	// IsABot() is already true: APlayerState flags itself as a bot when its owner isn't a PlayerController.
+	PS->SetPlayerName(MakeBotName());
+	PS->Team = Team;
+	PS->Loadout = MakeBotLoadout();
+	PS->bLoadoutReceived = true;
+	PS->CareerXP = 0;
+	Bot->SetSkill(Skill);
+	Bots.Add(Bot);
+	if (GS->bIsMatchMap && (GS->Phase == EAirsoftPhase::Briefing || GS->Phase == EAirsoftPhase::Live))
+	{
+		RestartPlayer(Bot); // SetPlayerDefaults hands out the loadout, spawn protection and the freeze
+	}
+	return Bot;
+}
+
+void AAirsoftGameMode::RemoveBot(AAirsoftBotController* Bot)
+{
+	if (!IsValid(Bot))
+	{
+		return;
+	}
+	Bots.Remove(Bot);
+	if (APawn* BotPawn = Bot->GetPawn())
+	{
+		Bot->UnPossess();
+		BotPawn->Destroy();
+	}
+	// AController::Destroyed logs the bot out (clears its respawn timer) and destroys its PlayerState.
+	Bot->Destroy();
+}
+
+void AAirsoftGameMode::RemoveAllBots()
+{
+	const TArray<TObjectPtr<AAirsoftBotController>> Leaving = Bots;
+	for (AAirsoftBotController* Bot : Leaving)
+	{
+		RemoveBot(Bot);
+	}
+	Bots.Reset();
+}
+
+FString AAirsoftGameMode::MakeBotName() const
+{
+	TSet<FString> Taken;
+	if (const AAirsoftGameState* GS = GetAirsoftGameState())
+	{
+		for (APlayerState* P : GS->PlayerArray)
+		{
+			if (IsValid(P))
+			{
+				Taken.Add(P->GetPlayerName().ToLower());
+			}
+		}
+	}
+	const TArray<FString>& Names = AirsoftBotNames::CallSigns();
+	const int32 First = FMath::RandRange(0, Names.Num() - 1);
+	for (int32 i = 0; i < Names.Num(); ++i)
+	{
+		const FString& Name = Names[(First + i) % Names.Num()];
+		if (!Taken.Contains(Name.ToLower()))
+		{
+			return Name;
+		}
+	}
+	for (int32 Suffix = 2; Suffix < 100; ++Suffix)
+	{
+		const FString Name = FString::Printf(TEXT("%s %d"), *Names[First], Suffix);
+		if (!Taken.Contains(Name.ToLower()))
+		{
+			return Name;
+		}
+	}
+	return FString(TEXT("Bot"));
+}
+
+FAirsoftLoadout AAirsoftGameMode::MakeBotLoadout() const
+{
+	// Any legal attachment for each slot the gun has (Clean() then tidies it like a player's loadout).
+	auto Kit = [](FName WeaponId)
+	{
+		FAirsoftCustomization Custom;
+		Custom.WeaponId = WeaponId;
+		if (const FAirsoftWeaponDef* W = AirsoftWeapons::Find(WeaponId))
+		{
+			for (const TPair<FName, TArray<FName>>& Option : W->Options)
+			{
+				if (Option.Value.Num() == 0)
+				{
+					continue;
+				}
+				const FName Pick = Option.Value[FMath::RandRange(0, Option.Value.Num() - 1)];
+				if (Option.Key == AirsoftWeapons::SlotOptic) { Custom.Optic = Pick; }
+				else if (Option.Key == AirsoftWeapons::SlotMuzzle) { Custom.Muzzle = Pick; }
+				else if (Option.Key == AirsoftWeapons::SlotGrip) { Custom.Grip = Pick; }
+				else if (Option.Key == AirsoftWeapons::SlotLaser) { Custom.Laser = Pick; }
+				else if (Option.Key == AirsoftWeapons::SlotMag) { Custom.Mag = Pick; }
+			}
+		}
+		// The plain, early finishes: bots have no rank to unlock the fancy ones.
+		const TArray<FAirsoftSkinDef>& Skins = AirsoftWeapons::Skins();
+		if (Skins.Num() > 0)
+		{
+			Custom.Skin = Skins[FMath::RandRange(0, FMath::Min(3, Skins.Num() - 1))].Id;
+		}
+		return AirsoftWeapons::Clean(Custom);
+	};
+
+	const AAirsoftGameState* GS = GetAirsoftGameState();
+	const bool bCloseQuarters = GS && GS->MapId == TEXT("Club");
+	const TArray<AirsoftBotNames::FPrimaryWeight>& Weights = AirsoftBotNames::PrimaryWeights();
+	int32 Total = 0;
+	for (const AirsoftBotNames::FPrimaryWeight& Entry : Weights)
+	{
+		Total += bCloseQuarters ? Entry.CloseQuarters : Entry.Field;
+	}
+	FName PrimaryId = TEXT("M4");
+	int32 Roll = FMath::RandRange(0, FMath::Max(Total - 1, 0));
+	for (const AirsoftBotNames::FPrimaryWeight& Entry : Weights)
+	{
+		Roll -= bCloseQuarters ? Entry.CloseQuarters : Entry.Field;
+		if (Roll < 0)
+		{
+			PrimaryId = Entry.Id;
+			break;
+		}
+	}
+	const TArray<FName>& Secondaries = AirsoftWeapons::Secondaries();
+
+	FAirsoftLoadout Loadout;
+	Loadout.Primary = Kit(PrimaryId);
+	Loadout.Secondary = Kit(Secondaries.Num() > 0 ? Secondaries[FMath::RandRange(0, Secondaries.Num() - 1)] : FName(TEXT("G17")));
+	return Loadout;
 }
 
 // ---------------------------------------------------------------------------

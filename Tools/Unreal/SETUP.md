@@ -152,6 +152,9 @@ All five maps are non-World-Partition levels in `/Game/Maps/`. Every playable ma
 - reflection captures
 - a KillZ
 - AirsoftTeamStart actors only (plain PlayerStarts are removed)
+- match maps only: a `NavMeshBoundsVolume` (`NavBounds`) over the playable area for bots. The navmesh itself
+  is generated on the host when the map loads (`RuntimeGeneration=Dynamic` in `DefaultEngine.ini`), so nothing
+  needs baking; press **P** in the viewport after **Build > Build Paths** to preview it
 
 | Map | Contents |
 |---|---|
@@ -177,6 +180,7 @@ The checker validates:
 - no sight line from one spawn to the other
 - spawn exposure
 - cover spacing
+- match maps: bot nav bounds cover the playable area, every start and every objective
 - staging rules: 16+ neutral starts, 14 displays, targets at 10/25/40/60 m
 
 ## Things to do by hand
@@ -198,6 +202,7 @@ The checker validates:
 | Grey or flat-colour blocks everywhere | Those assets haven't been generated or imported yet: see "missing" in the summary. Generate them, then re-run without `--skip-import`. |
 | Lighting looks blown out or too dark | Check post-process exposure: the per-map EV100 ranges are in `lighting.PRESETS`. Local light intensities are in candela at the same low scale as the game's C++ (sun 5–10 lux). |
 | Everything re-imports every run | The metadata tag couldn't be written (see the log). Bump `IMPORT_VERSION` only when you change import settings. |
+| Bots stand still (log: "Bots can't find a path") | The map has no navmesh: check the `NavBounds` volume exists and covers the field (summary warns if its brush came out empty). Resize it by hand if needed, or add a Nav Mesh Bounds Volume from **Place Actors > Volumes**. |
 | Ambient sounds missing | WAVs weren't present at import. Generate them (`Tools/Audio`), then run with `--maps <Map> --skip-import`. The audio import still runs unless `--skip-audio` is set. |
 
 ## Files

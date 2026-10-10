@@ -179,6 +179,12 @@ FString AAirsoftCharacter::GetDisplayName() const
 	return PS ? PS->GetPlayerName() : FString(TEXT("Player"));
 }
 
+bool AAirsoftCharacter::IsLocalHuman() const
+{
+	const AController* MyController = GetController();
+	return MyController && MyController->IsLocalPlayerController();
+}
+
 bool AAirsoftCharacter::IsSprinting() const
 {
 	if (IsLocallyControlled() || HasAuthority())
@@ -306,8 +312,8 @@ void AAirsoftCharacter::UpdateThirdPersonPose()
 		return;
 	}
 	PoseMesh->CopyPoseFromSkeletalComponent(GetMesh());
-	// The owner never sees their own body, only its shadow.
-	if (IsLocallyControlled() || !TPGun->IsVisible())
+	// The owner never sees their own body, only its shadow (bots on the host are seen by everyone).
+	if (IsLocalHuman() || !TPGun->IsVisible())
 	{
 		return;
 	}
@@ -608,7 +614,10 @@ void AAirsoftCharacter::OnRep_Out()
 	AirsoftAssets::Play3D(this, TEXT("HitCall"), GetActorLocation() + FVector(0.f, 0.f, 70.f), 0.9f, FMath::FRandRange(0.92f, 1.08f));
 	if (IsLocallyControlled())
 	{
-		AirsoftAssets::Play2D(this, TEXT("Tagged"), 0.8f, 1.f);
+		if (IsLocalHuman())
+		{
+			AirsoftAssets::Play2D(this, TEXT("Tagged"), 0.8f, 1.f);
+		}
 		if (Combat)
 		{
 			Combat->CancelActions();
@@ -695,7 +704,7 @@ void AAirsoftCharacter::Tick(float DeltaSeconds)
 			if (StepAccum >= Stride)
 			{
 				StepAccum = 0.f;
-				const float Volume = (bIsCrouched ? 0.12f : bSprint ? 0.55f : 0.32f) * (IsLocallyControlled() ? 0.6f : 1.f);
+				const float Volume = (bIsCrouched ? 0.12f : bSprint ? 0.55f : 0.32f) * (IsLocalHuman() ? 0.6f : 1.f);
 				AirsoftAssets::Play3D(this, TEXT("Footstep"), GetActorLocation() - FVector(0.f, 0.f, GetCapsuleComponent()->GetScaledCapsuleHalfHeight()), Volume, FMath::FRandRange(0.85f, 1.15f));
 			}
 		}

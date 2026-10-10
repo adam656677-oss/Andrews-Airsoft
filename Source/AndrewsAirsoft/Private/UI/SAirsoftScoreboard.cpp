@@ -237,7 +237,7 @@ TSharedRef<SWidget> SAirsoftScoreboard::BuildRow(int32 TeamIndex, int32 Row)
 			case 1: return FText::AsNumber(PS->Round.Outs);
 			case 2: return FText::AsNumber(PS->Round.Captures);
 			case 3: return FText::AsNumber(PS->Round.XP);
-			default: return FText::AsNumber(FMath::RoundToInt(PS->GetPingInMilliseconds()));
+			default: return PS->IsABot() ? FText::FromString(TEXT("-")) : FText::AsNumber(FMath::RoundToInt(PS->GetPingInMilliseconds()));
 			}
 		});
 	};
@@ -309,7 +309,12 @@ TSharedRef<SWidget> SAirsoftScoreboard::BuildRow(int32 TeamIndex, int32 Row)
 					.Text_Lambda([this, TeamIndex, Row]()
 					{
 						const AAirsoftPlayerState* PS = RowPS(TeamIndex, Row);
-						return PS ? AUI::Upper(AUI::RankName(PS->RankIndex())) : FText::GetEmpty();
+						if (!PS)
+						{
+							return FText::GetEmpty();
+						}
+						// Bots have no career, just a tag.
+						return PS->IsABot() ? FText::FromString(TEXT("BOT")) : AUI::Upper(AUI::RankName(PS->RankIndex()));
 					})
 				]
 			]

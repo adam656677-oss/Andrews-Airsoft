@@ -25,6 +25,7 @@ Item kinds (dicts with key "t"):
     capture    SphereReflectionCapture
     fog        LocalFogVolume (haze), falls back to nothing if the class is missing
     camera     CineCameraActor (main menu)
+Map key "nav" (match maps): NavMeshBoundsVolume extents for bots, see nav_bounds().
 Tune numbers here and re-run `py airsoft_setup.py --skip-import --maps <Map>`.
 """
 
@@ -774,6 +775,9 @@ def _ironwood():
         "name": "IronwoodYard", "path": "/Game/Maps/L_IronwoodYard", "kind": "match",
         "bounds": (-W, -H, W, H), "lighting": "ironwood_golden", "game_mode": "AirsoftGameMode",
         "kill_z": -10.0, "items": items,
+        # bots: NavMeshBoundsVolume (m). Top below the 7 m tops of the roof/container blockers, so the
+        # navmesh never forms up there; catwalk deck 2.4 m + 1.84 m headroom fits.
+        "nav": (-W - 1.0, -H - 1.0, -1.0, W + 1.0, H + 1.0, 6.0),
     }
 
 
@@ -1047,6 +1051,8 @@ def _velvet():
         "name": "VelvetClub", "path": "/Game/Maps/L_VelvetClub", "kind": "match",
         "bounds": (X0, Y0, X1, Y1), "lighting": "velvet_night", "game_mode": "AirsoftGameMode",
         "kill_z": -10.0, "items": it,
+        # bots: NavMeshBoundsVolume (m): street level (-0.15) to under the club ceiling (7 m)
+        "nav": (X0 - 1.0, Y0 - 1.5, -1.5, X1 + 1.0, Y1 + 1.0, 6.0),
     }
 
 
@@ -1269,6 +1275,13 @@ MAP_ALIASES = {"menu": "MainMenu", "mainmenu": "MainMenu", "l_mainmenu": "MainMe
 
 def resolve_map_name(name):
     return MAP_ALIASES.get(name.strip().lower().replace(" ", ""), name)
+
+
+def nav_bounds(m):
+    """(x0, y0, z0, x1, y1, z1) in metres of the NavMeshBoundsVolume for maps where bots play, else None.
+    Only match maps have bots; the navmesh itself is generated at runtime on the host (DefaultEngine.ini)."""
+    nav = m.get("nav")
+    return tuple(float(v) for v in nav) if nav else None
 
 
 def get_map(name):

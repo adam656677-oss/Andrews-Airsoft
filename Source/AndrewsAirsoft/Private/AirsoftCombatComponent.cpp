@@ -106,6 +106,19 @@ bool UAirsoftCombatComponent::IsLocal() const
 	return Pawn && Pawn->IsLocallyControlled();
 }
 
+bool UAirsoftCombatComponent::IsLocalHuman() const
+{
+	const AAirsoftCharacter* C = GetCharacter();
+	return C && C->IsLocalHuman();
+}
+
+bool UAirsoftCombatComponent::IsBotAuthority() const
+{
+	// Bots only exist on the server, where their pawn counts as locally controlled.
+	const AActor* OwnerActor = GetOwner();
+	return OwnerActor && OwnerActor->HasAuthority() && IsLocal() && !IsLocalHuman();
+}
+
 bool UAirsoftCombatComponent::CanAct() const
 {
 	const AAirsoftCharacter* C = GetCharacter();
@@ -368,27 +381,111 @@ void UAirsoftCombatComponent::Reload()
 
 void UAirsoftCombatComponent::ThrowGrenade()
 {
+	if (const AAirsoftCharacter* C = GetCharacter())
+	{
+		BeginThrow((C->GetControlRotation().Vector() + FVector(0.f, 0.f, 0.15f)).GetSafeNormal());
+	}
+}
+
+bool UAirsoftCombatComponent::BeginThrow(const FVector& Direction)
+{
 	AAirsoftCharacter* C = GetCharacter();
 	if (!C || !CanAct() || bThrowing || Grenades <= 0)
 	{
-		return;
+		return false;
 	}
 	const AAirsoftGameState* GS = GetWorld()->GetGameState<AAirsoftGameState>();
 	if (GS && GS->Phase != EAirsoftPhase::Live)
 	{
-		return;
+		return false;
 	}
 	bThrowing = true;
 	PlayAnim(KindInspect, 0.6f);
 	const FVector Origin = C->GetCamera()->GetComponentLocation();
-	const FVector Dir = (C->GetControlRotation().Vector() + FVector(0.f, 0.f, 0.15f)).GetSafeNormal();
+	const FVector Dir = Direction.GetSafeNormal();
+	const bool bHuman = IsLocalHuman();
 	FTimerHandle Handle;
-	GetWorld()->GetTimerManager().SetTimer(Handle, FTimerDelegate::CreateWeakLambda(this, [this, Origin, Dir]()
+	GetWorld()->GetTimerManager().SetTimer(Handle, FTimerDelegate::CreateWeakLambda(this, [this, Origin, Dir, bHuman]()
 	{
 		ServerThrowGrenade(Origin, Dir);
-		AirsoftAssets::Play2D(this, TEXT("UIClick"), 0.5f, 0.6f);
+		if (bHuman)
+		{
+			AirsoftAssets::Play2D(this, TEXT("UIClick"), 0.5f, 0.6f);
+		}
 		bThrowing = false;
 	}), 0.3f, false);
+	return true;
+}
+
+// ---------------------------------------------------------------------------
+// Bot input (server only)
+// ---------------------------------------------------------------------------
+
+void UAirsoftCombatComponent::BotPullTrigger()
+{
+	if (!IsBotAuthority())
+	{
+		return;
+	}
+	if (AAirsoftCharacter* C = GetCharacter())
+	{
+		C->CancelSprint();
+	}
+	StartFire();
+}
+
+void UAirsoftCombatComponent::BotReleaseTrigger()
+{
+	if (IsBotAuthority())
+	{
+		StopFire();
+	}
+}
+
+void UAirsoftCombatComponent::BotSetAim(bool bAim)
+{
+	if (IsBotAuthority())
+	{
+		SetAimHeld(bAim);
+	}
+}
+
+bool UAirsoftCombatComponent::BotReload()
+{
+	if (!IsBotAuthority() || bLocalReloading)
+	{
+		return false;
+	}
+	Reload();
+	return bLocalReloading;
+}
+
+void UAirsoftCombatComponent::BotEquip(EAirsoftSlot Slot)
+{
+	if (IsBotAuthority())
+	{
+		EquipSlot(Slot);
+	}
+}
+
+void UAirsoftCombatComponent::BotSetFireMode(EAirsoftFireMode Mode)
+{
+	if (!IsBotAuthority())
+	{
+		return;
+	}
+	const int32 Index = Current().FireModes.IndexOfByKey(Mode);
+	const int32 Slot = SlotIndex(ActiveSlot);
+	if (Index != INDEX_NONE && FireModeIndex[Slot] != Index)
+	{
+		FireModeIndex[Slot] = Index;
+		BurstLeft = 0;
+	}
+}
+
+bool UAirsoftCombatComponent::BotThrowGrenade(const FVector& Direction)
+{
+	return IsBotAuthority() && BeginThrow(Direction);
 }
 
 // ---------------------------------------------------------------------------
@@ -454,9 +551,13 @@ void UAirsoftCombatComponent::FireOnce()
 	}
 	const int32 Idx = SlotIndex(ActiveSlot);
 	const FAirsoftWeaponDef& W = Resolved[Idx];
+	const bool bHuman = IsLocalHuman();
 	if (LocalMag[Idx] <= 0)
 	{
-		AirsoftAssets::Play2D(this, TEXT("DryFire"), 0.5f, 1.2f);
+		if (bHuman)
+		{
+			AirsoftAssets::Play2D(this, TEXT("DryFire"), 0.5f, 1.2f);
+		}
 		bTriggerHeld = false;
 		BurstLeft = 0;
 		if (LocalReserve[Idx] > 0)
@@ -471,7 +572,9 @@ void UAirsoftCombatComponent::FireOnce()
 	const int32 ShotId = ++NextShotId;
 
 	const FVector Origin = C->GetCamera()->GetComponentLocation();
-	const FVector Look = C->GetCamera()->GetForwardVector();
+	// A bot's camera is never anyone's view target, so it never picks up the control rotation:
+	// bots shoot along their control rotation directly (the same thing the camera shows a human).
+	const FVector Look = bHuman ? C->GetCamera()->GetForwardVector() : C->GetControlRotation().Vector();
 	TArray<FVector_NetQuantizeNormal> Dirs;
 	for (int32 i = 0; i < W.Pellets; ++i)
 	{
@@ -479,9 +582,10 @@ void UAirsoftCombatComponent::FireOnce()
 	}
 	ServerFire(ActiveSlot, ShotId, Origin, Dirs);
 
+	// Everyone else sees a bot's third-person gun, so its tracers start there.
+	const FVector Muzzle = bHuman ? C->GetFPGun()->GetMuzzleWorld() : C->GetTPGun()->GetMuzzleWorld();
 	if (UAirsoftBBSubsystem* BBs = GetWorld()->GetSubsystem<UAirsoftBBSubsystem>())
 	{
-		const FVector Muzzle = C->GetFPGun()->GetMuzzleWorld();
 		const FLinearColor Color = AirsoftColors::Team(C->GetTeam());
 		for (int32 i = 0; i < Dirs.Num(); ++i)
 		{
@@ -509,7 +613,15 @@ void UAirsoftCombatComponent::FireOnce()
 		}
 	}
 
-	AirsoftAssets::Play2D(this, GunSoundKey(this, W.Sound, false), W.bQuiet ? 0.45f : 0.75f, Rng.FRandRange(0.96f, 1.05f));
+	if (bHuman)
+	{
+		AirsoftAssets::Play2D(this, GunSoundKey(this, W.Sound, false), W.bQuiet ? 0.45f : 0.75f, Rng.FRandRange(0.96f, 1.05f));
+	}
+	else
+	{
+		// A bot on the host: the host hears it like any other player's gun (the multicast skips this machine).
+		PlayShotSound(Muzzle, W.Sound, W.bQuiet);
+	}
 	Kick = FMath::Min(Kick + W.RecoilUp * 0.35f, 1.5f);
 	SlideKick = 1.f;
 	if (AnimKind == KindInspect)
@@ -617,6 +729,12 @@ void UAirsoftCombatComponent::ServerFire_Implementation(EAirsoftSlot Slot, int32
 	}
 
 	MulticastShot(Origin, Directions, W.MuzzleVelocity, W.Hop, W.Drag, W.MaxRange, W.Sound, W.bQuiet);
+
+	// Bots hear the shot (and notice BBs passing close by).
+	if (AAirsoftGameMode* GM = GetWorld()->GetAuthGameMode<AAirsoftGameMode>())
+	{
+		GM->NotifyShotFired(C, Origin, Rec.Directions[0], W.bQuiet);
+	}
 }
 
 void UAirsoftCombatComponent::ServerReportHit_Implementation(int32 ShotId, uint8 Pellet, AActor* HitActor, FVector_NetQuantize HitLocation)
@@ -774,6 +892,15 @@ void UAirsoftCombatComponent::MulticastShot_Implementation(FVector_NetQuantize O
 			BBs->Fire(MoveTemp(P));
 		}
 	}
+	PlayShotSound(Muzzle, SoundKey, bQuiet);
+}
+
+void UAirsoftCombatComponent::PlayShotSound(const FVector& Muzzle, FName SoundKey, bool bQuiet) const
+{
+	if (GetNetMode() == NM_DedicatedServer)
+	{
+		return;
+	}
 	bool bFar = false;
 	if (const APlayerController* Listener = GetWorld()->GetFirstPlayerController())
 	{
@@ -794,6 +921,11 @@ void UAirsoftCombatComponent::ClientAmmo_Implementation(EAirsoftSlot Slot, int32
 
 void UAirsoftCombatComponent::ClientHitConfirm_Implementation()
 {
+	// A bot's pawn has no owning connection, so its "client" RPCs run on the host: not for the host's ears.
+	if (!IsLocalHuman())
+	{
+		return;
+	}
 	AirsoftAssets::Play2D(this, TEXT("HitMarker"), 0.7f, 1.2f);
 	if (AAirsoftCharacter* C = GetCharacter())
 	{
@@ -863,7 +995,15 @@ void UAirsoftCombatComponent::UpdateLocal(float DeltaTime)
 	Bloom = FMath::Max(Bloom - DeltaTime * 3.f, 0.f);
 
 	ApplyRecoil(DeltaTime);
-	UpdateViewmodel(DeltaTime);
+	if (IsLocalHuman())
+	{
+		UpdateViewmodel(DeltaTime);
+	}
+	else if (!AnimKind.IsNone() && GetWorld()->GetTimeSeconds() - AnimStart >= AnimDuration)
+	{
+		// Bots have no viewmodel, but a bolt / pump cycle still has to finish before the next shot.
+		AnimKind = NAME_None;
+	}
 }
 
 void UAirsoftCombatComponent::ApplyRecoil(float DeltaTime)

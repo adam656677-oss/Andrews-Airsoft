@@ -1,10 +1,12 @@
 // Andrew's Airsoft - in-game menu: resume, armory, settings, and in the
-// staging area the next-match vote, team switch and (host) force start.
+// staging area the next-match vote, team switch and (host) force start;
+// the host can also turn bots on and set their skill here.
 
 #include "AirsoftGameInstance.h"
 #include "AirsoftGameState.h"
 #include "AirsoftPlayerController.h"
 #include "AirsoftPlayerState.h"
+#include "AirsoftSaveGame.h"
 #include "AirsoftUIScreens.h"
 #include "AirsoftUIStyle.h"
 #include "AirsoftUIWidgets.h"
@@ -62,6 +64,8 @@ private:
 	bool IsStaging() const;
 	bool CanVote() const;
 	bool IsLeaveArmed() const { return FPlatformTime::Seconds() - LeaveArmedAt < 3.0; }
+	/** Host's bot fill option (0 = off). */
+	int32 BotFill() const;
 
 	double LeaveArmedAt = -100.0;
 };
@@ -75,6 +79,12 @@ bool SAirsoftGameMenu::IsStaging() const
 {
 	const AAirsoftGameState* State = GS();
 	return State && !State->bIsMatchMap;
+}
+
+int32 SAirsoftGameMenu::BotFill() const
+{
+	UAirsoftGameInstance* GI = AUI::GetGameInstance(WeakPC.Get());
+	return GI ? FMath::Clamp(GI->GetUserSettings().BotFill, 0, AirsoftBots::NumFillOptions - 1) : 0;
 }
 
 bool SAirsoftGameMenu::CanVote() const
@@ -310,6 +320,63 @@ TSharedRef<SWidget> SAirsoftGameMenu::BuildLeftColumn()
 					{
 						PC->ServerForceStart();
 						PC->CloseMenus();
+					}
+					return FReply::Handled();
+				})
+			]
+			// Host: bots (the host's saved setting; a running match adjusts within a second)
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(FMargin(0.f, 6.f, 0.f, 0.f))
+			[
+				SNew(SAirsoftButton)
+				.Visibility_Lambda([this]() -> EVisibility
+				{
+					const AAirsoftPlayerController* PC = WeakPC.Get();
+					return MenuVis(PC && PC->IsHost());
+				})
+				.Text(FText::FromString(TEXT("BOTS")))
+				.SubText_Lambda([this]()
+				{
+					const int32 Fill = BotFill();
+					return FText::FromString(Fill > 0 ? TEXT("FILL ") + AirsoftBots::FillLabel(Fill) : FString(TEXT("OFF")));
+				})
+				.FontSize(14)
+				.OnClicked_Lambda([this]()
+				{
+					if (UAirsoftGameInstance* GI = AUI::GetGameInstance(WeakPC.Get()))
+					{
+						FAirsoftUserSettings Settings = GI->GetUserSettings();
+						Settings.BotFill = (FMath::Clamp(Settings.BotFill, 0, AirsoftBots::NumFillOptions - 1) + 1) % AirsoftBots::NumFillOptions;
+						GI->SetUserSettings(Settings);
+					}
+					return FReply::Handled();
+				})
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(FMargin(0.f, 6.f, 0.f, 0.f))
+			[
+				SNew(SAirsoftButton)
+				.Visibility_Lambda([this]() -> EVisibility
+				{
+					const AAirsoftPlayerController* PC = WeakPC.Get();
+					return MenuVis(PC && PC->IsHost() && BotFill() > 0);
+				})
+				.Text(FText::FromString(TEXT("BOT SKILL")))
+				.SubText_Lambda([this]()
+				{
+					UAirsoftGameInstance* GI = AUI::GetGameInstance(WeakPC.Get());
+					return FText::FromString(AirsoftBots::SkillLabel(GI ? GI->GetUserSettings().BotSkill : 1));
+				})
+				.FontSize(14)
+				.OnClicked_Lambda([this]()
+				{
+					if (UAirsoftGameInstance* GI = AUI::GetGameInstance(WeakPC.Get()))
+					{
+						FAirsoftUserSettings Settings = GI->GetUserSettings();
+						Settings.BotSkill = (FMath::Clamp(Settings.BotSkill, 0, AirsoftBots::NumSkillOptions - 1) + 1) % AirsoftBots::NumSkillOptions;
+						GI->SetUserSettings(Settings);
 					}
 					return FReply::Handled();
 				})

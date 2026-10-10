@@ -22,7 +22,12 @@ public class AndrewsAirsoft : ModuleRules
 			"PhysicsCore",
 			"DeveloperSettings",
 			"AudioMixer",
-			"Sockets"
+			"Sockets",
+			// Bots: AIController + path following, navmesh queries, and the gameplay task
+			// component every AI-controlled pawn gets.
+			"AIModule",
+			"NavigationSystem",
+			"GameplayTasks"
 		});
 	}
 }

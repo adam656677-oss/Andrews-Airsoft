@@ -1,5 +1,5 @@
 """Builds the five maps from layouts.py. Generated actors carry the AirsoftGen tag and are rebuilt on re-run;
-anything you place by hand (untagged) is left alone."""
+anything you place by hand (untagged) is left alone. Match maps also get a NavMeshBoundsVolume for bots."""
 
 import unreal
 
@@ -464,6 +464,67 @@ def place_camera(ctx, it):
     ctx.count("cameras")
 
 
+def place_navigation(ctx, m):
+    """NavMeshBoundsVolume over the playable area of maps with bots (layouts.nav_bounds).
+
+    The navmesh itself is generated on the host when the map loads (RecastNavMesh RuntimeGeneration=Dynamic
+    in Config/DefaultEngine.ini), so a missing editor build is harmless; we still ask the editor to update its
+    preview. Everything is guarded: a failure here is reported and never stops the map build."""
+    nav = L.nav_bounds(m)
+    if not nav:
+        return None
+    cls = getattr(unreal, "NavMeshBoundsVolume", None)
+    if cls is None:
+        C.SUMMARY.note("%s: unreal.NavMeshBoundsVolume not found - bots will stand still; place a Nav Mesh Bounds "
+                       "Volume over the playable area by hand" % m["name"])
+        return None
+    x0, y0, z0, x1, y1, z1 = nav
+    size = ((x1 - x0) * 100.0, (y1 - y0) * 100.0, (z1 - z0) * 100.0)
+    try:
+        vol = ctx.spawn(cls, C.vec((x0 + x1) * 50.0, (y0 + y1) * 50.0, (z0 + z1) * 50.0), C.rot(), "NavBounds",
+                        "Navigation")
+    except Exception as e:
+        C.SUMMARY.note("%s: spawning the NavMeshBoundsVolume failed (%s) - bots will stand still; place one by hand"
+                       % (m["name"], e))
+        return None
+    # A volume placed from its class gets the default 200 uu cube brush: scale it up to the extents.
+    try:
+        vol.set_actor_scale3d(C.vec(size[0] / 200.0, size[1] / 200.0, size[2] / 200.0))
+    except Exception as e:
+        C.SUMMARY.note("%s: could not scale the NavMeshBoundsVolume (%s)" % (m["name"], e))
+    try:
+        _origin, extent = vol.get_actor_bounds(False)
+        if extent.x * 2.0 < size[0] * 0.5 or extent.y * 2.0 < size[1] * 0.5:
+            C.SUMMARY.note("%s: the NavMeshBoundsVolume came out %.0f x %.0f m (wanted %.0f x %.0f m) - the brush may "
+                           "be empty; resize 'NavBounds' by hand (Brush Settings) or bots won't move"
+                           % (m["name"], extent.x * 0.02, extent.y * 0.02, size[0] / 100.0, size[1] / 100.0))
+    except Exception:
+        pass
+    ctx.count("nav mesh bounds volumes")
+    _refresh_navigation(vol)
+    return vol
+
+
+def _refresh_navigation(vol):
+    """Editor preview only (press P in the viewport). The game builds its own navmesh at runtime."""
+    world = C.editor_world()
+    nav_sys = None
+    try:
+        nav_sys = unreal.NavigationSystemV1.get_navigation_system(world)
+    except Exception as e:
+        C.SUMMARY.once("nav-sys", "navigation system not reachable from Python (%s); the navmesh is still built "
+                                  "at runtime" % e)
+    if nav_sys is not None:
+        try:
+            nav_sys.on_navigation_bounds_updated(vol)
+        except Exception as e:
+            C.SUMMARY.once("nav-bounds", "on_navigation_bounds_updated unavailable (%s); the navmesh is still built "
+                                         "at runtime" % e)
+    # Needs the RecastNavMesh actor the editor creates on its next tick, so on a first run this may do nothing:
+    # use Build > Build Paths to preview. Harmless either way.
+    C.console("RebuildNavigation")
+
+
 PLACERS = {"prop": place_prop, "box": place_box, "blocker": place_blocker, "start": place_start,
            "objective": place_objective, "target": place_target, "sound": place_sound, "text": place_text,
            "capture": place_capture, "fog": place_fog, "camera": place_camera}
@@ -498,6 +559,10 @@ def build_map(name, reg):
                 failures += 1
                 if failures <= 25:
                     C.warn("%s: %s %s failed: %s" % (m["name"], it["t"], it.get("id", it.get("name", "")), e))
+    try:
+        place_navigation(ctx, m)
+    except Exception as e:      # never let navigation stop the map build
+        C.SUMMARY.note("%s: navigation setup failed: %s" % (m["name"], e))
     if ctx.shadow_lights > LIGHT.SHADOW_BUDGET:
         C.SUMMARY.note("%s has %d shadow-casting local lights (budget %d)" % (m["name"], ctx.shadow_lights,
                                                                              LIGHT.SHADOW_BUDGET))

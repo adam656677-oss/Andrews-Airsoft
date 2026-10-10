@@ -44,6 +44,23 @@ public:
 	void Inspect();
 	void CancelActions();
 
+	// --- Bot input (server only) --------------------------------------------
+	// A bot's pawn is locally controlled on the host, so these drive the same
+	// predicted firing / reload / aim path as the listen-server player: the shot
+	// still goes through ServerFire validation, hit claims and HandleTag.
+	/** One trigger press: a single shot (semi / bolt / pump), a 3-round burst, or full auto until released. */
+	void BotPullTrigger();
+	void BotReleaseTrigger();
+	void BotSetAim(bool bAim);
+	/** Starts a reload if the mag isn't full and there is reserve; true if it started. */
+	bool BotReload();
+	/** Switches weapon slot (primary / secondary). */
+	void BotEquip(EAirsoftSlot Slot);
+	/** Selects a fire mode the current gun has (no UI click). */
+	void BotSetFireMode(EAirsoftFireMode Mode);
+	/** Throws the grenade from the eyes along Direction; true if the throw started. */
+	bool BotThrowGrenade(const FVector& Direction);
+
 	// --- State for HUD / character ----------------------------------------
 	const FAirsoftWeaponDef& Current() const;
 	const FAirsoftCustomization& CurrentCustomization() const;
@@ -60,6 +77,12 @@ public:
 	int32 GetGrenades() const { return Grenades; }
 	bool IsLightOn() const { return bLightOn; }
 	float GetTargetFOV(float BaseFOV) const;
+	bool IsThrowing() const { return bThrowing; }
+	bool HasFireMode(EAirsoftFireMode Mode) const { return Current().FireModes.Contains(Mode); }
+	int32 GetLocalMagFor(EAirsoftSlot Slot) const { return LocalMag[SlotIndex(Slot)]; }
+	int32 GetLocalReserveFor(EAirsoftSlot Slot) const { return LocalReserve[SlotIndex(Slot)]; }
+	/** World time of the last shot this machine fired. */
+	double GetLastShotTime() const { return LastShotTime; }
 
 	UPROPERTY(ReplicatedUsing = OnRep_Loadout) FAirsoftLoadout Loadout;
 	UPROPERTY(ReplicatedUsing = OnRep_ActiveSlot) EAirsoftSlot ActiveSlot = EAirsoftSlot::Primary;
@@ -111,7 +134,13 @@ protected:
 private:
 	AAirsoftCharacter* GetCharacter() const;
 	bool IsLocal() const;
+	/** Locally controlled by a person (not a bot on the host): 2D sounds, viewmodel, hit markers. */
+	bool IsLocalHuman() const;
+	bool IsBotAuthority() const;
 	bool CanAct() const;
+	bool BeginThrow(const FVector& Direction);
+	/** Positional gunshot (remote players and bots), distant variant when far from the local listener. */
+	void PlayShotSound(const FVector& Muzzle, FName SoundKey, bool bQuiet) const;
 	void TryFire();
 	void FireOnce();
 	void UpdateLocal(float DeltaTime);

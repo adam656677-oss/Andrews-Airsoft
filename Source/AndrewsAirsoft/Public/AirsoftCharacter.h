@@ -47,6 +47,12 @@ public:
 	bool IsSprinting() const;
 	bool IsSliding() const;
 	float GetLean() const { return LeanAmount; }
+	/**
+	 * Controlled by a person on this machine. Bots are "locally controlled" on the host too
+	 * (their AIController lives there), so first-person-only work - 2D sounds, the viewmodel,
+	 * hiding your own body - checks this instead of IsLocallyControlled().
+	 */
+	bool IsLocalHuman() const;
 
 	// --- Local input (called by AAirsoftPlayerController) -------------------
 	void MoveInput(const FVector2D& Axis);

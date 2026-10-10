@@ -96,6 +96,12 @@ Everyone lands in the **Staging Area**: armory, range and lobby. Once at least 2
 
 Everyone then deploys together. After the match, the after-action report shows, and the whole group travels back to staging. The host can also open the menu and choose **Start Match Now**.
 
+### Bots
+
+Practise alone or fill out a small game with computer players. As host, open **Settings → Host · Bots** (or the in-game menu next to **Start Match Now**) and pick a team size (4v4 to 10v10) and skill (Easy, Normal, Hard, Expert). Bots join on match maps only: they fill both teams around the people playing and step aside as friends join. They never count toward the lobby vote. **To practise solo:** host, turn bots on, then press **Start Match Now**.
+
+Bots play by the same rules as everyone else: they fire real BBs through the same hit checks, call their hits, raise the rag and walk off. They show a **BOT** tag on the scoreboard and after-action report and never touch anyone's rank or XP. They spot you by line of sight, hear gunfire, lead moving targets, burst-fire, crouch and strafe, take and defend points in Domination, and now and then throw a grenade. Tune them in **Project Settings → Game → Airsoft → Bots**. Match maps get a Nav Mesh Bounds Volume from the setup script and the navmesh is built on the host when the map loads; if bots stand still, see `Tools/Unreal/SETUP.md`.
+
 **Ports:** the game uses UDP 7777. Tailscale handles NAT, so you don't need to open router ports.
 
 Your profile (rank, XP, stats, loadout, settings) is saved on your own PC: `%LOCALAPPDATA%/AndrewsAirsoft/Saved/SaveGames/AirsoftProfile.sav`.

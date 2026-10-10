@@ -1,4 +1,4 @@
-// Andrew's Airsoft - settings: controls, video, audio. Changes apply through
+// Andrew's Airsoft - settings: controls, video, audio, host bots. Changes apply through
 // UAirsoftGameInstance::SetUserSettings when a slider is released, a choice is
 // clicked, or (keyboard/gamepad nudges) shortly after the last change.
 
@@ -78,6 +78,8 @@ void SAirsoftSettings::Apply()
 	Settings.RenderScale = Working.RenderScale;
 	Settings.MasterVolume = Working.MasterVolume;
 	Settings.bCinematicGunSounds = Working.bCinematicGunSounds;
+	Settings.BotFill = Working.BotFill;
+	Settings.BotSkill = Working.BotSkill;
 	GI->SetUserSettings(Settings);
 }
 
@@ -308,6 +310,33 @@ void SAirsoftSettings::Construct(const FArguments& InArgs, AAirsoftPlayerControl
 		ChoiceRow(TEXT("Gun sounds"), TEXT("Cinematic action-movie gunfire, or realistic airsoft mechanics."), { TEXT("CINEMATIC"), TEXT("AIRSOFT") },
 			[this]() { return Working.bCinematicGunSounds ? 0 : 1; },
 			[this](int32 Index) { Working.bCinematicGunSounds = Index == 0; })
+	];
+
+	// Host-side: only the host's choice matters (the match runs on their PC).
+	TArray<FString> FillOptions;
+	for (int32 i = 0; i < AirsoftBots::NumFillOptions; ++i)
+	{
+		FillOptions.Add(AirsoftBots::FillLabel(i));
+	}
+	TArray<FString> SkillOptions;
+	for (int32 i = 0; i < AirsoftBots::NumSkillOptions; ++i)
+	{
+		SkillOptions.Add(AirsoftBots::SkillLabel(i));
+	}
+	Rows->AddSlot().AutoHeight()[Section(TEXT("HOST  ·  BOTS"))];
+	Rows->AddSlot().AutoHeight().Padding(FMargin(0.f, 0.f, 0.f, 4.f))
+	[
+		ChoiceRow(TEXT("Bots"), TEXT("When you host: computer players fill both teams on match maps, and step aside as friends join. Never counted for the lobby vote."),
+			FillOptions,
+			[this]() { return FMath::Clamp(Working.BotFill, 0, AirsoftBots::NumFillOptions - 1); },
+			[this](int32 Index) { Working.BotFill = FMath::Clamp(Index, 0, AirsoftBots::NumFillOptions - 1); })
+	];
+	Rows->AddSlot().AutoHeight().Padding(FMargin(0.f, 0.f, 0.f, 4.f))
+	[
+		ChoiceRow(TEXT("Bot skill"), TEXT("Reaction time, aim and awareness. Changes apply to bots already in a match."),
+			SkillOptions,
+			[this]() { return FMath::Clamp(Working.BotSkill, 0, AirsoftBots::NumSkillOptions - 1); },
+			[this](int32 Index) { Working.BotSkill = FMath::Clamp(Index, 0, AirsoftBots::NumSkillOptions - 1); })
 	];
 
 	ChildSlot

@@ -32,6 +32,8 @@ AAirsoftGrenade::AAirsoftGrenade()
 	Collision->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
 	Collision->SetCollisionResponseToChannel(ECC_BB, ECR_Ignore);
 	Collision->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+	// The navmesh is rebuilt at runtime (Dynamic): a bouncing grenade mustn't punch holes in it.
+	Collision->SetCanEverAffectNavigation(false);
 	SetRootComponent(Collision);
 
 	Body = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Body"));

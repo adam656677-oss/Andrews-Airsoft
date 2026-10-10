@@ -369,7 +369,7 @@ TSharedRef<SWidget> SAirsoftSummary::BuildTeamTable(EAirsoftTeam Team, const FAi
 	for (int32 i = 0; i < Rows.Num(); ++i)
 	{
 		const FAirsoftSummaryRow& Row = Rows[i];
-		const bool bMe = !MyName.IsEmpty() && Row.Name == MyName;
+		const bool bMe = !Row.bBot && !MyName.IsEmpty() && Row.Name == MyName;
 		const FLinearColor NameCol = bMe ? AUI::Accent() : FLinearColor::White;
 		const FLinearColor NumCol = bMe ? AUI::Accent() : AUI::TextColor();
 		const FLinearColor Back = bMe ? FLinearColor(1.f, 0.55f, 0.05f, 0.14f) : FLinearColor(0.f, 0.f, 0.f, (i % 2 == 0) ? 0.34f : 0.2f);
@@ -387,10 +387,27 @@ TSharedRef<SWidget> SAirsoftSummary::BuildTeamTable(EAirsoftTeam Team, const FAi
 				.FillWidth(1.f)
 				.VAlign(VAlign_Center)
 				[
-					SNew(STextBlock)
-					.Text(FText::FromString(Row.Name))
-					.Font(AUI::Font(AUI::EFontWeight::Bold, 12, 40))
-					.ColorAndOpacity(NameCol)
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					.VAlign(VAlign_Center)
+					[
+						SNew(STextBlock)
+						.Text(FText::FromString(Row.Name))
+						.Font(AUI::Font(AUI::EFontWeight::Bold, 12, 40))
+						.ColorAndOpacity(NameCol)
+					]
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					.VAlign(VAlign_Center)
+					.Padding(FMargin(8.f, 0.f, 0.f, 0.f))
+					[
+						SNew(STextBlock)
+						.Visibility(Row.bBot ? EVisibility::HitTestInvisible : EVisibility::Collapsed)
+						.Text(FText::FromString(TEXT("BOT")))
+						.Font(AUI::Caption(7))
+						.ColorAndOpacity(AUI::TextDim())
+					]
 				]
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[NumberCell(Row.Stats.Tags, NameCol, true, EVisibility::HitTestInvisible)]
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[NumberCell(Row.Stats.Outs, NumCol, false, EVisibility::HitTestInvisible)]

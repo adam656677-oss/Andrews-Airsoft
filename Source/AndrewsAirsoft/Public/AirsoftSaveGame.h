@@ -26,6 +26,10 @@ struct FAirsoftUserSettings
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) bool bCinematicGunSounds = true;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) FString LastJoinAddress;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) FString PlayerName;
+	/** When hosting: fill both teams with bots on match maps (AirsoftBots::TeamSize: 0 off, 1 4v4, 2 6v6, 3 8v8, 4 10v10). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 BotFill = 0;
+	/** When hosting: bot difficulty (EAirsoftBotSkill: 0 Easy .. 3 Expert). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 BotSkill = 1;
 };
 
 UCLASS()

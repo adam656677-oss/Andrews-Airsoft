@@ -1219,7 +1219,7 @@ void AAirsoftPlayerController::ClientMatchEnded_Implementation(EAirsoftTeam Winn
 			const FString MyName = PS ? PS->GetPlayerName() : FString();
 			for (const FAirsoftSummaryRow& Row : Rows)
 			{
-				if (Row.Name == MyName)
+				if (!Row.bBot && Row.Name == MyName)
 				{
 					Profile->Tags += Row.Stats.Tags;
 					Profile->Outs += Row.Stats.Outs;
