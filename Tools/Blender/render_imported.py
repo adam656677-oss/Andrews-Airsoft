@@ -177,6 +177,7 @@ def main(argv):
         else:
             rows, rg, cg, ls, vd, lens = [want[0:5], want[5:9], want[9:13], want[13:]], 0.05, 0.06, 0.012, (0.35, -1.0, 0.3), 100
         shown = studio.layout_rows(groups, rows, rg, cg, bw.WORK["labels"], ls)
+        bpy.context.view_layer.update()  # matrix_world is stale until the depsgraph updates
         lo, hi = studio.bbox(shown)
         rig["floor"].hide_render = True
         studio.frame(rig, lo, hi, view_dir=vd, margin=1.05, lens=lens)
@@ -191,6 +192,7 @@ def main(argv):
         for o in coll.objects:
             o.hide_render = o.get("asset") != gid
         rig["floor"].hide_render = False
+        bpy.context.view_layer.update()
         lo, hi = studio.bbox(objs)
         studio.frame(rig, lo, hi, view_dir=(0.5, -1.0, 0.3) if kind != "Attachment" else (0.6, -1.0, 0.45), lens=85)
         cat = "Attachments" if kind == "Attachment" else "Weapons"

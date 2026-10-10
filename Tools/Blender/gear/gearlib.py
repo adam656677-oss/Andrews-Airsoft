@@ -174,6 +174,7 @@ def setup_preview_scene(threads=2):
         scn.view_settings.look = "AgX - Medium High Contrast"
     except Exception:
         pass
+    scn.view_settings.exposure = -1.2
     world = bpy.data.worlds.new("W")
     world.use_nodes = True
     bg = world.node_tree.nodes.get("Background")

@@ -400,62 +400,44 @@ class Hand:
         return W, dirs
 
     # ----------------------------------------------------------------------------------
-    def build(self, field, details=True):
-        """Adds the hand's primitives to `field`; returns landmark dict."""
+    def build(self, field):
+        """Adds the hand's primitives to `field`; returns a landmark dict."""
         s = self.s
         L, Ld = self.L, self.Ldir
-        dz = Ld((0, 0, 1))
-        lm = {}
-        # palm core: rounded slab + metacarpal heads + pads
-        Mloc = np.stack([Ld((1, 0, 0)), Ld((0, 1, 0)) * (-1 if self.left else 1), dz], axis=1)
-        if self.left:
-            Mloc = np.stack([Ld((1, 0, 0)), -Ld((0, -1, 0)) * -1, dz], axis=1)
-        Mloc = np.stack([Ld((1, 0, 0)), np.cross(dz, Ld((1, 0, 0))), dz], axis=1)
-        # (Mloc columns: x distal, y = z cross x (radial for right, ulnar for left), z dorsal)
-        sy = -1.0 if self.left else 1.0
-
-        def box(c, b, rad, tag="palm"):
-            q = Prim("box", tag, dorsal=dz, c=L(c), M=Mloc, b=np.asarray(b) * s, rad=rad * s)
-            return q
-
-        def ell(c, r, tag, M=None, dors=dz):
-            return Prim("ell", tag, dorsal=dors, c=L(c), M=Mloc if M is None else M, r=np.asarray(r) * s)
+        dx, dy, dz = Ld((1, 0, 0)), Ld((0, 1, 0)), Ld((0, 0, 1))
+        Mh = np.stack([dx, dy, dz], axis=1)  # hand-local axes in world space (mirrored for the left hand)
+        lm = {"frame": Mh}
 
         def cone(a, b, r1, r2, tag, dors=dz):
             return Prim("cone", tag, dorsal=dors, a=a, b=b, r1=r1 * s, r2=r2 * s)
 
         k_soft = 7 * s
-        field.add(box((50, 1, -3), (36, 34, 13.5), 11.5), 0)
+        # palm: rounded slab + metacarpal heads + pads
+        field.add(Prim("box", "palm", dorsal=dz, c=L((50, 1, -3)), M=Mh, b=np.array([36, 34, 13.5]) * s, rad=11.5 * s), 0)
         mcps = {n: self.mcp_local(n) for n in FINGERS}
         bases = {"index": (14, 15, -1), "middle": (12, 5, 0), "ring": (14, -5, -1), "little": (16, -14, -3)}
         for n in FINGERS:
-            r_head = FINGERS[n]["radii"][0] + 2.2
-            field.add(cone(L(bases[n]), L(mcps[n]), 11.0, r_head, "palm"), k_soft)
-        # distal palmar pad (base of the fingers) and heel pads
+            field.add(cone(L(bases[n]), L(mcps[n]), 11.0, FINGERS[n]["radii"][0] + 2.2, "palm"), k_soft)
         field.add(cone(L(mcps["index"] + np.array([-4, 2, -8])), L(mcps["little"] + np.array([-6, -1, -6])), 9.5, 8.5, "palm"), k_soft)
-        field.add(ell((38, -24, -9), (32, 13, 13), "palm"), 9 * s)  # hypothenar
-        # thenar eminence along the thumb metacarpal
+        field.add(Prim("ell", "palm", dorsal=dz, c=L((38, -24, -9)), M=Mh, r=np.array([32, 13, 13]) * s), 9 * s)  # hypothenar
         tw, tdirs = self.thumb_chain()
-        mt = tdirs[0]
-        Mt = frame_from(mt, -dz)
-        field.add(Prim("ell", "palm", dorsal=dz, c=(tw[0] + tw[1]) * 0.5 - dz * 6 * s - Ld((0, 1, 0)) * 3 * s * sy, M=Mt, r=np.array([27, 15, 13]) * s), 8 * s)
-        # wrist / carpus
-        for yy in (12.0, -11.0):
+        Mt = frame_from(tdirs[0], -dz)
+        field.add(Prim("ell", "palm", dorsal=dz, c=(tw[0] + tw[1]) * 0.5 - dz * 6 * s - dy * 3 * s, M=Mt, r=np.array([27, 15, 13]) * s), 8 * s)  # thenar
+        for yy in (12.0, -11.0):  # carpus / wrist
             field.add(cone(L((22, yy, -2)), L((-6, yy * 0.95, -1)), 17.5, 17.0, "wrist"), 9 * s)
         lm["wrist"] = L((0, 0, 0))
-        # forearm / cuff from the wrist joint towards the elbow
-        if self.forearm_dir is not None:
+        if self.forearm_dir is not None:  # glove cuff along the forearm
             fd = normalize(self.forearm_dir)
-            side = Ld((0, 1, 0))
-            side = normalize(side - fd * (side @ fd))
+            side = normalize(dy - fd * (dy @ fd))
             up = np.cross(fd, side)
+            if up @ dz < 0:
+                up = -up
             w0 = L((-4, 0, 0))
             for yy in (11.5, -10.5):
-                a = w0 + side * yy * s * sy
-                b = w0 + fd * self.forearm_len + side * yy * 1.12 * s * sy
-                field.add(cone(a, b, 17.5, 21.5, "cuff", dors=up), 10 * s)
+                a = w0 + side * yy * s
+                b = w0 + fd * self.forearm_len + side * yy * 1.12 * s
+                field.add(cone(a, b, 17.5, 21.0, "cuff", dors=up), 10 * s)
             lm["cuff_axis"] = (w0, fd, side, up)
-        # fingers
         for n, f in FINGERS.items():
             W, D = self.finger_chain(n)
             r = f["radii"]
@@ -463,35 +445,107 @@ class Hand:
             for i in range(3):
                 a, b = W[i], W[i + 1]
                 field.add(cone(a, b, r[2 * i], r[2 * i + 1], f"{n}_{tags[i]}", dors=D[i]), 2.8 * s if i else 6.5 * s)
-                # palmar pad: slightly flattened, fuller finger pads
-                padoff = -D[i] * 2.3 * s
+                padoff = -D[i] * 2.3 * s  # palmar pad: flatter, fuller finger pads
                 ins = 0.12 if i < 2 else 0.05
-                pa = a + (b - a) * ins + padoff
-                pb = b - (b - a) * 0.12 + padoff
-                field.add(cone(pa, pb, r[2 * i] - 2.4, r[2 * i + 1] - 2.1, f"{n}_{tags[i]}", dors=D[i]), 2.5 * s)
+                field.add(cone(a + (b - a) * ins + padoff, b - (b - a) * 0.12 + padoff, r[2 * i] - 2.4, r[2 * i + 1] - 2.1, f"{n}_{tags[i]}", dors=D[i]), 2.5 * s)
+                if i == 1:  # PIP knuckle
+                    field.add(Prim("ell", f"{n}_{tags[i]}", dorsal=D[i], c=a + D[i] * (r[2] - 4.0) * s, M=frame_from(b - a, D[i]), r=np.array([5.5, 6.5, 4.5]) * s), 3.0 * s)
             lm[n] = (W, D)
-        # thumb
         r = THUMB["radii"]
-        # thumb segment dorsal: the nail side faces away from the palm
-        prev = None
         tags = ("thumb_mc", "thumb_prox", "thumb_dist")
+        pc = L((45, 0, -12))
+        tdors = []
         for i in range(3):
             a, b = tw[i], tw[i + 1]
             ax = normalize(b - a)
-            dd = np.cross(ax, dz) * sy
+            dd = np.cross(ax, dz)
             dd = normalize(dd if np.linalg.norm(dd) > 1e-3 else dz)
-            # make the thumb's dorsal point away from the palm centre
-            pc = L((45, 0, -12))
             if dd @ (a - pc) < 0:
                 dd = -dd
+            dd = normalize(dd + dz * 0.6)  # the nail faces outwards and a little dorsal
+            dd = normalize(dd - ax * (dd @ ax))
+            tdors.append(dd)
             field.add(cone(a, b, r[2 * i], r[2 * i + 1], tags[i], dors=dd), 6 * s if i == 0 else 2.8 * s)
             if i > 0:
                 padoff = -dd * 2.2 * s
                 field.add(cone(a + (b - a) * 0.15 + padoff, b - (b - a) * 0.1 + padoff, r[2 * i] - 2.2, r[2 * i + 1] - 1.8, tags[i], dors=dd), 2.5 * s)
-        lm["thumb"] = (tw, tdirs)
-        lm["frame"] = Mloc
+        lm["thumb"] = (tw, tdirs, tdors)
+        lm["mcps"] = {n: L(mcps[n]) for n in FINGERS}
         self.landmarks = lm
         return lm
+
+
+# --------------------------------------------------------------------------------------
+# Glove details
+# --------------------------------------------------------------------------------------
+
+
+def capsule_sdf(a, b, r):
+    a = np.asarray(a, np.float64)
+    b = np.asarray(b, np.float64)
+    return lambda p: sd_round_cone(p, a, b, r, r)
+
+
+def add_glove_features(hand, field, strap=True):
+    """Knuckle shell, finger pads, thumb pad, palm reinforcement, wrist strap + tab.
+    Each is a raised offset of the hand surface inside a region (follows the hand)."""
+    s = hand.s
+    lm = hand.landmarks
+    L, Ld = hand.L, hand.Ldir
+    dx, dy, dz = Ld((1, 0, 0)), Ld((0, 1, 0)), Ld((0, 0, 1))
+    mcps = {n: hand.mcp_local(n) for n in FINGERS}
+    # knuckle shell: one molded bump per knuckle + a lower bridge joining them
+    bumps = []
+    for n in FINGERS:
+        c = mcps[n] + np.array([-3.0, 0, 13.0])
+        w = {"index": 9.5, "middle": 9.5, "ring": 9.0, "little": 8.0}[n]
+        bumps.append(capsule_sdf(L(c - np.array([7.0, 0, 0])), L(c + np.array([6.0, 0, -2.0])), w * s))
+
+    def shell_region(p):
+        return np.min(np.stack([b(p) for b in bumps]), axis=0)
+
+    a = L(mcps["index"] + np.array([-10, 4, 12]))
+    b = L(mcps["little"] + np.array([-10, -3, 10]))
+    bridge = capsule_sdf(a, b, 10.5 * s)
+    field.features.append(Feature("shell", 1.6 * s, bridge, k_edge=1.2 * s, k_join=0.8 * s))
+    field.features.append(Feature("shell", 3.6 * s, shell_region, k_edge=1.6 * s, k_join=1.0 * s))
+    # padded knuckle protectors on the proximal phalanges (and the thumb)
+    for n in FINGERS:
+        W, D = lm[n]
+        p0 = W[0] + (W[1] - W[0]) * 0.36 + D[0] * 7 * s
+        p1 = W[0] + (W[1] - W[0]) * 0.80 + D[0] * 7 * s
+        field.features.append(Feature("pad", 2.2 * s, capsule_sdf(p0, p1, 7.2 * s), k_edge=1.0 * s, k_join=0.7 * s))
+    tw, tdirs, tdors = lm["thumb"]
+    p0 = tw[1] + (tw[2] - tw[1]) * 0.25 + tdors[1] * 7 * s
+    p1 = tw[1] + (tw[2] - tw[1]) * 0.8 + tdors[1] * 7 * s
+    field.features.append(Feature("pad", 2.0 * s, capsule_sdf(p0, p1, 7.5 * s), k_edge=1.0 * s, k_join=0.7 * s))
+    # palm reinforcement: heel of the palm and the thumb-index saddle
+    heel = Prim("box", "x", c=L((40, -2, -20)), M=np.stack([dx, dy, dz], 1), b=np.array([30, 36, 12]) * s, rad=10 * s)
+    saddle = capsule_sdf(L((40, 30, -12)), L((82, 30, -10)), 10 * s)
+
+    def patch_region(p):
+        return np.minimum(heel.eval(p), saddle(p))
+
+    field.features.append(Feature("patch", 1.1 * s, patch_region, k_edge=0.8 * s, k_join=0.6 * s))
+    # wrist strap with a pull tab on the dorsal side
+    if strap and "cuff_axis" in lm:
+        w0, fd, side, up = lm["cuff_axis"]
+        c = w0 + fd * 34 * s
+
+        def strap_region(p):
+            along = np.abs((p - c) @ fd) - 12.5 * s
+            rad = np.linalg.norm((p - c) - np.outer((p - c) @ fd, fd), axis=1) - 40 * s
+            return np.maximum(along, rad)
+
+        field.features.append(Feature("strap", 2.0 * s, strap_region, k_edge=0.9 * s, k_join=0.6 * s))
+        # tab: on the back of the wrist, running towards the ulnar side
+        uln = -Ld((0, 1, 0))
+        uln = normalize(uln - fd * (uln @ fd))
+        tc = c + up * 18 * s + uln * 8 * s
+        Mt = np.stack([fd, normalize(np.cross(up, fd)), up], 1)
+        tab = Prim("box", "x", c=tc, M=Mt, b=np.array([11.5, 21, 30]) * s, rad=4 * s)
+        field.features.append(Feature("tab", 3.8 * s, tab.eval, k_edge=1.0 * s, k_join=0.6 * s))
+    return field
 
 
 # --------------------------------------------------------------------------------------
@@ -511,7 +565,7 @@ def grasp(hand, name, obstacle, start=(0.0, 0.0, 0.0), ratios=(1.0, 1.15, 0.8), 
         hits = []
         for i in range(3):
             a, b = W[i], W[i + 1]
-            ts = np.linspace(0.15 if i == 0 else 0.0, 1.0, 9)
+            ts = np.linspace(0.32 if i == 0 else 0.0, 1.0, 9)
             P = a[None] + ts[:, None] * (b - a)[None]
             rr = (f["radii"][2 * i] + (f["radii"][2 * i + 1] - f["radii"][2 * i]) * ts) * hand.s
             d = obstacle(P) - rr
