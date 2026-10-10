@@ -6,10 +6,14 @@ baked 4K textures, then renders named camera shots with Cycles (AgX, depth of fi
     python Tools/Blender/render_scenes.py -- --list
     python Tools/Blender/render_scenes.py -- --shot velvet_street                 # 2560x1440 final
     python Tools/Blender/render_scenes.py -- --shot velvet_street --preview       # 640x360 framing check
+    python Tools/Blender/render_scenes.py -- --shot armory --preview --try '[{"cam": [-3, 1, 1.6]}, {"lens": 35}]'
+                                                                                  # camera variants, one build
     python Tools/Blender/render_scenes.py -- --topdown VelvetClub                 # plan check (ortho, top view)
-    python Tools/Blender/render_scenes.py -- --sheet                              # contact sheet + poster
-    flags: --res WxH, --samples N, --threads N, --png-dir DIR (PNG masters, default Saved/Screens),
-           --jpg-dir DIR (default Docs/Screens), --no-post, --keep-blend
+    python Tools/Blender/render_scenes.py -- --sheet       # contact sheet, title poster, HUD version (PIL only)
+    flags: --res WxH, --samples N, --threads N, --png-dir DIR (PNG masters, default Saved/Screens, git-ignored),
+           --jpg-dir DIR (quality-90 JPGs, default Docs/Screens), --tmp-dir DIR (raw renders / previews),
+           --no-post, --keep-blend
+    Finals take roughly 5-15 min each on 4 CPU cores (adaptive sampling, OpenImageDenoise).
 
 What it builds (same rules as levels.py / lighting.py / materials.py, so it matches the editor build):
     prop     FBX pieces imported once per asset and instanced (collection instances); paint tints,
@@ -33,6 +37,10 @@ Shots (SHOTS below) are named camera setups: map, camera and target in layout me
 focal length, f-stop / focus point, exposure, look, optional extra props (noted per shot) and an optional
 first-person rig (gloves + gun at the game's ADS / hip placement from AirsoftCombatComponent).
 Texture resolution is picked per asset from its distance to the camera (proxies from bakekit).
+Look: AgX + a per-shot look, compositor bloom and slight lens dispersion, then a vignette and fine grain
+in display space. Lights keep Unreal's units 1:1 (LIGHT_SCALE) and the per-shot exposure stands in for
+auto exposure; the haze boxes stand in for the height fog / volumetric fog (values eyeballed).
+These are offline path-traced stills of the real assets and layouts, not in-engine screenshots.
 """
 
 import ast
@@ -293,8 +301,18 @@ def dx_normal(nb, ntex, strength=1.0):
     return nm.outputs["Normal"]
 
 
+def fresh(name):
+    """New node material that never replaces an existing one (bakekit.fresh_material deletes a namesake,
+    which would free materials still cached / assigned elsewhere); Blender suffixes duplicates."""
+    m = bpy.data.materials.new(name)
+    m.use_nodes = True
+    m.node_tree.nodes.clear()
+    m.node_tree.nodes.new("ShaderNodeOutputMaterial").target = "ALL"
+    return m
+
+
 def new_mat(name):
-    m = bk.fresh_material(name)
+    m = fresh(name)
     nb = bk.NB(m.node_tree)
     out = next(n for n in m.node_tree.nodes if n.type == "OUTPUT_MATERIAL")
     return m, nb, out
@@ -352,7 +370,6 @@ def glass_mat(aid):
         nb.nt.links.new(em.outputs[0], add.inputs[1])
         shader = add.outputs[0]
     m.node_tree.links.new(shader, out.inputs["Surface"])
-    m.blend_method = "BLEND" if hasattr(m, "blend_method") else None
     _mat_cache[key] = m
     return m
 
@@ -457,7 +474,7 @@ def tile_mat(mid, tint=None, uv_scale=1.0, res=2048, puddle=False):
         m = bk.plain_material(f"Tile_{mid}_flat", FALLBACK_COLOR[mid], 0.6, 0.0)
         _mat_cache[key] = m
         return m
-    name = f"Tile_{mid}" + (f"_{tint}" if tint else "") + ("_Puddle" if puddle else "") + f"_{uv_scale:g}"
+    name = f"Tile_{mid}" + (f"_{tint}" if tint else "") + ("_Puddle" if puddle else "") + f"_{uv_scale:g}_{res}"
     m, nb, out = new_mat(name)
     bsdf = nb.node("ShaderNodeBsdfPrincipled")
     m.node_tree.links.new(bsdf.outputs[0], out.inputs["Surface"])
@@ -504,7 +521,7 @@ def box_material(mat, tint=None, glow=20.0, res=2048):
 
 
 def volume_mat(name, rgb, density, anisotropy=0.2):
-    m = bk.fresh_material(name)
+    m = fresh(name)
     nt = m.node_tree
     out = next(n for n in nt.nodes if n.type == "OUTPUT_MATERIAL")
     v = nt.nodes.new("ShaderNodeVolumePrincipled")
@@ -600,6 +617,8 @@ class Library:
                     o.data.materials[i] = m
             if role in ("glass", "emissive", "reticle"):
                 o.visible_shadow = False      # translucent / unlit parts never block their own light
+            if role == "reticle":             # unlit in Unreal: seen, but lights nothing (no red glow in the tube)
+                o.visible_diffuse = o.visible_glossy = o.visible_volume_scatter = False
         for m in imported_mats:
             if m.users == 0:
                 bpy.data.materials.remove(m)
@@ -670,6 +689,7 @@ class Builder:
         self.boxes = {}
         self.dist = {}
         self.stats = {"props": 0, "boxes": 0, "lights": 0, "texts": 0}
+        self.rests = []
         self.cull = shot.get("cull") if shot else None
 
     # ---- texture budget: resolution by distance from the camera ---------------------------
@@ -743,8 +763,42 @@ class Builder:
         return e
 
     def extra_gun(self, it):
-        self.placed(self.lib.gun(it["id"], it.get("fit")), f"Gun_{it['id']}", it, skin=it.get("skin", "Black"),
-                    accent=TEAM.get(it.get("team"), it.get("accent", DISPLAY_ACCENT)))
+        coll = self.lib.gun(it["id"], it.get("fit"))
+        e = self.placed(coll, f"Gun_{it['id']}", it, skin=it.get("skin", "Black"),
+                        accent=TEAM.get(it.get("team"), it.get("accent", DISPLAY_ACCENT)))
+        if it.get("rest"):
+            self.rests.append((e, coll))
+
+    def settle(self):
+        """Drop shot extras flagged "rest" onto whatever is under them (counter, bench, case foam):
+        lowest point of the rotated asset on the first surface hit by a ray cast down through its footprint."""
+        if not self.rests:
+            return
+        bpy.context.view_layer.update()
+        dg = bpy.context.evaluated_depsgraph_get()
+        for e, coll in self.rests:
+            R = e.matrix_world.to_3x3().to_4x4()
+            pts = [R @ (o.matrix_basis @ Vector(c)) for o in coll.all_objects if o.type == "MESH" for c in o.bound_box]
+            lo = min(p.z for p in pts)
+            xs, ys = [p.x for p in pts], [p.y for p in pts]
+            base = e.matrix_world.translation.copy()
+            hits = []
+            e.hide_set(True)
+            e.hide_render = True
+            bpy.context.view_layer.update()
+            dg = bpy.context.evaluated_depsgraph_get()
+            for fx in (0.15, 0.5, 0.85):
+                for fy in (0.3, 0.7):
+                    ox = base.x + min(xs) + (max(xs) - min(xs)) * fx
+                    oy = base.y + min(ys) + (max(ys) - min(ys)) * fy
+                    ok, loc, *_ = bpy.context.scene.ray_cast(dg, Vector((ox, oy, base.z + 0.6)), Vector((0, 0, -1)), distance=2.0)
+                    if ok:
+                        hits.append(loc.z)
+            e.hide_set(False)
+            e.hide_render = False
+            if hits:
+                e.matrix_world.translation.z = max(hits) - lo + 0.002
+                print(f"  {e.name} rests at z={e.matrix_world.translation.z:.3f} (surface {max(hits):.3f})", flush=True)
 
     def prop(self, it):
         aid = it["id"]
@@ -971,6 +1025,8 @@ class Builder:
         self.add_light("point", (it["p"][0], it["p"][1], it["p"][2] + (top - 40.0) / 100.0), 0, 0, rgb, 2500.0 / UNITLESS_PER_CD,
                        name="ObjectiveGlow")
         lab = self.shot.get("label_yaw")
+        if lab == "auto":   # the letter billboards toward the local camera (AAirsoftObjective::Tick)
+            lab = math.degrees(math.atan2(self.cam_pos[1] - it["p"][1], self.cam_pos[0] - it["p"][0]))
         if lab is not None:
             self.text({"p": (it["p"][0], it["p"][1], it["p"][2] + (top + 110.0) / 100.0), "yaw": lab,
                        "text": it["letter"], "size": 90.0, "glow": 2.0}, unlit_rgb=rgb)
@@ -1006,6 +1062,11 @@ class Builder:
                 o = show_obj[it["letter"]]
                 self.objective(it, **(o if isinstance(o, dict) else {"team": o}))
         self.flush_boxes()
+        self.settle()
+        empty = sorted({o.name for o in list(self.lib.root.all_objects) + list(self.coll.objects)
+                        if o.type == "MESH" and (not o.data.materials or any(m is None for m in o.data.materials))})
+        if empty:
+            raise RuntimeError(f"objects with empty material slots (would render untextured): {empty[:12]}")
         print(f"  built {self.map['name']}: {self.stats} in {time.time() - t0:.0f}s", flush=True)
 
 
@@ -1054,7 +1115,7 @@ def setup_environment(preset_name, shot):
         nt.links.new(sky.outputs["Color"], bk.sid(mix.inputs, "A_Color"))
         bk.sid(mix.inputs, "B_Color").default_value = (*white_balanced(6500.0, wb), 1.0)
         nt.links.new(bk.sid(mix.outputs, "Result_Color"), bg.inputs["Color"])
-        bg.inputs["Strength"].default_value = shot.get("sky_strength", 0.004) * LIGHT_SCALE
+        bg.inputs["Strength"].default_value = shot.get("sky_strength", 0.08) * LIGHT_SCALE
     else:
         # night: deep blue zenith, faint city glow at the horizon (sky light 0.35, black lower hemisphere)
         tc = nt.nodes.new("ShaderNodeTexCoord")
@@ -1113,8 +1174,8 @@ def setup_render(shot, res, samples, preview):
     c = scn.cycles
     c.samples = samples
     c.use_adaptive_sampling = True
-    c.adaptive_threshold = 0.05 if preview else shot.get("noise", 0.02)
-    c.adaptive_min_samples = 8 if preview else 24
+    c.adaptive_threshold = 0.05 if preview else shot.get("noise", 0.03)
+    c.adaptive_min_samples = 8 if preview else 16
     c.use_denoising = True
     c.denoiser = "OPENIMAGEDENOISE"
     c.denoising_input_passes = "RGB_ALBEDO_NORMAL"
@@ -1293,12 +1354,60 @@ def shot(name, **kw):
     SHOTS[name] = kw
 
 
-shot("test_street", map="VelvetClub", cam=(-6.0, -24.0, 0.6), target=(0.0, -10.0, 3.0), lens=24, fstop=0,
-     exposure=2.0, sun_mult=0.5, haze={"rect": (-40, -36, 40, -10.5), "top": 10.0, "density": 0.003,
-                                       "color": (0.8, 0.82, 0.9), "g": 0.55})
-shot("test_iron", map="IronwoodYard", cam=(-41.0, 9.0, 2.0), target=(-22.0, -2.0, 2.0), lens=28, exposure=-0.5,
-     objectives={"A": {"team": "None", "progress_rgb": (0.35, 0.5, 0.9)}}, label_yaw=60.0,
-     haze={"rect": (-90, -75, 90, 75), "top": 14.0, "density": 0.002, "color": (0.95, 0.85, 0.72), "g": 0.6})
+# Atmosphere stands in for Unreal's height fog + volumetric fog (lighting.PRESETS); values eyeballed.
+STREET_HAZE = {"rect": (-40, -36, 40, -10.4), "top": 10.0, "density": 0.0022, "color": (0.74, 0.8, 1.0), "g": 0.6}
+FIELD_DUST = {"rect": (-95, -78, 95, 78), "top": 16.0, "density": 0.0022, "color": (1.0, 0.86, 0.68), "g": 0.65}
+RANGE_DUST = {"rect": (-30, -24, 84, 44), "top": 12.0, "density": 0.0018, "color": (1.0, 0.86, 0.68), "g": 0.65}
+
+shot("velvet_street", file="01_VelvetClub_Street", map="VelvetClub", poster=True, poster_sub="VELVET CLUB",
+     caption="Velvet Club - the street at night: wet asphalt, neon sign, canopy LEDs and the velvet-rope queue",
+     cam=(-5.0, -25.6, 0.3), target=(0.6, -11.0, 1.5), lens=22, fstop=2.8, focus=(0.0, -11.4, 1.6),
+     exposure=1.6, sun_mult=0.45, haze=STREET_HAZE, bloom=0.45, samples=64, noise=0.02)
+shot("velvet_interior", file="02_VelvetClub_DanceFloor", map="VelvetClub",
+     caption="Velvet Club - the dance floor, DJ stage and moving-head lights in the haze",
+     cam=(1.5, 7.5, 1.0), target=(-0.5, 18.0, 2.0), lens=20, fstop=2.8, focus=(0.0, 18.0, 1.5),
+     exposure=1.7, sun_mult=0.4, fog_scale=0.035, bloom=0.5, samples=48)
+shot("armory", file="03_Staging_Armory", map="Staging",
+     caption="The Armory (Staging lobby) - walnut panelling, brass lamps and every gun on its display bay",
+     cam=(-4.0, 5.2, 1.55), target=(-15.5, 12.2, 1.25), lens=28, fstop=4.0, focus=(-9.6, 13.4, 1.2),
+     exposure=2.2, samples=48)
+shot("fp_street", file="04_VelvetClub_FirstPerson", map="VelvetClub", hud=True,
+     caption="First person - gloved hands on the M4 (red dot, vertical grip) on the wet street outside the club",
+     cam=(-7.2, -28.4, 1.62), target=(0.0, -11.0, 1.9), hfov=90.0, clip_start=0.05, fstop=0,
+     fp={"gun": "M4", "aim": 0.0, "team": "Blue"}, hud_crosshair=True,
+     exposure=1.35, sun_mult=0.45, haze=STREET_HAZE, bloom=0.45, samples=48)
+# optional (not in the set): ADS through the red dot - the open rear flip cap fills the top of the view
+shot("fp_street_ads", file="04b_VelvetClub_FirstPerson_ADS", map="VelvetClub",
+     caption="First person - aiming down the red dot at the club entrance",
+     cam=(-3.0, -22.2, 1.62), target=(0.5, -11.0, 2.0), hfov=72.0, clip_start=0.05, fstop=0,
+     fp={"gun": "M4", "aim": 1.0, "team": "Blue"},
+     exposure=1.6, sun_mult=0.45, haze=STREET_HAZE, bloom=0.45, samples=48)
+shot("ironwood_golden", file="05_Ironwood_GoldenHour", map="IronwoodYard",
+     caption="Ironwood Yard at golden hour - the north lane, watchtower and field cover in long low light",
+     cam=(4.5, -27.0, 0.8), target=(-14.0, -36.0, 3.8), lens=24, fstop=5.6, focus=(-7.0, -37.5, 4.0),
+     exposure=0.6, sun_mult=1.3, sky_strength=0.065, haze=FIELD_DUST, samples=48)
+shot("ironwood_backlit", file="09_Ironwood_Watchtower_Backlit", map="IronwoodYard",
+     caption="Ironwood Yard - the north watchtower against the low sun, dust hanging over the CQB village",
+     cam=(-1.2, -44.3, 0.6), target=(-7.5, -36.0, 4.9), lens=20, fstop=4.0, focus=(-7.0, -37.5, 4.0),
+     exposure=0.2, sun_mult=1.3, sky_strength=0.065, haze=FIELD_DUST, samples=48)
+shot("ironwood_objective", file="06_Ironwood_ObjectiveA", map="IronwoodYard",
+     caption="Ironwood Yard - objective A in the container yard, Red team holding the flag",
+     cam=(-21.8, 6.8, 0.9), target=(-27.0, -1.5, 2.7), lens=20, fstop=5.6, focus=(-26.0, 0.0, 2.0),
+     objectives={"A": {"team": "Red"}}, label_yaw="auto", ring_glow=0.05,   # disc dimmed, see report
+     exposure=0.4, sun_mult=1.3, sky_strength=0.065, haze=FIELD_DUST, samples=48)
+shot("range", file="07_Staging_Range", map="Staging",
+     caption="The practice range at golden hour - steel plates at 25 / 40 / 60 m in front of the hay-bale berm",
+     cam=(28.5, -1.0, 0.5), target=(47.0, -9.0, 1.0), lens=28, fstop=4.0, focus=(31.0, -3.5, 0.8),
+     exposure=1.0, sun_mult=1.2, sky_strength=0.065, haze=RANGE_DUST, samples=48)
+shot("weapon_hero", file="08_Armory_M4_Hero", map="Staging",
+     caption="Hero close-up - an M4 (FDE finish, 4x scope, suppressor) in its open case on the armory counter",
+     cam=(-12.0, 10.15, 1.95), target=(-12.3, 9.05, 1.15), lens=35, fstop=2.2, focus=(-12.3, 9.05, 1.2),
+     exposure=1.6, samples=64,
+     extra_lights=[{"kind": "spot", "p": (-12.3, 9.6, 2.2), "pitch": -62.0, "yaw": -90.0, "color": (1.0, 0.85, 0.68),
+                    "cd": 4.0, "cone": (12, 28), "shadows": True, "src": 6.0}],   # shot-only product key light
+     # shot-only extra: the hero gun laid in the counter's open GunCase_Hard
+     extra=[{"t": "gun", "id": "M4", "fit": {"Optic": "Scope4x", "Muzzle": "Suppressor"}, "skin": "FDE", "team": "Blue",
+             "p": (-12.16, 9.06, 1.3), "rot": (0.0, 175.0, 90.0), "rest": True}])
 
 
 # --------------------------------------------------------------------------------------
@@ -1326,15 +1435,13 @@ def topdown(map_name, res, samples, out):
     x0, y0, x1, y1 = m["bounds"]
     cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
     sh = {"map": map_name, "cam": (cx, cy, 120.0), "target": (cx, cy, 0.0), "exposure": 0.0, "bloom": 0.0, "ca": 0.0,
-          "sun_mult": 1.0, "sky": "physical", "sky_strength": 0.004}
+          "sun_mult": 1.0, "sky": "physical", "sky_strength": 0.08}
     b = Builder(sh, m, {"preview": True})
-    p = PRESETS[m["lighting"]]
-    setup_environment(m["lighting"], dict(sh, sky="physical"))
-    for o in bpy.context.scene.objects:
+    setup_environment(m["lighting"], sh)
+    for o in bpy.context.scene.objects:   # a high, even sun so night maps read on the plan too
         if o.type == "LIGHT" and o.data.type == "SUN":
             o.data.energy = 3.0
             o.rotation_euler = (0.35, 0.2, 0.0)
-    del p
     b.build()
     cam = setup_camera(sh)
     cam.data.type = "ORTHO"
@@ -1474,7 +1581,7 @@ def _lin2srgb8(c, a=255):
     return tuple(int(round(255 * (12.92 * v if v <= 0.0031308 else 1.055 * v ** (1 / 2.4) - 0.055))) for v in c) + (a,)
 
 
-def make_hud(src, out, s=1.0):
+def make_hud(src, out, crosshair=False, spread_deg=2.4, hfov=90.0):
     """Minimal in-game HUD in the game's style (AirsoftUIStyle: dark translucent panels, hairline borders,
     accent orange, tracked caps): round timer + team scores + objective pips top-centre, ammo bottom-right.
     No crosshair (aiming through the red dot)."""
@@ -1522,6 +1629,16 @@ def make_hud(src, out, s=1.0):
     _spaced(d, (x1 - 276 * s, y1 - 92 * s), "M4", f_name, text, 3 * s)
     _spaced(d, (x1 - 276 * s, y1 - 70 * s), "AUTO", f_name, accent, 3 * s)
     _spaced(d, (x1 - 276 * s, y1 - 36 * s), "RED DOT", _font(int(11 * s), "Medium"), dim, 3 * s)
+    if crosshair:   # SAirsoftHUDCanvas::PaintCrosshair at hip: gap from spread, 9 x 2 bars, centre dot
+        u = H / 1080.0                     # Slate DPI scale (1080p = 1.0)
+        gap = max(4.0 * u, math.tan(math.radians(spread_deg)) / math.tan(math.radians(hfov / 2)) * W / 2)
+        ln, th = 9.0 * u, 2.0 * u
+        cxx, cyy = W / 2, H / 2
+        for (x0, y0, w, h) in ((cxx - gap - ln, cyy - th / 2, ln, th), (cxx + gap, cyy - th / 2, ln, th),
+                               (cxx - th / 2, cyy - gap - ln, th, ln), (cxx - th / 2, cyy + gap, th, ln),
+                               (cxx - u, cyy - u, 2 * u, 2 * u)):
+            d.rectangle((x0 - u, y0 - u, x0 + w + u, y0 + h + u), fill=(0, 0, 0, 115))
+            d.rectangle((x0, y0, x0 + w, y0 + h), fill=(255, 255, 255, 235))
     Image.alpha_composite(base, ov).convert("RGB").save(out, quality=90, subsampling=0, optimize=True)
     print("wrote", out, flush=True)
 
@@ -1534,23 +1651,23 @@ def make_poster(src, out, subtitle="VELVET CLUB"):
     im = Image.open(src).convert("RGB").resize((1920, 1080), Image.LANCZOS)
     a = np.asarray(im).astype(np.float32) / 255.0
     y = np.linspace(0.0, 1.0, 1080, dtype=np.float32)[:, None, None]
-    a *= 1.0 - 0.62 * np.clip((y - 0.55) / 0.45, 0, 1) ** 1.4
+    a *= 1.0 - 0.74 * np.clip((y - 0.5) / 0.5, 0, 1) ** 1.3
     im = Image.fromarray((np.clip(a, 0, 1) * 255 + 0.5).astype(np.uint8)).convert("RGBA")
     ov = Image.new("RGBA", im.size, (0, 0, 0, 0))
     d = ImageDraw.Draw(ov)
     title = "ANDREW'S AIRSOFT"
-    f = _font(150, family="title")
-    tw = _spaced(d, (960, 0), title, f, (0, 0, 0, 0), 22, "m")   # measure
+    f = _font(122, family="title")
+    tw = _spaced(d, (960, 0), title, f, (0, 0, 0, 0), 18, "m")   # measure
     ov = Image.new("RGBA", im.size, (0, 0, 0, 0))
     d = ImageDraw.Draw(ov)
-    ty = 780
-    _spaced(d, (963, ty + 4), title, f, (0, 0, 0, 140), 22, "m")          # soft drop shadow
-    _spaced(d, (960, ty), title, f, (246, 240, 232, 255), 22, "m")
-    rule_y = ty + 190
+    ty = 812
+    _spaced(d, (962, ty + 3), title, f, (0, 0, 0, 150), 18, "m")          # drop shadow
+    _spaced(d, (960, ty), title, f, (246, 240, 232, 255), 18, "m")
+    rule_y = ty + 158
     acc = _lin2srgb8((1.0, 0.55, 0.05))
     d.rectangle((960 - tw / 2, rule_y, 960 + tw / 2, rule_y + 2), fill=(246, 240, 232, 90))
     d.rectangle((960 - 60, rule_y - 1, 960 + 60, rule_y + 3), fill=acc)
-    _spaced(d, (960, rule_y + 18), subtitle, _font(22, "Medium"), (220, 214, 206, 220), 9, "m")
+    _spaced(d, (960, rule_y + 16), subtitle, _font(19, "Medium"), (220, 214, 206, 220), 8, "m")
     Image.alpha_composite(im, ov).convert("RGB").save(out, quality=92, subsampling=0, optimize=True)
     print("wrote", out, flush=True)
 
@@ -1591,8 +1708,9 @@ def make_sheet(opts):
         if os.path.exists(p):
             entries.append((p, sh.get("caption", "")))
         if sh.get("hud") and os.path.exists(p):
-            make_hud(os.path.join(png_dir, sh["file"] + ".png") if os.path.exists(os.path.join(png_dir, sh["file"] + ".png")) else p,
-                     os.path.join(jpg_dir, sh["file"] + "_HUD.jpg"))
+            src = os.path.join(png_dir, sh["file"] + ".png")
+            make_hud(src if os.path.exists(src) else p, os.path.join(jpg_dir, sh["file"] + "_HUD.jpg"),
+                     crosshair=sh.get("hud_crosshair", False), hfov=sh.get("hfov", 90.0))
         if sh.get("poster"):
             src = os.path.join(png_dir, sh["file"] + ".png")
             src = src if os.path.exists(src) else p
