@@ -1,0 +1,935 @@
+{
+  "Version": 1,
+  "Assets": {
+    "Gloves": {
+      "Pieces": [
+        {
+          "Name": "RightGrip",
+          "Kind": "Static",
+          "Slots": [
+            "M_Gloves_RightGrip"
+          ],
+          "Space": "Gun",
+          "Attach": "Origin",
+          "Bounds": {
+            "Min": [
+              -33.6,
+              -4.2,
+              -25.9
+            ],
+            "Max": [
+              7.7,
+              13.2,
+              3.8
+            ]
+          },
+          "Triangles": 132196,
+          "TextureSize": 2048
+        },
+        {
+          "Name": "LeftSupport",
+          "Kind": "Static",
+          "Slots": [
+            "M_Gloves_LeftSupport"
+          ],
+          "Space": "LeftHand",
+          "Attach": "LeftHand",
+          "Bounds": {
+            "Min": [
+              -37.0,
+              -28.7,
+              -24.1
+            ],
+            "Max": [
+              4.4,
+              6.7,
+              7.0
+            ]
+          },
+          "Triangles": 137352,
+          "TextureSize": 2048
+        },
+        {
+          "Name": "LeftPistol",
+          "Kind": "Static",
+          "Slots": [
+            "M_Gloves_LeftPistol"
+          ],
+          "Space": "Gun",
+          "Attach": "Origin",
+          "Bounds": {
+            "Min": [
+              -33.1,
+              -20.4,
+              -26.2
+            ],
+            "Max": [
+              8.7,
+              3.6,
+              1.8
+            ]
+          },
+          "Triangles": 123228,
+          "TextureSize": 2048
+        }
+      ],
+      "Points": {
+        "RightGripAttach": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "LeftPistolAttach": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "RightElbow": [
+          -30.0,
+          9.0,
+          -22.0
+        ],
+        "LeftElbowPistol": [
+          -30.0,
+          -16.0,
+          -22.0
+        ],
+        "LeftElbowSupport": [
+          -34.0,
+          -24.0,
+          -20.0
+        ]
+      },
+      "Notes": "Unreal cm. RightGrip and LeftPistol are authored in gun space (origin = pistol-grip centre, attach at the gun origin); LeftSupport is authored relative to the gun's LeftHand point (attach at Points.LeftHand). LeftElbowSupport is relative to LeftHand. Bounds are per piece in its own space; the asset Bounds is their union.",
+      "Bounds": {
+        "Min": [
+          -37.0,
+          -28.7,
+          -26.2
+        ],
+        "Max": [
+          8.7,
+          13.2,
+          7.0
+        ]
+      }
+    },
+    "Armband": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Static",
+          "Slots": [
+            "M_Armband_Body"
+          ],
+          "Bounds": {
+            "Min": [
+              -5.7,
+              -14.5,
+              -14.2
+            ],
+            "Max": [
+              7.4,
+              -0.4,
+              0.0
+            ]
+          },
+          "Triangles": 2352,
+          "TextureSize": 1024
+        }
+      ],
+      "Points": {
+        "Pivot": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -5.7,
+          -14.5,
+          -14.2
+        ],
+        "Max": [
+          7.4,
+          -0.4,
+          0.0
+        ]
+      },
+      "Anchor": {
+        "Bone": "upperarm_l",
+        "Offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Scale": 1.0,
+        "AlignBone": "lowerarm_l",
+        "ModelDir": [
+          0.0998,
+          -0.7184,
+          -0.6885
+        ],
+        "AssumedBonePos": [
+          -1.0,
+          -17.5,
+          142.5
+        ]
+      },
+      "TeamGear": {
+        "Slot": "Arm",
+        "Colorway": "None",
+        "TintRoughness": 0.5,
+        "RoughnessDetail": 1.0,
+        "TintMetallic": 0.0
+      },
+      "Notes": "Unreal cm, character space (X forward, Y right, Z up). Origin = the anchor bone's pivot in the assumed UE5 Manny reference pose; UAirsoftTeamGearComponent attaches it to that bone from the skeleton's reference pose. Offset/Rotation/Scale are tuned with airsoft.gear.tune. Mask: R = kit colourway (PrimaryTint), G = SecondaryTint, B = team colour (AccentTint)."
+    },
+    "PlateCarrier": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Static",
+          "Slots": [
+            "M_PlateCarrier_Body"
+          ],
+          "Bounds": {
+            "Min": [
+              -18.1,
+              -20.9,
+              -16.6
+            ],
+            "Max": [
+              24.6,
+              20.9,
+              25.2
+            ]
+          },
+          "Triangles": 24796,
+          "TextureSize": 4096
+        }
+      ],
+      "Points": {
+        "Pivot": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -18.1,
+          -20.9,
+          -16.6
+        ],
+        "Max": [
+          24.6,
+          20.9,
+          25.2
+        ]
+      },
+      "Anchor": {
+        "Bone": "spine_04",
+        "Offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Scale": 1.0,
+        "AssumedBonePos": [
+          -2.2,
+          0.0,
+          127.5
+        ]
+      },
+      "TeamGear": {
+        "Slot": "Torso",
+        "Colorway": "Kit",
+        "TintRoughness": 0.5,
+        "RoughnessDetail": 1.0,
+        "TintMetallic": 0.0
+      },
+      "Notes": "Unreal cm, character space (X forward, Y right, Z up). Origin = the anchor bone's pivot in the assumed UE5 Manny reference pose; UAirsoftTeamGearComponent attaches it to that bone from the skeleton's reference pose. Offset/Rotation/Scale are tuned with airsoft.gear.tune. Mask: R = kit colourway (PrimaryTint), G = SecondaryTint, B = team colour (AccentTint)."
+    },
+    "Helmet": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Static",
+          "Slots": [
+            "M_Helmet_Body"
+          ],
+          "Bounds": {
+            "Min": [
+              -13.5,
+              -11.4,
+              -8.0
+            ],
+            "Max": [
+              13.8,
+              11.4,
+              22.8
+            ]
+          },
+          "Triangles": 16068,
+          "TextureSize": 2048
+        }
+      ],
+      "Points": {
+        "Pivot": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -13.5,
+          -11.4,
+          -8.0
+        ],
+        "Max": [
+          13.8,
+          11.4,
+          22.8
+        ]
+      },
+      "Anchor": {
+        "Bone": "head",
+        "Offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Scale": 1.0,
+        "AssumedBonePos": [
+          0.0,
+          0.0,
+          158.5
+        ]
+      },
+      "TeamGear": {
+        "Slot": "Head",
+        "Colorway": "Helmet",
+        "TintRoughness": 0.5,
+        "RoughnessDetail": 1.0,
+        "TintMetallic": 0.0
+      },
+      "Notes": "Unreal cm, character space (X forward, Y right, Z up). Origin = the anchor bone's pivot in the assumed UE5 Manny reference pose; UAirsoftTeamGearComponent attaches it to that bone from the skeleton's reference pose. Offset/Rotation/Scale are tuned with airsoft.gear.tune. Mask: R = kit colourway (PrimaryTint), G = SecondaryTint, B = team colour (AccentTint)."
+    },
+    "SoftCap": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Static",
+          "Slots": [
+            "M_SoftCap_Body"
+          ],
+          "Bounds": {
+            "Min": [
+              -11.0,
+              -11.4,
+              7.7
+            ],
+            "Max": [
+              18.5,
+              11.4,
+              21.4
+            ]
+          },
+          "Triangles": 8376,
+          "TextureSize": 2048
+        }
+      ],
+      "Points": {
+        "Pivot": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -11.0,
+          -11.4,
+          7.7
+        ],
+        "Max": [
+          18.5,
+          11.4,
+          21.4
+        ]
+      },
+      "Anchor": {
+        "Bone": "head",
+        "Offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Scale": 1.0,
+        "AssumedBonePos": [
+          0.0,
+          0.0,
+          158.5
+        ]
+      },
+      "TeamGear": {
+        "Slot": "Head",
+        "Colorway": "Cap",
+        "TintRoughness": 0.5,
+        "RoughnessDetail": 1.0,
+        "TintMetallic": 0.0
+      },
+      "Notes": "Unreal cm, character space (X forward, Y right, Z up). Origin = the anchor bone's pivot in the assumed UE5 Manny reference pose; UAirsoftTeamGearComponent attaches it to that bone from the skeleton's reference pose. Offset/Rotation/Scale are tuned with airsoft.gear.tune. Mask: R = kit colourway (PrimaryTint), G = SecondaryTint, B = team colour (AccentTint)."
+    },
+    "Goggles": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Static",
+          "Slots": [
+            "M_Goggles_Body"
+          ],
+          "Bounds": {
+            "Min": [
+              -9.3,
+              -9.2,
+              1.7
+            ],
+            "Max": [
+              15.4,
+              9.2,
+              10.9
+            ]
+          },
+          "Triangles": 4356,
+          "TextureSize": 2048
+        },
+        {
+          "Name": "Glass",
+          "Kind": "Glass",
+          "Slots": [
+            "M_Goggles_Glass"
+          ],
+          "Bounds": {
+            "Min": [
+              11.4,
+              -8.1,
+              2.5
+            ],
+            "Max": [
+              15.2,
+              8.1,
+              10.1
+            ]
+          },
+          "Triangles": 896
+        }
+      ],
+      "Points": {
+        "Pivot": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -9.3,
+          -9.2,
+          1.7
+        ],
+        "Max": [
+          15.4,
+          9.2,
+          10.9
+        ]
+      },
+      "Anchor": {
+        "Bone": "head",
+        "Offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Scale": 1.0,
+        "AssumedBonePos": [
+          0.0,
+          0.0,
+          158.5
+        ]
+      },
+      "TeamGear": {
+        "Slot": "Eyes",
+        "Colorway": "Kit",
+        "TintRoughness": 0.5,
+        "RoughnessDetail": 1.0,
+        "TintMetallic": 0.0,
+        "Glass": {
+          "Tint": [
+            0.025,
+            0.027,
+            0.03
+          ],
+          "Opacity": 0.62,
+          "Roughness": 0.04
+        }
+      },
+      "Notes": "Unreal cm, character space (X forward, Y right, Z up). Origin = the anchor bone's pivot in the assumed UE5 Manny reference pose; UAirsoftTeamGearComponent attaches it to that bone from the skeleton's reference pose. Offset/Rotation/Scale are tuned with airsoft.gear.tune. Mask: R = kit colourway (PrimaryTint), G = SecondaryTint, B = team colour (AccentTint)."
+    },
+    "FaceMask": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Static",
+          "Slots": [
+            "M_FaceMask_Body"
+          ],
+          "Bounds": {
+            "Min": [
+              -10.7,
+              -9.1,
+              -5.8
+            ],
+            "Max": [
+              14.1,
+              9.1,
+              10.8
+            ]
+          },
+          "Triangles": 6128,
+          "TextureSize": 2048
+        }
+      ],
+      "Points": {
+        "Pivot": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -10.7,
+          -9.1,
+          -5.8
+        ],
+        "Max": [
+          14.1,
+          9.1,
+          10.8
+        ]
+      },
+      "Anchor": {
+        "Bone": "head",
+        "Offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Scale": 1.0,
+        "AssumedBonePos": [
+          0.0,
+          0.0,
+          158.5
+        ]
+      },
+      "TeamGear": {
+        "Slot": "Face",
+        "Colorway": "Kit",
+        "TintRoughness": 0.5,
+        "RoughnessDetail": 1.0,
+        "TintMetallic": 0.0
+      },
+      "Notes": "Unreal cm, character space (X forward, Y right, Z up). Origin = the anchor bone's pivot in the assumed UE5 Manny reference pose; UAirsoftTeamGearComponent attaches it to that bone from the skeleton's reference pose. Offset/Rotation/Scale are tuned with airsoft.gear.tune. Mask: R = kit colourway (PrimaryTint), G = SecondaryTint, B = team colour (AccentTint)."
+    },
+    "KneePads": {
+      "Pieces": [
+        {
+          "Name": "Left",
+          "Kind": "Static",
+          "Slots": [
+            "M_KneePads_Left"
+          ],
+          "Bounds": {
+            "Min": [
+              -8.7,
+              -7.9,
+              -12.9
+            ],
+            "Max": [
+              10.2,
+              8.0,
+              10.7
+            ]
+          },
+          "Triangles": 5012,
+          "TextureSize": 2048,
+          "Anchor": {
+            "Bone": "calf_l",
+            "Offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Scale": 1.0,
+            "AlignBone": "foot_l",
+            "ModelDir": [
+              -0.0877,
+              -0.019,
+              -0.996
+            ],
+            "AssumedBonePos": [
+              1.2,
+              -10.6,
+              50.5
+            ]
+          }
+        },
+        {
+          "Name": "Right",
+          "Kind": "Static",
+          "Slots": [
+            "M_KneePads_Right"
+          ],
+          "Bounds": {
+            "Min": [
+              -8.7,
+              -8.0,
+              -12.9
+            ],
+            "Max": [
+              10.2,
+              7.9,
+              10.7
+            ]
+          },
+          "Triangles": 5012,
+          "TextureSize": 2048,
+          "Anchor": {
+            "Bone": "calf_r",
+            "Offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Scale": 1.0,
+            "AlignBone": "foot_r",
+            "ModelDir": [
+              -0.0877,
+              0.019,
+              -0.996
+            ],
+            "AssumedBonePos": [
+              1.2,
+              10.6,
+              50.5
+            ]
+          }
+        }
+      ],
+      "Points": {
+        "Pivot": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -8.7,
+          -8.0,
+          -12.9
+        ],
+        "Max": [
+          10.2,
+          8.0,
+          10.7
+        ]
+      },
+      "Anchor": {
+        "Bone": "calf_l",
+        "Offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Scale": 1.0,
+        "AlignBone": "foot_l",
+        "ModelDir": [
+          -0.0877,
+          -0.019,
+          -0.996
+        ],
+        "AssumedBonePos": [
+          1.2,
+          -10.6,
+          50.5
+        ]
+      },
+      "TeamGear": {
+        "Slot": "Knees",
+        "Colorway": "Kit",
+        "TintRoughness": 0.5,
+        "RoughnessDetail": 1.0,
+        "TintMetallic": 0.0
+      },
+      "Notes": "Unreal cm, character space (X forward, Y right, Z up). Origin = the anchor bone's pivot in the assumed UE5 Manny reference pose; UAirsoftTeamGearComponent attaches it to that bone from the skeleton's reference pose. Offset/Rotation/Scale are tuned with airsoft.gear.tune. Mask: R = kit colourway (PrimaryTint), G = SecondaryTint, B = team colour (AccentTint)."
+    }
+  },
+  "TeamGear": {
+    "Version": 1,
+    "Colorways": {
+      "Kit": [
+        {
+          "Name": "Black",
+          "Primary": [
+            0.034,
+            0.034,
+            0.037
+          ],
+          "Secondary": [
+            0.03,
+            0.03,
+            0.033
+          ]
+        },
+        {
+          "Name": "Charcoal",
+          "Primary": [
+            0.08,
+            0.08,
+            0.084
+          ],
+          "Secondary": [
+            0.042,
+            0.042,
+            0.045
+          ]
+        },
+        {
+          "Name": "RangerGreen",
+          "Primary": [
+            0.096,
+            0.106,
+            0.066
+          ],
+          "Secondary": [
+            0.06,
+            0.066,
+            0.044
+          ]
+        }
+      ],
+      "Helmet": [
+        {
+          "Name": "Black",
+          "Primary": [
+            0.04,
+            0.04,
+            0.043
+          ],
+          "Secondary": [
+            0.034,
+            0.034,
+            0.037
+          ]
+        },
+        {
+          "Name": "RangerGreen",
+          "Primary": [
+            0.09,
+            0.1,
+            0.062
+          ],
+          "Secondary": [
+            0.06,
+            0.066,
+            0.044
+          ]
+        },
+        {
+          "Name": "Charcoal",
+          "Primary": [
+            0.085,
+            0.085,
+            0.09
+          ],
+          "Secondary": [
+            0.045,
+            0.045,
+            0.048
+          ]
+        },
+        {
+          "Name": "Tan",
+          "Primary": [
+            0.3,
+            0.235,
+            0.15
+          ],
+          "Secondary": [
+            0.16,
+            0.13,
+            0.09
+          ]
+        }
+      ],
+      "Cap": [
+        {
+          "Name": "Black",
+          "Primary": [
+            0.036,
+            0.036,
+            0.039
+          ],
+          "Secondary": [
+            0.03,
+            0.03,
+            0.033
+          ]
+        },
+        {
+          "Name": "Charcoal",
+          "Primary": [
+            0.085,
+            0.085,
+            0.09
+          ],
+          "Secondary": [
+            0.045,
+            0.045,
+            0.048
+          ]
+        },
+        {
+          "Name": "RangerGreen",
+          "Primary": [
+            0.096,
+            0.106,
+            0.066
+          ],
+          "Secondary": [
+            0.06,
+            0.066,
+            0.044
+          ]
+        }
+      ]
+    },
+    "Slots": [
+      {
+        "Slot": "Torso",
+        "Options": [
+          {
+            "Asset": "PlateCarrier",
+            "Weight": 1.0
+          }
+        ]
+      },
+      {
+        "Slot": "Head",
+        "Options": [
+          {
+            "Asset": "Helmet",
+            "Weight": 0.6
+          },
+          {
+            "Asset": "SoftCap",
+            "Weight": 0.4
+          }
+        ]
+      },
+      {
+        "Slot": "Eyes",
+        "Options": [
+          {
+            "Asset": "Goggles",
+            "Weight": 1.0
+          }
+        ]
+      },
+      {
+        "Slot": "Face",
+        "Options": [
+          {
+            "Asset": "FaceMask",
+            "Weight": 1.0
+          }
+        ]
+      },
+      {
+        "Slot": "Arm",
+        "Options": [
+          {
+            "Asset": "Armband",
+            "Weight": 1.0
+          }
+        ]
+      },
+      {
+        "Slot": "Knees",
+        "Chance": 0.55,
+        "Options": [
+          {
+            "Asset": "KneePads",
+            "Weight": 1.0
+          }
+        ]
+      }
+    ],
+    "FallbackHeadCenter": [
+      0.8,
+      0.0,
+      8.8
+    ],
+    "Notes": "Per-player variant: each slot picks an asset by weight (and Chance for optional slots) and each colourway group picks one entry, all hashed from the PlayerState id. Tints are linear; albedo = 0.75 * tint (the baked base colour is neutral grey 0.75 where the mask is set). Team colours come from AirsoftColors::Team."
+  }
+}

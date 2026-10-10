@@ -1,0 +1,1448 @@
+{
+  "Version": 1,
+  "Assets": {
+    "AmmoCrate_Wood": {
+      "Group": "Armory",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_AmmoCrate_Wood_Body"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -21.5,
+          -47.9,
+          -1.2
+        ],
+        "Max": [
+          22.6,
+          47.9,
+          33.8
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 5624
+      },
+      "TextureSize": {
+        "Body": 2048
+      }
+    },
+    "Armchair_Leather": {
+      "Group": "Club",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Armchair_Leather_Body"
+          ]
+        }
+      ],
+      "Points": {
+        "Seat": [
+          5.0,
+          0.0,
+          47.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -45.0,
+          -46.0,
+          0.0
+        ],
+        "Max": [
+          46.4,
+          46.0,
+          88.5
+        ]
+      },
+      "Collision": "Convex",
+      "Triangles": {
+        "Body": 13852
+      },
+      "TextureSize": {
+        "Body": 2048
+      }
+    },
+    "ArmoryCounter": {
+      "Group": "Armory",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_ArmoryCounter_Body"
+          ]
+        }
+      ],
+      "Points": {
+        "Top": [
+          0.0,
+          0.0,
+          104.5
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -39.0,
+          -122.3,
+          0.0
+        ],
+        "Max": [
+          37.8,
+          122.3,
+          104.8
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 7288
+      },
+      "TextureSize": {
+        "Body": 4096
+      }
+    },
+    "ArmorySign": {
+      "Group": "Armory",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_ArmorySign_Body"
+          ]
+        },
+        {
+          "Name": "Brass",
+          "Kind": "Static",
+          "Slots": [
+            "M_ArmorySign_Brass"
+          ]
+        }
+      ],
+      "Points": {
+        "WallMount": [
+          -3.0,
+          0.0,
+          23.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -3.0,
+          -95.0,
+          0.0
+        ],
+        "Max": [
+          3.4,
+          95.0,
+          46.0
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 2364,
+        "Brass": 14156
+      },
+      "TextureSize": {
+        "Body": 2048,
+        "Brass": 2048
+      }
+    },
+    "BackBar_4m": {
+      "Group": "Club",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_BackBar_4m_Body"
+          ]
+        },
+        {
+          "Name": "Emissive",
+          "Kind": "Emissive",
+          "Slots": [
+            "M_BackBar_4m_Emissive"
+          ]
+        },
+        {
+          "Name": "Glass",
+          "Kind": "Glass",
+          "Slots": [
+            "M_BackBar_4m_Glass"
+          ]
+        }
+      ],
+      "Points": {
+        "LEDTop": [
+          2.0,
+          0.0,
+          246.9
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -30.0,
+          -203.0,
+          0.0
+        ],
+        "Max": [
+          28.3,
+          203.0,
+          260.0
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 14744,
+        "Emissive": 120,
+        "Glass": 4860
+      },
+      "TextureSize": {
+        "Body": 4096,
+        "Emissive": 512,
+        "Glass": 1024
+      }
+    },
+    "BankersLamp": {
+      "Group": "Armory",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_BankersLamp_Body"
+          ]
+        },
+        {
+          "Name": "Emissive",
+          "Kind": "Emissive",
+          "Slots": [
+            "M_BankersLamp_Emissive"
+          ]
+        },
+        {
+          "Name": "Glass",
+          "Kind": "Glass",
+          "Slots": [
+            "M_BankersLamp_Glass"
+          ]
+        }
+      ],
+      "Points": {
+        "Light": [
+          9.0,
+          0.0,
+          38.5
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -9.7,
+          -13.5,
+          -0.2
+        ],
+        "Max": [
+          16.9,
+          13.5,
+          45.4
+        ]
+      },
+      "Collision": "Convex",
+      "Triangles": {
+        "Body": 5464,
+        "Emissive": 64,
+        "Glass": 1968
+      },
+      "TextureSize": {
+        "Body": 2048,
+        "Emissive": 256,
+        "Glass": 1024
+      }
+    },
+    "BarCounter_4m": {
+      "Group": "Club",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_BarCounter_4m_Body"
+          ]
+        }
+      ],
+      "Points": {
+        "BarTop": [
+          0.0,
+          0.0,
+          108.0
+        ],
+        "Footrail": [
+          36.0,
+          0.0,
+          21.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -60.8,
+          -202.0,
+          0.0
+        ],
+        "Max": [
+          39.1,
+          202.0,
+          108.0
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 18596
+      },
+      "TextureSize": {
+        "Body": 4096
+      }
+    },
+    "BarStool": {
+      "Group": "Club",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_BarStool_Body"
+          ]
+        }
+      ],
+      "Points": {
+        "Seat": [
+          0,
+          0,
+          77.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -27.4,
+          -24.0,
+          -0.2
+        ],
+        "Max": [
+          23.8,
+          24.0,
+          96.2
+        ]
+      },
+      "Collision": "Convex",
+      "Triangles": {
+        "Body": 18004
+      },
+      "TextureSize": {
+        "Body": 2048
+      }
+    },
+    "Bollard": {
+      "Group": "Club",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Bollard_Body"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -15.0,
+          -15.0,
+          0.0
+        ],
+        "Max": [
+          15.0,
+          15.0,
+          93.5
+        ]
+      },
+      "Collision": "Convex",
+      "Triangles": {
+        "Body": 5264
+      },
+      "TextureSize": {
+        "Body": 2048
+      }
+    },
+    "BoothSofa_Curved": {
+      "Group": "Club",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_BoothSofa_Curved_Body"
+          ]
+        }
+      ],
+      "Points": {
+        "SeatCentre": [
+          -79.0,
+          0.0,
+          47.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -113.0,
+          -152.0,
+          0.0
+        ],
+        "Max": [
+          114.7,
+          152.0,
+          115.3
+        ]
+      },
+      "Collision": "Complex",
+      "Triangles": {
+        "Body": 100834
+      },
+      "TextureSize": {
+        "Body": 2048
+      }
+    },
+    "BoothTable": {
+      "Group": "Club",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_BoothTable_Body"
+          ]
+        }
+      ],
+      "Points": {
+        "TableTop": [
+          0,
+          0,
+          74.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -45.5,
+          -45.5,
+          -0.3
+        ],
+        "Max": [
+          45.5,
+          45.5,
+          74.0
+        ]
+      },
+      "Collision": "Convex",
+      "Triangles": {
+        "Body": 23036
+      },
+      "TextureSize": {
+        "Body": 2048
+      }
+    },
+    "BoxTruck": {
+      "Group": "Club",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_BoxTruck_Body"
+          ]
+        },
+        {
+          "Name": "Glass",
+          "Kind": "Glass",
+          "Slots": [
+            "M_BoxTruck_Glass"
+          ]
+        },
+        {
+          "Name": "Emissive",
+          "Kind": "Emissive",
+          "Slots": [
+            "M_BoxTruck_Emissive"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -378.3,
+          -153.5,
+          0.0
+        ],
+        "Max": [
+          372.0,
+          153.5,
+          335.0
+        ]
+      },
+      "Collision": "Convex",
+      "Triangles": {
+        "Body": 67806,
+        "Glass": 6,
+        "Emissive": 3824
+      },
+      "TextureSize": {
+        "Body": 2048,
+        "Glass": 1024,
+        "Emissive": 512
+      }
+    },
+    "Car_Coupe": {
+      "Group": "Club",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Car_Coupe_Body"
+          ]
+        },
+        {
+          "Name": "Glass",
+          "Kind": "Glass",
+          "Slots": [
+            "M_Car_Coupe_Glass"
+          ]
+        },
+        {
+          "Name": "Emissive",
+          "Kind": "Emissive",
+          "Slots": [
+            "M_Car_Coupe_Emissive"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -269.8,
+          -100.0,
+          0.0
+        ],
+        "Max": [
+          269.8,
+          100.0,
+          134.4
+        ]
+      },
+      "Collision": "Convex",
+      "Triangles": {
+        "Body": 93460,
+        "Glass": 2940,
+        "Emissive": 1724
+      },
+      "TextureSize": {
+        "Body": 4096,
+        "Glass": 1024,
+        "Emissive": 512
+      }
+    },
+    "Car_Sedan": {
+      "Group": "Club",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Car_Sedan_Body"
+          ]
+        },
+        {
+          "Name": "Glass",
+          "Kind": "Glass",
+          "Slots": [
+            "M_Car_Sedan_Glass"
+          ]
+        },
+        {
+          "Name": "Emissive",
+          "Kind": "Emissive",
+          "Slots": [
+            "M_Car_Sedan_Emissive"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -256.0,
+          -109.4,
+          0.0
+        ],
+        "Max": [
+          256.5,
+          109.4,
+          146.5
+        ]
+      },
+      "Collision": "Convex",
+      "Triangles": {
+        "Body": 99738,
+        "Glass": 3736,
+        "Emissive": 3236
+      },
+      "TextureSize": {
+        "Body": 4096,
+        "Glass": 1024,
+        "Emissive": 512
+      }
+    },
+    "CeilingLight_Brass": {
+      "Group": "Armory",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_CeilingLight_Brass_Body"
+          ]
+        },
+        {
+          "Name": "Glass",
+          "Kind": "Glass",
+          "Slots": [
+            "M_CeilingLight_Brass_Glass"
+          ]
+        },
+        {
+          "Name": "Emissive",
+          "Kind": "Emissive",
+          "Slots": [
+            "M_CeilingLight_Brass_Emissive"
+          ]
+        }
+      ],
+      "Points": {
+        "CeilingMount": [
+          0.0,
+          0.0,
+          36.0
+        ],
+        "Light": [
+          0.0,
+          0.0,
+          13.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -22.0,
+          -22.0,
+          -3.0
+        ],
+        "Max": [
+          22.0,
+          22.0,
+          36.0
+        ]
+      },
+      "Collision": "Convex",
+      "Triangles": {
+        "Body": 22412,
+        "Glass": 1200,
+        "Emissive": 672
+      },
+      "TextureSize": {
+        "Body": 2048,
+        "Glass": 1024,
+        "Emissive": 256
+      }
+    },
+    "Chandelier": {
+      "Group": "Club",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Chandelier_Body"
+          ]
+        },
+        {
+          "Name": "Emissive",
+          "Kind": "Emissive",
+          "Slots": [
+            "M_Chandelier_Emissive"
+          ]
+        },
+        {
+          "Name": "Glass",
+          "Kind": "Glass",
+          "Slots": [
+            "M_Chandelier_Glass"
+          ]
+        }
+      ],
+      "Points": {
+        "CeilingMount": [
+          0.0,
+          0.0,
+          123.0
+        ],
+        "Light": [
+          0.0,
+          0.0,
+          55.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -44.1,
+          -44.1,
+          0.0
+        ],
+        "Max": [
+          44.1,
+          44.1,
+          123.0
+        ]
+      },
+      "Collision": "Convex",
+      "Triangles": {
+        "Body": 42632,
+        "Emissive": 1792,
+        "Glass": 4476
+      },
+      "TextureSize": {
+        "Body": 4096,
+        "Emissive": 512,
+        "Glass": 1024
+      }
+    },
+    "DJBooth": {
+      "Group": "Club",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_DJBooth_Body"
+          ]
+        },
+        {
+          "Name": "Emissive",
+          "Kind": "Emissive",
+          "Slots": [
+            "M_DJBooth_Emissive"
+          ]
+        }
+      ],
+      "Points": {
+        "DJ": [
+          -75.0,
+          0.0,
+          0.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -43.0,
+          -122.0,
+          0.0
+        ],
+        "Max": [
+          45.6,
+          122.0,
+          120.8
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 31792,
+        "Emissive": 24
+      },
+      "TextureSize": {
+        "Body": 4096,
+        "Emissive": 512
+      }
+    },
+    "Dumpster": {
+      "Group": "Club",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Dumpster_Body"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -60.0,
+          -107.5,
+          0.0
+        ],
+        "Max": [
+          59.6,
+          107.5,
+          127.8
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 4972
+      },
+      "TextureSize": {
+        "Body": 2048
+      }
+    },
+    "GunCase_Hard": {
+      "Group": "Armory",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_GunCase_Hard_Body"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -32.7,
+          -61.0,
+          0.0
+        ],
+        "Max": [
+          26.5,
+          61.0,
+          50.0
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 83652
+      },
+      "TextureSize": {
+        "Body": 2048
+      }
+    },
+    "GunDisplayBay": {
+      "Group": "Armory",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_GunDisplayBay_Body"
+          ]
+        },
+        {
+          "Name": "Emissive",
+          "Kind": "Emissive",
+          "Slots": [
+            "M_GunDisplayBay_Emissive"
+          ]
+        },
+        {
+          "Name": "Plaque",
+          "Kind": "Static",
+          "Slots": [
+            "M_GunDisplayBay_Plaque"
+          ]
+        }
+      ],
+      "Points": {
+        "GunMount": [
+          -3.0,
+          0.0,
+          61.5
+        ],
+        "Plaque": [
+          13.5,
+          0.0,
+          5.0
+        ],
+        "WallMount": [
+          -13.0,
+          0.0,
+          60.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -13.0,
+          -74.0,
+          0.0
+        ],
+        "Max": [
+          17.0,
+          74.0,
+          121.0
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 109814,
+        "Emissive": 48,
+        "Plaque": 508
+      },
+      "TextureSize": {
+        "Body": 4096,
+        "Emissive": 512,
+        "Plaque": 1024
+      }
+    },
+    "HighTable": {
+      "Group": "Club",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_HighTable_Body"
+          ]
+        }
+      ],
+      "Points": {
+        "TableTop": [
+          0.0,
+          0.0,
+          107.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -37.4,
+          -37.4,
+          0.0
+        ],
+        "Max": [
+          37.4,
+          37.4,
+          107.0
+        ]
+      },
+      "Collision": "Convex",
+      "Triangles": {
+        "Body": 15584
+      },
+      "TextureSize": {
+        "Body": 2048
+      }
+    },
+    "Kiosk": {
+      "Group": "Club",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Kiosk_Body"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -88.0,
+          -145.0,
+          0.0
+        ],
+        "Max": [
+          117.1,
+          145.0,
+          281.0
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 14100
+      },
+      "TextureSize": {
+        "Body": 2048
+      }
+    },
+    "Mannequin_Torso": {
+      "Group": "Armory",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Mannequin_Torso_Body"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -18.7,
+          -30.8,
+          0.0
+        ],
+        "Max": [
+          35.2,
+          30.8,
+          167.5
+        ]
+      },
+      "Collision": "Convex",
+      "Triangles": {
+        "Body": 7432
+      },
+      "TextureSize": {
+        "Body": 2048
+      }
+    },
+    "MovingHeadLight": {
+      "Group": "Club",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_MovingHeadLight_Body"
+          ]
+        },
+        {
+          "Name": "Glass",
+          "Kind": "Glass",
+          "Slots": [
+            "M_MovingHeadLight_Glass"
+          ]
+        }
+      ],
+      "Points": {
+        "Beam": [
+          17.2,
+          0.0,
+          55.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -22.3,
+          -23.3,
+          -0.8
+        ],
+        "Max": [
+          22.2,
+          23.3,
+          65.7
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 7548,
+        "Glass": 192
+      },
+      "TextureSize": {
+        "Body": 2048,
+        "Glass": 1024
+      }
+    },
+    "NeonSign_Velvet": {
+      "Group": "Club",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_NeonSign_Velvet_Body"
+          ]
+        },
+        {
+          "Name": "Emissive",
+          "Kind": "Emissive",
+          "Slots": [
+            "M_NeonSign_Velvet_Emissive"
+          ]
+        }
+      ],
+      "Points": {
+        "WallMount": [
+          -4.0,
+          0.0,
+          31.0
+        ],
+        "Light": [
+          13.5,
+          0.0,
+          31.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -4.0,
+          -62.5,
+          -0.5
+        ],
+        "Max": [
+          4.3,
+          62.5,
+          62.0
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 23392,
+        "Emissive": 9728
+      },
+      "TextureSize": {
+        "Body": 2048,
+        "Emissive": 512
+      }
+    },
+    "Planter_Concrete": {
+      "Group": "Club",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Planter_Concrete_Body"
+          ]
+        },
+        {
+          "Name": "Shrub",
+          "Kind": "Static",
+          "Slots": [
+            "M_Planter_Concrete_Shrub"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -32.3,
+          -32.8,
+          0.0
+        ],
+        "Max": [
+          32.3,
+          32.0,
+          126.8
+        ]
+      },
+      "Collision": "Convex",
+      "Triangles": {
+        "Body": 5172,
+        "Shrub": 36000
+      },
+      "TextureSize": {
+        "Body": 2048,
+        "Shrub": 2048
+      }
+    },
+    "RugPersian": {
+      "Group": "Armory",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_RugPersian_Body"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -157.8,
+          -100.6,
+          -0.1
+        ],
+        "Max": [
+          157.8,
+          100.6,
+          1.7
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 55602
+      },
+      "TextureSize": {
+        "Body": 4096
+      }
+    },
+    "SpeakerStack": {
+      "Group": "Club",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_SpeakerStack_Body"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -71.0,
+          -58.6,
+          -1.2
+        ],
+        "Max": [
+          2.0,
+          58.6,
+          237.4
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 8772
+      },
+      "TextureSize": {
+        "Body": 2048
+      }
+    },
+    "StreetLamp": {
+      "Group": "Club",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_StreetLamp_Body"
+          ]
+        },
+        {
+          "Name": "Glass",
+          "Kind": "Glass",
+          "Slots": [
+            "M_StreetLamp_Glass"
+          ]
+        },
+        {
+          "Name": "Emissive",
+          "Kind": "Emissive",
+          "Slots": [
+            "M_StreetLamp_Emissive"
+          ]
+        }
+      ],
+      "Points": {
+        "Light": [
+          0.0,
+          0.0,
+          344.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -22.2,
+          -35.5,
+          0.0
+        ],
+        "Max": [
+          22.2,
+          35.5,
+          414.5
+        ]
+      },
+      "Collision": "Convex",
+      "Triangles": {
+        "Body": 9544,
+        "Glass": 8,
+        "Emissive": 192
+      },
+      "TextureSize": {
+        "Body": 2048,
+        "Glass": 1024,
+        "Emissive": 256
+      }
+    },
+    "TrashBags": {
+      "Group": "Club",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_TrashBags_Body"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -67.5,
+          -67.9,
+          -2.6
+        ],
+        "Max": [
+          62.4,
+          57.2,
+          91.3
+        ]
+      },
+      "Collision": "Convex",
+      "Triangles": {
+        "Body": 68304
+      },
+      "TextureSize": {
+        "Body": 2048
+      }
+    },
+    "VelvetRopePost": {
+      "Group": "Club",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_VelvetRopePost_Body"
+          ]
+        },
+        {
+          "Name": "Rope",
+          "Kind": "Static",
+          "Slots": [
+            "M_VelvetRopePost_Rope"
+          ]
+        }
+      ],
+      "Points": {
+        "RopeStart": [
+          0.0,
+          4.5,
+          86.0
+        ],
+        "RopeEnd": [
+          0.0,
+          139.5,
+          86.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -16.7,
+          -16.7,
+          -0.3
+        ],
+        "Max": [
+          16.7,
+          144.2,
+          99.0
+        ]
+      },
+      "Collision": "Convex",
+      "Triangles": {
+        "Body": 9736,
+        "Rope": 5196
+      },
+      "TextureSize": {
+        "Body": 2048,
+        "Rope": 1024
+      }
+    },
+    "WallPanel_Walnut_4m": {
+      "Group": "Armory",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "MI_Walnut",
+            "MI_Brass"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -3.0,
+          -200.0,
+          0.0
+        ],
+        "Max": [
+          9.5,
+          200.0,
+          300.0
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 7704
+      },
+      "TextureSize": {}
+    },
+    "WallSconce": {
+      "Group": "Club",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_WallSconce_Body"
+          ]
+        },
+        {
+          "Name": "Emissive",
+          "Kind": "Emissive",
+          "Slots": [
+            "M_WallSconce_Emissive"
+          ]
+        },
+        {
+          "Name": "Glass",
+          "Kind": "Glass",
+          "Slots": [
+            "M_WallSconce_Glass"
+          ]
+        }
+      ],
+      "Points": {
+        "WallMount": [
+          -12.0,
+          0.0,
+          13.0
+        ],
+        "Light": [
+          7.0,
+          0.0,
+          29.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -12.0,
+          -7.5,
+          0.0
+        ],
+        "Max": [
+          14.5,
+          7.5,
+          36.5
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 5624,
+        "Emissive": 288,
+        "Glass": 448
+      },
+      "TextureSize": {
+        "Body": 2048,
+        "Emissive": 256,
+        "Glass": 1024
+      }
+    }
+  }
+}

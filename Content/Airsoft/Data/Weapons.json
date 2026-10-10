@@ -1,0 +1,962 @@
+{
+  "Version": 1,
+  "Assets": {
+    "M4": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_M4_Body"
+          ]
+        },
+        {
+          "Name": "Mag",
+          "Kind": "Mag",
+          "Slots": [
+            "M_M4_Mag"
+          ]
+        }
+      ],
+      "Points": {
+        "Muzzle": [
+          56.7,
+          0.0,
+          9.4
+        ],
+        "Aim": [
+          -13.8,
+          0.0,
+          15.6
+        ],
+        "LeftHand": [
+          33.0,
+          0.0,
+          6.7
+        ],
+        "MagWell": [
+          13.1,
+          0.0,
+          8.3
+        ],
+        "Optic": [
+          6.6,
+          0.0,
+          12.8
+        ],
+        "Underbarrel": [
+          33.9,
+          0.0,
+          6.7
+        ],
+        "MuzzleMount": [
+          54.3,
+          0.0,
+          9.4
+        ],
+        "Side": [
+          37.7,
+          2.4,
+          9.2
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -27.1,
+          -2.7,
+          -10.6
+        ],
+        "Max": [
+          56.7,
+          2.9,
+          16.6
+        ]
+      }
+    },
+    "MP5": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_MP5_Body"
+          ]
+        },
+        {
+          "Name": "Mag",
+          "Kind": "Mag",
+          "Slots": [
+            "M_MP5_Mag"
+          ]
+        }
+      ],
+      "Points": {
+        "Muzzle": [
+          48.6,
+          0.0,
+          8.9
+        ],
+        "Aim": [
+          -17.2,
+          0.0,
+          14.1
+        ],
+        "LeftHand": [
+          25.1,
+          0.0,
+          6.3
+        ],
+        "MagWell": [
+          12.3,
+          0.0,
+          6.2
+        ],
+        "Optic": [
+          2.8,
+          0.0,
+          12.9
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -30.2,
+          -4.4,
+          -10.8
+        ],
+        "Max": [
+          48.6,
+          2.6,
+          15.1
+        ]
+      }
+    },
+    "SR25": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_SR25_Body"
+          ]
+        },
+        {
+          "Name": "Mag",
+          "Kind": "Mag",
+          "Slots": [
+            "M_SR25_Mag"
+          ]
+        }
+      ],
+      "Points": {
+        "Muzzle": [
+          69.8,
+          0.0,
+          9.4
+        ],
+        "Aim": [
+          -13.8,
+          0.0,
+          15.6
+        ],
+        "LeftHand": [
+          35.8,
+          0.0,
+          6.6
+        ],
+        "MagWell": [
+          13.6,
+          0.0,
+          8.3
+        ],
+        "Optic": [
+          7.5,
+          0.0,
+          12.8
+        ],
+        "Underbarrel": [
+          41.5,
+          0.0,
+          6.6
+        ],
+        "MuzzleMount": [
+          66.0,
+          0.0,
+          9.4
+        ],
+        "Side": [
+          45.2,
+          2.5,
+          9.2
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -31.1,
+          -2.8,
+          -5.8
+        ],
+        "Max": [
+          69.6,
+          3.0,
+          16.6
+        ]
+      }
+    },
+    "VSR": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_VSR_Body"
+          ]
+        },
+        {
+          "Name": "Mag",
+          "Kind": "Mag",
+          "Slots": [
+            "M_VSR_Mag"
+          ]
+        },
+        {
+          "Name": "Bolt",
+          "Kind": "Bolt",
+          "Slots": [
+            "M_VSR_Bolt"
+          ]
+        }
+      ],
+      "Points": {
+        "Muzzle": [
+          76.7,
+          0.0,
+          9.0
+        ],
+        "Aim": [
+          -17.2,
+          0.0,
+          12.8
+        ],
+        "LeftHand": [
+          29.2,
+          0.0,
+          4.3
+        ],
+        "MagWell": [
+          11.3,
+          0.0,
+          6.8
+        ],
+        "Optic": [
+          4.7,
+          0.0,
+          11.6
+        ],
+        "Underbarrel": [
+          37.7,
+          0.0,
+          4.8
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -34.1,
+          -1.7,
+          -5.4
+        ],
+        "Max": [
+          76.5,
+          5.6,
+          11.6
+        ]
+      }
+    },
+    "M870": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_M870_Body"
+          ]
+        },
+        {
+          "Name": "Pump",
+          "Kind": "Pump",
+          "Slots": [
+            "M_M870_Pump"
+          ]
+        }
+      ],
+      "Points": {
+        "Muzzle": [
+          66.0,
+          0.0,
+          4.7
+        ],
+        "Aim": [
+          -8.5,
+          0.0,
+          8.9
+        ],
+        "LeftHand": [
+          35.4,
+          0.0,
+          0.7
+        ],
+        "MagWell": [
+          19.2,
+          0.0,
+          -1.1
+        ],
+        "Optic": [
+          14.1,
+          0.0,
+          8.1
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -29.0,
+          -1.9,
+          -8.3
+        ],
+        "Max": [
+          66.0,
+          1.9,
+          8.1
+        ]
+      }
+    },
+    "AK74": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_AK74_Body"
+          ]
+        },
+        {
+          "Name": "Mag",
+          "Kind": "Mag",
+          "Slots": [
+            "M_AK74_Mag"
+          ]
+        }
+      ],
+      "Points": {
+        "Muzzle": [
+          62.8,
+          0.0,
+          9.0
+        ],
+        "Aim": [
+          11.3,
+          0.0,
+          13.6
+        ],
+        "LeftHand": [
+          28.3,
+          0.0,
+          5.8
+        ],
+        "MagWell": [
+          12.1,
+          0.0,
+          6.2
+        ],
+        "Optic": [
+          3.8,
+          0.0,
+          13.0
+        ],
+        "MuzzleMount": [
+          56.9,
+          0.0,
+          9.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -31.7,
+          -2.3,
+          -13.3
+        ],
+        "Max": [
+          62.6,
+          4.7,
+          13.6
+        ]
+      }
+    },
+    "VECTOR": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_VECTOR_Body"
+          ]
+        },
+        {
+          "Name": "Mag",
+          "Kind": "Mag",
+          "Slots": [
+            "M_VECTOR_Mag"
+          ]
+        }
+      ],
+      "Points": {
+        "Muzzle": [
+          30.4,
+          0.0,
+          6.8
+        ],
+        "Aim": [
+          -16.0,
+          0.0,
+          15.1
+        ],
+        "LeftHand": [
+          17.3,
+          0.0,
+          0.9
+        ],
+        "MagWell": [
+          11.9,
+          0.0,
+          5.1
+        ],
+        "Optic": [
+          5.7,
+          0.0,
+          12.8
+        ],
+        "Underbarrel": [
+          25.3,
+          0.0,
+          3.9
+        ],
+        "MuzzleMount": [
+          28.7,
+          0.0,
+          6.8
+        ],
+        "Side": [
+          25.3,
+          2.4,
+          6.8
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -27.4,
+          -3.0,
+          -11.7
+        ],
+        "Max": [
+          30.4,
+          2.3,
+          15.5
+        ]
+      }
+    },
+    "MP7": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_MP7_Body"
+          ]
+        },
+        {
+          "Name": "Mag",
+          "Kind": "Mag",
+          "Slots": [
+            "M_MP7_Mag"
+          ]
+        }
+      ],
+      "Points": {
+        "Muzzle": [
+          24.9,
+          0.0,
+          7.9
+        ],
+        "Aim": [
+          -16.2,
+          0.0,
+          14.7
+        ],
+        "LeftHand": [
+          14.0,
+          0.0,
+          0.0
+        ],
+        "MagWell": [
+          0.8,
+          0.0,
+          4.5
+        ],
+        "Optic": [
+          4.7,
+          0.0,
+          12.6
+        ],
+        "MuzzleMount": [
+          21.5,
+          0.0,
+          7.9
+        ],
+        "Side": [
+          14.1,
+          2.5,
+          7.9
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -22.6,
+          -2.5,
+          -9.2
+        ],
+        "Max": [
+          24.9,
+          2.5,
+          14.5
+        ]
+      }
+    },
+    "P90": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_P90_Body"
+          ]
+        },
+        {
+          "Name": "Mag",
+          "Kind": "Mag",
+          "Slots": [
+            "M_P90_Mag"
+          ]
+        }
+      ],
+      "Points": {
+        "Muzzle": [
+          27.5,
+          0.0,
+          8.7
+        ],
+        "Aim": [
+          -6.6,
+          0.0,
+          17.3
+        ],
+        "LeftHand": [
+          10.6,
+          0.0,
+          -2.6
+        ],
+        "MagWell": [
+          -3.8,
+          0.0,
+          13.6
+        ],
+        "Optic": [
+          10.4,
+          0.0,
+          16.1
+        ],
+        "MuzzleMount": [
+          24.9,
+          0.0,
+          8.7
+        ],
+        "Side": [
+          17.0,
+          3.1,
+          8.7
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -22.6,
+          -3.2,
+          -4.1
+        ],
+        "Max": [
+          27.5,
+          3.2,
+          16.1
+        ]
+      }
+    },
+    "M249": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_M249_Body"
+          ]
+        },
+        {
+          "Name": "Mag",
+          "Kind": "Mag",
+          "Slots": [
+            "M_M249_Mag"
+          ]
+        }
+      ],
+      "Points": {
+        "Muzzle": [
+          66.2,
+          0.0,
+          10.4
+        ],
+        "Aim": [
+          -11.7,
+          0.0,
+          17.0
+        ],
+        "LeftHand": [
+          28.3,
+          0.0,
+          5.8
+        ],
+        "MagWell": [
+          9.8,
+          -1.5,
+          5.7
+        ],
+        "Optic": [
+          8.5,
+          0.0,
+          16.1
+        ],
+        "Underbarrel": [
+          29.2,
+          0.0,
+          5.8
+        ],
+        "MuzzleMount": [
+          62.8,
+          0.0,
+          10.4
+        ],
+        "Side": [
+          28.7,
+          2.8,
+          8.5
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -35.8,
+          -5.0,
+          -8.7
+        ],
+        "Max": [
+          66.0,
+          5.0,
+          17.5
+        ]
+      }
+    },
+    "G17": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_G17_Body"
+          ]
+        },
+        {
+          "Name": "Mag",
+          "Kind": "Mag",
+          "Slots": [
+            "M_G17_Mag"
+          ]
+        },
+        {
+          "Name": "Slide",
+          "Kind": "Slide",
+          "Slots": [
+            "M_G17_Slide"
+          ]
+        }
+      ],
+      "Points": {
+        "Muzzle": [
+          18.7,
+          0.0,
+          5.9
+        ],
+        "Aim": [
+          -9.2,
+          0.0,
+          8.3
+        ],
+        "LeftHand": [
+          -0.3,
+          -1.1,
+          -0.6
+        ],
+        "MagWell": [
+          1.1,
+          0.0,
+          3.6
+        ],
+        "Underbarrel": [
+          14.8,
+          0.0,
+          3.3
+        ],
+        "MuzzleMount": [
+          18.6,
+          0.0,
+          5.9
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -3.3,
+          -1.4,
+          -6.3
+        ],
+        "Max": [
+          18.6,
+          1.4,
+          8.4
+        ]
+      }
+    },
+    "M1911": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_M1911_Body"
+          ]
+        },
+        {
+          "Name": "Mag",
+          "Kind": "Mag",
+          "Slots": [
+            "M_M1911_Mag"
+          ]
+        },
+        {
+          "Name": "Slide",
+          "Kind": "Slide",
+          "Slots": [
+            "M_M1911_Slide"
+          ]
+        }
+      ],
+      "Points": {
+        "Muzzle": [
+          19.8,
+          0.0,
+          5.7
+        ],
+        "Aim": [
+          -9.5,
+          0.0,
+          7.9
+        ],
+        "LeftHand": [
+          -0.3,
+          -0.9,
+          -0.6
+        ],
+        "MagWell": [
+          0.8,
+          0.0,
+          3.6
+        ],
+        "MuzzleMount": [
+          19.7,
+          0.0,
+          5.7
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -3.4,
+          -1.4,
+          -6.6
+        ],
+        "Max": [
+          19.8,
+          1.4,
+          7.8
+        ]
+      }
+    },
+    "DEAGLE": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_DEAGLE_Body"
+          ]
+        },
+        {
+          "Name": "Mag",
+          "Kind": "Mag",
+          "Slots": [
+            "M_DEAGLE_Mag"
+          ]
+        },
+        {
+          "Name": "Slide",
+          "Kind": "Slide",
+          "Slots": [
+            "M_DEAGLE_Slide"
+          ]
+        }
+      ],
+      "Points": {
+        "Muzzle": [
+          25.2,
+          0.0,
+          6.5
+        ],
+        "Aim": [
+          -9.8,
+          0.0,
+          9.3
+        ],
+        "LeftHand": [
+          -0.5,
+          -1.1,
+          -0.8
+        ],
+        "MagWell": [
+          1.2,
+          0.0,
+          3.4
+        ],
+        "Optic": [
+          16.3,
+          0.0,
+          9.2
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -3.6,
+          -1.7,
+          -7.4
+        ],
+        "Max": [
+          25.2,
+          1.7,
+          9.3
+        ]
+      }
+    },
+    "G18": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_G18_Body"
+          ]
+        },
+        {
+          "Name": "Mag",
+          "Kind": "Mag",
+          "Slots": [
+            "M_G18_Mag"
+          ]
+        },
+        {
+          "Name": "Slide",
+          "Kind": "Slide",
+          "Slots": [
+            "M_G18_Slide"
+          ]
+        }
+      ],
+      "Points": {
+        "Muzzle": [
+          18.7,
+          0.0,
+          5.9
+        ],
+        "Aim": [
+          -9.2,
+          0.0,
+          8.3
+        ],
+        "LeftHand": [
+          -0.3,
+          -1.1,
+          -0.6
+        ],
+        "MagWell": [
+          1.1,
+          0.0,
+          3.6
+        ],
+        "Underbarrel": [
+          14.8,
+          0.0,
+          3.3
+        ],
+        "MuzzleMount": [
+          18.6,
+          0.0,
+          5.9
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -5.5,
+          -1.4,
+          -14.6
+        ],
+        "Max": [
+          18.6,
+          1.4,
+          8.4
+        ]
+      }
+    },
+    "GRENADE": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_GRENADE_Body"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -2.3,
+          -2.3,
+          -5.9
+        ],
+        "Max": [
+          2.3,
+          2.9,
+          7.2
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,433 @@
+{
+  "Version": 1,
+  "Assets": {
+    "Bunker_Logs": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "MI_Bark",
+            "MI_Timber",
+            "MI_Burlap"
+          ],
+          "Triangles": 281528
+        }
+      ],
+      "Snap": 100,
+      "Bounds": {
+        "Min": [
+          -336.4,
+          -312.6,
+          -0.6
+        ],
+        "Max": [
+          340.2,
+          312.6,
+          182.4
+        ]
+      }
+    },
+    "Container_20ft": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Container_20ft_Body"
+          ],
+          "Triangles": 28920,
+          "Textures": {
+            "BC": "Architecture/Container_20ft/T_Container_20ft_Body_BC.png",
+            "N": "Architecture/Container_20ft/T_Container_20ft_Body_N.png",
+            "ORM": "Architecture/Container_20ft/T_Container_20ft_Body_ORM.png",
+            "M": "Architecture/Container_20ft/T_Container_20ft_Body_M.png"
+          }
+        }
+      ],
+      "Snap": 10,
+      "Bounds": {
+        "Min": [
+          -302.9,
+          -122.9,
+          0.0
+        ],
+        "Max": [
+          310.9,
+          122.9,
+          259.1
+        ]
+      }
+    },
+    "FloodlightTower": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "MI_Concrete",
+            "MI_PaintedSteel",
+            "MI_CorrodedMetal",
+            "MI_Brass"
+          ],
+          "Triangles": 9588
+        },
+        {
+          "Name": "Glass",
+          "Kind": "Glass",
+          "Slots": [
+            "M_FloodlightTower_Lamp"
+          ],
+          "Triangles": 176
+        }
+      ],
+      "Snap": 100,
+      "Bounds": {
+        "Min": [
+          -50.0,
+          -95.0,
+          -15.0
+        ],
+        "Max": [
+          50.0,
+          95.0,
+          1034.0
+        ]
+      }
+    },
+    "Ladder_Metal_4m": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "MI_PaintedSteel",
+            "MI_Rubber",
+            "MI_DiamondPlate"
+          ],
+          "Triangles": 13972
+        }
+      ],
+      "Snap": 50,
+      "Bounds": {
+        "Min": [
+          -17.0,
+          -26.5,
+          0.0
+        ],
+        "Max": [
+          4.5,
+          26.5,
+          400.0
+        ]
+      }
+    },
+    "NettingFence_4m": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "MI_PaintedSteel",
+            "MI_Concrete",
+            "MI_CorrodedMetal"
+          ],
+          "Triangles": 3072
+        },
+        {
+          "Name": "Net",
+          "Kind": "Static",
+          "Slots": [
+            "MI_Netting"
+          ],
+          "Triangles": 3456
+        }
+      ],
+      "Snap": 400,
+      "Bounds": {
+        "Min": [
+          -15.3,
+          -215.3,
+          -2.0
+        ],
+        "Max": [
+          15.3,
+          215.3,
+          332.5
+        ]
+      }
+    },
+    "Platform_Timber_4m": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "MI_Timber",
+            "MI_CorrodedMetal"
+          ],
+          "Triangles": 8176
+        }
+      ],
+      "Snap": 50,
+      "Bounds": {
+        "Min": [
+          -60.9,
+          -200.0,
+          0.0
+        ],
+        "Max": [
+          60.7,
+          200.0,
+          23.0
+        ]
+      }
+    },
+    "Post_Timber": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "MI_Timber",
+            "MI_PaintedSteel",
+            "MI_CorrodedMetal"
+          ],
+          "Triangles": 1088
+        }
+      ],
+      "Snap": 25,
+      "Bounds": {
+        "Min": [
+          -12.5,
+          -12.5,
+          0.0
+        ],
+        "Max": [
+          12.5,
+          12.5,
+          300.0
+        ]
+      }
+    },
+    "Roof_Corrugated_4m": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "MI_Timber",
+            "MI_CorrodedMetal",
+            "MI_PaintedSteel"
+          ],
+          "Triangles": 60784
+        }
+      ],
+      "Snap": 50,
+      "Bounds": {
+        "Min": [
+          -200.0,
+          -200.0,
+          0.0
+        ],
+        "Max": [
+          200.0,
+          200.0,
+          13.2
+        ]
+      }
+    },
+    "SpawnTent": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "MI_Canvas",
+            "MI_Burlap",
+            "MI_Timber",
+            "MI_PaintedSteel"
+          ],
+          "Triangles": 93944
+        }
+      ],
+      "Snap": 100,
+      "Bounds": {
+        "Min": [
+          -316.2,
+          -341.1,
+          -2.1
+        ],
+        "Max": [
+          317.5,
+          341.1,
+          291.7
+        ]
+      }
+    },
+    "Wall_Concrete_4m": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "MI_Concrete",
+            "MI_CorrodedMetal"
+          ],
+          "Triangles": 10264
+        }
+      ],
+      "Snap": 50,
+      "Bounds": {
+        "Min": [
+          -13.0,
+          -200.0,
+          0.0
+        ],
+        "Max": [
+          13.0,
+          200.0,
+          301.9
+        ]
+      }
+    },
+    "Wall_Plywood_2m": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "MI_Plywood",
+            "MI_Timber",
+            "MI_CorrodedMetal"
+          ],
+          "Triangles": 7032
+        }
+      ],
+      "Snap": 50,
+      "Bounds": {
+        "Min": [
+          -6.0,
+          -100.0,
+          0.0
+        ],
+        "Max": [
+          6.2,
+          100.0,
+          300.0
+        ]
+      }
+    },
+    "Wall_Plywood_4m": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "MI_Plywood",
+            "MI_Timber",
+            "MI_CorrodedMetal"
+          ],
+          "Triangles": 11008
+        }
+      ],
+      "Snap": 50,
+      "Bounds": {
+        "Min": [
+          -6.0,
+          -200.0,
+          0.0
+        ],
+        "Max": [
+          6.2,
+          200.0,
+          300.0
+        ]
+      }
+    },
+    "Wall_Plywood_Door_4m": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "MI_Plywood",
+            "MI_Timber",
+            "MI_CorrodedMetal"
+          ],
+          "Triangles": 10196
+        }
+      ],
+      "Snap": 50,
+      "Bounds": {
+        "Min": [
+          -6.0,
+          -200.0,
+          0.0
+        ],
+        "Max": [
+          6.2,
+          200.0,
+          300.0
+        ]
+      }
+    },
+    "Wall_Plywood_Window_4m": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "MI_Plywood",
+            "MI_Timber",
+            "MI_CorrodedMetal"
+          ],
+          "Triangles": 10804
+        }
+      ],
+      "Snap": 50,
+      "Bounds": {
+        "Min": [
+          -6.0,
+          -200.0,
+          0.0
+        ],
+        "Max": [
+          8.7,
+          200.0,
+          300.0
+        ]
+      }
+    },
+    "Watchtower": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "MI_Timber",
+            "MI_Concrete",
+            "MI_PaintedSteel",
+            "MI_CorrodedMetal",
+            "MI_Plywood"
+          ],
+          "Triangles": 51220
+        }
+      ],
+      "Snap": 100,
+      "Bounds": {
+        "Min": [
+          -265.5,
+          -180.1,
+          -10.5
+        ],
+        "Max": [
+          182.2,
+          180.1,
+          795.4
+        ]
+      }
+    }
+  },
+  "Notes": "Unreal cm. Origin = floor centre, front +X. MI_* slots use Materials.json (UVs: 1 UV = 2 m -> tiling ArchUVScale). Snap = grid size in cm."
+}
