@@ -547,10 +547,10 @@ def _roof_level(L, rng):
     for (x, y, yaw) in ((-22.5, -22.3, 90.0), (0.0, -22.3, 90.0), (22.5, -22.3, 90.0), (-22.5, 22.3, -90.0),
                         (0.0, 22.3, -90.0), (15.0, 22.3, -90.0), (-26.0, 5.6, 0.0), (26.0, -5.6, 180.0)):
         it.append(prop("StreetLamp", x, y, z, yaw, light={"cd": 16.0, "radius": 18.0, "shadows": abs(x) < 1.0}))
-    # puddles (the deck drains badly)
-    for (x, y, sx, sy) in ((-14.0, -8.0, 3.6, 2.2), (6.0, -19.0, 4.2, 1.8), (-6.0, 8.6, 3.0, 2.0), (16.0, 9.0, 2.8, 2.4),
-                           (-24.0, -16.0, 2.4, 3.0), (24.0, 18.0, 3.0, 2.0), (-2.0, -9.2, 2.0, 1.4), (13.0, -9.4, 2.2, 1.6),
-                           (-27.6, 1.0, 2.0, 3.2), (2.0, 20.0, 3.2, 1.6)):
+    # puddles where a roof deck really ponds: aisle low spots under the lamps, the foot of the end walls and
+    # in front of the Red lobby (point-mirrored pairs); the open middle of the deck stays clear
+    for (x, y, sx, sy) in ((-20.0, 14.4, 2.6, 1.3), (20.0, -14.4, 2.6, 1.3), (-28.3, -8.0, 1.1, 2.6), (28.3, 8.0, 1.1, 2.6),
+                           (4.6, 16.4, 2.0, 1.0), (-4.6, -16.4, 2.0, 1.0)):
         it += _puddle(L, x, y, z, sx, sy)
     return it
 
@@ -560,21 +560,25 @@ def _roof_level(L, rng):
 # =============================================================================================
 def _lighting(L):
     it = []
+
+    def batten(x, y, soffit, yaw, light=None):
+        # Garage_LightFluo hangs 0.5 m on its own rods (CeilingMount 0.65), clear of the downstand beams,
+        # so whole rows read down an aisle
+        return [L.prop("Garage_LightFluo", x, y, soffit - 0.65, yaw, hang=soffit, light=light)]
+
     for (z, soffit) in ((Z1, Z2 - SLAB), (Z2, Z3 - SLAB)):
         lit = 0
         for yrow in (-14.3, 14.3):
             for k, x in enumerate((-26.25, -18.75, -11.25, -3.75, 3.75, 11.25, 18.75, 26.25)):
                 on = (k % 2 == (0 if yrow < 0 else 1))
-                it.append(L.prop("Garage_LightFluo", x, yrow, soffit - 0.15, 0.0, hang=soffit,
-                                 light=({"shadows": False} if on else None)))
+                it += batten(x, yrow, soffit, 0.0, light=({"shadows": False} if on else None))
                 lit += 1 if on else 0
         for yrow in (-9.2, 9.2):
             for x in (-18.75, -11.25, 11.25, 18.75, -3.75, 3.75):
-                it.append(L.prop("Garage_LightFluo", x, yrow, soffit - 0.15, 0.0, hang=soffit))
+                it += batten(x, yrow, soffit, 0.0)
         for x in (-18.75, 18.75):
             for y in (-3.0, 3.0):
-                it.append(L.prop("Garage_LightFluo", x, y, soffit - 0.15, 90.0, hang=soffit,
-                                 light=({"shadows": False} if y < 0 else None)))
+                it += batten(x, y, soffit, 90.0, light=({"shadows": False} if y < 0 else None))
         # services: 6 m sprinkler / cable runs crossing the aisles between the beams (parallel to them)
         for yrow in (-14.3, 14.3):
             for c in COL_X[:-1]:

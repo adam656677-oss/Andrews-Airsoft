@@ -710,7 +710,7 @@ def level_volumes(L, items, assets):
                                            (y1, y1 + wt, zt + wall, "RampWall")):
                     ox, oy = L.rot2((xa + xb) / 2, (ya + yb) / 2, yaw)
                     vols.append(_vol(px + ox, py + oy, pz + top / 2, (xb - xa) / 2, (yb - ya) / 2, top / 2, yaw, 0.0,
-                                     solid=True, los=True, cover=False, kind="ramp", label=aid + ":" + lab))
+                                     solid=True, los=True, cover=(lab == "RampWall"), kind="ramp", label=aid + ":" + lab))
             ox, oy = L.rot2((x0 + x1) / 2, (y0 + y1) / 2, yaw)
             surfs.append({"ramp": True, "c": (px + ox, py + oy), "h": ((x1 - x0) / 2, (y1 - y0) / 2), "ex": ((x1 - x0) / 2, (y1 - y0) / 2),
                           "yaw": yaw, "pitch": 0.0, "z_lo": pz + z0, "z_hi": pz + z1, "label": aid,
@@ -757,7 +757,7 @@ def analyse_levels(L, m, assets, materials, errors, warns, info, plans=True):
     vols, surfs = level_volumes(L, items, assets)
     move = [v for v in vols if v["solid"]]
     sight = [v for v in vols if v["los"] and v["kind"] != "blocker"]
-    cover = [v for v in vols if v["cover"] and v["kind"] in ("box", "prop")]
+    cover = [v for v in vols if v["cover"] and v["kind"] in ("box", "prop", "ramp")]
     midx, lidx, cidx, sidx = Index3(move), Index3(sight), Index3(cover), Index3(surfs)
 
     def blocked(x, y, h, pad):
@@ -995,7 +995,9 @@ def analyse_levels(L, m, assets, materials, errors, warns, info, plans=True):
             best = 99.0
             for i in cidx.near(x, y, 10.0):
                 v = cover[i]
-                if v["z0"] < h + 0.5 and v["z1"] >= h + 0.9 and v["z0"] > h - 0.6:
+                # anything spanning the 0.5-0.9 m band above this surface (stair-core walls and ramp upstands
+                # start far below the tread / slope, so no lower bound on z0)
+                if v["z0"] < h + 0.5 and v["z1"] >= h + 0.9:
                     best = min(best, rect_distance(L, x, y, {"c": v["c"], "h": v["ex"], "yaw": v["yaw"]}))
             cover_dist.append((x, y, h, best))
         ds = sorted(d for (_, _, _, d) in cover_dist)

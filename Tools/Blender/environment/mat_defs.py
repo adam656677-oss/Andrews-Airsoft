@@ -1211,23 +1211,20 @@ def m_ConcreteGarage(ctx):
 
 
 def m_ConcreteGarageWet(ctx):
-    """The same deck after rain (roof deck / open ramp): darker saturated concrete, glossy damp film,
-    standing puddles in the low spots and along the joints, oil sheen kept very smooth."""
+    """The same deck after rain (roof deck / open ramp): darker saturated concrete, a glossy wet film that is
+    wetter in the low spots and wheel paths, water standing in the joints and cracks. No standing puddles in
+    the tile itself: it repeats every 4 m, so tiled puddles read as a leopard print - real standing water is
+    placed by the layout as Puddle decals along the drains and parapets."""
     d = garage_deck(ctx)
     lowf = ctx.noise(1.9, oct=3, rough=0.45) - 0.5 * d['wheel']
-    # few, soft-edged mirror patches only: the material tiles every 4 m, so big standing water is placed
-    # as separate Puddle decals in the layout instead (a high tiled coverage reads as a leopard print)
-    puddle = cover(-lowf, 0.03, 0.05)
     damp = cover(-lowf, 0.7, 0.35)
-    bc = d['bc'] * (0.58 - 0.06 * puddle)[..., None]
-    bc = lerp(bc, col('#18191b'), puddle * 0.3)
+    bc = d['bc'] * (0.58 - 0.04 * damp)[..., None]
     jwet = np.clip(d['joint'] * 1.5 + d['crack'], 0, 1)
     bc = lerp(bc, col('#141414'), jwet * 0.4)
-    rough = np.clip(d['rough'] * (1 - 0.6 * damp), 0.12, 1) * (1 - puddle) + 0.02 * puddle
+    rough = np.clip(d['rough'] * (1 - 0.6 * damp), 0.12, 1)
+    rough = rough * (1 - 0.7 * jwet)                     # water held in the grooves
     rough = np.where(d['oil'] > 0.4, np.minimum(rough, 0.2), rough)
-    level = pct(d['h'], 65)
-    h = lerp(d['h'], np.full_like(d['h'], level), puddle)
-    return dict(bc=bc, h=h, rough=rough, metal=0.0, aor=(0.002, 0.008, 0.03), nstr=1.3)
+    return dict(bc=bc, h=d['h'], rough=rough, metal=0.0, aor=(0.002, 0.008, 0.03), nstr=1.3)
 
 
 def line_paint(ctx, paint_hex):

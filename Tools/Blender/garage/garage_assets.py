@@ -616,7 +616,8 @@ def elevator_doors(A):
 @asset("Garage_LightFluo", res=1024, collision="None", edge=0.002, ao_dist=0.08)
 def light_fluo(A):
     """Twin-tube vapour-proof batten, 1.56 m: grey polycarbonate body, stainless clips, opal diffuser
-    (the Emissive piece). Mounts flush to the soffit (CeilingMount on top)."""
+    (the Emissive piece), hung 0.5 m below the soffit on two threaded rods with ceiling plates so the rows
+    clear the downstand beams (CeilingMount on the plates)."""
     A.piece("Emissive", "Emissive", res=256, emissive=True)
     A.cur = "Body"
     L = 1.56
@@ -633,7 +634,11 @@ def light_fluo(A):
     prof = [(p[0], max(0.006, p[1])) for p in prof]
     pts = prof + [(0.055, 0.075), (-0.055, 0.075)]
     A.prism([(y, z) for (y, z) in pts], L - 0.07, plane="YZ", at=(0, 0, 0), mat="g_opal", bevel=0.0, piece="Emissive", smooth=60)
-    A.point("CeilingMount", (0, 0, 0.15))
+    # pendant: threaded rods on the end clips, round ceiling plates
+    for sx in (-1, 1):
+        A.cyl(0.005, 0.49, at=(sx * 0.6, 0, 0.15), mat="steel", n=8, bevel=0.0)
+        A.cyl(0.032, 0.012, at=(sx * 0.6, 0, 0.638), mat="steel", n=16, bevel=0.002)
+    A.point("CeilingMount", (0, 0, 0.65))
     A.point("Light", (0, 0, -0.02))
     A.layout = {"Solid": False, "Los": False, "Cover": False}
     A.view = (0.6, -1.0, 0.45)

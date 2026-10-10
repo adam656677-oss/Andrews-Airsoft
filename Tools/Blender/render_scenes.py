@@ -1455,22 +1455,23 @@ ROOF_RAIN = {"box": (-31, -23, 6.7, 31, 23, 13.5), "count": 14000, "len": 0.7, "
 HOLE_RAIN = {"box": (-11, 1.3, 3.4, 11, 5.7, 9.5), "count": 3500, "len": 0.6, "width": 0.006, "alpha": 0.45, "seed": 5}
 
 shot("garage_roof", file="10_NightjarGarage_RoofDeck", map="NightjarGarage",
-     caption="Nightjar Garage - the roof deck in the rain: wet concrete, sodium poles, the east tower and the city beyond",
-     cam=(-29.0, -15.2, 8.35), target=(6.0, -2.5, 7.3), lens=24, fstop=4.0, focus=(-10.0, -9.0, 7.4),
-     exposure=1.6, sun_mult=1.0, haze=ROOF_HAZE, rain=ROOF_RAIN, fog_scale=0.03, bloom=0.5, samples=64)
+     caption="Nightjar Garage - the roof deck in the rain from the Red stair tower: wet concrete, sodium poles, "
+             "the Blue tower and the city across the street",
+     cam=(27.6, -0.6, 8.35), target=(-12.0, 1.2, 7.2), lens=24, fstop=4.0, focus=(10.0, 0.0, 7.4),
+     exposure=1.75, sun_mult=1.0, haze=ROOF_HAZE, rain=ROOF_RAIN, fog_scale=0.03, bloom=0.5, samples=32)
 shot("garage_ramp", file="11_NightjarGarage_Ramp", map="NightjarGarage",
      caption="Nightjar Garage - ramp R2 climbing from the mid deck to the roof, sodium wallpacks and rain through the opening",
      cam=(-17.0, 3.2, 4.75), target=(6.0, 3.6, 6.1), lens=26, fstop=4.0, focus=(-6.0, 3.5, 4.4),
-     exposure=1.7, sun_mult=1.0, haze=GARAGE_HAZE, rain=HOLE_RAIN, fog_scale=0.03, bloom=0.5, samples=64)
+     exposure=1.7, sun_mult=1.0, haze=GARAGE_HAZE, rain=HOLE_RAIN, fog_scale=0.03, bloom=0.5, samples=32)
 shot("garage_row", file="12_NightjarGarage_ParkingRow", map="NightjarGarage",
      caption="Nightjar Garage - first-person height down the mid-deck north aisle: fluorescent battens, painted bays, a fender-bender",
-     cam=(-27.5, -14.0, 4.92), target=(10.0, -14.6, 4.6), hfov=80.0, fstop=0, clip_start=0.05,
-     exposure=1.7, sun_mult=1.0, haze=GARAGE_HAZE, fog_scale=0.03, bloom=0.45, samples=64)
-shot("garage_objective", file="13_NightjarGarage_ObjectiveB", map="NightjarGarage",
-     caption="Nightjar Garage - objective B on the median between the ramps, Blue holding it",
-     cam=(-13.1, -2.9, 5.05), target=(5.0, -0.9, 3.7), lens=24, fstop=4.0, focus=(0.0, 0.1, 4.0),
-     objectives={"B": {"team": "Blue"}}, label_yaw="auto", ring_glow=0.05,
-     exposure=1.7, sun_mult=1.0, haze=GARAGE_HAZE, rain=HOLE_RAIN, fog_scale=0.03, bloom=0.5, samples=64)
+     cam=(-29.2, -13.6, 4.92), target=(10.0, -14.4, 4.6), hfov=80.0, fstop=0, clip_start=0.05,
+     exposure=1.7, sun_mult=1.0, haze=GARAGE_HAZE, fog_scale=0.03, bloom=0.45, samples=32)
+shot("garage_objective", file="13_NightjarGarage_ObjectiveC", map="NightjarGarage",
+     caption="Nightjar Garage - objective C on the roof deck in the rain, Red holding it, their stair tower beyond",
+     cam=(-8.5, -9.5, 8.3), target=(6.5, -3.6, 7.2), lens=26, fstop=4.0, focus=(4.0, -2.6, 7.4),
+     objectives={"C": {"team": "Red"}}, label_yaw="auto", ring_glow=0.05,
+     exposure=1.6, sun_mult=1.0, haze=ROOF_HAZE, rain=ROOF_RAIN, fog_scale=0.03, bloom=0.5, samples=32)
 
 
 # --------------------------------------------------------------------------------------

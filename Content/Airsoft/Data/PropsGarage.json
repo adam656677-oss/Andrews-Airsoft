@@ -370,7 +370,7 @@
         "CeilingMount": [
           0.0,
           0.0,
-          15.0
+          65.0
         ],
         "Light": [
           0.0,
@@ -387,12 +387,12 @@
         "Max": [
           78.0,
           6.7,
-          15.0
+          65.0
         ]
       },
       "Collision": "None",
       "Triangles": {
-        "Body": 2132,
+        "Body": 2564,
         "Emissive": 72
       },
       "TextureSize": {
