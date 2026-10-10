@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Andrew's Airsoft - synthesises every sound effect, ambience and music loop.
 
-    python3 Tools/Audio/make_sounds.py              # everything (about 2-3 min on 4 cores)
+    python3 Tools/Audio/make_sounds.py              # everything (about 1-2 min on 4 cores)
     python3 Tools/Audio/make_sounds.py FireRifle SteelDing     # just these keys
     python3 Tools/Audio/make_sounds.py --only FireRifle,SteelDing
     python3 Tools/Audio/make_sounds.py --list
@@ -86,8 +86,9 @@ def _render_key(key, out_dir):
             if i == 0:
                 st = report.stats(data, loop=spec["loop"])
                 preview = x if spec["loop"] else data.astype(float).T / 32767.0
-                if spec["loop"]:  # keep previews light for the contact sheet
-                    preview = dsp.mono(x)[::4]
+                if spec["loop"]:  # keep previews light for the contact sheet (band-limited 4x decimation)
+                    preview = dsp.resample_fft(dsp.mono(x), 1, 4)
+                    st["preview_sr"] = dsp.SR / 4
                 results.append((name, st, preview))
             else:
                 results.append((name, None, None))

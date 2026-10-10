@@ -1197,7 +1197,7 @@ def _staging():
                   keep_out=[outer])
     it += [sound("AmbienceStaging", -12, 0, 3),
            # low lounge groove playing in the armory
-           sound("StagingMusic", -12, 6.5, 3.2, spatial=True, radius=8, falloff=14, volume=0.45)]
+           sound("StagingMusic", -12, 6.5, 3.2, spatial=True, radius=8, falloff=14, volume=0.8)]
     return {
         "name": "Staging", "path": "/Game/Maps/L_Staging", "kind": "staging",
         "bounds": (X0, Y0, X1, Y1), "lighting": "staging_golden", "game_mode": "AirsoftGameMode",

@@ -61,16 +61,18 @@ def _colorize(v):
     return (_CMAP[i] * (1 - f) + _CMAP[i + 1] * f).astype(np.uint8)
 
 
-def _spectrogram(m, width, height, fmin=30.0, nfft=1024):
+def _spectrogram(m, width, height, fmin=30.0, nfft=1024, sr=SR):
+    """Log-frequency spectrogram on a fixed 30 Hz-24 kHz axis; `sr` is the preview's own
+    rate (decimated loop previews leave the band above their Nyquist black)."""
     n = len(m)
     centers = np.linspace(0, max(n - 1, 0), width).astype(int)
     pad = np.pad(m, (nfft // 2, nfft // 2))
     idx = centers[:, None] + np.arange(nfft)[None, :]
     frames = pad[idx] * np.hanning(nfft)
     mag = np.abs(np.fft.rfft(frames, axis=-1)) / (nfft / 4)
-    freqs = np.fft.rfftfreq(nfft, 1.0 / SR)
+    freqs = np.fft.rfftfreq(nfft, 1.0 / sr)
     rows = np.geomspace(fmin, SR / 2, height)[::-1]
-    cols = np.stack([np.interp(rows, freqs, col) for col in mag], axis=1)
+    cols = np.stack([np.interp(rows, freqs, col, right=0.0) for col in mag], axis=1)
     dbv = 20 * np.log10(cols + 1e-9)
     return _colorize((dbv + 96.0) / 96.0)
 
@@ -91,7 +93,7 @@ def _wave(m, width, height, clip_mask=None):
     return img
 
 
-def contact_sheet(path, items, loops, cols=6, tile_w=300):
+def contact_sheet(path, items, loops, cols=8, tile_w=236):
     """items/loops: list of (name, float array (n,) or (2, n), stats)."""
     from PIL import Image, ImageDraw, ImageFont
     try:
@@ -113,7 +115,7 @@ def contact_sheet(path, items, loops, cols=6, tile_w=300):
         cy = 40 + (i // cols) * (tile_h + gap)
         m = x.mean(axis=0) if x.ndim == 2 else x
         d.text((cx + 3, cy + 1), f"{name}  {s['ch']}ch {s['dur']:.2f}s", fill=(240, 240, 240), font=font)
-        d.text((cx + 3, cy + 15), f"pk {s['peak']:.1f}  rms {s['rms']:.1f}  on {s['onset_ms']:.1f}ms", fill=(150, 160, 170), font=font)
+        d.text((cx + 3, cy + 15), f"pk {s['peak']:.1f} rms {s['rms']:.1f} {s['lufs']:.0f}LUFS", fill=(150, 160, 170), font=font)
         sheet.paste(Image.fromarray(_wave(m, tile_w, wav_h)), (cx, cy + lab_h))
         sheet.paste(Image.fromarray(_spectrogram(m, tile_w, spec_h)), (cx, cy + lab_h + wav_h))
     y = 40 + rows * (tile_h + gap) + 30
@@ -121,10 +123,12 @@ def contact_sheet(path, items, loops, cols=6, tile_w=300):
     lw = W - 2 * gap
     for name, x, s in loops:
         m = x.mean(axis=0) if x.ndim == 2 else x
-        d.text((gap + 3, y + 1), f"{name}  {s['ch']}ch {s['dur']:.1f}s  pk {s['peak']:.1f}  rms {s['rms']:.1f}  seam {s.get('seam', 0):.2f}",
+        d.text((gap + 3, y + 1), f"{name}  {s['ch']}ch {s['dur']:.1f}s  pk {s['peak']:.1f}  rms {s['rms']:.1f}  "
+               f"{s['lufs']:.1f} LUFS  seam {s.get('seam', 0):.2f}",
                fill=(240, 240, 240), font=font)
         sheet.paste(Image.fromarray(_wave(m, lw, 40)), (gap, y + lab_h))
-        sheet.paste(Image.fromarray(_spectrogram(m, lw, 80, nfft=2048)), (gap, y + lab_h + 40))
+        psr = s.get("preview_sr", SR)
+        sheet.paste(Image.fromarray(_spectrogram(m, lw, 80, nfft=int(2048 * psr / SR), sr=psr)), (gap, y + lab_h + 40))
         y += loop_h + gap
     sheet.save(path, optimize=True)
     return path

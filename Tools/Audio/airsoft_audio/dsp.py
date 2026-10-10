@@ -750,9 +750,10 @@ def finish_loop(x, peak_db=PEAK_DB, hp_hz=20.0, lufs=None):
     x = lp(hp(np.asarray(x, float), hp_hz, order=2, circular=True), AIR_HZ, order=4, circular=True)
     x = x - np.mean(x, axis=-1, keepdims=True)
     if lufs is not None:
-        x = x * undb(lufs - loudness(x))
-        if true_peak(x) > undb(peak_db):
-            x = limit(x, undb(peak_db - 0.6), lookahead=0.003, hold=0.02, release=0.12, circular=True)
+        for _ in range(2):  # limiting costs a little loudness; a second pass lands on target
+            x = x * undb(lufs - loudness(x))
+            if true_peak(x) > undb(peak_db):
+                x = limit(x, undb(peak_db - 0.6), lookahead=0.003, hold=0.02, release=0.12, circular=True)
         tp = true_peak(x)
         return x * min(1.0, undb(peak_db) / (tp or 1.0))
     tp = true_peak(x)

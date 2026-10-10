@@ -278,7 +278,7 @@ def city(r, n):
 
 def club_leak(r, n):
     """Club music bleeding through the walls: kick + offbeat bass, lows only."""
-    beat = 60.0 / 122.0
+    beat = 60.0 / 128.0  # same tempo as ClubMusic
     nb = int(round(L / beat))
     m = Mix(L, circular=True)
     k = kick(r, 0.45, f0=120, f1=45, decay=0.3, click=0.0, drive=1.3)
@@ -446,7 +446,7 @@ def staging(r, v):
 
 RECIPES = {
     "AmbienceField": (field, 1, "60 s loop: gusting wind + leaves, distant birds, crickets, far-off airsoft bursts and steel pings", LOOP),
-    "AmbienceClubStreet": (club_street, 1, "60 s loop: rain on pavement + drips, distant city, three wet car passes, muffled club bass (122 BPM), neon buzz", LOOP),
+    "AmbienceClubStreet": (club_street, 1, "60 s loop: rain on pavement + drips, distant city, three wet car passes, muffled club bass (128 BPM), neon buzz", LOOP),
     "AmbienceClubInterior": (club_interior, 1, "60 s loop: room tone + HVAC, synthetic crowd murmur, bar glass clinks; no music", LOOP),
     "AmbienceStaging": (staging, 1, "60 s loop: indoor HVAC hum/airflow, faint range shots through walls, metallic clanks", LOOP),
 }

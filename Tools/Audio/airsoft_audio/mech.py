@@ -4,7 +4,7 @@ rattles. Every helper returns a mono float array starting at its own t = 0."""
 
 import numpy as np
 
-from .dsp import Mix, bp, burst, env, hp, lp, modes, ns, phase, scatter, sweep, thump, tvec, tvf
+from .dsp import Mix, bp, burst, env, fade, hp, lp, modes, ns, phase, scatter, sweep, thump, tvec, tvf
 from .weapons import struck
 
 # Inharmonic ratios of a small steel part (bolt carrier / slide / latch); measured-looking
@@ -109,4 +109,4 @@ def pfft(r, seconds, decay, lo, hi, attack=0.0008):
 
 def ring(r, freqs, decays, amps, seconds=0.2):
     """Plain decaying partials (tube / receiver ring) without a strike click."""
-    return modes(seconds, freqs, decays, amps, rng=r, attack=0.0003)
+    return fade(modes(seconds, freqs, decays, amps, rng=r, attack=0.0003), 0.0, min(0.01, seconds * 0.3))

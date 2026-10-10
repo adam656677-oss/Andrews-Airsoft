@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from .dsp import (band, burst, bp, conv, env, env_pts, hp, lp, make_ir, modes, ns,
+from .dsp import (band, burst, bp, conv, env, env_pts, fade, hp, lp, make_ir, modes, ns,
                   phase, pulse, saturate, saw, sweep, thump, tvec, tvf, ROOMS)
 
 
@@ -186,13 +186,18 @@ def riser(r, seconds=2.0):
 PLATE = np.array([1.0, 1.593, 2.135, 2.653, 3.155, 3.65, 4.06, 4.6])  # circular-plate-like ratios
 
 
+def _fend(x, seconds=0.012):
+    """Raised-cosine fade over the last few ms so a voice cut at its buffer end never clicks."""
+    return fade(x, 0.0, min(seconds, x.shape[-1] / 48000.0 * 0.5))
+
+
 def fm(r, f, seconds, ratio=1.0, index=2.0, index_decay=0.3, index_floor=0.0, decay=0.6, attack=0.002):
     """Two-operator FM voice: index envelope decays from `index` to `index_floor`."""
     n = ns(seconds)
     t = tvec(n)
     idx = index_floor + (index - index_floor) * np.exp(-t / max(index_decay, 1e-4))
     mod = np.sin(2 * np.pi * f * ratio * t + r.uniform(0, 2 * np.pi))
-    return np.sin(2 * np.pi * f * t + idx * mod) * env(n, attack, decay)
+    return _fend(np.sin(2 * np.pi * f * t + idx * mod) * env(n, attack, decay))
 
 
 def metal(r, f, seconds=1.2, decay=0.5, bright=1.0, click=0.3, beat=0.6):
@@ -201,7 +206,7 @@ def metal(r, f, seconds=1.2, decay=0.5, bright=1.0, click=0.3, beat=0.6):
     decs = decay * np.array([1.0, 0.8, 0.62, 0.5, 0.4, 0.32, 0.26, 0.2])
     x = modes(seconds, f * PLATE, decs, amps, rng=r, attack=0.0004, beat=beat)
     x = x / (np.max(np.abs(x)) + 1e-12)
-    return x + click * hp(burst(r, seconds, 0.0008, attack=0.00005), 2500)
+    return _fend(x + click * hp(burst(r, seconds, 0.0008, attack=0.00005), 2500))
 
 
 def sub_boom(r, seconds=1.5, f0=70.0, f1=28.0, tau=0.2, decay=0.6, drive=1.8):
@@ -209,7 +214,7 @@ def sub_boom(r, seconds=1.5, f0=70.0, f1=28.0, tau=0.2, decay=0.6, drive=1.8):
     n = ns(seconds)
     x = np.sin(2 * np.pi * phase(sweep(f0, f1, n, tau=tau), n, 0.0)) * env(n, 0.002, decay)
     x += 0.35 * lp(burst(r, seconds, decay * 0.25, attack=0.002), 300)
-    return lp(saturate(x, drive), 900)
+    return _fend(lp(saturate(x, drive), 900))
 
 
 def taiko(r, f=62.0, seconds=1.0, decay=0.28, stick=0.5):
@@ -219,7 +224,7 @@ def taiko(r, f=62.0, seconds=1.0, decay=0.28, stick=0.5):
     skin = bp(burst(r, seconds, decay * 0.35, attack=0.0008), f * 5.2, 0.9)
     over = np.sin(2 * np.pi * phase(sweep(f * 3.4, f * 2.6, n, tau=0.05), n)) * env(n, 0.001, decay * 0.3)
     click = hp(burst(r, seconds, 0.0015, attack=0.0001), 1800)
-    return saturate(body + 0.5 * skin + 0.25 * over + stick * click, 1.5)
+    return _fend(saturate(body + 0.5 * skin + 0.25 * over + stick * click, 1.5))
 
 
 def snare(r, seconds=0.5, tone=190.0, decay=0.16, snap=1.0, wires=1.0):
@@ -230,14 +235,14 @@ def snare(r, seconds=0.5, tone=190.0, decay=0.16, snap=1.0, wires=1.0):
     wire = bp(r.standard_normal(n), 4200, 0.6) * env(n, 0.001, decay) * wires
     wire += 0.5 * bp(r.standard_normal(n), 1900, 0.9) * env(n, 0.001, decay * 0.6) * wires
     s = hp(burst(r, seconds, 0.0012, attack=0.00008), 1200) * snap
-    return saturate(0.8 * shell + 0.7 * wire + 0.6 * s, 1.4)
+    return _fend(saturate(0.8 * shell + 0.7 * wire + 0.6 * s, 1.4))
 
 
 def tom(r, f=95.0, seconds=0.8, decay=0.22):
     n = ns(seconds)
     body = np.sin(2 * np.pi * phase(sweep(f * 1.6, f, n, tau=0.04), n, 0.0)) * env(n, 0.001, decay)
     skin = bp(burst(r, seconds, 0.03, attack=0.0008), f * 4, 1.0)
-    return saturate(body + 0.3 * skin, 1.3)
+    return _fend(saturate(body + 0.3 * skin, 1.3))
 
 
 def ride(r, seconds=1.2, decay=0.45, bell=0.3):
@@ -246,24 +251,24 @@ def ride(r, seconds=1.2, decay=0.45, bell=0.3):
     sq = sum(pulse(fq, n, 0.5, r.random()) for fq in (312.0, 419.4, 541.7, 677.3, 811.9, 1033.1, 1284.6))
     x = hp(0.6 * sq / 7 + 0.4 * r.standard_normal(n), 3500) * env(n, 0.001, decay)
     b = modes(seconds, [2120.0, 3180.0, 4730.0], [decay * 0.5, decay * 0.35, decay * 0.25], [1, 0.5, 0.3], rng=r)
-    return x + bell * b
+    return _fend(x + bell * b)
 
 
 def brush(r, seconds=0.25, decay=0.08, lo=1500.0, hi=7000.0, attack=0.02):
     """Brush swish on a snare: soft band-limited noise with a rounded attack."""
     n = ns(seconds)
-    return band(r.standard_normal(n), lo, hi) * env(n, attack, decay)
+    return _fend(band(r.standard_normal(n), lo, hi) * env(n, attack, decay))
 
 
 def rim(r, seconds=0.08, f=1650.0):
     """Cross-stick / rim click: woody high modes + click."""
     x = modes(seconds, [f, f * 1.48, f * 2.3], [0.012, 0.008, 0.005], [1, 0.6, 0.3], rng=r, attack=0.0002)
-    return x + 0.4 * hp(burst(r, seconds, 0.0006, attack=0.00005), 2000)
+    return _fend(x + 0.4 * hp(burst(r, seconds, 0.0006, attack=0.00005), 2000))
 
 
 def shaker(r, seconds=0.07, decay=0.018):
     n = ns(seconds)
-    return hp(r.standard_normal(n), 5500) * env(n, 0.004, decay)
+    return _fend(hp(r.standard_normal(n), 5500) * env(n, 0.004, decay))
 
 
 def analog(r, f, seconds, cutoff=800.0, env_amt=2.0, f_decay=0.15, reso=1.2, detune_c=7.0, sub=0.5, gate=None,
@@ -280,7 +285,7 @@ def analog(r, f, seconds, cutoff=800.0, env_amt=2.0, f_decay=0.15, reso=1.2, det
     fc = np.clip(cutoff * (1 + env_amt * np.exp(-t / max(f_decay, 1e-3))), 40, 16000)
     y = tvf(x, "lp", fc, q=reso, order=4)
     gate = seconds - release if gate is None else gate
-    return saturate(y, drive) * adsr(n, attack, 0.2, 0.85, release, gate)
+    return _fend(saturate(y, drive) * adsr(n, attack, 0.2, 0.85, release, gate))
 
 
 def epiano(r, f, seconds, vel=0.7, gate=None, trem=0.0):
@@ -297,7 +302,7 @@ def epiano(r, f, seconds, vel=0.7, gate=None, trem=0.0):
     x *= np.where(t < gate, 1.0, np.exp(-(t - gate) / 0.09)) * np.clip(t / 0.0015, 0, 1)
     if trem:
         x *= 1 - trem * (0.5 + 0.5 * np.sin(2 * np.pi * 4.6 * t))
-    return x
+    return _fend(x)
 
 
 def vibes(r, f, seconds, vel=0.7, motor=0.25, motor_hz=5.2):
@@ -307,7 +312,7 @@ def vibes(r, f, seconds, vel=0.7, motor=0.25, motor_hz=5.2):
     T = 2.2 * (440.0 / f) ** 0.3
     x = modes(seconds, [f, f * 3.98, f * 9.85], [T, T * 0.22, T * 0.06], [1.0, 0.3 * vel, 0.08 * vel], rng=r, attack=0.002)
     x *= 1 - motor * (0.5 + 0.5 * np.sin(2 * np.pi * motor_hz * t + r.uniform(0, 6)))
-    return x
+    return _fend(x)
 
 
 def upright(r, f, seconds, vel=0.8, gate=None):
@@ -322,7 +327,7 @@ def upright(r, f, seconds, vel=0.8, gate=None):
         out += a * np.sin(2 * np.pi * k * f * (1 + 0.0004 * k * k) * t + r.uniform(0, 6)) * np.exp(-t / d)
     out += 0.3 * lp(burst(r, seconds, 0.012, attack=0.001), 400)
     out *= np.where(t < gate, 1.0, np.exp(-(t - gate) / 0.05)) * np.clip(t / 0.003, 0, 1)
-    return lp(out, 1800)
+    return _fend(lp(out, 1800))
 
 
 def stack(r, freqs, seconds, cutoff=1500.0, reso=0.9, detune_c=9.0, attack=0.05, release=0.4, gate=None, voices=3,
@@ -338,4 +343,4 @@ def stack(r, freqs, seconds, cutoff=1500.0, reso=0.9, detune_c=9.0, attack=0.05,
     out /= voices * len(np.atleast_1d(freqs)) ** 0.7
     out = lp(out, cutoff, q=reso)
     gate = seconds - release if gate is None else gate
-    return saturate(out, drive) * adsr(n, attack, 0.3, 0.9, release, gate)
+    return _fend(saturate(out, drive) * adsr(n, attack, 0.3, 0.9, release, gate))

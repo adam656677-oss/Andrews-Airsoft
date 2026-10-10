@@ -8,7 +8,7 @@ is layered from:
   thump   chest-hit low end: a sine body that drops from ~100-170 Hz to 40-75 Hz in a few
           ms, with a short octave partial so it still reads on small speakers
   bark    the midrange punch: a noise burst through 3-4 formant resonances plus a falling
-          tone, driven into saturation
+          tone, driven into saturation, over a 130-330 Hz low-mid body
   mech    the gun working, slightly behind the blast: bolt carrier / slide / bolt clacks,
           buffer springs, belt links, pump strokes
   tail    environment: discrete slap echoes off nearby walls, a 0.6-1.25 s synthesised
@@ -36,6 +36,7 @@ from .dsp import (Mix, band, bp, burst, conv, env, hp, limit, lp, make_ir, ns, p
 VAR_PITCH = (0.0, 0.034, -0.03, 0.017, -0.012, 0.045)
 VAR_TIME = (1.0, 0.93, 1.07, 0.97, 1.04, 0.9)
 THUMP_SCALE = 0.62  # chest-thump level inside the boom (against the bark)
+BODY_G = 0.5  # low-mid body level relative to the bark
 CRACK_REL = 1.15  # crack peak relative to the glued body peak
 
 
@@ -219,7 +220,7 @@ def _P(**kw):
         mech="ar", t_back=0.009, t_fwd=0.052, f_back=2300, f_fwd=1700, mech_g=0.42, mech_w=1.0,
         t60=0.95, pre=0.006, early=((0.004, 0.5), (0.013, 0.3), (0.027, 0.22), (0.041, 0.15)), slap=((0.07, 0.3), (0.13, 0.18)),
         wet=0.8, roll=0.0, roll_decay=0.32, hf=0.35, drive=1.6, glue=5.5, length=0.85, whoomp=0.0, hiss=0.0,
-        far_delay=0.045, far_len=1.1, far_lp=1500.0, supersonic=True,
+        far_delay=0.045, far_len=0.9, far_lp=1500.0, supersonic=True,
     )
     base.update(kw)
     return base
@@ -232,53 +233,55 @@ WEAPONS = {
                   bark_f=1150, bark_q=2.0, bark_d=0.02, tone=(900, 480), bark_g=0.7, grit=2.0,
                   t_back=0.006, t_fwd=0.034, f_back=2900, f_fwd=2500, mech_g=0.4, mech_w=0.75,
                   t60=0.7, early=((0.003, 0.45), (0.009, 0.3), (0.019, 0.2)), slap=((0.05, 0.25), (0.095, 0.12)),
-                  wet=0.64, drive=1.5, glue=4.5, length=0.55, far_delay=0.035, far_len=0.9, far_lp=1800.0),
+                  wet=0.64, drive=1.5, glue=4.5, length=0.55, far_delay=0.035, far_len=0.7, far_lp=1800.0),
     "FireDMR": _P(nw=0.00042, c_lo=1800, c_hi=7500, sizzle=0.016, ring_f=3000, crack_g=1.1,
                   f0=120, f1=46, tau=0.022, decay=0.07, thump_g=1.0,
                   bark_f=700, bark_q=1.6, bark_d=0.04, tone=(520, 240), bark_g=0.8,
                   t_back=0.011, t_fwd=0.066, f_back=2000, f_fwd=1500, mech_g=0.45, mech_w=1.25,
                   t60=1.15, early=((0.005, 0.5), (0.016, 0.32), (0.031, 0.22), (0.052, 0.15)),
                   slap=((0.085, 0.35), (0.16, 0.22), (0.27, 0.12)), wet=0.88, roll=0.3, drive=1.7, glue=6.5, length=1.05,
-                  far_delay=0.06, far_len=1.25, far_lp=1300.0),
+                  far_delay=0.06, far_len=1.0, far_lp=1300.0),
     "FireLMG": _P(nw=0.00034, c_lo=2000, c_hi=7500, sizzle=0.012, ring_f=3300,
                   f0=125, f1=50, tau=0.02, decay=0.06, thump_g=1.0,
                   bark_f=640, bark_q=1.3, bark_d=0.0375, tone=(560, 260), bark_g=0.85, bark2=(380, 0.5),
                   mech="lmg", t_back=0.01, t_fwd=0.06, f_back=2100, f_fwd=1450, mech_g=0.45, mech_w=1.2,
                   t60=1.0, slap=((0.075, 0.32), (0.14, 0.2)), wet=0.88, roll=0.15, drive=1.8, glue=6.5, length=0.9,
-                  far_delay=0.05, far_len=1.15, far_lp=1300.0),
+                  far_delay=0.05, far_len=0.95, far_lp=1300.0),
     "FirePistol": _P(nw=0.00026, c_lo=2500, c_hi=8500, sizzle=0.008, ring_f=4200, ring_g=0.12,
                      f0=170, f1=75, tau=0.01, decay=0.032, thump_g=0.72,
                      bark_f=1250, bark_q=2.2, bark_d=0.02, tone=(1000, 520), bark_g=0.82, grit=2.0,
                      mech="slide", t_back=0.005, t_fwd=0.03, f_back=2600, f_fwd=2200, mech_g=0.45, mech_w=0.85,
                      t60=0.75, early=((0.003, 0.45), (0.01, 0.3), (0.021, 0.2)), slap=((0.055, 0.28), (0.1, 0.15)),
-                     wet=0.72, drive=1.5, glue=5.0, length=0.6, far_delay=0.03, far_len=0.9, far_lp=1700.0),
+                     wet=0.72, drive=1.5, glue=5.0, length=0.6, far_delay=0.03, far_len=0.7, far_lp=1700.0),
     "FireMagnum": _P(nw=0.00048, c_lo=1500, c_hi=7000, sizzle=0.02, ring_f=2500, crack_g=1.15,
                      f0=105, f1=40, tau=0.028, decay=0.09, thump_g=1.1,
                      bark_f=520, bark_q=1.4, bark_d=0.05, tone=(420, 190), bark_g=0.95, grit=2.4,
                      mech="slide", t_back=0.008, t_fwd=0.06, f_back=1900, f_fwd=1600, mech_g=0.42, mech_w=1.35,
                      t60=1.3, early=((0.006, 0.5), (0.018, 0.34), (0.035, 0.25), (0.06, 0.16)),
                      slap=((0.09, 0.4), (0.18, 0.25), (0.3, 0.15)), wet=0.96, roll=0.45, roll_decay=0.38,
-                     drive=1.8, glue=7.0, length=1.25, far_delay=0.05, far_len=1.3, far_lp=1200.0),
+                     drive=1.8, glue=7.0, length=1.25, far_delay=0.05, far_len=1.1, far_lp=1200.0),
     "FireShotgun": _P(nw=0.0004, c_lo=1500, c_hi=6500, sizzle=0.018, ring_g=0.0, crack_g=0.85,
                       extra=((0.0006, 0.7, 0.00036), (0.0013, 0.55, 0.00044)),
                       f0=95, f1=42, tau=0.03, decay=0.085, thump_g=1.15,
                       bark_f=480, bark_q=1.0, bark_d=0.0625, tone=(380, 170), bark_g=1.0, grit=2.4, whoomp=0.6,
                       mech="pump", t_pump=0.36, mech_g=0.5,
                       t60=1.1, slap=((0.08, 0.38), (0.15, 0.25), (0.24, 0.12)), wet=0.96, roll=0.3,
-                      drive=1.8, glue=6.5, length=1.1, far_delay=0.03, far_len=1.25, far_lp=1100.0),
-    "FireSniper": _P(nw=0.00055, c_lo=1800, c_hi=9000, sizzle=0.025, sizzle_g=0.5, ring_f=2800, crack_g=1.15,
-                     f0=95, f1=38, tau=0.03, decay=0.1, thump_g=1.1,
-                     bark_f=560, bark_q=1.5, bark_d=0.0562, tone=(430, 200), bark_g=0.9, grit=2.4,
-                     mech="bolt", t_bolt=0.6, mech_g=0.5,
-                     t60=1.25, early=((0.007, 0.5), (0.021, 0.35), (0.04, 0.25), (0.07, 0.16)),
-                     slap=((0.1, 0.42), (0.21, 0.3), (0.36, 0.18)), wet=1.04, roll=0.6, roll_decay=0.45,
-                     drive=1.8, glue=7.5, length=1.3, far_delay=0.09, far_len=1.4, far_lp=1100.0),
+                      drive=1.8, glue=6.5, length=1.1, far_delay=0.03, far_len=1.0, far_lp=1100.0),
+    # The only sniper is the integrally suppressed VSR ("whisper-quiet" in AirsoftWeaponData), so its
+    # cinematic voice is a heavy subsonic thwump through a long can, then the bolt is cycled.
+    "FireSniper": _P(crack_g=0.0, hiss=0.2,
+                     f0=112, f1=44, tau=0.02, decay=0.06, thump_g=0.95,
+                     bark_f=360, bark_q=1.1, bark_d=0.035, tone=(320, 160), bark_g=0.8, grit=1.9, bark_lp=1100,
+                     mech="bolt", t_bolt=0.55, mech_g=0.75,
+                     t60=0.75, early=((0.004, 0.35), (0.011, 0.22), (0.022, 0.14)), slap=((0.06, 0.16), (0.12, 0.08)),
+                     wet=0.45, hf=0.25, drive=1.5, glue=5.0, length=1.05, far_len=0.6, far_lp=900.0,
+                     supersonic=False),
     "FireSuppressed": _P(crack_g=0.0, hiss=0.16,
                          f0=140, f1=62, tau=0.012, decay=0.04, thump_g=0.75,
                          bark_f=420, bark_q=1.2, bark_d=0.0275, tone=(380, 200), bark_g=0.75, grit=1.8, bark_lp=1300,
                          mech="suppressed", t_back=0.006, t_fwd=0.036, f_back=2600, f_fwd=2200, mech_g=1.1, mech_w=0.8,
                          t60=0.5, early=((0.003, 0.35), (0.008, 0.2)), slap=((0.04, 0.12),), wet=0.35, hf=0.25,
-                         drive=1.4, glue=4.5, length=0.45, far_len=0.6, far_lp=900.0, supersonic=False),
+                         drive=1.4, glue=4.5, length=0.45, far_len=0.5, far_lp=900.0, supersonic=False),
 }
 
 
@@ -301,6 +304,9 @@ def blast(r, P, k, far=False):
     m = Mix(0.6)
     m.add(th, 0.0002, P["thump_g"] * THUMP_SCALE)
     m.add(bk, 0.0004, P["bark_g"])
+    # low-mid body (130-330 Hz): fills the gap between the thump and the bark
+    body = band(burst(r, 0.35, P["bark_d"] * 1.4 * dk, attack=0.0006), 130 * k, 330 * k, order=2)
+    m.add(_norm(saturate(_norm(body), 1.5)), 0.0003, BODY_G * P["bark_g"])
     if P["bark2"]:
         f2, g2 = P["bark2"]
         m.add(bark_layer(r, f2 * k, 1.1, P["bark_d"] * 1.4 * dk, (f2 * 0.9 * k, f2 * 0.45 * k), grit=2.0), 0.0006, g2)
@@ -375,15 +381,15 @@ def far_shot(r, v, P):
 
 
 DESC = {
-    "FireRifle": "balanced, punchy: crack + 52 Hz chest thump + 820 Hz bark, carrier clacks back/forward, 0.85 s outdoor tail",
-    "FireSMG": "tight, fast, small: brighter shorter crack, 70 Hz thump, quick light bolt, short 0.6 s tail",
-    "FireDMR": "heavier: longer crack, 46 Hz thump, slower heavy carrier, 1.05 s tail with slaps and some rolling",
-    "FireLMG": "thick: double-formant bark, feed-pawl clank and belt-link rattle, 0.9 s tail",
-    "FirePistol": "snappy: short bright crack and bark, slide back + 'shk' into battery, 0.6 s tail",
-    "FireMagnum": "huge: long crack, 40 Hz thump, heavy slow slide, 1.25 s tail with long rolling",
-    "FireShotgun": "wide boom: pellet cracks + low whoomp, pump racked back and slammed home at ~0.36 s",
-    "FireSniper": "massive crack + 38 Hz thump, rolling tail, bolt cycled (lift/back/home/lock) at ~0.6 s",
-    "FireSuppressed": "muffled low thump + quiet gas hiss, the bolt carrier is the loudest part, small dry tail",
+    "FireRifle": "balanced, punchy: 2-8 kHz crack, 135->52 Hz chest thump, 820 Hz bark, bolt carrier back/home at 9/52 ms, slaps + 0.95 s T60 tail",
+    "FireSMG": "tight, fast, small: brighter shorter crack, 165->70 Hz thump, 1.15 kHz bark, quick light bolt (6/34 ms), 0.7 s T60 tail",
+    "FireDMR": "heavier: longer crack, 120->46 Hz thump, 700 Hz bark, slower heavy carrier (11/66 ms), 1.15 s T60 tail, three slaps, some rolling",
+    "FireLMG": "thick: double-formant bark (640 + 380 Hz), feed-pawl clank, belt-link rattle, heavy bolt, 1.0 s T60 tail",
+    "FirePistol": "snappy: short bright crack, 170->75 Hz thump, 1.25 kHz bark, slide back + 'shk' into battery (5/30 ms), 0.75 s T60 tail",
+    "FireMagnum": "huge: long crack, 105->40 Hz thump, 520 Hz bark, heavy slow slide (8/60 ms), 1.3 s T60 tail with long rolling",
+    "FireShotgun": "wide boom: three pellet cracks + low whoomp, 95->42 Hz thump, pump racked back and slammed home at ~0.36-0.53 s",
+    "FireSniper": "suppressed bolt-action: heavy 112->44 Hz thwump + low-passed bark, subsonic gas hiss, bolt cycled (lift/back/home/lock) at 0.55-0.88 s",
+    "FireSuppressed": "muffled 140->62 Hz thump + low-passed bark, quiet subsonic gas hiss, bolt carrier is the loudest part, small 0.5 s T60 tail",
 }
 FAR_DESC = "distant: softened crack first, low-passed boom ~{d} ms later, wet field tail with late slaps and rolling"
 

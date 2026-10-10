@@ -105,7 +105,7 @@ def impact(r, v):
     a dry low knock and a few splinter/dust ticks."""
     kind = v % 4
     k = 1 + r.uniform(-0.04, 0.04)
-    L = 0.42 if kind == 2 else 0.3
+    L = 0.34 if kind == 2 else 0.3
     n = ns(L)
     m = Mix(L)
     m.add(_snap(r, 1.0 + 0.3 * (kind == 2)), 0.0, 0.85)
@@ -119,11 +119,11 @@ def impact(r, v):
         d = (0.008 + 0.02 * r.random(9)) * np.sqrt(400.0 / f)
         m.add(struck(r, f, d, r.uniform(0.4, 1.0, 9), seconds=0.18, noise_mix=0.25, lo=900), 0.0003, 1.0)
         m.add(thump(0.09, 260 * k, 140 * k, 0.016), 0.0, 0.6)                      # box resonance
-    else:
-        f = 1150 * k * np.array([1.0, 1.47, 2.09, 2.76, 3.51, 4.38])
-        m.add(struck(r, f, [0.09, 0.07, 0.05, 0.035, 0.025, 0.018], [1, 0.8, 0.6, 0.45, 0.3, 0.2], seconds=0.4,
-                     noise_mix=0.35), 0.0002, 0.75)
-        m.add(thump(0.05, 380 * k, 210 * k, 0.008), 0.0, 0.35)
+    else:  # metal-backed: a short 'thunk-tink', damped so repeated hits don't sing one pitch
+        f = 1150 * k * np.array([1.0, 1.31, 1.47, 2.09, 2.43, 2.76, 3.51, 4.38])
+        m.add(struck(r, f, [0.032, 0.026, 0.024, 0.019, 0.016, 0.013, 0.011, 0.008],
+                     [1, 0.7, 0.8, 0.6, 0.45, 0.45, 0.3, 0.2], seconds=0.3, noise_mix=0.4), 0.0002, 0.55)
+        m.add(thump(0.06, 420 * k, 210 * k, 0.01), 0.0, 0.5)
     if kind == 3:
         m.add(mech.ring(r, [3300 * k, 4870 * k, 7020 * k], [0.05, 0.035, 0.02], [1, 0.6, 0.35], 0.2), 0.0005, 0.25)
         m.add(mech.rattle(r, 0.06, 5, f=2400 * k), 0.012, 0.25)
