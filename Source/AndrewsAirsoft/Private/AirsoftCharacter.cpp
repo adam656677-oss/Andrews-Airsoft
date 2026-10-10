@@ -281,6 +281,9 @@ void AAirsoftCharacter::SetupThirdPersonBody()
 			{
 				TeamBand->AttachToComponent(PoseMesh, FAttachmentTransformRules::KeepRelativeTransform, TEXT("upperarm_l"));
 			}
+			// The dead rag is held up in the left hand.
+			DeadRag->AttachToComponent(PoseMesh, FAttachmentTransformRules::KeepRelativeTransform, TEXT("hand_l"));
+			DeadRag->SetRelativeLocation(FVector::ZeroVector);
 		}
 	}
 	else
@@ -301,8 +304,8 @@ void AAirsoftCharacter::UpdateThirdPersonPose()
 		return;
 	}
 	PoseMesh->CopyPoseFromSkeletalComponent(GetMesh());
-	// The owner never sees their own body (only its shadow), and tagged players drop the gun pose.
-	if (IsLocallyControlled() || IsOut() || !TPGun->IsVisible())
+	// The owner never sees their own body, only its shadow.
+	if (IsLocallyControlled() || !TPGun->IsVisible())
 	{
 		return;
 	}
@@ -316,7 +319,15 @@ void AAirsoftCharacter::UpdateThirdPersonPose()
 	const FVector RightShoulder = PoseMesh->GetBoneTransformByName(TEXT("upperarm_r"), EBoneSpaces::WorldSpace).GetLocation();
 	const FVector LeftShoulder = PoseMesh->GetBoneTransformByName(TEXT("upperarm_l"), EBoneSpaces::WorldSpace).GetLocation();
 	SolveArm(TEXT("upperarm_r"), TEXT("lowerarm_r"), TEXT("hand_r"), RightWrist, RightShoulder + Right * 25.f - Up * 45.f - Forward * 10.f);
-	SolveArm(TEXT("upperarm_l"), TEXT("lowerarm_l"), TEXT("hand_l"), LeftWrist, LeftShoulder - Right * 30.f - Up * 40.f - Forward * 5.f);
+	if (IsOut())
+	{
+		// Airsoft etiquette: hand (and dead rag) up while walking off, gun pointed at the ground.
+		SolveArm(TEXT("upperarm_l"), TEXT("lowerarm_l"), TEXT("hand_l"), LeftShoulder + Up * 62.f + Forward * 6.f + Right * 4.f, LeftShoulder - Right * 40.f + Forward * 10.f);
+	}
+	else
+	{
+		SolveArm(TEXT("upperarm_l"), TEXT("lowerarm_l"), TEXT("hand_l"), LeftWrist, LeftShoulder - Right * 30.f - Up * 40.f - Forward * 5.f);
+	}
 }
 
 void AAirsoftCharacter::SolveArm(FName UpperName, FName LowerName, FName HandName, const FVector& WristTargetWorld, const FVector& PoleWorld)
@@ -753,7 +764,7 @@ void AAirsoftCharacter::UpdateRemoteVisuals(float DeltaSeconds)
 	// Third-person gun follows where the player is looking.
 	if (TPGun->GetAttachParent() == TPAimRoot)
 	{
-		const float Pitch = FRotator::NormalizeAxis(GetBaseAimRotation().Pitch);
+		const float Pitch = IsOut() ? -55.f : static_cast<float>(FRotator::NormalizeAxis(GetBaseAimRotation().Pitch));
 		const float Crouch = bIsCrouched ? -24.f : 0.f;
 		TPAimRoot->SetRelativeLocationAndRotation(FVector(0.f, LeanVisual * 22.f, 46.f + Crouch), FRotator(Pitch, 0.f, LeanVisual * 12.f));
 		// Rifles tucked into the shoulder, pistols pushed out at arm's length.
