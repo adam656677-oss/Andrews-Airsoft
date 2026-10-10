@@ -6,7 +6,7 @@ Get it into your project (run from the root of your `unreal` checkout):
 
 ```
 git fetch origin art
-git --work-tree=. checkout origin/art -- SourceAssets
+git checkout FETCH_HEAD -- SourceAssets
 git reset -q SourceAssets   # keep it untracked on the code branch (it is git-ignored there)
 ```
 
