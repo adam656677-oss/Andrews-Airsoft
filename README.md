@@ -18,8 +18,14 @@ Real airsoft rules: BBs are real projectiles (muzzle velocity, drag, hop-up lift
 
 ## 2. First-time setup (the host, or anyone building the game)
 
-1. **Get the code:** `git clone https://github.com/adam656677-oss/Andrews-Airsoft.git` and check out the `unreal` branch.
-2. **Get the 4K art:** download the `SourceAssets-*.zip` files from the repo's **Releases** page and unzip them into `SourceAssets/` at the project root. Or run the Blender generators yourself (see [Regenerating art](#7-regenerating-art-and-audio)).
+1. **Get the code:** `git clone --single-branch -b unreal https://github.com/adam656677-oss/Andrews-Airsoft.git` (`--single-branch` skips the large art branch).
+2. **Get the 4K art** (about 3 GB). It lives on its own `art` branch so code clones stay small. From the project root:
+   ```
+   git fetch origin art
+   git checkout FETCH_HEAD -- SourceAssets
+   git reset -q SourceAssets
+   ```
+   Or run the Blender generators yourself (see [Regenerating art](#7-regenerating-art-and-audio)).
 3. **Build the code:** right-click `AndrewsAirsoft.uproject` → *Generate Visual Studio project files*. Open `AndrewsAirsoft.sln`, choose **Development Editor / Win64**, then **Build**.
 4. **Open the project:** double-click `AndrewsAirsoft.uproject`. If asked to rebuild modules, click **Yes**.
 5. **Add the character pack:** *Content Drawer → Add → Add Feature or Content Pack → Third Person → Add to Project.* This provides the Manny body and its animations that other players see.
