@@ -228,16 +228,14 @@ class Field:
 
 def surface_nets(F, origin, h):
     """F: (nx, ny, nz) samples (negative inside) at origin + (i, j, k) * h.
-    Returns vertices (V, 3) and quads (Q, 4) with outward winding."""
+    Returns vertices (V, 3) and quads (Q, 4).  Winding is only roughly consistent;
+    gearlib.fix_winding() orients every face along the field gradient afterwards."""
     nx, ny, nz = F.shape
     inside = F < 0
     # edge crossings along each axis
-    cell_sum = {}
-    cell_cnt = {}
     sums = np.zeros((nx - 1, ny - 1, nz - 1, 3), np.float64)
     cnts = np.zeros((nx - 1, ny - 1, nz - 1), np.int32)
     quads = []
-    offs = np.array([[0, 0, 0]])
     for ax in range(3):
         sl0 = [slice(None)] * 3
         sl1 = [slice(None)] * 3

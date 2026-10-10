@@ -10,7 +10,11 @@ First-person tactical gloves (+ combat-shirt sleeves) for Andrew's Airsoft.
 Outputs (see Tools/Blender/CONVENTIONS.md):
     SourceAssets/Gear/Gloves/SM_Gloves_<Piece>.fbx + T_Gloves_<Piece>_{BC,N,ORM}.png
     Content/Airsoft/Data/Gear.json   (Assets.Gloves)
-    Docs/Renders/Gear/Gloves_<Piece>.png, Gloves_FirstPerson.png, Gloves_FirstPerson_Pistol.png
+    Docs/Renders/Gear/Gloves_<Piece>.png, Gloves_FirstPerson.png (M4 + RightGrip + LeftSupport at the
+    M4's LeftHand point), Gloves_FirstPerson_Pistol.png (G17 + RightGrip + LeftPistol).  The first-person
+    camera uses the game's hip placement (AirsoftCombatComponent: gun at (20, 11, -15) cm in camera space
+    for rifles, (30, 10, -12) for pistols), i.e. the eye at Blender (-0.20, +0.11, +0.15) / (-0.30, +0.10,
+    +0.12) from the grip, 80 deg FOV, pitched 10 deg below the barrel line.
 
 Pieces and their origins (Blender metres, +X barrel, +Z up, right = -Y):
     RightGrip   gun space: origin = centre of the pistol grip.  Attach at the gun origin.
@@ -516,12 +520,19 @@ def sleeve_mesh(h, elbow, seed=0):
             r *= r_scale
             r += roll * (1.0 + 0.08 * math.sin(6 * a_ + 40 * s))
             if comp > 0:
-                phase = 2 * math.pi * se / 0.021 + 1.5 * math.sin(a_ + ph1) + 0.7 * math.sin(2 * a_ + ph2)
-                r += comp * (0.5 + 0.5 * math.sin(phase)) ** 1.6
+                # zig-zag compression folds: the crest line wanders around the arm (triangle
+                # wave in theta), the wavelength and depth vary so the rings do not read as a hose
+                tri = 2.0 / math.pi * math.asin(math.sin(2.0 * a_ + ph1))
+                lam = 0.019 + 0.006 * math.sin(a_ + ph3) + 0.004 * math.sin(55.0 * s)
+                phase = 2 * math.pi * se / lam + 2.4 * tri + 0.8 * math.sin(a_ + ph2)
+                amp = 0.55 + 0.45 * math.sin(3.0 * a_ + ph2 + 20.0 * s) ** 2
+                r += comp * amp * (0.5 + 0.5 * math.sin(phase)) ** 1.8
             r += drape * math.sin(5 * a_ + ph3 + 9.0 * s) * (0.6 + 0.4 * math.sin(3 * a_ + ph1))
             # diagonal twist folds running from the cuff towards the elbow
             r += 0.0018 * min(1.0, max(se, 0) / 0.03) * (1 - t) * max(0.0, math.sin(3 * a_ - 28.0 * s + ph2)) ** 3
             sag = 0.0035 * max(0.0, -math.sin(a_)) ** 2 * min(1.0, max(se, 0) / 0.05) * (1 - t)
+            # slow lumps along the forearm (cloth resting on the arm, not a cylinder)
+            r += 0.0022 * min(1.0, max(se, 0) / 0.03) * math.sin(14.0 * s + 2.0 * math.sin(a_ + ph1)) * math.sin(2 * a_ + ph3 + 6.0 * s)
             r += sag
             p = w0 + fd * s + side * (e[0] * r) + up * (e[1] * r)
             ring.append(p)
@@ -1084,7 +1095,7 @@ def render_product(piece, rig, coll, samples, res):
     for o in coll.objects:
         o.hide_render = o not in obs
     lo, hi = studio.bbox(obs)
-    vd = {"RightGrip": (0.15, -1.0, 0.55), "LeftPistol": (0.25, 1.0, 0.45), "LeftSupport": (0.55, -0.8, 0.6)}[piece]
+    vd = {"RightGrip": (0.15, -1.0, 0.55), "LeftPistol": (0.25, 1.0, 0.45), "LeftSupport": (0.55, 0.55, -0.35)}[piece]
     rig["floor"].hide_render = True
     studio.frame(rig, lo, hi, view_dir=vd, lens=60, margin=1.1)
     path = os.path.join(RENDER_DIR, f"{ASSET}_{piece}.png")
