@@ -337,7 +337,7 @@ void SAirsoftSettings::Construct(const FArguments& InArgs, AAirsoftPlayerControl
 	{
 		SkillOptions.Add(AirsoftBots::SkillLabel(i));
 	}
-	Rows->AddSlot().AutoHeight()[Section(TEXT("HOST  ·  BOTS"))];
+	Rows->AddSlot().AutoHeight()[Section(TEXT("HOST  \u00B7  BOTS"))];
 	Rows->AddSlot().AutoHeight().Padding(FMargin(0.f, 0.f, 0.f, 4.f))
 	[
 		ChoiceRow(TEXT("Bots"), TEXT("When you host: computer players fill both teams on match maps, and step aside as friends join. Never counted for the lobby vote."),

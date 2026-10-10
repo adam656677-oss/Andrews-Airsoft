@@ -356,7 +356,7 @@ function Invoke-Package {
     $out = Join-Path $ProjectRoot "Packaged"
     $log = Join-Path $ReportDir ("package-" + $script:Stamp + ".log")
     New-Item -ItemType Directory -Force -Path $out | Out-Null
-    $maps = "L_MainMenu+L_Transition+L_Staging+L_IronwoodYard+L_VelvetClub"
+    $maps = "L_MainMenu+L_Transition+L_Staging+L_IronwoodYard+L_VelvetClub+L_NightjarGarage"
     Say "  This cooks every map and texture; expect 30-120 minutes the first time."
     $start = Get-Date
     $code = Invoke-Logged $uat @("BuildCookRun", ("-project=" + $ProjectFile), "-noP4", "-platform=Win64", "-clientconfig=Shipping",

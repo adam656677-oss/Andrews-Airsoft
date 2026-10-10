@@ -1,4 +1,7 @@
-// Andrew's Airsoft - held-Tab scoreboard: two team columns sorted by tags.
+// Andrew's Airsoft - held-Tab scoreboard: two team columns sorted by tags
+// (free-for-all: one standings list by ladder level, split over both columns).
+// The third number column follows the mode: CAPS (Domination), EXTR (VIP
+// extractions), LVL (Gun Game ladder level); the VIP gets a tag by their name.
 
 #include "AirsoftGameState.h"
 #include "AirsoftPlayerController.h"
@@ -21,7 +24,7 @@ namespace AirsoftScoreboardLocal
 	constexpr int32 RowsPerTeam = 16;
 	constexpr float ColTags = 46.f;
 	constexpr float ColOuts = 46.f;
-	constexpr float ColCaps = 46.f;
+	constexpr float ColMode = 46.f;
 	constexpr float ColXP = 58.f;
 	constexpr float ColPing = 50.f;
 
@@ -48,7 +51,10 @@ private:
 	TSharedRef<SWidget> BuildRow(int32 TeamIndex, int32 Row);
 	TSharedRef<SWidget> Cell(float Width, const TAttribute<FText>& Text, const TAttribute<FSlateColor>& Color, bool bBold, const TAttribute<EVisibility>& InVisibility = EVisibility::Visible);
 	AAirsoftPlayerState* RowPS(int32 TeamIndex, int32 Row) const;
-	bool IsDomination() const;
+	bool IsFreeForAll() const;
+	/** Header of the mode column ("CAPS", "EXTR", "LVL"), empty when the mode has none. */
+	FString ModeColumnLabel() const;
+	int32 ModeColumnValue(const AAirsoftPlayerState* PS) const;
 
 	TWeakObjectPtr<AAirsoftPlayerController> WeakPC;
 	TArray<TWeakObjectPtr<AAirsoftPlayerState>> Teams[2];
@@ -61,10 +67,36 @@ TSharedRef<SWidget> AirsoftUIScreens::CreateScoreboard(AAirsoftPlayerController*
 	return SNew(SAirsoftScoreboard, PC);
 }
 
-bool SAirsoftScoreboard::IsDomination() const
+bool SAirsoftScoreboard::IsFreeForAll() const
 {
 	const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
-	return GS && GS->Mode == EAirsoftMode::Domination;
+	return GS && GS->IsFreeForAll();
+}
+
+FString SAirsoftScoreboard::ModeColumnLabel() const
+{
+	const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
+	if (!GS || !GS->bIsMatchMap)
+	{
+		return FString();
+	}
+	switch (GS->Mode)
+	{
+	case EAirsoftMode::Domination: return TEXT("CAPS");
+	case EAirsoftMode::VIP: return TEXT("EXTR");
+	case EAirsoftMode::GunGame: return TEXT("LVL");
+	default: return FString();
+	}
+}
+
+int32 SAirsoftScoreboard::ModeColumnValue(const AAirsoftPlayerState* PS) const
+{
+	const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
+	if (!PS || !GS)
+	{
+		return 0;
+	}
+	return GS->Mode == EAirsoftMode::GunGame ? PS->GunLevel + 1 : PS->Round.Captures;
 }
 
 AAirsoftPlayerState* SAirsoftScoreboard::RowPS(int32 TeamIndex, int32 Row) const
@@ -86,7 +118,9 @@ void SAirsoftScoreboard::Refresh()
 	{
 		return;
 	}
+	const bool bFreeForAll = GS->IsFreeForAll();
 	TArray<FString> Unassigned;
+	TArray<TWeakObjectPtr<AAirsoftPlayerState>> Everyone;
 	for (const TObjectPtr<APlayerState>& Entry : GS->PlayerArray)
 	{
 		AAirsoftPlayerState* PS = Cast<AAirsoftPlayerState>(Entry.Get());
@@ -94,7 +128,11 @@ void SAirsoftScoreboard::Refresh()
 		{
 			continue;
 		}
-		if (PS->Team == EAirsoftTeam::Blue)
+		if (bFreeForAll)
+		{
+			Everyone.Add(PS);
+		}
+		else if (PS->Team == EAirsoftTeam::Blue)
 		{
 			Teams[0].Add(PS);
 		}
@@ -107,26 +145,44 @@ void SAirsoftScoreboard::Refresh()
 			Unassigned.Add(PS->GetPlayerName());
 		}
 	}
-	for (TArray<TWeakObjectPtr<AAirsoftPlayerState>>& List : Teams)
+	auto ByScore = [bFreeForAll](const TWeakObjectPtr<AAirsoftPlayerState>& A, const TWeakObjectPtr<AAirsoftPlayerState>& B)
 	{
-		List.Sort([](const TWeakObjectPtr<AAirsoftPlayerState>& A, const TWeakObjectPtr<AAirsoftPlayerState>& B)
+		const AAirsoftPlayerState* PA = A.Get();
+		const AAirsoftPlayerState* PB = B.Get();
+		if (!PA || !PB)
 		{
-			const AAirsoftPlayerState* PA = A.Get();
-			const AAirsoftPlayerState* PB = B.Get();
-			if (!PA || !PB)
-			{
-				return PA != nullptr;
-			}
-			if (PA->Round.Tags != PB->Round.Tags)
-			{
-				return PA->Round.Tags > PB->Round.Tags;
-			}
-			if (PA->Round.XP != PB->Round.XP)
-			{
-				return PA->Round.XP > PB->Round.XP;
-			}
-			return PA->GetPlayerName() < PB->GetPlayerName();
-		});
+			return PA != nullptr;
+		}
+		if (bFreeForAll && PA->GunLevel != PB->GunLevel)
+		{
+			return PA->GunLevel > PB->GunLevel;
+		}
+		if (PA->Round.Tags != PB->Round.Tags)
+		{
+			return PA->Round.Tags > PB->Round.Tags;
+		}
+		if (PA->Round.XP != PB->Round.XP)
+		{
+			return PA->Round.XP > PB->Round.XP;
+		}
+		return PA->GetPlayerName() < PB->GetPlayerName();
+	};
+	if (bFreeForAll)
+	{
+		// One standings list: the top half on the left, the rest on the right.
+		Everyone.Sort(ByScore);
+		const int32 LeftCount = (Everyone.Num() + 1) / 2;
+		for (int32 i = 0; i < Everyone.Num(); ++i)
+		{
+			Teams[i < LeftCount ? 0 : 1].Add(Everyone[i]);
+		}
+	}
+	else
+	{
+		for (TArray<TWeakObjectPtr<AAirsoftPlayerState>>& List : Teams)
+		{
+			List.Sort(ByScore);
+		}
 	}
 	UnassignedNames = FString::Join(Unassigned, TEXT(",  "));
 }
@@ -178,6 +234,14 @@ TSharedRef<SWidget> SAirsoftScoreboard::BuildColumnHeader()
 		]
 		+ SHorizontalBox::Slot().AutoWidth()
 		[
+			SNew(SBox).WidthOverride(ColMode).HAlign(HAlign_Right)
+			.Visibility_Lambda([this]() -> EVisibility { return BoardVis(IsFreeForAll()); })
+			[
+				SNew(STextBlock).Text(Head(TEXT("LVL"))).Font(AUI::Caption(7)).ColorAndOpacity(Dim)
+			]
+		]
+		+ SHorizontalBox::Slot().AutoWidth()
+		[
 			SNew(SBox).WidthOverride(ColTags).HAlign(HAlign_Right)
 			[
 				SNew(STextBlock).Text(Head(TEXT("TAGS"))).Font(AUI::Caption(7)).ColorAndOpacity(Dim)
@@ -192,10 +256,10 @@ TSharedRef<SWidget> SAirsoftScoreboard::BuildColumnHeader()
 		]
 		+ SHorizontalBox::Slot().AutoWidth()
 		[
-			SNew(SBox).WidthOverride(ColCaps).HAlign(HAlign_Right)
-			.Visibility_Lambda([this]() -> EVisibility { return IsDomination() ? EVisibility::HitTestInvisible : EVisibility::Collapsed; })
+			SNew(SBox).WidthOverride(ColMode).HAlign(HAlign_Right)
+			.Visibility_Lambda([this]() -> EVisibility { return BoardVis(!IsFreeForAll() && !ModeColumnLabel().IsEmpty()); })
 			[
-				SNew(STextBlock).Text(Head(TEXT("CAPS"))).Font(AUI::Caption(7)).ColorAndOpacity(Dim)
+				SNew(STextBlock).Text_Lambda([this]() { return FText::FromString(ModeColumnLabel()); }).Font(AUI::Caption(7)).ColorAndOpacity(Dim)
 			]
 		]
 		+ SHorizontalBox::Slot().AutoWidth()
@@ -235,7 +299,7 @@ TSharedRef<SWidget> SAirsoftScoreboard::BuildRow(int32 TeamIndex, int32 Row)
 			{
 			case 0: return FText::AsNumber(PS->Round.Tags);
 			case 1: return FText::AsNumber(PS->Round.Outs);
-			case 2: return FText::AsNumber(PS->Round.Captures);
+			case 2: return FText::AsNumber(ModeColumnValue(PS));
 			case 3: return FText::AsNumber(PS->Round.XP);
 			default: return PS->IsABot() ? FText::FromString(TEXT("-")) : FText::AsNumber(FMath::RoundToInt(PS->GetPingInMilliseconds()));
 			}
@@ -322,18 +386,52 @@ TSharedRef<SWidget> SAirsoftScoreboard::BuildRow(int32 TeamIndex, int32 Row)
 			.FillWidth(1.f)
 			.VAlign(VAlign_Center)
 			[
-				SNew(STextBlock)
-				.Font(AUI::Font(AUI::EFontWeight::Bold, 12, 40))
-				.ColorAndOpacity(Bright)
-				.Text_Lambda([this, TeamIndex, Row]()
-				{
-					const AAirsoftPlayerState* PS = RowPS(TeamIndex, Row);
-					if (!PS)
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.VAlign(VAlign_Center)
+				[
+					SNew(STextBlock)
+					.Font(AUI::Font(AUI::EFontWeight::Bold, 12, 40))
+					.ColorAndOpacity(Bright)
+					.Text_Lambda([this, TeamIndex, Row]()
 					{
-						return FText::GetEmpty();
-					}
-					return FText::FromString(PS->bOut ? PS->GetPlayerName() + TEXT("   OUT") : PS->GetPlayerName());
-				})
+						const AAirsoftPlayerState* PS = RowPS(TeamIndex, Row);
+						if (!PS)
+						{
+							return FText::GetEmpty();
+						}
+						return FText::FromString(PS->bOut ? PS->GetPlayerName() + TEXT("   OUT") : PS->GetPlayerName());
+					})
+				]
+				// VIP tag.
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.VAlign(VAlign_Center)
+				.Padding(FMargin(8.f, 0.f, 0.f, 0.f))
+				[
+					SNew(SBorder)
+					.Visibility_Lambda([this, TeamIndex, Row]() -> EVisibility
+					{
+						const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
+						const AAirsoftPlayerState* PS = RowPS(TeamIndex, Row);
+						return BoardVis(GS && PS && GS->Mode == EAirsoftMode::VIP && GS->VIPPlayer.Get() == PS);
+					})
+					.BorderImage(AUI::RoundedBrush())
+					.BorderBackgroundColor(FLinearColor(1.f, 0.78f, 0.2f))
+					.Padding(FMargin(5.f, 0.f))
+					[
+						SNew(STextBlock)
+						.Text(FText::FromString(TEXT("VIP")))
+						.Font(AUI::Font(AUI::EFontWeight::Bold, 8, 200))
+						.ColorAndOpacity(FLinearColor(0.02f, 0.02f, 0.02f))
+					]
+				]
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+			[
+				Cell(ColMode, NumberText(2), Bright, true,
+					TAttribute<EVisibility>::CreateLambda([this]() -> EVisibility { return IsFreeForAll() ? EVisibility::Visible : EVisibility::Collapsed; }))
 			]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 			[
@@ -345,8 +443,11 @@ TSharedRef<SWidget> SAirsoftScoreboard::BuildRow(int32 TeamIndex, int32 Row)
 			]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 			[
-				Cell(ColCaps, NumberText(2), Normal, false,
-					TAttribute<EVisibility>::CreateLambda([this]() -> EVisibility { return IsDomination() ? EVisibility::Visible : EVisibility::Collapsed; }))
+				Cell(ColMode, NumberText(2), Normal, false,
+					TAttribute<EVisibility>::CreateLambda([this]() -> EVisibility
+					{
+						return (!IsFreeForAll() && !ModeColumnLabel().IsEmpty()) ? EVisibility::Visible : EVisibility::Collapsed;
+					}))
 			]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 			[
@@ -377,7 +478,14 @@ TSharedRef<SWidget> SAirsoftScoreboard::BuildColumn(int32 TeamIndex)
 		+ SVerticalBox::Slot()
 		.AutoHeight()
 		[
-			AirsoftUIWidgets::Rule(AUI::TeamColor(Team), 2.f)
+			SNew(SBox)
+			.HeightOverride(2.f)
+			[
+				SNew(SBorder)
+				.BorderImage(AUI::WhiteBrush())
+				.Padding(FMargin(0.f))
+				.BorderBackgroundColor_Lambda([this, Team]() -> FSlateColor { return IsFreeForAll() ? AUI::Accent() : AUI::TeamColor(Team); })
+			]
 		]
 		+ SVerticalBox::Slot()
 		.AutoHeight()
@@ -388,9 +496,22 @@ TSharedRef<SWidget> SAirsoftScoreboard::BuildColumn(int32 TeamIndex)
 			.FillWidth(1.f)
 			[
 				SNew(STextBlock)
-				.Text(AUI::Upper(AirsoftColors::TeamName(Team)))
 				.Font(AUI::Heading(12))
-				.ColorAndOpacity(AUI::TeamColor(Team))
+				.Text_Lambda([this, Team, TeamIndex]()
+				{
+					if (IsFreeForAll())
+					{
+						return FText::FromString(TeamIndex == 0 ? TEXT("STANDINGS") : TEXT("CHASING"));
+					}
+					FString Name = AirsoftColors::TeamName(Team).ToUpper();
+					const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
+					if (GS && GS->Mode == EAirsoftMode::VIP && GS->AttackingTeam != EAirsoftTeam::None)
+					{
+						Name += GS->AttackingTeam == Team ? TEXT("  \u00B7  ATTACK") : TEXT("  \u00B7  DEFEND");
+					}
+					return FText::FromString(Name);
+				})
+				.ColorAndOpacity_Lambda([this, Team]() -> FSlateColor { return IsFreeForAll() ? AUI::Accent() : AUI::TeamColor(Team); })
 			]
 			+ SHorizontalBox::Slot()
 			.AutoWidth()
@@ -398,9 +519,14 @@ TSharedRef<SWidget> SAirsoftScoreboard::BuildColumn(int32 TeamIndex)
 				SNew(STextBlock)
 				.Font(AUI::Caption(8))
 				.ColorAndOpacity(AUI::TextDim())
-				.Text_Lambda([this, TeamIndex]()
+				.Text_Lambda([this, TeamIndex, Team]()
 				{
 					const int32 Count = Teams[TeamIndex].Num();
+					const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
+					if (GS && GS->IsRoundBased() && GS->Phase == EAirsoftPhase::Live)
+					{
+						return FText::FromString(FString::Printf(TEXT("%d OF %d STANDING"), GS->GetAlive(Team), Count));
+					}
 					return FText::FromString(FString::Printf(TEXT("%d %s"), Count, Count == 1 ? TEXT("PLAYER") : TEXT("PLAYERS")));
 				})
 			]
@@ -426,7 +552,7 @@ TSharedRef<SWidget> SAirsoftScoreboard::BuildHeaderScore(EAirsoftTeam Team)
 		.Visibility_Lambda([this]() -> EVisibility
 		{
 			const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
-			return (GS && GS->bIsMatchMap) ? EVisibility::HitTestInvisible : EVisibility::Hidden;
+			return (GS && GS->bIsMatchMap && !GS->IsFreeForAll()) ? EVisibility::HitTestInvisible : EVisibility::Hidden;
 		})
 		[
 			SNew(STextBlock)
@@ -520,7 +646,25 @@ void SAirsoftScoreboard::Construct(const FArguments& InArgs, AAirsoftPlayerContr
 									FString Line = AAirsoftGameState::ModeDisplayName(GS->Mode).ToUpper();
 									if (GS->bIsMatchMap)
 									{
-										Line += FString::Printf(TEXT("  \u00B7  FIRST TO %d"), GS->ScoreLimit);
+										switch (GS->Mode)
+										{
+										case EAirsoftMode::Elimination:
+											Line += FString::Printf(TEXT("  \u00B7  ROUND %d  \u00B7  FIRST TO %d"), GS->RoundNumber, GS->ScoreLimit);
+											break;
+										case EAirsoftMode::VIP:
+											Line += FString::Printf(TEXT("  \u00B7  ROUND %d / %d"), GS->RoundNumber, GS->MaxRounds);
+											break;
+										case EAirsoftMode::GunGame:
+										{
+											const AAirsoftPlayerState* Leader = GS->GetGunGameLeader();
+											Line += Leader ? FString::Printf(TEXT("  \u00B7  LEADER %s (%d/%d)"), *Leader->GetPlayerName().ToUpper(), Leader->GunLevel + 1, GS->ScoreLimit)
+												: FString::Printf(TEXT("  \u00B7  %d GUNS"), GS->ScoreLimit);
+											break;
+										}
+										default:
+											Line += FString::Printf(TEXT("  \u00B7  FIRST TO %d"), GS->ScoreLimit);
+											break;
+										}
 									}
 									const float T = GS->GetTimeRemaining();
 									if (T >= 0.f)
@@ -544,7 +688,7 @@ void SAirsoftScoreboard::Construct(const FArguments& InArgs, AAirsoftPlayerContr
 					[
 						AirsoftUIWidgets::Rule(AUI::Hairline())
 					]
-					// Teams
+					// Teams (or the free-for-all standings split in two)
 					+ SVerticalBox::Slot()
 					.AutoHeight()
 					[

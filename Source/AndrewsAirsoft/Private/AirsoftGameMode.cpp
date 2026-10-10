@@ -715,7 +715,7 @@ void AAirsoftGameMode::PostPendingVotes()
 		}
 		if (Parts.Num() > 0)
 		{
-			BroadcastSystem(FString::Printf(TEXT("%s votes %s"), *PS->GetPlayerName(), *FString::Join(Parts, TEXT(" · "))));
+			BroadcastSystem(FString::Printf(TEXT("%s votes %s"), *PS->GetPlayerName(), *FString::Join(Parts, TEXT(" \u00B7 "))));
 		}
 	}
 }
@@ -797,7 +797,7 @@ void AAirsoftGameMode::ForceStart(AAirsoftPlayerController* Requester)
 	EAirsoftBotSkill BotSkill = EAirsoftBotSkill::Normal;
 	GetBotSettings(BotTeamSize, BotSkill);
 	const bool bAloneWithoutBots = BotTeamSize == 0 && CountPlayers() <= 1;
-	AnnounceAll(TEXT("HOST IS STARTING"), bAloneWithoutBots ? TEXT("Deploying in 5 seconds  ·  bots are off (Menu > Bots)") : TEXT("Deploying in 5 seconds  ·  leading vote wins"),
+	AnnounceAll(TEXT("HOST IS STARTING"), bAloneWithoutBots ? TEXT("Deploying in 5 seconds  \u00B7  bots are off (Menu > Bots)") : TEXT("Deploying in 5 seconds  \u00B7  leading vote wins"),
 		AirsoftColors::Accent(), 3.f);
 }
 
@@ -959,7 +959,7 @@ void AAirsoftGameMode::TickStaging(float DeltaSeconds)
 			SetPhase(EAirsoftPhase::Waiting, 0.f);
 			return;
 		}
-		GS->StatusMessage = TEXT("Vote now  ·  F1 mode  ·  F2 map  ·  Enter chat");
+		GS->StatusMessage = TEXT("Vote now  \u00B7  F1 mode  \u00B7  F2 map  \u00B7  Enter chat");
 		if (GS->GetTimeRemaining() <= 0.f)
 		{
 			TravelToMatch();
@@ -989,7 +989,7 @@ void AAirsoftGameMode::TravelToMatch()
 	BalanceTeams();
 	GS->StatusMessage = TEXT("Deploying...");
 	const FString MapName = AirsoftRules::MapDisplayName(Map.Key);
-	AnnounceAll(TEXT("DEPLOYING"), FString::Printf(TEXT("%s  ·  %s"), *AirsoftRules::ModeName(Mode), *MapName), AirsoftColors::Accent(), 3.f);
+	AnnounceAll(TEXT("DEPLOYING"), FString::Printf(TEXT("%s  \u00B7  %s"), *AirsoftRules::ModeName(Mode), *MapName), AirsoftColors::Accent(), 3.f);
 	BroadcastSystem(FString::Printf(TEXT("Next match: %s on %s"), *AirsoftRules::ModeName(Mode), *MapName));
 
 	const FString URL = FString::Printf(TEXT("%s?Mode=%s"), *Map.LevelPath, *AirsoftRules::ModeOption(Mode));
@@ -1136,7 +1136,7 @@ void AAirsoftGameMode::BeginRound()
 	}
 
 	SetPhase(EAirsoftPhase::Briefing, Freeze); // before the respawns: Respawn() refuses during PostRound
-	GS->StatusMessage = bRounds ? FString::Printf(TEXT("Round %d  ·  frozen: pick your loadout (L)"), GS->RoundNumber) : FString(TEXT("Briefing"));
+	GS->StatusMessage = bRounds ? FString::Printf(TEXT("Round %d  \u00B7  frozen: pick your loadout (L)"), GS->RoundNumber) : FString(TEXT("Briefing"));
 
 	const FString MapName = AirsoftRules::MapDisplayName(GS->MapId);
 	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
@@ -1155,24 +1155,24 @@ void AAirsoftGameMode::BeginRound()
 		FString Sub;
 		if (bFreeForAll)
 		{
-			Sub = FString::Printf(TEXT("%s  ·  Everyone for themselves  ·  %d guns to climb"), *MapName, GS->ScoreLimit);
+			Sub = FString::Printf(TEXT("%s  \u00B7  Everyone for themselves  \u00B7  %d guns to climb"), *MapName, GS->ScoreLimit);
 		}
 		else if (GS->Mode == EAirsoftMode::VIP)
 		{
 			Title = FString::Printf(TEXT("ROUND %d / %d"), GS->RoundNumber, GS->MaxRounds);
 			const bool bAttack = PS->Team == GS->AttackingTeam;
-			Sub = FString::Printf(TEXT("%s%s  ·  %s"), bHalfTime ? TEXT("Sides switched  ·  ") : TEXT(""),
+			Sub = FString::Printf(TEXT("%s%s  \u00B7  %s"), bHalfTime ? TEXT("Sides switched  \u00B7  ") : TEXT(""),
 				bAttack ? TEXT("ATTACK: walk the VIP to EXTRACT") : TEXT("DEFEND: tag the VIP or hold out"), *AirsoftColors::TeamName(PS->Team));
 		}
 		else if (bRounds)
 		{
 			Title = FString::Printf(TEXT("ROUND %d"), GS->RoundNumber);
-			Sub = FString::Printf(TEXT("Blue %d – %d Red  ·  You're on %s  ·  One life  ·  first to %d"),
+			Sub = FString::Printf(TEXT("Blue %d \u2013 %d Red  \u00B7  You're on %s  \u00B7  One life  \u00B7  first to %d"),
 				GS->BlueScore, GS->RedScore, *AirsoftColors::TeamName(PS->Team), GS->ScoreLimit);
 		}
 		else
 		{
-			Sub = FString::Printf(TEXT("%s  ·  You're on %s  ·  %s"), *MapName, *AirsoftColors::TeamName(PS->Team), *AirsoftRules::ModeBlurb(GS->Mode));
+			Sub = FString::Printf(TEXT("%s  \u00B7  You're on %s  \u00B7  %s"), *MapName, *AirsoftColors::TeamName(PS->Team), *AirsoftRules::ModeBlurb(GS->Mode));
 		}
 		PC->ClientAnnounce(Title, Sub, AirsoftColors::Team(PS->Team), Freeze);
 	}
@@ -1502,7 +1502,7 @@ void AAirsoftGameMode::EndRound(EAirsoftTeam RoundWinnerTeam, const FString& Rea
 	}
 	const FString TeamLine = RoundWinnerTeam == EAirsoftTeam::None ? FString(TEXT("Round drawn"))
 		: FString::Printf(TEXT("%s takes the round"), *AirsoftColors::TeamName(RoundWinnerTeam));
-	BroadcastSystem(FString::Printf(TEXT("Round %d: %s, %s (Blue %d – %d Red)"), GS->RoundNumber, *TeamLine, *Reason, GS->BlueScore, GS->RedScore));
+	BroadcastSystem(FString::Printf(TEXT("Round %d: %s, %s (Blue %d \u2013 %d Red)"), GS->RoundNumber, *TeamLine, *Reason, GS->BlueScore, GS->RedScore));
 
 	// Match over? A side reached the target, or the rounds ran out.
 	const bool bClinched = GS->BlueScore >= GS->ScoreLimit || GS->RedScore >= GS->ScoreLimit;
@@ -1516,7 +1516,7 @@ void AAirsoftGameMode::EndRound(EAirsoftTeam RoundWinnerTeam, const FString& Rea
 	// Between rounds: frozen, the round's last tag replays, then the next round's freeze.
 	SetPhase(EAirsoftPhase::PostRound, FMath::Max(UAirsoftSettings::Get()->RoundOverTime, 3.f));
 	GS->bMatchOver = false;
-	GS->StatusMessage = FString::Printf(TEXT("Round %d  ·  %s"), GS->RoundNumber, *TeamLine);
+	GS->StatusMessage = FString::Printf(TEXT("Round %d  \u00B7  %s"), GS->RoundNumber, *TeamLine);
 	FreezeAll(true);
 	for (TPair<TWeakObjectPtr<AController>, FTimerHandle>& Pair : RespawnTimers)
 	{
@@ -1601,7 +1601,7 @@ void AAirsoftGameMode::FinishMatch(EAirsoftTeam WinnerTeam, AAirsoftPlayerState*
 	else
 	{
 		BroadcastSystem(FString::Printf(TEXT("Match over: %s wins%s"), bFreeForAll ? *GS->WinnerName : *AirsoftColors::TeamName(WinnerTeam),
-			GS->IsRoundBased() ? *FString::Printf(TEXT(" (Blue %d – %d Red)"), GS->BlueScore, GS->RedScore) : TEXT("")));
+			GS->IsRoundBased() ? *FString::Printf(TEXT(" (Blue %d \u2013 %d Red)"), GS->BlueScore, GS->RedScore) : TEXT("")));
 	}
 
 	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
@@ -1924,7 +1924,7 @@ void AAirsoftGameMode::AdvanceGunGame(AController* Shooter, AAirsoftPlayerState*
 	if (AAirsoftPlayerController* PC = Cast<AAirsoftPlayerController>(Shooter))
 	{
 		PC->ClientAnnounce(FString::Printf(TEXT("LEVEL %d / %d"), ShooterPS->GunLevel + 1, Ladder.Num()),
-			bFinal ? FString::Printf(TEXT("%s  ·  FINAL WEAPON: one tag wins"), *AirsoftGameModeLocal::WeaponDisplayName(Next)) : AirsoftGameModeLocal::WeaponDisplayName(Next),
+			bFinal ? FString::Printf(TEXT("%s  \u00B7  FINAL WEAPON: one tag wins"), *AirsoftGameModeLocal::WeaponDisplayName(Next)) : AirsoftGameModeLocal::WeaponDisplayName(Next),
 			AirsoftColors::Accent(), 1.6f);
 	}
 	if (bFinal)

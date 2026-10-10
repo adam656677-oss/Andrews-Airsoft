@@ -10,7 +10,11 @@
 //   Idle (frozen / round not live)
 //   Advance (to a roam point or objective) <-> Hold (on a point, scanning)
 //   Investigate (last seen / heard enemy) <-> Engage (visible enemy)
-//   WalkOff (tagged: rag up, back toward spawn until the respawn)
+//   WalkOff (tagged: rag up, back toward spawn until the respawn - or, in the
+//            one-life modes, until the next round respawns everyone)
+// Who counts as an enemy comes from AAirsoftGameState::AreHostile (Gun Game:
+// everyone). Goals per mode: TDM / Elimination / Gun Game roam, Domination
+// takes points, VIP escorts or hunts the VIP.
 // Numbers per difficulty live in UAirsoftSettings (Project Settings > Game > Airsoft > Bots).
 
 #pragma once
@@ -121,6 +125,10 @@ private:
 	void Think(AAirsoftCharacter* Me);
 	void ThinkTDM(AAirsoftCharacter* Me);
 	void ThinkDomination(AAirsoftCharacter* Me);
+	/** VIP: the VIP heads for extraction, escorts shadow the VIP, defenders guard extraction or push out to meet them. */
+	void ThinkVIP(AAirsoftCharacter* Me);
+	/** Walks to a random spot near Center, then holds a few seconds watching (shared by the VIP roles). */
+	void MoveNearThenHold(AAirsoftCharacter* Me, const FVector& Center, float Radius, bool bSprint);
 	float ScoreObjective(const AAirsoftCharacter* Me, const AAirsoftObjective* Obj) const;
 	void StartInvestigate(const FVector& Point);
 	bool MoveToPoint(const FVector& Dest, float Acceptance, bool bSprint);

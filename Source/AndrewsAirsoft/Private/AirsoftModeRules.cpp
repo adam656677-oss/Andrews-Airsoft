@@ -5,6 +5,9 @@
 #include "AirsoftSettings.h"
 #include "AirsoftWeaponData.h"
 
+// A new EAirsoftMode needs NumModes (and the switches below) updated with it.
+static_assert(static_cast<int32>(EAirsoftMode::VIP) + 1 == AirsoftRules::NumModes, "AirsoftRules::NumModes must match EAirsoftMode");
+
 namespace AirsoftRules
 {
 	EAirsoftMode ModeFromIndex(int32 Index)

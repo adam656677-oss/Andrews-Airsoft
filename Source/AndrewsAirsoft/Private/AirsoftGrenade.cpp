@@ -5,6 +5,7 @@
 #include "AirsoftCharacter.h"
 #include "AirsoftEffects.h"
 #include "AirsoftGameMode.h"
+#include "AirsoftGameState.h"
 #include "AirsoftSettings.h"
 #include "AirsoftWeaponData.h"
 #include "Components/PointLightComponent.h"
@@ -130,7 +131,6 @@ void AAirsoftGrenade::Detonate()
 	MulticastBurst(Center);
 
 	AAirsoftGameMode* GM = GetWorld()->GetAuthGameMode<AAirsoftGameMode>();
-	const bool bFriendlyFire = UAirsoftSettings::Get()->bFriendlyFire;
 	for (TActorIterator<AAirsoftCharacter> It(GetWorld()); It; ++It)
 	{
 		AAirsoftCharacter* Victim = *It;
@@ -139,7 +139,7 @@ void AAirsoftGrenade::Detonate()
 			continue;
 		}
 		const bool bSelf = Victim->GetController() == Thrower.Get();
-		if (!bSelf && !bFriendlyFire && Victim->GetTeam() == Team)
+		if (!bSelf && !AAirsoftGameState::CanTag(this, Team, Victim->GetTeam()))
 		{
 			continue;
 		}

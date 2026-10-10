@@ -4,6 +4,7 @@
 
 #include "AirsoftGameInstance.h"
 #include "AirsoftGameState.h"
+#include "AirsoftModeRules.h"
 #include "AirsoftPlayerController.h"
 #include "AirsoftPlayerState.h"
 #include "AirsoftSaveGame.h"
@@ -453,17 +454,16 @@ TSharedRef<SWidget> SAirsoftGameMenu::BuildRightColumn()
 		.Font(AUI::Caption(8))
 		.ColorAndOpacity(AUI::TextDim())
 	];
-	const EAirsoftMode Modes[2] = { EAirsoftMode::TDM, EAirsoftMode::Domination };
-	for (int32 i = 0; i < 2; ++i)
+	for (int32 i = 0; i < AirsoftRules::NumModes; ++i)
 	{
 		Votes->AddSlot()
 		.AutoHeight()
-		.Padding(FMargin(0.f, 0.f, 0.f, 4.f))
+		.Padding(FMargin(0.f, 0.f, 0.f, 3.f))
 		[
 			SNew(SAirsoftButton)
-			.Text(AUI::Upper(AAirsoftGameState::ModeDisplayName(Modes[i])))
+			.Text(AUI::Upper(AirsoftRules::ModeName(AirsoftRules::ModeFromIndex(i))))
 			.FontSize(12)
-			.ContentPadding(FMargin(16.f, 9.f))
+			.ContentPadding(FMargin(16.f, 7.f))
 			.SubText_Lambda([this, i]()
 			{
 				const AAirsoftGameState* State = GS();
@@ -494,26 +494,34 @@ TSharedRef<SWidget> SAirsoftGameMenu::BuildRightColumn()
 		.Font(AUI::Caption(8))
 		.ColorAndOpacity(AUI::TextDim())
 	];
-	const TArray<FName>& Maps = AAirsoftGameState::MapIds();
+	const TArray<FAirsoftMapInfo>& Maps = AirsoftRules::Maps();
 	for (int32 i = 0; i < Maps.Num(); ++i)
 	{
+		const FString Players = FString::Printf(TEXT("%d\u2013%d"), Maps[i].MinPlayers, Maps[i].MaxPlayers);
 		Votes->AddSlot()
 		.AutoHeight()
-		.Padding(FMargin(0.f, 0.f, 0.f, 4.f))
+		.Padding(FMargin(0.f, 0.f, 0.f, 3.f))
 		[
 			SNew(SAirsoftButton)
-			.Text(AUI::Upper(AAirsoftGameState::MapDisplayName(Maps[i])))
+			.Text(AUI::Upper(AirsoftRules::MapDisplayName(Maps[i].Key)))
 			.FontSize(12)
-			.ContentPadding(FMargin(16.f, 9.f))
-			.SubText_Lambda([this, i]()
+			.ContentPadding(FMargin(16.f, 7.f))
+			.SubText_Lambda([this, i, Players]()
 			{
 				const AAirsoftGameState* State = GS();
-				return VotesText((State && State->MapVotes.IsValidIndex(i)) ? State->MapVotes[i] : 0);
+				return FText::FromString(Players + TEXT(" PLAYERS  \u00B7  ") + VotesText((State && State->MapVotes.IsValidIndex(i)) ? State->MapVotes[i] : 0).ToString());
 			})
 			.IsSelected_Lambda([this, i]()
 			{
 				const AAirsoftPlayerController* PC = WeakPC.Get();
 				return PC && PC->GetMyMapVote() == i;
+			})
+			.IsDimmed_Lambda([this, i]()
+			{
+				// A map that can't run the mode this player picked.
+				const AAirsoftPlayerController* PC = WeakPC.Get();
+				const TArray<FAirsoftMapInfo>& List = AirsoftRules::Maps();
+				return PC && PC->GetMyModeVote() >= 0 && List.IsValidIndex(i) && !List[i].SupportsMode(AirsoftRules::ModeFromIndex(PC->GetMyModeVote()));
 			})
 			.OnClicked_Lambda([this, i]()
 			{
@@ -602,7 +610,8 @@ TSharedRef<SWidget> SAirsoftGameMenu::BuildRightColumn()
 					.Padding(FMargin(0.f, 8.f, 0.f, 0.f))
 					[
 						SNew(STextBlock)
-						.Text(FText::FromString(TEXT("Shortcut: F1 / F2 mode, F3 / F4 map.")))
+						.AutoWrapText(true)
+						.Text(FText::FromString(TEXT("Shortcut: F1 steps through the modes, F2 through the maps. Most votes wins; Start Match Now uses the leading votes.")))
 						.Font(AUI::Font(AUI::EFontWeight::Regular, 10))
 						.ColorAndOpacity(AUI::TextDim())
 					]

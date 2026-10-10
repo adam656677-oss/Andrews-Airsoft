@@ -15,6 +15,7 @@
 #include "Brushes/SlateRoundedBoxBrush.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Components/CapsuleComponent.h"
+#include "Engine/HitResult.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "Rendering/DrawElements.h"
@@ -412,6 +413,112 @@ void SAirsoftHUDCanvas::PaintCaptureBar(AAirsoftPlayerController* PC, FSlateWind
 	if (Inside->bContested)
 	{
 		AUI::PaintFrame(Out, L, Geo, FVector2f(Left - 4.f, Y - 4.f), FVector2f(W + 8.f, H + 8.f), AUI::WithAlpha(AUI::Accent(), 0.3f + 0.6f * AUI::Pulse(2.f)), 1.f);
+	}
+}
+
+void SAirsoftHUDCanvas::PaintVIP(AAirsoftPlayerController* PC, FSlateWindowElementList& Out, int32 Layer, const FGeometry& Geo, const FVector2f& Size) const
+{
+	const AAirsoftGameState* GS = AUI::GetGameState(PC);
+	UWorld* World = PC->GetWorld();
+	if (!GS || !World || !GS->bIsMatchMap || GS->Mode != EAirsoftMode::VIP || !PC->PlayerCameraManager
+		|| (GS->Phase != EAirsoftPhase::Live && GS->Phase != EAirsoftPhase::Briefing))
+	{
+		return;
+	}
+	const AAirsoftPlayerState* MyPS = AUI::GetPlayerState(PC);
+	const float Scale = Geo.Scale > 0.f ? Geo.Scale : 1.f;
+	const FVector CamLoc = PC->PlayerCameraManager->GetCameraLocation();
+	auto Project = [PC, Scale](const FVector& Point, FVector2f& OutPos) -> bool
+	{
+		FVector2D Screen;
+		if (!PC->ProjectWorldLocationToScreen(Point, Screen, true))
+		{
+			return false;
+		}
+		OutPos = FVector2f(static_cast<float>(Screen.X) / Scale, static_cast<float>(Screen.Y) / Scale);
+		return true;
+	};
+	auto OnScreen = [&Size](const FVector2f& P) { return P.X > -40.f && P.X < Size.X + 40.f && P.Y > -40.f && P.Y < Size.Y + 40.f; };
+
+	// The VIP: a gold diamond everyone can recognise. Teammates see it through walls; the defenders
+	// only when the VIP is in their line of sight (or within 15 m).
+	const AAirsoftPlayerState* VIPPS = GS->VIPPlayer.Get();
+	const AAirsoftCharacter* VIPChar = nullptr;
+	if (VIPPS)
+	{
+		for (TActorIterator<AAirsoftCharacter> It(World); It; ++It)
+		{
+			if (It->GetPlayerState() == VIPPS)
+			{
+				VIPChar = *It;
+				break;
+			}
+		}
+	}
+	const APawn* MyPawn = PC->GetPawn();
+	if (VIPChar && !VIPChar->IsOut() && VIPChar != MyPawn)
+	{
+		const bool bFriendly = MyPS && MyPS->Team == VIPPS->Team;
+		const FVector Head = VIPChar->GetActorLocation() + FVector(0.0, 0.0, 135.0);
+		const float Dist = static_cast<float>(FVector::Dist(CamLoc, Head));
+		bool bShow = bFriendly || Dist < 1500.f;
+		if (!bShow)
+		{
+			FCollisionQueryParams Query(SCENE_QUERY_STAT(AirsoftVIPSight), false, MyPawn);
+			Query.AddIgnoredActor(VIPChar);
+			FHitResult Hit;
+			bShow = !World->LineTraceSingleByChannel(Hit, CamLoc, VIPChar->GetPawnViewLocation(), ECC_Visibility, Query);
+		}
+		FVector2f P;
+		if (bShow && Project(Head, P) && OnScreen(P))
+		{
+			const FLinearColor Gold(1.f, 0.78f, 0.2f);
+			const FLinearColor Shadow(0.f, 0.f, 0.f, 0.6f);
+			const float R = 9.f;
+			const FVector2f Corners[4] = { FVector2f(P.X, P.Y - R), FVector2f(P.X + R, P.Y), FVector2f(P.X, P.Y + R), FVector2f(P.X - R, P.Y) };
+			for (int32 i = 0; i < 4; ++i)
+			{
+				AUI::PaintLine(Out, Layer + 1, Geo, Corners[i], Corners[(i + 1) % 4], Shadow, 4.f);
+			}
+			for (int32 i = 0; i < 4; ++i)
+			{
+				AUI::PaintLine(Out, Layer + 1, Geo, Corners[i], Corners[(i + 1) % 4], Gold, 2.f);
+			}
+			AUI::PaintRect(Out, Layer, Geo, P - FVector2f(3.f, 3.f), FVector2f(6.f, 6.f), AUI::WithAlpha(Gold, 0.8f));
+			AUI::PaintTextCentered(Out, Layer + 2, Geo, TEXT("VIP"), AUI::Font(AUI::EFontWeight::Bold, 9, 200), FVector2f(P.X, P.Y - R - 10.f), Gold);
+			AUI::PaintTextCentered(Out, Layer + 2, Geo, FString::Printf(TEXT("%d m"), FMath::RoundToInt(Dist / 100.f)), AUI::Caption(7),
+				FVector2f(P.X, P.Y + R + 9.f), AUI::WithAlpha(AUI::TextColor(), 0.8f));
+		}
+	}
+
+	// Extraction point, in the attackers' colour.
+	if (const AAirsoftObjective* Extract = GS->ExtractionPoint.Get())
+	{
+		const FVector Mark = Extract->GetActorLocation() + FVector(0.0, 0.0, 250.0);
+		FVector2f P;
+		if (Project(Mark, P) && OnScreen(P))
+		{
+			const FLinearColor Col = AUI::TeamColor(GS->AttackingTeam);
+			const float Dist = static_cast<float>(FVector::Dist(CamLoc, Mark));
+			AUI::PaintTextCentered(Out, Layer + 2, Geo, TEXT("EXTRACT"), AUI::Font(AUI::EFontWeight::Bold, 10, 220), P, Col);
+			AUI::PaintTextCentered(Out, Layer + 2, Geo, FString::Printf(TEXT("%d m"), FMath::RoundToInt(Dist / 100.f)), AUI::Caption(7),
+				FVector2f(P.X, P.Y + 14.f), AUI::WithAlpha(AUI::TextColor(), 0.7f));
+		}
+	}
+
+	// Everyone sees the VIP standing in the zone.
+	const float Progress = FMath::Clamp(GS->ExtractProgress, 0.f, 1.f);
+	if (Progress > 0.f && GS->Phase == EAirsoftPhase::Live)
+	{
+		const float W = 300.f;
+		const float H = 6.f;
+		const FVector2f C(Size.X * 0.5f, Size.Y * 0.5f + 160.f);
+		const FLinearColor Col = AUI::TeamColor(GS->AttackingTeam);
+		AUI::PaintBrush(Out, Layer, Geo, AUI::PanelBrush(), FVector2f(C.X - W * 0.5f - 18.f, C.Y - 34.f), FVector2f(W + 36.f, 56.f), FLinearColor::White);
+		AUI::PaintTextCentered(Out, Layer + 2, Geo, TEXT("VIP EXTRACTING"), AUI::Font(AUI::EFontWeight::Bold, 11, 260), FVector2f(C.X, C.Y - 15.f),
+			FLinearColor::LerpUsingHSV(Col, FLinearColor::White, AUI::Pulse(2.f) * 0.4f));
+		AUI::PaintRect(Out, Layer + 1, Geo, FVector2f(C.X - W * 0.5f, C.Y + 4.f), FVector2f(W, H), FLinearColor(1.f, 1.f, 1.f, 0.1f));
+		AUI::PaintRect(Out, Layer + 1, Geo, FVector2f(C.X - W * 0.5f, C.Y + 4.f), FVector2f(W * Progress, H), Col);
 	}
 }
 

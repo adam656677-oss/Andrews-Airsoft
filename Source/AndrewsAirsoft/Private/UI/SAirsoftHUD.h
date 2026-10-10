@@ -100,9 +100,9 @@ private:
 	/** True when gameplay HUD elements should be hidden (menu, summary, replay, main menu map). */
 	bool IsHidden() const;
 	bool IsOut() const;
-	/** Caption under the timer ("FIRST TO 40", "ROUND 3 · FIRST TO 5", "LEVEL 4 / 13"...). */
+	/** Caption under the timer ("FIRST TO 40", "ROUND 3 - FIRST TO 5", "LEVEL 4 / 13"...). */
 	FText PhaseCaption() const;
-	/** Mode-specific line under the mode / map ("VIP: X · ESCORT TO EXTRACT", "NEXT GUN: ..."), empty for none. */
+	/** Mode-specific line under the mode / map ("VIP: X - ESCORT TO EXTRACT", "NEXT GUN: ..."), empty for none. */
 	FString ModeLine() const;
 	float AnnouncementAlpha() const;
 	const FAirsoftKillFeedEntry* FeedEntry(int32 Row) const;

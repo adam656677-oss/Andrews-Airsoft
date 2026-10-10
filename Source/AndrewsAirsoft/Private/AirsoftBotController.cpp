@@ -562,10 +562,9 @@ void AAirsoftBotController::UpdateSight(AAirsoftCharacter* Me)
 		{
 			continue;
 		}
-		const EAirsoftTeam OtherTeam = Other->GetTeam();
-		if (OtherTeam == EAirsoftTeam::None || OtherTeam == MyTeam)
+		if (!AAirsoftGameState::AreHostile(this, MyTeam, Other->GetTeam()))
 		{
-			continue;
+			continue; // teammate (or, in Gun Game, nobody: everyone is hostile)
 		}
 		const FVector To = Other->GetActorLocation() - Eye;
 		const float Dist = static_cast<float>(To.Size());
@@ -621,8 +620,7 @@ void AAirsoftBotController::HearShot(AAirsoftCharacter* Shooter, const FVector& 
 	{
 		return;
 	}
-	const EAirsoftTeam ShooterTeam = Shooter->GetTeam();
-	if (ShooterTeam == EAirsoftTeam::None || ShooterTeam == Me->GetTeam())
+	if (!AAirsoftGameState::AreHostile(this, Me->GetTeam(), Shooter->GetTeam()))
 	{
 		return;
 	}
@@ -1162,9 +1160,12 @@ void AAirsoftBotController::Think(AAirsoftCharacter* Me)
 		return;
 	}
 
-	// Something worth checking? Domination bots stay on task unless it is close.
+	// Something worth checking? Objective bots stay on task unless it is close; the VIP never wanders off.
 	const bool bDomination = GS && GS->Mode == EAirsoftMode::Domination;
-	if (const FBotMemory* M = FreshestUnseen(MyLoc, bDomination ? 1800.f : 4000.f))
+	const bool bVIPMode = GS && GS->Mode == EAirsoftMode::VIP;
+	const bool bIAmVIP = bVIPMode && GS->VIPPlayer.Get() != nullptr && GS->VIPPlayer.Get() == GetPlayerState<AAirsoftPlayerState>();
+	const float InvestigateRange = bDomination ? 1800.f : (bVIPMode ? 1500.f : 4000.f);
+	if (const FBotMemory* M = bIAmVIP ? nullptr : FreshestUnseen(MyLoc, InvestigateRange))
 	{
 		const double When = FMath::Max(M->LastSeen, M->LastHeard);
 		if (When > InvestigatedStamp && T - When < AirsoftBotLocal::InvestigateMaxAge)
@@ -1179,9 +1180,144 @@ void AAirsoftBotController::Think(AAirsoftCharacter* Me)
 	{
 		ThinkDomination(Me);
 	}
+	else if (bVIPMode)
+	{
+		ThinkVIP(Me);
+	}
 	else
 	{
+		ThinkTDM(Me); // TDM, Elimination and Gun Game: roam and hunt
+	}
+}
+
+void AAirsoftBotController::MoveNearThenHold(AAirsoftCharacter* Me, const FVector& Center, float Radius, bool bSprint)
+{
+	const double T = WorldTime();
+	const bool bMoving = IsMoving();
+	if (bMoving && T < GoalExpiresAt)
+	{
+		return;
+	}
+	if (!bMoving && bHasMoveGoal)
+	{
+		// Arrived: watch for a moment, sometimes crouched.
+		bHasMoveGoal = false;
+		State = EAirsoftBotState::Hold;
+		HoldUntil = T + Rng.FRandRange(2.5f, 5.f);
+		NextScanAt = 0.0;
+		bHoldCrouch = Rng.FRand() < Tune.CrouchChance;
+		if (bHoldCrouch)
+		{
+			Me->Crouch();
+		}
+		return;
+	}
+	if (!bMoving && T < HoldUntil)
+	{
+		State = EAirsoftBotState::Hold;
+		return;
+	}
+	bHoldCrouch = false;
+	FVector Point;
+	if ((RandomPointNear(Center, Radius, Point) || ProjectToNav(Center, Point)) && MoveToPoint(Point, 100.f, bSprint))
+	{
+		State = EAirsoftBotState::Advance;
+		GoalExpiresAt = T + 25.0;
+	}
+}
+
+void AAirsoftBotController::ThinkVIP(AAirsoftCharacter* Me)
+{
+	const double T = WorldTime();
+	const AAirsoftGameState* GS = GetWorld()->GetGameState<AAirsoftGameState>();
+	const AAirsoftObjective* Extract = GS ? GS->ExtractionPoint.Get() : nullptr;
+	if (!GS || !Extract)
+	{
 		ThinkTDM(Me);
+		return;
+	}
+	const AAirsoftPlayerState* VIPPS = GS->VIPPlayer.Get();
+	const FVector MyLoc = Me->GetActorLocation();
+	const FVector ExtractLoc = Extract->GetActorLocation();
+
+	// The VIP: straight for extraction, then stand (crouched) in the zone until it counts.
+	if (VIPPS && VIPPS == GetPlayerState<AAirsoftPlayerState>())
+	{
+		if (Extract->IsInside(MyLoc))
+		{
+			State = EAirsoftBotState::Hold;
+			if (IsMoving())
+			{
+				StopMovement();
+			}
+			bHasMoveGoal = false;
+			if (!Me->bIsCrouched)
+			{
+				bHoldCrouch = true;
+				Me->Crouch();
+			}
+			return;
+		}
+		if (!IsMoving() || !bHasMoveGoal || T >= GoalExpiresAt)
+		{
+			FVector Point;
+			if ((RandomPointNear(ExtractLoc, Extract->Radius * 0.4f, Point) || ProjectToNav(ExtractLoc, Point)) && MoveToPoint(Point, 60.f, true))
+			{
+				State = EAirsoftBotState::Advance;
+				GoalExpiresAt = T + 20.0;
+			}
+		}
+		return;
+	}
+
+	if (GetBotTeam() == GS->AttackingTeam)
+	{
+		// Escort: stay with the VIP, a few metres ahead toward extraction.
+		const AAirsoftCharacter* VIPChar = nullptr;
+		for (TActorIterator<AAirsoftCharacter> It(GetWorld()); It && VIPPS; ++It)
+		{
+			if (It->GetPlayerState() == VIPPS)
+			{
+				VIPChar = *It;
+				break;
+			}
+		}
+		if (!VIPChar || VIPChar->IsOut())
+		{
+			ThinkTDM(Me);
+			return;
+		}
+		const FVector VIPLoc = VIPChar->GetActorLocation();
+		const FVector Ahead = (ExtractLoc - VIPLoc).GetSafeNormal2D();
+		const FVector Spot = VIPLoc + Ahead * Rng.FRandRange(250.f, 700.f);
+		const float Gap = static_cast<float>(FVector::Dist2D(MyLoc, Spot));
+		if (Gap > 500.f && (!IsMoving() || T >= GoalExpiresAt))
+		{
+			FVector Point;
+			if (RandomPointNear(Spot, 350.f, Point) && MoveToPoint(Point, 120.f, Gap > 1500.f))
+			{
+				State = EAirsoftBotState::Advance;
+				GoalExpiresAt = T + 3.0; // re-aim at the VIP often: they keep moving
+			}
+		}
+		else if (!IsMoving() && State != EAirsoftBotState::Hold)
+		{
+			State = EAirsoftBotState::Hold;
+			NextScanAt = 0.0;
+		}
+		return;
+	}
+
+	// Defenders: some dig in around extraction, the rest push out along the attackers' likely route.
+	const bool bGuard = bDefender || ObjectiveBias[0] > 40.f;
+	if (bGuard)
+	{
+		MoveNearThenHold(Me, ExtractLoc, Extract->Radius * 2.5f, true);
+	}
+	else
+	{
+		const FVector Route = bHaveSpawns ? FMath::Lerp(ExtractLoc, EnemySpawn, Rng.FRandRange(0.3f, 0.65f)) : ExtractLoc;
+		MoveNearThenHold(Me, Route, 900.f, true);
 	}
 }
 

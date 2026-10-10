@@ -1153,7 +1153,7 @@ TSharedRef<SWidget> SAirsoftHUD::BuildTaggedOverlay()
 				const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
 				return HudVis(GS && GS->bIsMatchMap && !AirsoftRules::HasRespawns(GS->Mode));
 			})
-			.Text(FText::FromString(TEXT("OUT FOR THE ROUND · WATCHING YOUR TEAM IN A MOMENT")))
+			.Text(FText::FromString(TEXT("OUT FOR THE ROUND \u00B7 WATCHING YOUR TEAM IN A MOMENT")))
 		];
 }
 
@@ -1461,7 +1461,7 @@ TSharedRef<SWidget> SAirsoftHUD::BuildVotePanel()
 	for (int32 i = 0; i < Maps.Num(); ++i)
 	{
 		const FAirsoftMapInfo& Info = Maps[i];
-		const FString Players = FString::Printf(TEXT("%d–%d PLAYERS"), Info.MinPlayers, Info.MaxPlayers);
+		const FString Players = FString::Printf(TEXT("%d\u2013%d PLAYERS"), Info.MinPlayers, Info.MaxPlayers);
 		Rows->AddSlot()
 		.AutoHeight()
 		.Padding(FMargin(0.f, 0.f, 0.f, 2.f))
@@ -1552,7 +1552,7 @@ TSharedRef<SWidget> SAirsoftHUD::BuildVotePanel()
 					SNew(STextBlock)
 					.Font(AUI::Caption(7))
 					.ColorAndOpacity(AUI::TextDim())
-					.Text(FText::FromString(TEXT("MOST VOTES WINS (TIES AT RANDOM)  ·  ENTER CHAT  ·  Y TEAM")))
+					.Text(FText::FromString(TEXT("MOST VOTES WINS (TIES AT RANDOM)  \u00B7  ENTER CHAT  \u00B7  Y TEAM")))
 				]
 			]
 		];

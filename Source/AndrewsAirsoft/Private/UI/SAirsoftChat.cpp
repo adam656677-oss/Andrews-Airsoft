@@ -117,7 +117,7 @@ void SAirsoftChatInput::Construct(const FArguments& InArgs, AAirsoftPlayerContro
 					.Font(AUI::Font(AUI::EFontWeight::Regular, 12, 20))
 					.ForegroundColor(AUI::TextColor())
 					.BackgroundColor(FLinearColor::White)
-					.HintText(FText::FromString(TEXT("Say something   ·   Enter send   ·   Tab team / all   ·   Esc cancel")))
+					.HintText(FText::FromString(TEXT("Say something   \u00B7   Enter send   \u00B7   Tab team / all   \u00B7   Esc cancel")))
 					.SelectAllTextWhenFocused(false)
 					.ClearKeyboardFocusOnCommit(false)
 					.OnTextChanged_Lambda([this](const FText& NewText)
@@ -288,7 +288,7 @@ TSharedRef<SWidget> SAirsoftChatBox::BuildRow(int32 Row)
 					{
 						return FText::GetEmpty();
 					}
-					return FText::FromString(Entry->Kind == EAirsoftChatKind::System ? TEXT("· ") + Entry->Text : Entry->Text);
+					return FText::FromString(Entry->Kind == EAirsoftChatKind::System ? TEXT("\u00B7 ") + Entry->Text : Entry->Text);
 				})
 				.ColorAndOpacity_Lambda([this, Row]() -> FSlateColor
 				{

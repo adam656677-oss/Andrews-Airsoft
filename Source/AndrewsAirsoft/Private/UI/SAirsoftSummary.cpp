@@ -27,7 +27,8 @@ public:
 	void Construct(const FArguments& InArgs, AAirsoftPlayerController* InPC);
 
 private:
-	TSharedRef<SWidget> BuildTeamTable(EAirsoftTeam Team, const FAirsoftMatchSummary& Summary);
+	/** One team's table, or (free-for-all) half of the standings: Column 0 = the top half, 1 = the rest. */
+	TSharedRef<SWidget> BuildTeamTable(EAirsoftTeam Team, const FAirsoftMatchSummary& Summary, int32 Column);
 	TSharedRef<SWidget> BuildXPPanel(const FAirsoftMatchSummary& Summary);
 	/** Seconds since the summary was posted (controller clock). */
 	float Age() const;
@@ -36,7 +37,10 @@ private:
 
 	TWeakObjectPtr<AAirsoftPlayerController> WeakPC;
 	double StartTime = 0.0;
-	bool bDomination = false;
+	bool bFreeForAll = false;
+	EAirsoftMode Mode = EAirsoftMode::TDM;
+	/** Header of the mode column (CAPS / EXTR / LVL), empty for none. */
+	FString ModeColumn;
 	FString MyName;
 	int32 XPBefore = 0;
 	int32 XPAfter = 0;
@@ -73,7 +77,15 @@ void SAirsoftSummary::Construct(const FArguments& InArgs, AAirsoftPlayerControll
 	}
 
 	const AAirsoftGameState* GS = AUI::GetGameState(InPC);
-	bDomination = GS && GS->Mode == EAirsoftMode::Domination;
+	Mode = GS ? GS->Mode : EAirsoftMode::TDM;
+	bFreeForAll = GS && GS->IsFreeForAll();
+	switch (Mode)
+	{
+	case EAirsoftMode::Domination: ModeColumn = TEXT("CAPS"); break;
+	case EAirsoftMode::VIP: ModeColumn = TEXT("EXTR"); break;
+	case EAirsoftMode::GunGame: ModeColumn = TEXT("LVL"); break;
+	default: break;
+	}
 	if (const AAirsoftPlayerState* PS = AUI::GetPlayerState(InPC))
 	{
 		MyName = PS->GetPlayerName();
@@ -97,7 +109,22 @@ void SAirsoftSummary::Construct(const FArguments& InArgs, AAirsoftPlayerControll
 	FLinearColor TitleColor = FLinearColor::White;
 	FString Verdict;
 	FLinearColor VerdictColor = AUI::TextDim();
-	if (Summary.bValid)
+	if (Summary.bValid && bFreeForAll)
+	{
+		if (Summary.WinnerName.IsEmpty())
+		{
+			Title = TEXT("DRAW");
+			Verdict = TEXT("NOBODY TOPPED THE LADDER");
+		}
+		else
+		{
+			Title = Summary.WinnerName.ToUpper() + TEXT(" WINS");
+			TitleColor = AUI::Accent();
+			Verdict = Summary.bWon ? TEXT("VICTORY") : TEXT("OUTGUNNED");
+			VerdictColor = Summary.bWon ? AUI::Accent() : AUI::TextDim();
+		}
+	}
+	else if (Summary.bValid)
 	{
 		if (Summary.Winner == EAirsoftTeam::None)
 		{
@@ -110,7 +137,7 @@ void SAirsoftSummary::Construct(const FArguments& InArgs, AAirsoftPlayerControll
 			TitleColor = AUI::TeamColor(Summary.Winner);
 			if (Summary.MyTeam != EAirsoftTeam::None)
 			{
-				const bool bWon = Summary.MyTeam == Summary.Winner;
+				const bool bWon = Summary.bWon || Summary.MyTeam == Summary.Winner;
 				Verdict = bWon ? TEXT("VICTORY") : TEXT("DEFEAT");
 				VerdictColor = bWon ? AUI::Accent() : AUI::TextDim();
 			}
@@ -179,6 +206,7 @@ void SAirsoftSummary::Construct(const FArguments& InArgs, AAirsoftPlayerControll
 						.VAlign(VAlign_Center)
 						[
 							SNew(STextBlock)
+							.Visibility(bFreeForAll ? EVisibility::Collapsed : EVisibility::HitTestInvisible)
 							.Font(AUI::Font(AUI::EFontWeight::Bold, 26))
 							.ColorAndOpacity(AUI::TeamColor(EAirsoftTeam::Blue))
 							.Text_Lambda([this]()
@@ -202,8 +230,10 @@ void SAirsoftSummary::Construct(const FArguments& InArgs, AAirsoftPlayerControll
 								{
 									return FText::GetEmpty();
 								}
-								return FText::FromString(FString::Printf(TEXT("%s  \u00B7  %s"),
-									*AAirsoftGameState::ModeDisplayName(State->Mode).ToUpper(), *AAirsoftGameState::MapDisplayName(State->MapId).ToUpper()));
+								// Round-based modes score round wins.
+								return FText::FromString(FString::Printf(TEXT("%s  \u00B7  %s%s"),
+									*AAirsoftGameState::ModeDisplayName(State->Mode).ToUpper(), *AAirsoftGameState::MapDisplayName(State->MapId).ToUpper(),
+									State->IsRoundBased() ? TEXT("  \u00B7  ROUNDS WON") : TEXT("")));
 							})
 						]
 						+ SHorizontalBox::Slot()
@@ -211,6 +241,7 @@ void SAirsoftSummary::Construct(const FArguments& InArgs, AAirsoftPlayerControll
 						.VAlign(VAlign_Center)
 						[
 							SNew(STextBlock)
+							.Visibility(bFreeForAll ? EVisibility::Collapsed : EVisibility::HitTestInvisible)
 							.Font(AUI::Font(AUI::EFontWeight::Bold, 26))
 							.ColorAndOpacity(AUI::TeamColor(EAirsoftTeam::Red))
 							.Text_Lambda([this]()
@@ -229,13 +260,13 @@ void SAirsoftSummary::Construct(const FArguments& InArgs, AAirsoftPlayerControll
 						.FillWidth(1.f)
 						.Padding(FMargin(0.f, 0.f, 16.f, 0.f))
 						[
-							BuildTeamTable(EAirsoftTeam::Blue, Summary)
+							BuildTeamTable(EAirsoftTeam::Blue, Summary, 0)
 						]
 						+ SHorizontalBox::Slot()
 						.FillWidth(1.f)
 						.Padding(FMargin(16.f, 0.f, 0.f, 0.f))
 						[
-							BuildTeamTable(EAirsoftTeam::Red, Summary)
+							BuildTeamTable(EAirsoftTeam::Red, Summary, 1)
 						]
 					]
 					+ SVerticalBox::Slot()
@@ -271,27 +302,57 @@ void SAirsoftSummary::Construct(const FArguments& InArgs, AAirsoftPlayerControll
 	];
 }
 
-TSharedRef<SWidget> SAirsoftSummary::BuildTeamTable(EAirsoftTeam Team, const FAirsoftMatchSummary& Summary)
+TSharedRef<SWidget> SAirsoftSummary::BuildTeamTable(EAirsoftTeam Team, const FAirsoftMatchSummary& Summary, int32 Column)
 {
 	TArray<FAirsoftSummaryRow> Rows;
-	for (const FAirsoftSummaryRow& Row : Summary.Rows)
+	if (bFreeForAll)
 	{
-		if (Row.Team == Team)
+		// Standings by ladder level, then tags: the top half on the left, the rest on the right.
+		TArray<FAirsoftSummaryRow> All = Summary.Rows;
+		All.Sort([](const FAirsoftSummaryRow& A, const FAirsoftSummaryRow& B)
 		{
-			Rows.Add(Row);
+			if (A.Level != B.Level)
+			{
+				return A.Level > B.Level;
+			}
+			if (A.Stats.Tags != B.Stats.Tags)
+			{
+				return A.Stats.Tags > B.Stats.Tags;
+			}
+			return A.Stats.XP > B.Stats.XP;
+		});
+		const int32 LeftCount = (All.Num() + 1) / 2;
+		for (int32 i = 0; i < All.Num(); ++i)
+		{
+			if ((i < LeftCount) == (Column == 0))
+			{
+				Rows.Add(All[i]);
+			}
 		}
 	}
-	Rows.Sort([](const FAirsoftSummaryRow& A, const FAirsoftSummaryRow& B)
+	else
 	{
-		if (A.Stats.Tags != B.Stats.Tags)
+		for (const FAirsoftSummaryRow& Row : Summary.Rows)
 		{
-			return A.Stats.Tags > B.Stats.Tags;
+			if (Row.Team == Team)
+			{
+				Rows.Add(Row);
+			}
 		}
-		return A.Stats.XP > B.Stats.XP;
-	});
+		Rows.Sort([](const FAirsoftSummaryRow& A, const FAirsoftSummaryRow& B)
+		{
+			if (A.Stats.Tags != B.Stats.Tags)
+			{
+				return A.Stats.Tags > B.Stats.Tags;
+			}
+			return A.Stats.XP > B.Stats.XP;
+		});
+	}
 
-	const FLinearColor TeamCol = AUI::TeamColor(Team);
-	const EVisibility CapsVis = bDomination ? EVisibility::HitTestInvisible : EVisibility::Collapsed;
+	const FLinearColor TeamCol = bFreeForAll ? AUI::Accent() : AUI::TeamColor(Team);
+	const FString TableTitle = bFreeForAll ? FString(Column == 0 ? TEXT("STANDINGS") : TEXT("CHASING")) : AirsoftColors::TeamName(Team).ToUpper();
+	const EVisibility CapsVis = ModeColumn.IsEmpty() ? EVisibility::Collapsed : EVisibility::HitTestInvisible;
+	const bool bLevelColumn = Mode == EAirsoftMode::GunGame;
 	auto NumberCell = [](int32 Value, const FLinearColor& Color, bool bBold, EVisibility Vis) -> TSharedRef<SWidget>
 	{
 		return SNew(SBox)
@@ -330,7 +391,7 @@ TSharedRef<SWidget> SAirsoftSummary::BuildTeamTable(EAirsoftTeam Team, const FAi
 	.Padding(FMargin(0.f, 10.f, 0.f, 8.f))
 	[
 		SNew(STextBlock)
-		.Text(AUI::Upper(AirsoftColors::TeamName(Team)))
+		.Text(FText::FromString(TableTitle))
 		.Font(AUI::Heading(12))
 		.ColorAndOpacity(TeamCol)
 	];
@@ -349,7 +410,7 @@ TSharedRef<SWidget> SAirsoftSummary::BuildTeamTable(EAirsoftTeam Team, const FAi
 		]
 		+ SHorizontalBox::Slot().AutoWidth()[HeadCell(TEXT("TAGS"), EVisibility::HitTestInvisible)]
 		+ SHorizontalBox::Slot().AutoWidth()[HeadCell(TEXT("OUTS"), EVisibility::HitTestInvisible)]
-		+ SHorizontalBox::Slot().AutoWidth()[HeadCell(TEXT("CAPS"), CapsVis)]
+		+ SHorizontalBox::Slot().AutoWidth()[HeadCell(*ModeColumn, CapsVis)]
 		+ SHorizontalBox::Slot().AutoWidth()[HeadCell(TEXT("XP"), EVisibility::HitTestInvisible)]
 	];
 
@@ -411,7 +472,7 @@ TSharedRef<SWidget> SAirsoftSummary::BuildTeamTable(EAirsoftTeam Team, const FAi
 				]
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[NumberCell(Row.Stats.Tags, NameCol, true, EVisibility::HitTestInvisible)]
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[NumberCell(Row.Stats.Outs, NumCol, false, EVisibility::HitTestInvisible)]
-				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[NumberCell(Row.Stats.Captures, NumCol, false, CapsVis)]
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[NumberCell(bLevelColumn ? Row.Level : Row.Stats.Captures, bLevelColumn ? NameCol : NumCol, bLevelColumn, CapsVis)]
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[NumberCell(Row.Stats.XP, NumCol, false, EVisibility::HitTestInvisible)]
 			]
 		];

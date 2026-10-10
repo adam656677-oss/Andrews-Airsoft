@@ -1617,7 +1617,7 @@ void AAirsoftPlayerController::ClientRoundEnded_Implementation(EAirsoftTeam Roun
 		: FString::Printf(TEXT("%s TAKES ROUND %d"), *AirsoftColors::TeamName(RoundWinner).ToUpper(), Round);
 	const float Hold = FMath::Max(UAirsoftSettings::Get()->RoundOverTime - 0.5f, 2.f);
 	Announce(Title, Reason.IsEmpty() ? FString() : Reason.Left(1).ToUpper() + Reason.Mid(1), AirsoftColors::Team(RoundWinner), Hold);
-	StartReplay(FinalTag, FString::Printf(TEXT("ROUND %d  ·  FINAL TAG"), Round));
+	StartReplay(FinalTag, FString::Printf(TEXT("ROUND %d  \u00B7  FINAL TAG"), Round));
 }
 
 void AAirsoftPlayerController::ClientResetForNewRound_Implementation()

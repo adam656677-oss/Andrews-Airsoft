@@ -671,7 +671,7 @@ void UAirsoftCombatComponent::OnLocalBBHit(int32 ShotId, int32 Pellet, const FHi
 	{
 		LastVictimHit = Hit.ImpactPoint;
 		LastVictimHitTime = GetWorld()->GetTimeSeconds();
-		if (Me && Victim != Me && !Victim->IsOut() && (Victim->GetTeam() != Me->GetTeam() || UAirsoftSettings::Get()->bFriendlyFire))
+		if (Me && Victim != Me && !Victim->IsOut() && AAirsoftGameState::CanTag(this, Me->GetTeam(), Victim->GetTeam()))
 		{
 			ServerReportHit(ShotId, static_cast<uint8>(Pellet), Victim, Hit.ImpactPoint);
 		}

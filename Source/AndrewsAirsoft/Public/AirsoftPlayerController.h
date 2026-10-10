@@ -133,7 +133,7 @@ public:
 	float GetReplayTime() const;
 	/** The tag the replay shows (end of a round or of the match). */
 	const FAirsoftFinalTag& GetReplayTag() const { return ReplayTag; }
-	/** "FINAL TAG" or "ROUND 3  ·  FINAL TAG". */
+	/** "FINAL TAG" or "ROUND 3  -  FINAL TAG". */
 	const FString& GetReplayCaption() const { return ReplayCaption; }
 	/** Announce locally (no network). */
 	void Announce(const FString& Title, const FString& Sub, const FLinearColor& Color, float Duration = 3.f);

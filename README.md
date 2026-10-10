@@ -2,7 +2,7 @@
 
 A tactical airsoft team shooter for a private group of friends (10–20 players), built in **Unreal Engine 5.8** for 4K on an **RTX 2070**. One person hosts; everyone else joins over **Tailscale**.
 
-Real airsoft rules: BBs are real projectiles (muzzle velocity, drag, hop-up lift, end-of-flight drop). One hit and you're out: call it, the dead rag goes up, you walk off and respawn. 14 replica guns, 13 attachments, 8 earned finishes, 10 ranks. Two match maps (Ironwood Yard and Velvet Club), a staging lobby with a walnut-and-brass armory and a practice range, Team Deathmatch and Domination, and a slow-motion replay of the final tag.
+Real airsoft rules: BBs are real projectiles (muzzle velocity, drag, hop-up lift, end-of-flight drop). One hit and you're out: call it, the dead rag goes up, you walk off and respawn. 14 replica guns, 13 attachments, 8 earned finishes, 10 ranks. Three match maps (Ironwood Yard, Velvet Club and Nightjar Garage), a staging lobby with a walnut-and-brass armory and a practice range, five modes (Team Deathmatch, Domination, Elimination, Gun Game and VIP Escort), bots to fill teams or practise alone, text chat, and a slow-motion replay of the final tag.
 
 ---
 
@@ -90,11 +90,32 @@ Each run writes `Saved\BuildReport\latest.txt`. **If anything fails, the report 
 
 **Friends:** start the game, type the host's Tailscale IP in **Join**, and press Enter.
 
-Everyone lands in the **Staging Area**: armory, range and lobby. Once at least 2 players are in, a 25-second vote starts:
-- F1 = Team Deathmatch, F2 = Domination;
-- F3 = Ironwood Yard, F4 = Velvet Club.
+Everyone lands in the **Staging Area**: armory, range and lobby. Once at least 2 players are in, a 25-second vote starts. The vote panel (top left) lists every mode and every map with the current votes, the leading pick and the countdown:
+- **F1** steps your mode vote along the list (Team Deathmatch, Domination, Elimination, Gun Game, VIP Escort);
+- **F2** steps your map vote (Ironwood Yard, Velvet Club, Nightjar Garage), each with its recommended head count;
+- or open the menu (**Esc** / **P**) and click a mode and a map under *Next match*.
 
-Everyone then deploys together. After the match, the after-action report shows, and the whole group travels back to staging. The host can also open the menu and choose **Start Match Now**.
+Most votes wins (ties are drawn at random); a map that can't run the winning mode, or that hasn't been built yet, is skipped for the next best one. Votes are posted in chat. Everyone then deploys together. After the match, the after-action report shows, and the whole group travels back to staging. The host can also open the menu and choose **Start Match Now**: it deploys with the leading votes.
+
+**Chat:** **Enter** talks to everyone, **Y** to your team (**Tab** switches while typing, **Esc** cancels). Messages show bottom left with the sender's call sign in their team colour and fade after a few seconds; joins, leaves, votes and round results appear there too. While the chat line is open nothing you type reaches the game. The host caps message length and rate (Project Settings → Game → Airsoft → Chat).
+
+The match maps live in *Project Settings → Game → Airsoft → Maps* (key, display name, level, the modes each map runs, recommended players), so adding a map to the vote is a settings change.
+
+### Game modes
+
+| Mode | Teams | How it plays |
+|---|---|---|
+| **Team Deathmatch** | 2 | Tag the other team; first to 40 tags. Respawns. |
+| **Domination** | 2 | Hold A, B and C; every held point scores each second; first to 250. Respawns. |
+| **Elimination** | 2 | Rounds with one life each. An 8-second freeze starts every round (pick your loadout with **L**); the side with players left takes the round (on time-out: the side with more standing). First to 5 rounds. Once you're out you watch a teammate (**LMB** / **Space** for the next one). Each round ends with the slow-motion replay of its last tag. |
+| **Gun Game** | Free-for-all | Everyone fights everyone and carries the same gun in both slots, no grenade. Every tag moves you up the ladder: G18 → Desert Eagle → MP7 → Vector → P90 → MP5 → M4 → AK-74 → M249 → SR-25 → M870 → VSR-10 → 1911. A tag with the final 1911 wins. Being tagged never moves you down. If the 10-minute clock runs out, the highest level wins (tie on level and tags = draw). Respawn after 3 s from any spawn on the map. |
+| **VIP Escort** | 2 | Rounds with one life each; the attacking side gets a VIP (one of its people at random, the least-used first; a bot only if the side has no people). The VIP carries only a pistol (their own sidearm, or a G17) and no grenade, and has a gold marker: teammates see it through walls, defenders when the VIP is in sight or within 15 m. Attackers win the round by getting the VIP to stand in the **extraction** zone for 3 s (or by tagging every defender); defenders win by tagging the VIP or holding out for 2:30. Three rounds per half, then the sides swap; most round wins after six rounds takes it. |
+
+Why Gun Game is free-for-all: with a fixed ladder per player, team scoring would let one hot player carry a side while everyone else's progress meant nothing; free-for-all keeps every tag yours and the rule set to one line.
+
+**Extraction point:** a map can place a dedicated extraction objective with letter **X** (it never counts as a Domination point). Without one, the extraction is the objective furthest from the attackers' spawn: **C** while Blue attacks on the stock maps, **A** after the swap, so both halves walk the same distance. On Nightjar Garage that puts it on the roof deck for Blue and on the street for Red.
+
+Round rules, the Gun Game ladder and the timers are in *Project Settings → Game → Airsoft → Rules*. Bots play every mode: they hunt in Elimination and Gun Game, take points in Domination, and in VIP the VIP bot heads for extraction, escorts stay with the VIP and defenders split between guarding extraction and pushing out to meet them. Now and then a bot says a short line in chat (turn off with *Bot Chatter*).
 
 ### Bots
 
@@ -126,7 +147,9 @@ Your profile (rank, XP, stats, loadout, settings) is saved on your own PC: `%LOC
 | Loadout | L | — |
 | Scoreboard | Tab (hold) | View |
 | Menu | Esc or P | Menu |
-| Vote (staging) | F1–F4 | — |
+| Vote (staging): next mode / next map | F1 / F2 (or click in the menu) | — |
+| Chat: everyone / team | Enter / Y (Tab switches, Esc cancels) | — |
+| Next teammate (out for the round) | LMB or Space | RT or A |
 
 ## 5. Packaging a build for friends
 
@@ -152,6 +175,9 @@ In **Settings**, *Quality: High* with *Render scale: 60%* is the recommended 207
 | Area | Files (`Source/AndrewsAirsoft/`) |
 |---|---|
 | Rules, phases, teams, scoring, travel | `AirsoftGameMode`, `AirsoftGameState`, `AirsoftPlayerState` |
+| Mode rules, map list, vote | `AirsoftModeRules` (tunables in Project Settings → Game → Airsoft) |
+| Bots | `AirsoftBotController` (tuning in Project Settings → Game → Airsoft → Bots) |
+| Effects (muzzle, tracers, impacts, tag pulse) | `AirsoftEffects` (Project Settings → Game → Airsoft Effects) |
 | Player, movement, lean, hit state | `AirsoftCharacter`, `AirsoftMovementComponent` |
 | Guns, ballistics, server hit validation | `AirsoftCombatComponent`, `AirsoftBallistics`, `AirsoftWeaponData`, `AirsoftGunVisual` |
 | Input, menus, HUD feed, replay camera | `AirsoftPlayerController`, `UI/*` (Slate) |
