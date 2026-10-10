@@ -1,7 +1,8 @@
 """Andrew's Airsoft - one-shot editor setup (UE 5.8).
 
 Imports every generated asset (SourceAssets/, Tools/Audio/Generated/), builds the master materials and
-instances, and builds all five maps (L_MainMenu, L_Transition, L_Staging, L_IronwoodYard, L_VelvetClub).
+instances, and builds all six maps (L_MainMenu, L_Transition, L_Staging, L_IronwoodYard, L_VelvetClub,
+L_NightjarGarage).
 Idempotent: re-running updates changed assets and rebuilds generated level actors (tag "AirsoftGen").
 
 Run in the editor (after compiling the C++ module):

@@ -16,6 +16,10 @@ Real airsoft rules: BBs are real projectiles (muzzle velocity, drag, hop-up lift
 | ![The Armory](Docs/Screens/03_Staging_Armory.jpg) | ![M4 in its case](Docs/Screens/08_Armory_M4_Hero.jpg) |
 | ![Ironwood Yard at golden hour](Docs/Screens/05_Ironwood_GoldenHour.jpg) | ![Objective A](Docs/Screens/06_Ironwood_ObjectiveA.jpg) |
 | ![Practice range](Docs/Screens/07_Staging_Range.jpg) | ![Watchtower](Docs/Screens/09_Ironwood_Watchtower_Backlit.jpg) |
+| ![Nightjar Garage ramp](Docs/Screens/11_NightjarGarage_Ramp.jpg) | ![Nightjar Garage roof deck](Docs/Screens/10_NightjarGarage_RoofDeck.jpg) |
+| ![Nightjar Garage parking row](Docs/Screens/12_NightjarGarage_ParkingRow.jpg) | ![Nightjar Garage objective C](Docs/Screens/13_NightjarGarage_ObjectiveC.jpg) |
+
+![Team gear, Blue and Red](Docs/Renders/Gear/_TeamGear_Lineup.jpg)
 
 These are offline Blender renders of the real map layouts and assets (`Tools/Blender/render_scenes.py`), not in-engine screenshots: path tracing instead of Lumen, no players shown, and the HUD is a mock-up.
 
@@ -58,7 +62,7 @@ Every asset has its own product shot in `Docs/Renders/<Category>/`.
 6. **Build the game content:** run `Content/Python/airsoft_setup.py`. In the editor console (backtick key), type `py airsoft_setup.py`, or use *Tools → Execute Python Script*. The script:
    - imports every mesh, texture and sound;
    - creates the materials;
-   - builds all five maps with lighting.
+   - builds all six maps with lighting.
 
    See `Tools/Unreal/SETUP.md` for options.
 7. **Play:** press **Play** in the editor, or package the game (section 5).
