@@ -603,6 +603,102 @@ def space(x, rng, room="outdoor", wet=0.2, ch=None, circular=False, tail=True, *
     return out + wet * w
 
 
+# ----------------------------------------------------------------- dynamics
+
+def sliding_max(a, w):
+    """m[i] = max(a[i:i+w]) for a 1-D array (van Herk / Gil-Werman, O(n))."""
+    a = np.asarray(a, float)
+    n = len(a)
+    if w <= 1 or n == 0:
+        return a.copy()
+    pad = (-n) % w + w
+    ap = np.concatenate([a, np.full(pad, -np.inf)])
+    b = ap.reshape(-1, w)
+    pre = np.maximum.accumulate(b, axis=1).ravel()
+    suf = np.maximum.accumulate(b[:, ::-1], axis=1)[:, ::-1].ravel()
+    return np.maximum(suf[:n], pre[w - 1:w - 1 + n])
+
+
+def _window_min(r, before, after, circular):
+    """h[i] = min(r[i-before : i+after+1]) (wrapping when circular, else edge-padded with 1)."""
+    n = len(r)
+    if circular:
+        reps = -(-(before + after) // n) + 1
+        ext = np.tile(r, 2 * reps + 1)[reps * n - before:reps * n + n + after]
+    else:
+        ext = np.concatenate([np.ones(before), r, np.ones(after)])
+    return -sliding_max(-ext, before + after + 1)[:n]
+
+
+def _ma(x, w, circular):
+    """Centered moving average of odd length w."""
+    w = max(1, int(w) | 1)
+    h = w // 2
+    n = len(x)
+    if circular:
+        reps = -(-h // n) + 1
+        ext = np.tile(x, 2 * reps + 1)[reps * n - h:reps * n + n + h]
+    else:
+        ext = np.concatenate([np.full(h, x[0]), x, np.full(h, x[-1])])
+    c = np.concatenate([[0.0], np.cumsum(ext)])
+    return (c[w:] - c[:-w])[:n] / w
+
+
+def limit(x, ceiling, lookahead=0.002, hold=0.012, release=0.08, circular=False):
+    """Look-ahead peak limiter (linked across channels), vectorised.
+
+    The required gain min(1, ceiling/|x|) is min-held over [-hold-la, +la] and smoothed
+    with two moving averages of the look-ahead length, which guarantees the smoothed gain
+    never exceeds the required gain; a one-pole release (time constant `release`) is laid
+    over the gain reduction so recovery is exponential rather than a step."""
+    x = np.asarray(x, float)
+    a = np.max(np.abs(np.atleast_2d(x)), axis=0)
+    n = len(a)
+    req = np.minimum(1.0, ceiling / np.maximum(a, 1e-12))
+    if req.min() >= 1.0:
+        return x.copy()
+    la = max(1, ns(lookahead))
+    hmin = _window_min(req, ns(hold) + la, la, circular)
+    s = _ma(_ma(hmin, la, circular), la, circular)
+    d = 1.0 - s
+    k = math.exp(-1.0 / (release * SR))
+    d_rel = filt(d, [(np.array([1.0 - k, 0.0]), np.array([1.0, -k]))], circular=circular)
+    g = 1.0 - np.maximum(d, d_rel)
+    return x * g
+
+
+def _kweight(x):
+    """ITU-R BS.1770 K-weighting (pre-filter shelf + RLB high-pass) at 48 kHz."""
+    b1 = np.array([1.53512485958697, -2.69169618940638, 1.19839281085285])
+    a1 = np.array([1.0, -1.69065929318241, 0.73248077421585])
+    b2 = np.array([1.0, -2.0, 1.0])
+    a2 = np.array([1.0, -1.99004745483398, 0.99007225036621])
+    return filt(x, [(b1, a1), (b2, a2)])
+
+
+def loudness(x):
+    """Integrated loudness in LUFS (BS.1770-4: K-weighting, 400 ms blocks, 75 % overlap,
+    -70 LUFS absolute and -10 LU relative gates). Short files use the whole-file energy."""
+    xs = np.atleast_2d(np.asarray(x, float))
+    k = np.atleast_2d(_kweight(xs))
+    p = (k ** 2).sum(axis=0)  # channel sum (L/R weights 1.0)
+    n = len(p)
+    blk, hop = ns(0.4), ns(0.1)
+    if n < blk:
+        z = float(p.mean()) if n else 0.0
+        return -0.691 + 10 * math.log10(max(z, 1e-12))
+    c = np.concatenate([[0.0], np.cumsum(p)])
+    starts = np.arange(0, n - blk + 1, hop)
+    z = (c[starts + blk] - c[starts]) / blk
+    lk = -0.691 + 10 * np.log10(np.maximum(z, 1e-12))
+    z = z[lk > -70.0]
+    if not len(z):
+        return -70.0
+    rel = -0.691 + 10 * math.log10(z.mean()) - 10.0
+    z2 = z[-0.691 + 10 * np.log10(z) > rel]
+    return -0.691 + 10 * math.log10((z2 if len(z2) else z).mean())
+
+
 # ----------------------------------------------------------------- finishing
 
 PEAK_DB = -1.0
@@ -645,10 +741,20 @@ def finish_oneshot(x, peak_db=PEAK_DB, trim_db=-62.0, fade_ms=5.0, hp_hz=20.0):
     return x * (undb(peak_db) / (tp or 1.0))
 
 
-def finish_loop(x, peak_db=PEAK_DB, hp_hz=20.0):
-    """Circular DC/rumble high-pass + air low-pass (keeps the seam continuous) + normalise."""
+def finish_loop(x, peak_db=PEAK_DB, hp_hz=20.0, lufs=None):
+    """Circular DC/rumble high-pass + air low-pass (keeps the seam continuous) + normalise.
+
+    Default: normalise to -1 dBTP. With `lufs`, set the integrated loudness to that target
+    instead and, if that would push the true peak over -1 dBTP, run the circular look-ahead
+    limiter (so the loop seam stays continuous) and trim any residual overshoot."""
     x = lp(hp(np.asarray(x, float), hp_hz, order=2, circular=True), AIR_HZ, order=4, circular=True)
     x = x - np.mean(x, axis=-1, keepdims=True)
+    if lufs is not None:
+        x = x * undb(lufs - loudness(x))
+        if true_peak(x) > undb(peak_db):
+            x = limit(x, undb(peak_db - 0.6), lookahead=0.003, hold=0.02, release=0.12, circular=True)
+        tp = true_peak(x)
+        return x * min(1.0, undb(peak_db) / (tp or 1.0))
     tp = true_peak(x)
     return x * (undb(peak_db) / (tp or 1.0))
 

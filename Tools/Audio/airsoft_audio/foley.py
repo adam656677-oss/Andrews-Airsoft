@@ -3,19 +3,11 @@ BB impacts on wood and steel, grenade bounce/burst, footsteps and landing."""
 
 import numpy as np
 
-from .dsp import (Mix, bp, burst, env, hp, lp, modes, ns, scatter, space, sweep,
+from .dsp import (Mix, bp, burst, env, hp, lp, modes, ns, saturate, scatter, space, sweep,
                   tail_cut, thump, tvec, tvf)
+from . import mech
+from .mech import friction
 from .weapons import _k, struck
-
-
-def friction(r, seconds, f0, f1, q=1.4, grit=0.6, attack=0.006, decay=None):
-    """Sliding contact: band-passed noise sweeping f0->f1 with gritty grain AM."""
-    n = ns(seconds)
-    y = tvf(r.standard_normal(n), "bp", sweep(f0, f1, n), q=q)
-    g = np.abs(lp(r.standard_normal(n), 380))
-    g /= g.max() + 1e-12
-    e = env(n, attack, decay or seconds * 0.5)
-    return y * np.clip((1 - grit) + grit * g * 3, 0, 3) * e
 
 
 def ticks(r, n, times, gains, f=(5600, 7400, 9100), decay=0.0005):
@@ -27,80 +19,117 @@ def room(x, r, length, wet=0.07, kind="small", fade_s=0.04, **kw):
     return tail_cut(space(x, r, kind, wet, **kw), length, fade_s)
 
 
-# ----------------------------------------------------------------- handling
+# ----------------------------------------------------------------- handling (cinematic)
+# Weighty, close-miked movie foley: every action has a low "mass" component under the
+# metal, latches are crisp and bright, and a little saturation glues the layers.
 
 def dry_fire(r, v):
+    """Empty gun: short trigger creep, hammer/striker fall (hard steel clack with a little
+    mass), then the trigger reset tick."""
     k = _k(r, v)
-    m = Mix(0.12)
-    m.add(struck(r, [2600 * k, 4100 * k, 6050 * k], [0.004, 0.003, 0.002], [1, 0.7, 0.4], seconds=0.04, noise_mix=0.4), 0.0, 0.6)
-    m.add(struck(r, [5200 * k, 7450 * k, 9800 * k], [0.003, 0.002, 0.0015], [1, 0.6, 0.3], seconds=0.03, noise_mix=0.6), 0.009, 1.0)
-    m.add(thump(0.03, 900 * k, 420 * k, 0.004), 0.009, 0.35)
-    m.add(struck(r, [3100 * k, 4900 * k], [0.002, 0.0015], [1, 0.5], seconds=0.02, noise_mix=0.3), 0.052, 0.25)  # reset
-    return room(m.out(), r, 0.12, 0.06)
+    m = Mix(0.16)
+    m.add(friction(r, 0.012, 2600 * k, 3400 * k, q=1.2, grit=0.4, attack=0.002, decay=0.006), 0.0, 0.12)
+    m.add(mech.latch(r, 4700 * k), 0.004, 0.35)                                   # sear releases
+    m.add(mech.clack(r, 2500 * k, weight=0.7, bright=1.25, mass=0.9, seconds=0.06), 0.012, 1.0)  # hammer
+    m.add(thump(0.05, 420 * k, 190 * k, 0.007), 0.012, 0.35)
+    m.add(mech.latch(r, 6200 * k, 0.015), 0.07, 0.3)                               # reset
+    return room(saturate(m.out(), 1.3), r, 0.15, 0.06)
 
 
 def mag_out(r, v):
+    """Mag release: button click, catch lets go, steel-lipped mag drags out of the well,
+    lips clear with a scrape, hand catches it."""
     k = _k(r, v)
     m = Mix(0.42)
     n = ns(0.42)
-    m.add(struck(r, [3200 * k, 5000 * k, 7100 * k], [0.003, 0.0025, 0.002], [1, 0.6, 0.35], seconds=0.03), 0.0, 0.7)
-    m.add(struck(r, [2100 * k, 3500 * k, 5600 * k], [0.007, 0.005, 0.003], [1, 0.7, 0.4], seconds=0.05), 0.012, 0.8)
-    m.add(thump(0.04, 320 * k, 180 * k, 0.008), 0.012, 0.35)
-    m.add(friction(r, 0.17, 2600 * k, 1700 * k, attack=0.01, decay=0.06), 0.02, 0.45)
-    tt = np.sort(r.uniform(0.03, 0.2, 9))
-    m.add(ticks(r, n, tt, r.uniform(0.15, 0.5, len(tt))), 0.0, 0.5)
-    m.add(struck(r, [1900 * k, 3300 * k], [0.004, 0.003], [1, 0.5], seconds=0.03, noise_mix=0.3), 0.19 + r.uniform(0, 0.02), 0.3)
-    return room(m.out(), r, 0.4, 0.08)
+    m.add(mech.latch(r, 5600 * k), 0.0, 0.55)                                      # button
+    m.add(mech.clack(r, 2400 * k, weight=0.7, bright=1.0, mass=0.5, seconds=0.05), 0.009, 0.6)  # catch
+    m.add(friction(r, 0.15, 2300 * k, 1300 * k, q=1.3, grit=0.65, attack=0.008, decay=0.07), 0.016, 0.45)
+    m.add(bp(burst(r, 0.04, 0.008, attack=0.002), 5200 * k, 3.0), 0.135, 0.22)    # lips scrape the catch
+    m.add(mech.poly_knock(r, 820 * k, weight=1.1), 0.165 + r.uniform(0, 0.01), 0.55)  # caught in the palm
+    m.add(thump(0.06, 210 * k, 120 * k, 0.012), 0.165, 0.45)
+    tt = np.sort(r.uniform(0.03, 0.2, 6))
+    m.add(ticks(r, n, tt, r.uniform(0.1, 0.3, len(tt))), 0.0, 0.35)              # BBs / follower shift
+    return room(saturate(m.out(), 1.3), r, 0.4, 0.07)
 
 
 def mag_in(r, v):
+    """Mag insertion: short drag into the well, then a weighty seat (low palm-driven mass,
+    polymer body, steel catch) and a crisp, satisfying double click as the catch snaps in."""
     k = _k(r, v)
-    seat = 0.03
-    m = Mix(0.34)
-    n = ns(0.34)
-    m.add(friction(r, 0.06, 1600 * k, 2500 * k, attack=0.005, decay=0.05), 0.0, 0.35)
-    m.add(struck(r, [1180 * k, 2620 * k, 3900 * k, 5600 * k], [0.014, 0.01, 0.007, 0.004], [1, 0.8, 0.55, 0.3], noise_mix=0.5), seat, 1.0)
-    m.add(struck(r, [4200 * k, 6300 * k, 8400 * k], [0.005, 0.004, 0.003], [1, 0.6, 0.35], seconds=0.04, noise_mix=0.4), seat + 0.0015, 0.55)
-    m.add(thump(0.08, 260 * k, 150 * k, 0.02), seat, 0.8)
-    m.add(modes(0.12, [600 * k, 980 * k], [0.03, 0.02], [1, 0.6], rng=r), seat + 0.001, 0.22)
-    tt = seat + np.sort(r.uniform(0.004, 0.08, 7))
-    m.add(ticks(r, n, tt, r.uniform(0.1, 0.35, len(tt))), 0.0, 0.4)
-    return room(m.out(), r, 0.32, 0.08)
+    seat = 0.052
+    m = Mix(0.36)
+    n = ns(0.36)
+    m.add(friction(r, 0.055, 1500 * k, 2700 * k, q=1.3, grit=0.6, attack=0.006, decay=0.04), 0.0, 0.35)
+    m.add(thump(0.12, 230 * k, 105 * k, 0.022, pitch_tau=0.008), seat, 0.95)       # mass of the seat
+    m.add(mech.poly_knock(r, 680 * k, weight=1.3), seat, 0.7)
+    m.add(mech.clack(r, 1500 * k, weight=1.1, bright=0.9, mass=0.8), seat + 0.0008, 0.75)
+    m.add(lp(bp(burst(r, 0.05, 0.008, attack=0.0006), 700, 1.0), 1800), seat, 0.5)  # palm slap
+    m.add(mech.latch(r, 5300 * k), seat + 0.0045, 0.85)                            # catch: click
+    m.add(mech.latch(r, 6900 * k), seat + 0.0095, 0.45)                            #        ...clack
+    tt = seat + np.sort(r.uniform(0.012, 0.09, 6))
+    m.add(ticks(r, n, tt, r.uniform(0.08, 0.25, len(tt))), 0.0, 0.3)
+    return room(saturate(m.out(), 1.35), r, 0.34, 0.07)
 
 
 def bolt_cycle(r, v):
+    """Heavy charging-handle rack: unlatch, gritty pull against the spring, hard rear stop,
+    release, and a bolt slamming home with receiver body resonance."""
     k = _k(r, v)
-    j = 1.0 + r.uniform(-0.08, 0.08)
-    back, rel, fwd = 0.11 * j, 0.25 * j, 0.285 * j
-    m = Mix(0.52)
-    m.add(struck(r, [2500 * k, 4100 * k, 6200 * k], [0.004, 0.003, 0.002], [1, 0.7, 0.4], seconds=0.03), 0.0, 0.8)
-    m.add(friction(r, back, 1400 * k, 2600 * k, attack=0.008, decay=0.2), 0.008, 0.45)
-    nb = ns(back)
-    m.add(tvf(r.standard_normal(nb), "bp", sweep(900 * k, 1400 * k, nb), q=18) * env(nb, 0.01, 0.2), 0.008, 0.25)  # spring buzz
-    m.add(struck(r, [1900 * k, 3000 * k, 4500 * k, 6300 * k], [0.012, 0.009, 0.006, 0.004], [1, 0.8, 0.5, 0.3]), back, 0.8)
-    m.add(thump(0.06, 220 * k, 140 * k, 0.012), back, 0.45)
-    m.add(friction(r, fwd - rel, 2600 * k, 1600 * k, attack=0.003, decay=0.03), rel, 0.35)
-    m.add(struck(r, [1700 * k, 2800 * k, 4200 * k, 6000 * k, 8100 * k], [0.016, 0.012, 0.008, 0.005, 0.003], [1, 0.85, 0.55, 0.35, 0.2], noise_mix=0.5), fwd, 1.0)
-    m.add(thump(0.08, 200 * k, 110 * k, 0.022), fwd, 0.7)
-    m.add(struck(r, [5200 * k, 7300 * k], [0.003, 0.002], [1, 0.5], seconds=0.02), fwd + 0.006, 0.3)
-    return room(m.out(), r, 0.5, 0.08)
+    j = 1.0 + r.uniform(-0.06, 0.06)
+    t_stop, t_rel, t_home = 0.13 * j, 0.24 * j, 0.275 * j
+    m = Mix(0.6)
+    m.add(mech.rack(r, 0.0, t_stop, t_rel, t_home, k=k, weight=1.45, grit=0.7, f_stop=1750.0, f_home=1350.0,
+                    seconds=0.6), 0.0, 1.0)
+    m.add(thump(0.16, 170 * k, 85 * k, 0.03, pitch_tau=0.01), t_home, 0.75)       # receiver mass
+    m.add(thump(0.08, 260 * k, 140 * k, 0.012), t_stop, 0.35)
+    m.add(mech.ring(r, [410 * k, 690 * k, 1130 * k], [0.06, 0.04, 0.025], [1, 0.6, 0.35], 0.25), t_home + 0.001, 0.12)
+    m.add(mech.rattle(r, 0.07, 6, f=3600 * k), t_home + 0.006, 0.18)
+    return room(saturate(m.out(), 1.35), r, 0.56, 0.08)
 
 
 # ----------------------------------------------------------------- impacts
 
+def _snap(r, sharp=1.0):
+    """Hit transient: a short N-shaped click + 0.3 ms high-passed noise."""
+    n = ns(0.012)
+    x = np.zeros(n)
+    w = max(3, int(9 / sharp))
+    x[:w] = np.linspace(1, -1, w)
+    return hp(x, 2200, order=2) + 0.8 * hp(burst(r, 0.012, 0.0003, attack=0.00003), 2500, order=2)
+
+
 def impact(r, v):
-    """BB on plywood: a dry tick on top of short, damped board modes."""
-    k = (1.0, 1.25, 0.8, 1.1)[v % 4] * (1 + r.uniform(-0.03, 0.03))
-    m = Mix(0.16)
-    m.add(hp(burst(r, 0.01, 0.00025, attack=0.00003), 2500), 0.0, 0.6)
-    f = np.sort(r.uniform(260, 1900, 9)) * k
-    d = (0.004 + 0.016 * r.random(9)) * np.sqrt(600.0 / f)
-    a = r.uniform(0.3, 1.0, 9) * (500.0 / f) ** 0.3
-    m.add(struck(r, f, d, a, seconds=0.1, noise_mix=0.35, lo=1200), 0.0, 1.0)
-    m.add(thump(0.03, 700 * k, 350 * k, 0.003), 0.0, 0.25)
-    if v % 4 == 3:  # loose board chatter
-        m.add(struck(r, f[:4] * 1.1, d[:4] * 0.5, a[:4]), 0.021, 0.18)
-    return room(m.out(), r, 0.18, 0.1, "outdoor", fade_s=0.06, t60=0.4, lo_cut=200)
+    """Bullet-style hit that stays plausible for a BB: sharp tick, then the struck body
+    (0 hard wood, 1 hollow plywood/crate, 2 sheet metal, 3 board with a steel fitting),
+    a dry low knock and a few splinter/dust ticks."""
+    kind = v % 4
+    k = 1 + r.uniform(-0.04, 0.04)
+    L = 0.42 if kind == 2 else 0.3
+    n = ns(L)
+    m = Mix(L)
+    m.add(_snap(r, 1.0 + 0.3 * (kind == 2)), 0.0, 0.85)
+    if kind in (0, 3):
+        f = np.sort(r.uniform(380, 2300, 10)) * k
+        d = (0.004 + 0.012 * r.random(10)) * np.sqrt(700.0 / f)
+        m.add(struck(r, f, d, r.uniform(0.3, 1.0, 10) * (600.0 / f) ** 0.3, seconds=0.12, noise_mix=0.3, lo=1200), 0.0003, 0.9)
+        m.add(thump(0.05, 520 * k, 260 * k, 0.006), 0.0, 0.45)
+    elif kind == 1:
+        f = np.sort(r.uniform(170, 1100, 9)) * k
+        d = (0.008 + 0.02 * r.random(9)) * np.sqrt(400.0 / f)
+        m.add(struck(r, f, d, r.uniform(0.4, 1.0, 9), seconds=0.18, noise_mix=0.25, lo=900), 0.0003, 1.0)
+        m.add(thump(0.09, 260 * k, 140 * k, 0.016), 0.0, 0.6)                      # box resonance
+    else:
+        f = 1150 * k * np.array([1.0, 1.47, 2.09, 2.76, 3.51, 4.38])
+        m.add(struck(r, f, [0.09, 0.07, 0.05, 0.035, 0.025, 0.018], [1, 0.8, 0.6, 0.45, 0.3, 0.2], seconds=0.4,
+                     noise_mix=0.35), 0.0002, 0.75)
+        m.add(thump(0.05, 380 * k, 210 * k, 0.008), 0.0, 0.35)
+    if kind == 3:
+        m.add(mech.ring(r, [3300 * k, 4870 * k, 7020 * k], [0.05, 0.035, 0.02], [1, 0.6, 0.35], 0.2), 0.0005, 0.25)
+        m.add(mech.rattle(r, 0.06, 5, f=2400 * k), 0.012, 0.25)
+    m.add(_grains(r, n, 0.008, 14, 0.012, lo=2500, hi=8000, gain=0.35), 0.0, 1.0)  # splinters / dust
+    x = saturate(m.out(), 1.3)
+    return room(x, r, L, 0.12, "outdoor", fade_s=0.08, t60=0.45, lo_cut=200)
 
 
 def steel_ding(r, v):
@@ -253,11 +282,11 @@ def land(r, v):
 
 
 RECIPES = {
-    "DryFire": (dry_fire, 1, "Trigger pull on an empty gun: plastic trigger travel, sear click, reset tick"),
-    "MagOut": (mag_out, 1, "Mag release button + latch clack, polymer mag sliding out, BBs shifting"),
-    "MagIn": (mag_in, 1, "Short insertion slide then a solid polymer seat click with metal catch and palm slap"),
-    "BoltCycle": (bolt_cycle, 1, "Charging handle / bolt / pump rack: unlatch, gritty pull, rear stop, slam forward"),
-    "Impact": (impact, 4, "BB hitting plywood/wood: dry tick over damped board modes"),
+    "DryFire": (dry_fire, 2, "Empty gun: trigger creep, sear release, hard hammer/striker clack with a little mass, reset tick"),
+    "MagOut": (mag_out, 2, "Mag release click, catch lets go, mag drags out with a lip scrape, caught in the palm"),
+    "MagIn": (mag_in, 2, "Short drag in, weighty seat (low mass + polymer + steel) and a crisp double catch click"),
+    "BoltCycle": (bolt_cycle, 2, "Heavy charging-handle rack: unlatch, gritty spring pull, rear stop, bolt slams home with receiver ring"),
+    "Impact": (impact, 4, "Bullet-style hit, plausible for a BB: sharp tick + body (hard wood / hollow crate / sheet metal / board with steel fitting) + splinters"),
     "SteelDing": (steel_ding, 3, "BB on a steel plate: bright ping, partials 2.3/3.1/4.7 kHz, ~0.6 s ring"),
     "GrenadeBounce": (grenade_bounce, 3, "Small polymer BB-grenade canister bouncing on hard ground, BBs rattling inside"),
     "GrenadeBurst": (grenade_burst, 1, "BB grenade: gas pop + shell split + ~1.2 s shower of BBs pattering on surfaces"),

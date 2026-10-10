@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 """Andrew's Airsoft - synthesises every sound effect, ambience and music loop.
 
-    python3 Tools/Audio/make_sounds.py              # everything (about 1-2 min)
+    python3 Tools/Audio/make_sounds.py              # everything (about 2-3 min on 4 cores)
+    python3 Tools/Audio/make_sounds.py FireRifle SteelDing     # just these keys
     python3 Tools/Audio/make_sounds.py --only FireRifle,SteelDing
     python3 Tools/Audio/make_sounds.py --list
 
 Writes 48 kHz / 16-bit PCM WAVs to Tools/Audio/Generated/<Key>.wav (keys with
 variations also get <Key>_01.wav ... and <Key>.wav = the first variation).
 Positional one-shots are mono; 2D UI / feedback / ambience / music are stereo.
+Gunfire comes in three sets: the cinematic default (Fire<Gun>), distant versions
+(Fire<Gun>_Far) and the original mechanical airsoft sounds (Fire<Gun>_Airsoft).
 Deterministic: every key/variation has a fixed seed (crc32 of its name), so a
 re-run reproduces identical files. Needs numpy; uses scipy.signal if present
 (otherwise exact FFT-domain IIR filtering) and Pillow for _overview.png.
@@ -26,22 +29,26 @@ for _v in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
-from airsoft_audio import ambience, dsp, feedback, foley, music, report, weapons  # noqa: E402
+from airsoft_audio import ambience, cinematic, dsp, feedback, foley, music, report, weapons  # noqa: E402
 
 OUT = os.path.join(HERE, "Generated")
-MODULES = [("Gunfire", weapons), ("Handling & foley", foley), ("Player & UI feedback", feedback),
-           ("Ambience", ambience), ("Music", music)]
+MODULES = [("Gunfire (cinematic)", cinematic.RECIPES), ("Gunfire (distant)", cinematic.FAR_RECIPES),
+           ("Gunfire (airsoft alt)", weapons.RECIPES), ("Handling & foley", foley.RECIPES),
+           ("Player & UI feedback", feedback.RECIPES), ("Ambience", ambience.RECIPES), ("Music", music.RECIPES)]
 
 
 def registry():
-    """key -> dict(fn, nvars, desc, ch, loop, group) in a stable order."""
+    """key -> dict(fn, nvars, desc, ch, loop, group, seed, lufs) in a stable order.
+
+    Recipe options: ch (1/2), loop (bool), seed (key name whose seed to use; lets a renamed
+    key reproduce its old audio exactly), lufs (loops only: integrated-loudness target)."""
     reg = {}
-    for group, mod in MODULES:
-        for key, entry in mod.RECIPES.items():
+    for group, recipes in MODULES:
+        for key, entry in recipes.items():
             fn, nvars, desc = entry[:3]
             opts = entry[3] if len(entry) > 3 else {}
             reg[key] = dict(fn=fn, nvars=nvars, desc=desc, ch=opts.get("ch", 1), loop=opts.get("loop", False),
-                            group=group, note=opts.get("note", ""))
+                            group=group, note=opts.get("note", ""), seed=opts.get("seed", key), lufs=opts.get("lufs"))
     return reg
 
 
@@ -67,15 +74,15 @@ def _render_key(key, out_dir):
     results = []
     names = file_names(key, spec)
     for v in range(spec["nvars"]):
-        r = dsp.rng_for(key, v)
+        r = dsp.rng_for(spec["seed"], v)
         x = spec["fn"](r, v)
         if spec["ch"] == 2:
             x = dsp.stereo(x)
         elif x.ndim == 2:
             raise ValueError(f"{key}: positional sound must be mono")
-        x = dsp.finish_loop(x) if spec["loop"] else dsp.finish_oneshot(x)
+        x = dsp.finish_loop(x, lufs=spec["lufs"]) if spec["loop"] else dsp.finish_oneshot(x)
         for i, name in enumerate(names[v]):
-            data = dsp.write_wav(os.path.join(out_dir, name + ".wav"), x, seed=dsp.seed_for(key, v))
+            data = dsp.write_wav(os.path.join(out_dir, name + ".wav"), x, seed=dsp.seed_for(spec["seed"], v))
             if i == 0:
                 st = report.stats(data, loop=spec["loop"])
                 preview = x if spec["loop"] else data.astype(float).T / 32767.0
@@ -89,8 +96,10 @@ def _render_key(key, out_dir):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("keys", nargs="*", help="keys to (re)build (same as --only)")
     ap.add_argument("--only", help="comma-separated keys to (re)build")
-    ap.add_argument("--jobs", type=int, default=2, help="worker processes (default 2; keep it light)")
+    ap.add_argument("--jobs", type=int, default=min(4, os.cpu_count() or 2),
+                    help="worker processes (default: up to 4)")
     ap.add_argument("--no-overview", action="store_true", help="skip _overview.png")
     ap.add_argument("--list", action="store_true", help="list keys and exit")
     ap.add_argument("--out", default=OUT)
@@ -102,7 +111,9 @@ def main():
             kind = "loop" if s["loop"] else "one-shot"
             print(f"{key:22s} {s['group']:22s} {'stereo' if s['ch'] == 2 else 'mono':6s} {kind:8s} x{s['nvars']}  {s['desc']}")
         return
-    keys = list(reg) if not a.only else [k.strip() for k in a.only.split(",") if k.strip()]
+    picked = [k.strip() for k in (a.only or "").split(",") if k.strip()] + list(a.keys)
+    partial = bool(picked)
+    keys = list(dict.fromkeys(picked)) if partial else list(reg)
     bad = [k for k in keys if k not in reg]
     if bad:
         sys.exit(f"unknown key(s): {', '.join(bad)}")
@@ -132,7 +143,7 @@ def main():
         for j in jobs:
             collect(render_key(j))
 
-    if not a.only and not failed:  # remove stale files from older layouts
+    if not partial and not failed:  # remove stale files from older layouts
         expected = {n + ".wav" for k in reg for grp in file_names(k, reg[k]) for n in grp}
         for f in os.listdir(a.out):
             if f.endswith(".wav") and f not in expected:
@@ -158,7 +169,7 @@ def main():
         print("WARNING clipped:", ", ".join(clipped))
     if failed:
         print("FAILED keys:", ", ".join(sorted(failed)))
-    if not a.no_overview and not a.only:
+    if not a.no_overview and not partial:
         try:
             p = report.contact_sheet(os.path.join(a.out, "_overview.png"), items, loops)
             print("overview:", p)

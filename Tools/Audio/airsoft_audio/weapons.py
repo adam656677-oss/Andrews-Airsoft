@@ -1,4 +1,7 @@
-"""Gunfire one-shots (positional, mono).
+"""Airsoft gunfire one-shots (positional, mono): the ALTERNATIVE set, written as
+`<Key>_Airsoft.wav` (+ `_01..03`). The default `Fire*` keys are the cinematic recipes in
+cinematic.py. These keep their original seeds, so the audio is identical to the files
+that used to be written under the plain `Fire*` names.
 
 Airsoft guns do not bang. Each recipe layers the real mechanical events:
   AEG     : piston slap into the cylinder head (receiver modes + mass thump),
@@ -183,7 +186,7 @@ def sniper(r, v):
     return air(dry, r, 0.22, 0.62, t60=0.7)
 
 
-RECIPES = {
+AIRSOFT = {
     "FireRifle": (lambda r, v: aeg(r, v), 3,
                   "AEG (M4/AK): piston slap + receiver ring + air puff + BB snap + gearbox whir and latch ticks"),
     "FireSMG": (lambda r, v: aeg(r, v, slap=2100, low=190, punch=0.72, whir=560, whir_len=0.045, whir_g=0.2,
@@ -206,3 +209,6 @@ RECIPES = {
                                         puff_g=0.55, suppressed=True, length=0.28, wet=0.08), 3,
                        "Suppressed AEG (MP5SD): muffled thup, mostly the mechanism"),
 }
+
+# Written as <Key>_Airsoft; "seed" keeps the RNG/dither seed of the original key name.
+RECIPES = {f"{key}_Airsoft": (fn, nvars, desc, {"seed": key}) for key, (fn, nvars, desc) in AIRSOFT.items()}

@@ -157,7 +157,7 @@ def insects(r, n):
 def _shot_pool(r, keys=("FireRifle", "FireLMG", "FireSMG"), each=2):
     pool = []
     for key in keys:
-        fn = weapons.RECIPES[key][0]
+        fn = weapons.AIRSOFT[key][0]  # the distant field bursts stay airsoft
         for v in range(each):
             pool.append(fn(np.random.default_rng(r.integers(1 << 30)), v))
     return pool

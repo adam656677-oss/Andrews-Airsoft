@@ -5,7 +5,7 @@ import math
 
 import numpy as np
 
-from .dsp import SR, db, true_peak
+from .dsp import SR, db, loudness, true_peak
 
 
 def stats(data_i16, loop=False):
@@ -28,6 +28,7 @@ def stats(data_i16, loop=False):
         ch=xs.shape[0], dur=n / SR, peak=db(pk), tp=db(true_peak(xs)), rms=db(math.sqrt(float((xs ** 2).mean()))),
         st_rms=db(math.sqrt(float(e.max()))) if len(e) else -120.0, onset_ms=1000.0 * onset / SR, centroid=cen,
         dc=float(np.abs(xs.mean(axis=-1)).max()), clipped=int(np.sum(np.abs(np.asarray(data_i16)) >= 32767)),
+        lufs=loudness(xs),
     )
     if loop:
         d = np.abs(np.diff(xs, axis=-1))
@@ -37,12 +38,13 @@ def stats(data_i16, loop=False):
 
 
 def fmt_table(rows):
-    hdr = f"{'file':28s} {'ch':>2s} {'dur s':>7s} {'peak':>6s} {'TP':>6s} {'RMS':>6s} {'maxRMS50':>8s} {'onset':>6s} {'cent Hz':>7s} {'clip':>4s} {'seam':>5s}"
+    hdr = (f"{'file':28s} {'ch':>2s} {'dur s':>7s} {'peak':>6s} {'TP':>6s} {'RMS':>6s} {'maxRMS50':>8s} {'LUFS':>6s} "
+           f"{'onset':>6s} {'cent Hz':>7s} {'DC':>6s} {'clip':>4s} {'seam':>5s}")
     lines = [hdr, "-" * len(hdr)]
     for name, s in rows:
         seam = f"{s['seam']:5.2f}" if "seam" in s else "    -"
         lines.append(f"{name:28s} {s['ch']:2d} {s['dur']:7.3f} {s['peak']:6.1f} {s['tp']:6.1f} {s['rms']:6.1f} {s['st_rms']:8.1f} "
-                     f"{s['onset_ms']:6.1f} {s['centroid']:7.0f} {s['clipped']:4d} {seam}")
+                     f"{s['lufs']:6.1f} {s['onset_ms']:6.1f} {s['centroid']:7.0f} {s['dc']:6.4f} {s['clipped']:4d} {seam}")
     return "\n".join(lines)
 
 
