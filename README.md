@@ -6,6 +6,19 @@ Real airsoft rules: BBs are real projectiles (muzzle velocity, drag, hop-up lift
 
 ---
 
+## Map stills
+
+![Velvet Club](Docs/Screens/00_Poster_1920x1080.jpg)
+
+| | |
+|---|---|
+| ![Velvet Club first person](Docs/Screens/04_VelvetClub_FirstPerson_HUD.jpg) | ![Velvet Club dance floor](Docs/Screens/02_VelvetClub_DanceFloor.jpg) |
+| ![The Armory](Docs/Screens/03_Staging_Armory.jpg) | ![M4 in its case](Docs/Screens/08_Armory_M4_Hero.jpg) |
+| ![Ironwood Yard at golden hour](Docs/Screens/05_Ironwood_GoldenHour.jpg) | ![Objective A](Docs/Screens/06_Ironwood_ObjectiveA.jpg) |
+| ![Practice range](Docs/Screens/07_Staging_Range.jpg) | ![Watchtower](Docs/Screens/09_Ironwood_Watchtower_Backlit.jpg) |
+
+These are offline Blender renders of the real map layouts and assets (`Tools/Blender/render_scenes.py`), not in-engine screenshots: path tracing instead of Lumen, no players shown, and the HUD is a mock-up.
+
 ## Gallery (generated 4K art)
 
 | | |

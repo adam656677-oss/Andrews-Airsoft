@@ -13,6 +13,13 @@
 #include "Net/UnrealNetwork.h"
 #include "UObject/ConstructorHelpers.h"
 
+namespace AirsoftObjectiveTuning
+{
+	// The capture zone is a solid emissive disc across the whole radius; keep it a faint team tint
+	// so it doesn't read as a glowing plate in daylight.
+	constexpr float RingGlow = 0.2f;
+}
+
 AAirsoftObjective::AAirsoftObjective()
 {
 	bReplicates = true;
@@ -76,7 +83,7 @@ void AAirsoftObjective::BeginPlay()
 {
 	Super::BeginPlay();
 	Ring->SetRelativeScale3D(FVector(Radius * 2.f / 100.f, Radius * 2.f / 100.f, 0.02f));
-	RingMID = AirsoftAssets::MakeEmissive(this, FLinearColor::White, 1.5f);
+	RingMID = AirsoftAssets::MakeEmissive(this, FLinearColor::White, AirsoftObjectiveTuning::RingGlow);
 	Ring->SetMaterial(0, RingMID);
 
 	// Use the 4K flag pole from the asset kit when it has been imported.
@@ -209,7 +216,7 @@ void AAirsoftObjective::RefreshVisuals()
 	if (RingMID)
 	{
 		RingMID->SetVectorParameterValue(TEXT("Color"), Color);
-		RingMID->SetScalarParameterValue(TEXT("Intensity"), bActive ? 1.5f : 0.f);
+		RingMID->SetScalarParameterValue(TEXT("Intensity"), bActive ? AirsoftObjectiveTuning::RingGlow : 0.f);
 	}
 	if (FlagMID)
 	{

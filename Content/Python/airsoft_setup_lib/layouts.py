@@ -183,10 +183,10 @@ KNOWN_ASSETS = {
     "GunDisplayBay": _K("Props", (-13, -73, 0), (16.5, 73, 120), "bay:Walnut", coll="Box", los=False),
     "ArmoryCounter": _K("Props", (-40, -122, 0), (42, 122, 104.5), "box:Walnut", coll="Box"),
     "Mannequin_Torso": _K("Props", (-35, -35, 0), (35, 35, 175), "mannequin:Canvas", coll="Convex", los=False),
-    "CeilingLight_Brass": _K("Props", (-30, -30, 0), (30, 30, 70), "hanglamp:Brass", coll="Convex", los=False),
+    "CeilingLight_Brass": _K("Props", (-22, -22, -3), (22, 22, 36), "hanglamp:Brass", coll="Convex", los=False),
     "RugPersian": _K("Props", (-157, -107, 0), (157, 107, 2), "flat:Carpet", coll="None", solid=False, los=False),
-    "GunCase_Hard": _K("Props", (-55, -20, 0), (55, 20, 14), "box:Rubber", coll="Box", los=False),
-    "AmmoCrate_Wood": _K("Props", (-38, -22, 0), (38, 22, 32), "box:Timber", coll="Box", los=False),
+    "GunCase_Hard": _K("Props", (-33, -61, 0), (27, 61, 50), "box:Rubber", coll="Box", los=False),
+    "AmmoCrate_Wood": _K("Props", (-22, -48, -1), (23, 48, 34), "box:Timber", coll="Box", los=False),
     "BankersLamp": _K("Props", (-14, -14, 0), (18, 14, 42), "desklamp:Brass", coll="Convex", los=False),
 }
 
@@ -194,7 +194,7 @@ KNOWN_ASSETS = {
 DEFAULT_POINTS = {
     "GunDisplayBay": {"GunMount": (-3.0, 0.0, 61.5)},
     "Chandelier": {"CeilingMount": (0.0, 0.0, 123.0), "Light": (0.0, 0.0, 55.0)},
-    "CeilingLight_Brass": {"CeilingMount": (0.0, 0.0, 70.0), "Light": (0.0, 0.0, 30.0)},
+    "CeilingLight_Brass": {"CeilingMount": (0.0, 0.0, 36.0), "Light": (0.0, 0.0, 13.0)},
     "WallSconce": {"WallMount": (-12.0, 0.0, 13.0), "Light": (7.0, 0.0, 29.0)},
     "StreetLamp": {"Light": (0.0, 0.0, 344.0)},
     "NeonSign_Velvet": {"WallMount": (-4.0, 0.0, 31.0), "Light": (13.5, 0.0, 31.0)},
@@ -648,7 +648,7 @@ def _ironwood():
     west += [blocker(-54.3, -12.2, -53.7, 12.2, 3.0, 8.0), blocker(-50.8, -8.2, -50.2, 8.2, 3.0, 8.0),
              blocker(-62.2, -12.3, -54, -11.7, 3.0, 8.0), blocker(-62.2, 11.7, -54, 12.3, 3.0, 8.0)]
     west += [prop("SandbagCorner", -50.5, -15, 0, 90), prop("SandbagCorner", -50.5, 15, 0, 0)]
-    west += [prop("Crate_Ammo", -55.0, -11.0, 0, 0), prop("Crate_Ammo", -55.0, -11.0, 0.36, 4),
+    west += [prop("Crate_Ammo", -55.0, -11.0, 0, 0), prop("Crate_Ammo", -55.0, -11.0, 0.38, 4),
              prop("PalletStack", -55.2, 10.9, 0, 0), prop("Crate_Wood", -55.2, 10.9, 0.58, 3)]
     for x in (-61.0, -58.4):
         for y in (-10.4, -7.9, -5.4, 5.4, 7.9, 10.4):
@@ -673,7 +673,7 @@ def _ironwood():
              blocker(-19.4, -0.7, -16.6, 5.7, 2.6, 7.0)]
     west += [prop("OilDrum", -23.4, 2.2, 0, 0, tint="Blue"), prop("OilDrum", -22.8, 2.9, 0, 40, tint="Red"),
              prop("OilDrum", -22.7, 2.15, 0, 80, tint="Blue"),
-             prop("Crate_Wood", -28.6, -3.4, 0, 5), prop("Crate_Wood", -28.6, -3.4, 0.6, 12),
+             prop("Crate_Wood", -28.6, -3.4, 0, 5), prop("Crate_Wood", -28.6, -3.4, 0.62, 12),
              prop("PalletStack", -29.2, 3.6, 0, 15), prop("Crate_Ammo", -23.8, -3.9, 0, 10)]
 
     # Between A and the village.
@@ -685,7 +685,7 @@ def _ironwood():
              prop("HayBale_Round", -47.5, -39.5, 0, 80), prop("TireStack", -38.5, -24.5, 0, 0),
              prop("Tire", -37.7, -25.6, 0, 20),
              prop("Container_20ft", -31, -16.2, 0, 0, tint="Sand"),
-             prop("HayBale_Square", -36.5, -36, 0, 0), prop("HayBale_Square", -36.5, -36, 0.38, 6),
+             prop("HayBale_Square", -36.5, -36, 0, 0), prop("HayBale_Square", -36.5, -36, 0.424, 6),
              prop("HayBale_Square", -36.4, -35.4, 0, 0),
              prop("Rock_B", -29, -40.5, 0, 140), prop("Bush_A", -23, -42.3, 0, 0),
              prop("WreckedCar", -24.5, -30, 0, -20),
@@ -698,9 +698,9 @@ def _ironwood():
              prop("Rock_B", -32.5, -22.5, 0, 60),
              prop("SandbagWall_3m", -19.5, -21.5, 0, 30), prop("Rock_A", -42.5, -15.5, 0, 0),
              prop("Bush_A", -60.0, -25.5, 0, 0), prop("Rock_B", -56.5, -19.5, 0, 0),
-             prop("Crate_Wood", -35.0, -27.5, 0, 15), prop("Crate_Wood", -35.0, -27.5, 0.6, 22),
+             prop("Crate_Wood", -35.0, -27.5, 0, 15), prop("Crate_Wood", -35.0, -27.5, 0.62, 22),
              prop("HayBale_Round", -1.8, -33.5, 0, 90), prop("Barricade_Plywood_4m", -30.5, -33.5, 0, 90),
-             prop("HayBale_Square", -36.5, -36, 0.76, 3), prop("SandbagWall_3m", -41.5, -27.0, 0, 60)]
+             prop("HayBale_Square", -36.5, -36, 0.848, 3), prop("SandbagWall_3m", -41.5, -27.0, 0, 60)]
     west += [blocker(-34.2, -17.4, -27.8, -15.0, 2.6, 7.0)]
     # South lane, west half.
     west += [prop("WreckedCar", -46, 27, 0, 25), prop("HayBale_Round", -50, 37.5, 0, 10),
@@ -709,7 +709,7 @@ def _ironwood():
              prop("CableSpool", -31, 24, 0, 0),
              prop("Container_20ft", -11.5, 27, 0, 25, tint="Green"),
              prop("HayBale_Square", -27, 38.5, 0, 90), prop("HayBale_Square", -26.4, 38.5, 0, 90),
-             prop("HayBale_Square", -26.7, 38.5, 0.38, 88),
+             prop("HayBale_Square", -26.7, 38.5, 0.424, 88),
              prop("Barricade_Plywood_4m", -33.5, 31, 0, 0), prop("SandbagWall_3m", -20, 33, 0, 90),
              prop("TireStack", -5.5, 40, 0, 0), prop("Tire", -6.4, 39.3, 0, 0),
              prop("PalletStack", -15, 39.5, 0, 30), prop("Bush_A", -44, 42.8, 0, 0),
@@ -719,7 +719,7 @@ def _ironwood():
              prop("TireStack", -60.0, 30.0, 0, 0), prop("Bush_A", -60.3, 19.5, 0, 0),
              prop("Rock_A", -33.0, 41.6, 0, 100), prop("Rock_A", -57.0, 33.5, 0, 40),
              prop("HayBale_Round", -30.5, 36.5, 0, 0), prop("Crate_Wood", -15, 39.5, 0.58, 40),
-             prop("HayBale_Square", -26.7, 38.5, 0.76, 92), prop("Rock_A", -9.5, 36.5, 0, 210)]
+             prop("HayBale_Square", -26.7, 38.5, 0.848, 92), prop("Rock_A", -9.5, 36.5, 0, 210)]
     west += [blocker(-24.2, 15.0, -17.8, 17.4, 2.6, 7.0)]
     # Floodlight towers (lamps + spotlights, on at dusk).
     west += [prop("FloodlightTower", -40, -43.2, 0, 90, light=True),
@@ -742,12 +742,12 @@ def _ironwood():
     # courtyard + interiors cover
     vil += [prop("SandbagWall_3m", 0, -2.6, 0, 90), prop("CableSpool", -5, 1.6, 0, 0),
             prop("OilDrum", -2.4, 3.0, 0, 0, tint="Red"), prop("OilDrum", -1.8, 3.3, 0, 30, tint="Red"),
-            prop("Crate_Wood", -6.6, -2.3, 0, 0), prop("Crate_Wood", -6.6, -2.3, 0.6, 8),
-            prop("HayBale_Square", 2.6, -6.2, 0, 90), prop("HayBale_Square", 2.6, -6.2, 0.38, 92),
-            prop("Crate_Wood", -9, -9, 0, 0), prop("Crate_Wood", -9, -9, 0.6, 15),
+            prop("Crate_Wood", -6.6, -2.3, 0, 0), prop("Crate_Wood", -6.6, -2.3, 0.62, 8),
+            prop("HayBale_Square", 2.6, -6.2, 0, 90), prop("HayBale_Square", 2.6, -6.2, 0.424, 92),
+            prop("Crate_Wood", -9, -9, 0, 0), prop("Crate_Wood", -9, -9, 0.62, 15),
             prop("PalletStack", -6.4, -10.6, 0, 0), prop("OilDrum", -10.9, -5.4, 0, 0, tint="Blue"),
-            prop("Crate_Ammo", -10.8, 0, 0, 90), prop("Crate_Ammo", -10.8, 0, 0.36, 92),
-            prop("HayBale_Square", -9.5, 9.2, 0, 0), prop("HayBale_Square", -9.5, 9.2, 0.38, 0),
+            prop("Crate_Ammo", -10.8, 0, 0, 90), prop("Crate_Ammo", -10.8, 0, 0.38, 92),
+            prop("HayBale_Square", -9.5, 9.2, 0, 0), prop("HayBale_Square", -9.5, 9.2, 0.424, 0),
             prop("Crate_Wood", -6.2, 6.4, 0, 20)]
 
     items += west + rot180(west)
@@ -919,7 +919,7 @@ def _velvet():
            slab(14, 15, 26, 22, 0.0, 0.01, "DiamondPlate", coll=False, name="KitchenFloor"),
            slab(17, 18.0, 23, 19.2, 0, 0.92, "DiamondPlate", name="KitchenIsland"),
            slab(25.2, 15.6, 25.8, 21.0, 0, 0.92, "DiamondPlate", name="KitchenCounter"),
-           prop("Crate_Wood", 15.0, 21.2, 0, 0), prop("Crate_Wood", 15.0, 21.2, 0.6, 10),
+           prop("Crate_Wood", 15.0, 21.2, 0, 0), prop("Crate_Wood", 15.0, 21.2, 0.62, 10),
            prop("OilDrum", 16.3, 21.3, 0, 0, tint="Green"),
            light("point", 18.0, 17.0, 3.8, color="Cool", cd=5, radius=8, shadows=True),
            light("point", 23.0, 20.0, 3.8, color="Cool", cd=4, radius=7, shadows=False)]
@@ -983,7 +983,7 @@ def _velvet():
     # ---- west alley ----
     it += [prop("Dumpster", -31.5, 4.0, 0, 90, tint="Rust"), prop("TrashBags", -33.6, 6.2, 0, 0),
            prop("TrashBags", -29.6, 6.0, 0, 120), prop("Crate_Wood", -27.4, 12.0, 0, 5),
-           prop("Crate_Wood", -27.4, 12.0, 0.6, 12), prop("Car_Coupe", -32.4, 16.5, 0, 95, tint="Gunmetal"),
+           prop("Crate_Wood", -27.4, 12.0, 0.62, 12), prop("Car_Coupe", -32.4, 16.5, 0, 95, tint="Gunmetal"),
            prop("PalletStack", -34.6, -4.5, 0, 90), prop("OilDrum", -27.3, -3.0, 0, 0, tint="Red"),
            prop("Dumpster", -34.6, 24.6, 0, 90, tint="Blue"), prop("StreetLamp", -26.7, 2.0, 0, 0,
                                                                    light={"shadows": False, "cd": 12})]
@@ -1011,7 +1011,7 @@ def _velvet():
            prop("PalletStack", -27.0, 24.0, 0, 10), prop("Crate_Wood", -11.0, 25.6, 0, 20),
            prop("Dumpster", -28.8, 30.8, 0, 0, tint="Green"), prop("PalletStack", -22.5, 27.6, 0, 70),
            prop("OilDrum", -6.5, 25.8, 0, 0, tint="Blue"), prop("OilDrum", -5.9, 26.3, 0, 0, tint="Blue"),
-           prop("Crate_Wood", -11.0, 25.6, 0.6, 30), prop("OilDrum", 2.5, 24.0, 0, 0, tint="Red"),
+           prop("Crate_Wood", -11.0, 25.6, 0.62, 30), prop("OilDrum", 2.5, 24.0, 0, 0, tint="Red"),
            prop("OilDrum", 3.2, 24.4, 0, 30, tint="Red"), prop("PalletStack", 10.5, 30.5, 0, 0),
            prop("Crate_Ammo", 14.5, 23.0, 1.2, 0),
            prop("StreetLamp", -12.0, 32.0 - 0.6, 0, 180, light={"shadows": False, "cd": 14}),
@@ -1099,8 +1099,8 @@ def _staging():
         it.append(slab(-23.8, y - 1.15, -23.2, y + 1.15, 0, 2.0, "PaintedSteel", tint="Grey", name="Locker"))
     it += [slab(-22.6, -13.4, -22.1, -2.0, 0, 0.45, "Timber", name="Bench"),
            slab(-0.26, -4.6, -0.2, -1.6, 1.0, 2.4, "PlywoodPainted", tint="White", coll=False, name="Whiteboard"),
-           prop("Crate_Ammo", -1.2, -13.2, 0, 0), prop("Crate_Ammo", -1.2, -13.2, 0.36, 4),
-           prop("GunCase_Hard", -1.2, -13.2, 0.72, 10)]
+           prop("Crate_Ammo", -1.2, -13.2, 0, 0), prop("Crate_Ammo", -1.2, -13.2, 0.38, 4),
+           prop("GunCase_Hard", -1.2, -13.2, 0.76, 92)]
     for x in (-19.5, -16.5, -13.5, -10.5, -7.5, -4.5):
         for y in (-9.5, -6.5, -3.5):
             it.append(start(x, y, "None", -90.0))
@@ -1233,7 +1233,7 @@ def _menu():
     it += [prop("ArmorySign", 5.84, -2.3, 2.15, 180),
            prop("RugPersian", 2.3, -0.9, 0.0, 15),
            prop("ArmoryCounter", 2.75, -0.55, 0, 168),
-           prop("GunCase_Hard", 2.62, -0.95, 1.045, 105),
+           prop("GunCase_Hard", 2.62, -0.95, 1.045, 168),
            prop("BankersLamp", 2.85, 0.25, 1.045, 205, light=True),
            prop("Mannequin_Torso", 5.0, 1.9, 0, 205),
            prop("AmmoCrate_Wood", 5.45, -3.45, 0, 2), prop("AmmoCrate_Wood", 4.55, -3.5, 0, 8)]
