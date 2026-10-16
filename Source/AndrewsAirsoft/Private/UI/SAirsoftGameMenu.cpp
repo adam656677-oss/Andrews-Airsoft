@@ -11,6 +11,7 @@
 #include "AirsoftUIScreens.h"
 #include "AirsoftUIStyle.h"
 #include "AirsoftUIWidgets.h"
+#include "HAL/PlatformMisc.h"
 #include "HAL/PlatformTime.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/SOverlay.h"
@@ -69,6 +70,8 @@ private:
 	int32 BotFill() const;
 
 	double LeaveArmedAt = -100.0;
+	bool IsQuitArmed() const { return FPlatformTime::Seconds() - QuitArmedAt < 3.0; }
+	double QuitArmedAt = -100.0;
 };
 
 TSharedRef<SWidget> AirsoftUIScreens::CreateGameMenu(AAirsoftPlayerController* PC)
@@ -414,6 +417,37 @@ TSharedRef<SWidget> SAirsoftGameMenu::BuildLeftColumn()
 					{
 						GI->ReturnToMainMenu();
 					}
+					return FReply::Handled();
+				})
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(FMargin(0.f, 6.f, 0.f, 0.f))
+			[
+				SNew(SAirsoftButton)
+				.Text_Lambda([this]()
+				{
+					return FText::FromString(IsQuitArmed() ? TEXT("CONFIRM — QUIT") : TEXT("QUIT TO DESKTOP"));
+				})
+				.SubText_Lambda([this]()
+				{
+					const AAirsoftPlayerController* PC = WeakPC.Get();
+					return FText::FromString((PC && PC->IsHost()) ? TEXT("ENDS IT FOR EVERYONE") : TEXT("CLOSES THE GAME"));
+				})
+				.IsSelected_Lambda([this]() { return IsQuitArmed(); })
+				.FontSize(14)
+				.OnClicked_Lambda([this]()
+				{
+					if (!IsQuitArmed())
+					{
+						QuitArmedAt = FPlatformTime::Seconds();
+						return FReply::Handled();
+					}
+					if (UAirsoftGameInstance* GI = AUI::GetGameInstance(WeakPC.Get()))
+					{
+						GI->SaveProfile();
+					}
+					FPlatformMisc::RequestExit(false);
 					return FReply::Handled();
 				})
 			]

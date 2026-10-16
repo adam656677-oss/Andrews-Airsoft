@@ -39,7 +39,7 @@ public:
 	/** One life per round: nobody (not even a late joiner) spawns mid-round in Elimination / VIP. */
 	virtual bool PlayerCanRestart_Implementation(APlayerController* Player) override;
 	virtual AActor* ChoosePlayerStart_Implementation(AController* Player) override;
-	virtual bool ShouldSpawnAtStartSpot_Implementation(AController* Player) override { return false; }
+	virtual bool ShouldSpawnAtStartSpot(AController* Player) override { return false; }
 	virtual void SetPlayerDefaults(APawn* PlayerPawn) override;
 	virtual void PostSeamlessTravel() override;
 	/** Bots are made fresh on every match map: their PlayerStates never travel. */

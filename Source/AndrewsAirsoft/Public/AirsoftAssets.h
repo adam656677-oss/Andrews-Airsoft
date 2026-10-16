@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 
 class UStaticMesh;
+class UTexture2D;
 class UMaterialInterface;
 class UMaterialInstanceDynamic;
 class USoundBase;
@@ -20,6 +21,9 @@ namespace AirsoftAssets
 
 	/** /Game/Airsoft/Meshes/<Category>/<AssetId>/SM_<AssetId>_<Piece> or nullptr. */
 	ANDREWSAIRSOFT_API UStaticMesh* FindMesh(const FString& Category, FName AssetId, const FString& Piece);
+
+	/** Armory picture: /Game/Airsoft/Textures/UI/Thumbs/T_Thumb_<AssetId> (from Docs/Renders) or nullptr. */
+	ANDREWSAIRSOFT_API UTexture2D* Thumbnail(FName AssetId);
 
 	/** Unlit emissive material (Color + Intensity parameters). */
 	ANDREWSAIRSOFT_API UMaterialInterface* EmissiveMaterial();

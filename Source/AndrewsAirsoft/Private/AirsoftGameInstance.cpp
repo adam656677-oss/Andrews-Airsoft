@@ -106,6 +106,24 @@ void UAirsoftGameInstance::ApplyUserSettings()
 	if (UGameUserSettings* GUS = GEngine ? GEngine->GetGameUserSettings() : nullptr)
 	{
 		GUS->SetOverallScalabilityLevel(FMath::Clamp(S.Quality, 0, 3));
+		// Window keeps the title bar (minimise / close); borderless and fullscreen fill the monitor.
+		const EWindowMode::Type Mode = S.WindowMode == 2 ? EWindowMode::Fullscreen : (S.WindowMode == 1 ? EWindowMode::WindowedFullscreen : EWindowMode::Windowed);
+		GUS->SetFullscreenMode(Mode);
+		if (Mode == EWindowMode::Windowed)
+		{
+			// A window the size of the desktop would hide its own title bar: leave room for it and the taskbar.
+			const FIntPoint Desktop = GUS->GetDesktopResolution();
+			FIntPoint Size = GUS->GetScreenResolution();
+			if (Size.X <= 0 || Size.Y <= 0 || Size.X >= Desktop.X || Size.Y >= Desktop.Y - 80)
+			{
+				Size = FIntPoint(FMath::RoundToInt(Desktop.X * 0.85f), FMath::RoundToInt(Desktop.Y * 0.85f));
+			}
+			GUS->SetScreenResolution(Size);
+		}
+		else
+		{
+			GUS->SetScreenResolution(GUS->GetDesktopResolution());
+		}
 		GUS->ApplySettings(false);
 	}
 	if (IConsoleVariable* ScreenPct = IConsoleManager::Get().FindConsoleVariable(TEXT("r.ScreenPercentage")))

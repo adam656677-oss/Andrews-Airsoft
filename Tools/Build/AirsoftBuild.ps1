@@ -135,7 +135,8 @@ function Find-Engine {
         } catch { }
     }
     foreach ($drive in @($env:ProgramFiles, "C:\Program Files", "D:\Program Files", "D:\Epic Games", "E:\Epic Games")) {
-        if ($drive) { $candidates.Add((Join-Path $drive ("Epic Games\UE_" + $version))); $candidates.Add((Join-Path $drive ("UE_" + $version))) }
+        # Join-Path throws on a drive letter that doesn't exist (e.g. no E:), so skip those.
+        if ($drive -and (Test-Path ([System.IO.Path]::GetPathRoot($drive)))) { $candidates.Add((Join-Path $drive ("Epic Games\UE_" + $version))); $candidates.Add((Join-Path $drive ("UE_" + $version))) }
     }
     foreach ($c in $candidates) {
         if ($c -and (Test-Path (Join-Path $c "Engine\Binaries\Win64\UnrealEditor.exe"))) {
@@ -208,7 +209,7 @@ function Invoke-Check {
         if ($ramGB -lt 16) { Warn "$ramGB GB RAM. Unreal works best with 32 GB; close other programs while building." } else { Ok "$ramGB GB RAM" }
     } catch { Warn "Couldn't read GPU / RAM info." }
 
-    $art = @("Weapons", "Props", "Architecture", "Materials") | Where-Object { -not (Test-Path (Join-Path $ProjectRoot "SourceAssets\$_")) }
+    $art = @(@("Weapons", "Props", "Architecture", "Materials") | Where-Object { -not (Test-Path (Join-Path $ProjectRoot "SourceAssets\$_")) })
     if ($art.Count -eq 0) { Ok "4K art is in SourceAssets\" }
     else {
         Warn ("4K art is missing (" + ($art -join ", ") + "). The game still runs with stand-in shapes. To get it, run in the project folder:")

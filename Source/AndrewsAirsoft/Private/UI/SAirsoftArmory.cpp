@@ -542,6 +542,12 @@ TSharedRef<SWidget> SAirsoftArmory::BuildWeaponCard(FName Id)
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot()
 			.AutoHeight()
+			.Padding(FMargin(0.f, 0.f, 0.f, 8.f))
+			[
+				AirsoftUIWidgets::Thumbnail(Id, 96.f)
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
 			[
 				SNew(SHorizontalBox)
 				+ SHorizontalBox::Slot()
@@ -724,6 +730,17 @@ TSharedRef<SWidget> SAirsoftArmory::BuildDetail()
 			.Padding(FMargin(20.f, 4.f, 0.f, 0.f))
 			[
 				SNew(SBox)
+				.WidthOverride(300.f)
+				[
+					AirsoftUIWidgets::Thumbnail(Id, 168.f)
+				]
+			]
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.VAlign(VAlign_Top)
+			.Padding(FMargin(20.f, 4.f, 0.f, 0.f))
+			[
+				SNew(SBox)
 				.WidthOverride(200.f)
 				[
 					SNew(SOverlay)
@@ -872,11 +889,11 @@ TSharedRef<SWidget> SAirsoftArmory::BuildAttachmentRow(const FAirsoftWeaponDef& 
 			.Padding(FMargin(0.f, 0.f, 4.f, 0.f))
 			[
 				SNew(SBox)
-				.HeightOverride(44.f)
+				.HeightOverride(104.f)
 				[
 					SNew(SAirsoftButton)
 					.ShowEdge(false)
-					.ContentPadding(FMargin(8.f, 4.f))
+					.ContentPadding(FMargin(4.f, 4.f, 4.f, 6.f))
 					.IsSelected_Lambda([this, Slot, Choice]() { return GetSlotValue(CustomFor(ViewId), Slot) == Choice; })
 					.OnClicked_Lambda([this, Slot, Choice]()
 					{
@@ -884,8 +901,15 @@ TSharedRef<SWidget> SAirsoftArmory::BuildAttachmentRow(const FAirsoftWeaponDef& 
 						return FReply::Handled();
 					})
 					[
-						SNew(SBox)
-						.VAlign(VAlign_Center)
+						SNew(SVerticalBox)
+						+ SVerticalBox::Slot()
+						.FillHeight(1.f)
+						[
+							AirsoftUIWidgets::Thumbnail(Choice == AirsoftWeapons::AttachOff ? FName() : Choice, 62.f)
+						]
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.Padding(FMargin(0.f, 6.f, 0.f, 0.f))
 						[
 							SNew(STextBlock)
 							.Text(FText::FromString(Name))

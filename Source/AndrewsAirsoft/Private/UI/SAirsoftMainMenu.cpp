@@ -17,6 +17,7 @@
 #include "Widgets/Input/SEditableTextBox.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
+#include "Widgets/Layout/SScaleBox.h"
 #include "Widgets/Layout/SSpacer.h"
 #include "Widgets/Layout/SUniformGridPanel.h"
 #include "Widgets/Text/STextBlock.h"
@@ -173,21 +174,34 @@ TSharedRef<SWidget> SAirsoftMainMenu::BuildLeftColumn()
 			.AutoHeight()
 			.Padding(FMargin(0.f, 22.f, 0.f, 0.f))
 			[
-				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("ANDREW'S")))
-				.Font(AUI::Font(AUI::EFontWeight::Light, 40, 900))
-				.ColorAndOpacity(AUI::TextColor())
+				// Wide-tracked title: shrink to the column rather than clip the last letters.
+				SNew(SScaleBox)
+				.Stretch(EStretch::ScaleToFit)
+				.StretchDirection(EStretchDirection::DownOnly)
+				.HAlign(HAlign_Left)
+				[
+					SNew(STextBlock)
+					.Text(FText::FromString(TEXT("ANDREW'S")))
+					.Font(AUI::Font(AUI::EFontWeight::Light, 40, 900))
+					.ColorAndOpacity(AUI::TextColor())
+				]
 			]
 			+ SVerticalBox::Slot()
 			.AutoHeight()
 			.Padding(FMargin(0.f, 0.f, 0.f, 0.f))
 			[
-				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("AIRSOFT")))
-				.Font(AUI::Font(AUI::EFontWeight::Bold, 78, 260))
-				.ColorAndOpacity(FLinearColor::White)
-				.ShadowOffset(FVector2D(0.f, 3.f))
-				.ShadowColorAndOpacity(FLinearColor(0.f, 0.f, 0.f, 0.6f))
+				SNew(SScaleBox)
+				.Stretch(EStretch::ScaleToFit)
+				.StretchDirection(EStretchDirection::DownOnly)
+				.HAlign(HAlign_Left)
+				[
+					SNew(STextBlock)
+					.Text(FText::FromString(TEXT("AIRSOFT")))
+					.Font(AUI::Font(AUI::EFontWeight::Bold, 78, 260))
+					.ColorAndOpacity(FLinearColor::White)
+					.ShadowOffset(FVector2D(0.f, 3.f))
+					.ShadowColorAndOpacity(FLinearColor(0.f, 0.f, 0.f, 0.6f))
+				]
 			]
 			+ SVerticalBox::Slot()
 			.AutoHeight()

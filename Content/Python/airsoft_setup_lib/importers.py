@@ -161,6 +161,47 @@ def import_texture(src, dest_dir, name, kind, weapon=False, force=False):
     return tex
 
 
+THUMB_DIR = C.TEX_ROOT + "/UI/Thumbs"
+THUMB_CATEGORIES = ("Weapons", "Attachments")   # Docs/Renders/<Category>/<AssetId>.jpg -> T_Thumb_<AssetId>
+THUMB_MAX_SIZE = 512
+
+
+def import_ui_thumbnails(force=False):
+    """Product renders as armory pictures (AirsoftAssets::Thumbnail). Lineup sheets (_*.jpg) are skipped."""
+    n = 0
+    for cat in THUMB_CATEGORIES:
+        for src in sorted(glob.glob(os.path.join(C.project_dir(), "Docs", "Renders", cat, "*.jpg"))):
+            aid = os.path.splitext(os.path.basename(src))[0]
+            if aid.startswith("_"):
+                continue
+            name = "T_Thumb_" + aid
+            path = "%s/%s" % (THUMB_DIR, name)
+            stamp = C.source_stamp(src)
+            tex = C.load(path)
+            if tex and not force and C.get_metadata(tex, STAMP_TAG) == stamp:
+                C.SUMMARY.inc("thumbnails unchanged (skipped)")
+                continue
+            C.ensure_dir(THUMB_DIR)
+            t = _task(src, THUMB_DIR, name)
+            tex = _settle_name(t, unreal.Texture, path) if _run([t]) else None
+            if not tex:
+                C.SUMMARY.miss("thumbnail import", name)
+                continue
+            TC, TG, MG = unreal.TextureCompressionSettings, unreal.TextureGroup, unreal.TextureMipGenSettings
+            C.try_set(tex, "compression_settings", _enum(TC, "TC_DEFAULT"))
+            C.try_set(tex, "srgb", True)
+            C.try_set(tex, "lod_group", _enum(TG, "TEXTUREGROUP_UI"))
+            C.try_set(tex, "mip_gen_settings", _enum(MG, "TMGS_NO_MIPMAPS"), quiet=True)
+            C.try_set(tex, "never_stream", True, quiet=True)
+            C.try_set(tex, "max_texture_size", THUMB_MAX_SIZE, quiet=True)
+            C.try_set(tex, "virtual_texture_streaming", False, quiet=True)
+            C.set_metadata(tex, STAMP_TAG, stamp)
+            C.save_asset(tex)
+            n += 1
+    C.SUMMARY.inc("thumbnails imported", n)
+    return n
+
+
 def import_default_textures(force=False):
     folder = os.path.join(C.saved_dir(), "DefaultTextures")
     os.makedirs(folder, exist_ok=True)
@@ -192,7 +233,7 @@ def import_tileable_textures(materials, force=False):
 # ---------------------------------------------------------------------------------------------
 # Meshes
 # ---------------------------------------------------------------------------------------------
-def _fbx_options(build_nanite, combine):
+def _fbx_options(build_nanite, combine, remove_degenerates=True):
     o = unreal.FbxImportUI()
     for k, v in (("import_mesh", True), ("import_textures", False), ("import_materials", False),
                  ("import_as_skeletal", False), ("import_animations", False), ("create_physics_asset", False),
@@ -201,7 +242,7 @@ def _fbx_options(build_nanite, combine):
     C.try_set(o, "mesh_type_to_import", unreal.FBXImportType.FBXIT_STATIC_MESH)
     sm = o.get_editor_property("static_mesh_import_data")
     for k, v in (("combine_meshes", combine), ("auto_generate_collision", False), ("generate_lightmap_u_vs", False),
-                 ("remove_degenerates", True), ("build_nanite", build_nanite), ("one_convex_hull_per_ucx", True),
+                 ("remove_degenerates", remove_degenerates), ("build_nanite", build_nanite), ("one_convex_hull_per_ucx", True),
                  ("convert_scene", C.FBX_CONVERT_SCENE), ("force_front_x_axis", C.FBX_FORCE_FRONT_X),
                  ("convert_scene_unit", False), ("import_uniform_scale", 1.0),
                  ("reorder_material_to_fbx_order", True), ("transform_vertex_to_absolute", True),
@@ -328,6 +369,11 @@ def import_mesh(entry, aid, piece, force=False):
         C.SUMMARY.miss("mesh import", name)
         return sm
     got = _imported(t, unreal.StaticMesh)
+    if not got:
+        # Tiny thin parts (sight glass, reticles) are all "degenerate" to the importer's weld threshold.
+        t = _task(src, dest, name, _fbx_options(nanite, C.COMBINE_MESHES, remove_degenerates=False))
+        _run([t])
+        got = _imported(t, unreal.StaticMesh)
     if not C.exists(path) and len(got) > 1 and not C.COMBINE_MESHES:
         # several nodes in one FBX: re-import combined so the piece stays one asset
         for p, _ in got:

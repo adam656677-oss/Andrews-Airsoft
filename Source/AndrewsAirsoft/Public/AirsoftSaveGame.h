@@ -21,6 +21,8 @@ struct FAirsoftUserSettings
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 Quality = 2;
 	/** Internal render resolution percentage before TSR upscaling. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) float RenderScale = 60.f;
+	/** 0 = Window (title bar: minimise / close), 1 = Borderless, 2 = Fullscreen. Alt+Enter also toggles. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 WindowMode = 0;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) float MasterVolume = 0.8f;
 	/** Big-screen cinematic gunfire (true) or realistic mechanical airsoft sounds (false). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) bool bCinematicGunSounds = true;

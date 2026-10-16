@@ -2,8 +2,12 @@
 
 #include "AirsoftUIWidgets.h"
 
+#include "AirsoftAssets.h"
 #include "AirsoftPlayerController.h"
 #include "AirsoftUIStyle.h"
+#include "Engine/Texture2D.h"
+#include "Widgets/Images/SImage.h"
+#include "Widgets/Layout/SScaleBox.h"
 #include "HAL/PlatformTime.h"
 #include "InputCoreTypes.h"
 #include "Rendering/DrawElements.h"
@@ -35,7 +39,9 @@ void SAirsoftButton::Construct(const FArguments& InArgs)
 			.HAlign(InArgs._HAlign)
 			.VAlign(VAlign_Center)
 			[
+				// Wide letter spacing makes Slate under-measure the label by about a glyph; don't clip it to that size.
 				SNew(STextBlock)
+				.Clipping(EWidgetClipping::Inherit)
 				.Text(InArgs._Text)
 				.Font(AUI::Font(AUI::EFontWeight::Bold, InArgs._FontSize, 180))
 				.ColorAndOpacity_Lambda([this]() -> FSlateColor { return GetTextColor(); })
@@ -46,6 +52,7 @@ void SAirsoftButton::Construct(const FArguments& InArgs)
 			.Padding(FMargin(14.f, 0.f, 0.f, 0.f))
 			[
 				SNew(STextBlock)
+				.Clipping(EWidgetClipping::Inherit)
 				.Visibility(InArgs._SubText.IsSet() ? EVisibility::HitTestInvisible : EVisibility::Collapsed)
 				.Text(InArgs._SubText)
 				.Font(AUI::Font(AUI::EFontWeight::Regular, SubSize, 120))
@@ -396,6 +403,62 @@ void SAirsoftMenuBase::SetInitialFocus(const TSharedPtr<SAirsoftButton>& InButto
 
 namespace AirsoftUIWidgets
 {
+	TSharedRef<SWidget> Thumbnail(FName AssetId, float Height)
+	{
+		// One brush per asset for the session; the texture is rooted so the brush never points at a collected object.
+		static TMap<FName, TSharedPtr<FSlateBrush>> Brushes;
+		const FSlateBrush* Brush = nullptr;
+		if (const TSharedPtr<FSlateBrush>* Found = Brushes.Find(AssetId))
+		{
+			Brush = Found->Get();
+		}
+		else if (UTexture2D* Tex = AssetId.IsNone() ? nullptr : AirsoftAssets::Thumbnail(AssetId))
+		{
+			Tex->AddToRoot();
+			TSharedPtr<FSlateBrush> New = MakeShared<FSlateBrush>();
+			New->SetResourceObject(Tex);
+			New->ImageSize = FVector2D(FMath::Max(Tex->GetSizeX(), 1), FMath::Max(Tex->GetSizeY(), 1));
+			New->DrawAs = ESlateBrushDrawType::Image;
+			Brushes.Add(AssetId, New);
+			Brush = New.Get();
+		}
+		else
+		{
+			Brushes.Add(AssetId, nullptr);
+		}
+
+		TSharedRef<SWidget> Picture = Brush
+			? StaticCastSharedRef<SWidget>(SNew(SScaleBox)
+				.Stretch(EStretch::ScaleToFit) // whole item in view; the render's own dark backdrop fills the sides
+				.HAlign(HAlign_Center)
+				.VAlign(VAlign_Center)
+				[
+					SNew(SImage).Image(Brush)
+				])
+			: StaticCastSharedRef<SWidget>(SNew(SBox)
+				.HAlign(HAlign_Center)
+				.VAlign(VAlign_Center)
+				[
+					SNew(STextBlock)
+					.Text(FText::FromString(TEXT("—")))
+					.Font(AUI::Font(AUI::EFontWeight::Regular, 14))
+					.ColorAndOpacity(AUI::TextDim())
+				]);
+
+		return SNew(SBox)
+			.HeightOverride(Height)
+			.Clipping(EWidgetClipping::ClipToBounds)
+			[
+				SNew(SBorder)
+				.BorderImage(AUI::WhiteBrush())
+				.BorderBackgroundColor(FLinearColor(0.02f, 0.02f, 0.022f, 0.95f)) // close to the renders' studio grey
+				.Padding(FMargin(0.f))
+				[
+					Picture
+				]
+			];
+	}
+
 	TSharedRef<SWidget> SectionLabel(const FText& Text)
 	{
 		return SNew(SHorizontalBox)

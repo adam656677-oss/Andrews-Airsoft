@@ -258,6 +258,17 @@ void UAirsoftGunVisual::Build(const FAirsoftCustomization& Custom, const FLinear
 		{
 			BuildFallbackAttachment(M.Choice, M.Slot, *MountPoint);
 		}
+		else if (M.Slot == AirsoftWeapons::SlotOptic && AttPieces.Contains(FName(TEXT("Reticle")))
+			&& !AirsoftAssets::FindMesh(TEXT("Attachments"), M.Choice, TEXT("Reticle")))
+		{
+			// The red dot's reticle is too small for the FBX importer and can fail to import: put a glowing dot on the aim line instead.
+			const FVector* Aim = AL.Point(TEXT("AimOffset"));
+			const float DotZ = Aim ? Aim->Z : DefaultAimOffset(M.Choice).Z;
+			if (UStaticMeshComponent* Dot = AddPart(AirsoftAssets::Sphere(), TEXT("Reticle"), FTransform(FQuat::Identity, *MountPoint + FVector(1.f, 0.f, DotZ), FVector(0.003f)), FVector::ZeroVector))
+			{
+				Dot->SetMaterial(0, AirsoftAssets::MakeEmissive(Dot, FLinearColor(1.f, 0.05f, 0.03f), 40.f));
+			}
+		}
 
 		if (M.Slot == AirsoftWeapons::SlotOptic)
 		{

@@ -76,6 +76,7 @@ void SAirsoftSettings::Apply()
 	Settings.bInvertY = Working.bInvertY;
 	Settings.Quality = Working.Quality;
 	Settings.RenderScale = Working.RenderScale;
+	Settings.WindowMode = Working.WindowMode;
 	Settings.MasterVolume = Working.MasterVolume;
 	Settings.bCinematicGunSounds = Working.bCinematicGunSounds;
 	Settings.bCinematicEffects = Working.bCinematicEffects;
@@ -244,7 +245,8 @@ TSharedRef<SWidget> SAirsoftSettings::ChoiceRow(const FString& Label, const FStr
 			})
 		];
 	}
-	return Row(Label, Note, SNew(SBox).WidthOverride(360.f).HAlign(HAlign_Left)[Box], TAttribute<FText>());
+	// Spread the choices over the whole control column: sized to their text they clipped the last letters.
+	return Row(Label, Note, SNew(SBox).MinDesiredWidth(360.f)[Box], TAttribute<FText>());
 }
 
 void SAirsoftSettings::Construct(const FArguments& InArgs, AAirsoftPlayerController* InPC)
@@ -289,6 +291,13 @@ void SAirsoftSettings::Construct(const FArguments& InArgs, AAirsoftPlayerControl
 	];
 
 	Rows->AddSlot().AutoHeight()[Section(TEXT("VIDEO"))];
+	Rows->AddSlot().AutoHeight().Padding(FMargin(0.f, 0.f, 0.f, 4.f))
+	[
+		ChoiceRow(TEXT("Window"), TEXT("Window has a title bar to minimise or close the game. Alt+Enter switches too."),
+			{ TEXT("WINDOW"), TEXT("BORDERLESS"), TEXT("FULLSCREEN") },
+			[this]() { return FMath::Clamp(Working.WindowMode, 0, 2); },
+			[this](int32 Index) { Working.WindowMode = FMath::Clamp(Index, 0, 2); })
+	];
 	Rows->AddSlot().AutoHeight().Padding(FMargin(0.f, 0.f, 0.f, 4.f))
 	[
 		ChoiceRow(TEXT("Graphics quality"), TEXT("Engine scalability preset."), { TEXT("LOW"), TEXT("MEDIUM"), TEXT("HIGH"), TEXT("EPIC") },

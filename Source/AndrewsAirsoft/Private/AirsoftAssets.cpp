@@ -3,6 +3,7 @@
 #include "AirsoftSettings.h"
 #include "Dom/JsonObject.h"
 #include "Engine/StaticMesh.h"
+#include "Engine/Texture2D.h"
 #include "Kismet/GameplayStatics.h"
 #include "Materials/Material.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -78,6 +79,13 @@ namespace AirsoftAssets
 		const FString Id = AssetId.ToString();
 		const FString Path = FString::Printf(TEXT("/Game/Airsoft/Meshes/%s/%s/SM_%s_%s.SM_%s_%s"), *Category, *Id, *Id, *Piece, *Id, *Piece);
 		return LoadCached<UStaticMesh>(*Path);
+	}
+
+	UTexture2D* Thumbnail(FName AssetId)
+	{
+		const FString Id = AssetId.ToString();
+		const FString Path = FString::Printf(TEXT("/Game/Airsoft/Textures/UI/Thumbs/T_Thumb_%s.T_Thumb_%s"), *Id, *Id);
+		return LoadCached<UTexture2D>(*Path);
 	}
 
 	UMaterialInterface* EmissiveMaterial()

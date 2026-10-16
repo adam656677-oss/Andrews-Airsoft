@@ -99,6 +99,7 @@ def main(argv=None):
             legacy.__enter__()
             I.import_tileable_textures(mats, force=args.force_import)
             I.import_assets(reg, force=args.force_import, only=only)
+            I.import_ui_thumbnails(force=args.force_import)
         if not args.skip_audio:
             I.import_audio(force=args.force_import)
         if not args.skip_materials:

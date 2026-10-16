@@ -163,7 +163,8 @@ FVector AAirsoftBotController::GetEyeLocation() const
 	{
 		return C->GetCamera() ? C->GetCamera()->GetComponentLocation() : C->GetPawnViewLocation();
 	}
-	return GetActorLocation();
+	// AController hides GetActorLocation(); a pawnless controller just reports its root.
+	return GetRootComponent() ? GetRootComponent()->GetComponentLocation() : FVector::ZeroVector;
 }
 
 double AAirsoftBotController::WorldTime() const
@@ -1567,7 +1568,7 @@ void AAirsoftBotController::OnMoveCompleted(FAIRequestID RequestID, const FPathF
 
 bool AAirsoftBotController::RandomPointNear(const FVector& Origin, float Radius, FVector& Out) const
 {
-	UNavigationSystemV1* Nav = UNavigationSystemV1::GetCurrent<UNavigationSystemV1>(GetWorld());
+	UNavigationSystemV1* Nav = UNavigationSystemV1::GetCurrent(GetWorld());
 	if (!Nav)
 	{
 		return false;
@@ -1583,7 +1584,7 @@ bool AAirsoftBotController::RandomPointNear(const FVector& Origin, float Radius,
 
 bool AAirsoftBotController::ProjectToNav(const FVector& Point, FVector& Out) const
 {
-	UNavigationSystemV1* Nav = UNavigationSystemV1::GetCurrent<UNavigationSystemV1>(GetWorld());
+	UNavigationSystemV1* Nav = UNavigationSystemV1::GetCurrent(GetWorld());
 	if (!Nav)
 	{
 		return false;

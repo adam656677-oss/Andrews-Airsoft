@@ -31,6 +31,21 @@ namespace AirsoftGameModeLocal
 	constexpr double VoteAnnounceDelay = 1.5;
 	constexpr double BotChatterCooldown = 25.0;
 
+	/** Remote players whose client hasn't finished loading this map yet (AGameModeBase has no NumTravellingPlayers). */
+	int32 CountPlayersStillLoading(UWorld* World)
+	{
+		int32 Count = 0;
+		for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
+		{
+			APlayerController* PC = It->Get(); // HasClientLoadedCurrentWorld() isn't const
+			if (PC && !PC->IsLocalController() && !PC->HasClientLoadedCurrentWorld())
+			{
+				++Count;
+			}
+		}
+		return Count;
+	}
+
 	/** Index with the most votes (ties at random); negative entries are not candidates. INDEX_NONE if none. */
 	int32 PickVote(const TArray<int32>& Votes)
 	{
@@ -1019,7 +1034,7 @@ void AAirsoftGameMode::TickMatch(float DeltaSeconds)
 	case EAirsoftPhase::Waiting:
 	case EAirsoftPhase::Intermission:
 		GS->StatusMessage = TEXT("Squad loading in...");
-		if (NumTravellingPlayers <= 0 || GetWorld()->GetTimeSeconds() - WaitingSince > AirsoftGameModeLocal::MaxLoadWait)
+		if (AirsoftGameModeLocal::CountPlayersStillLoading(GetWorld()) <= 0 || GetWorld()->GetTimeSeconds() - WaitingSince > AirsoftGameModeLocal::MaxLoadWait)
 		{
 			BeginMatch();
 		}

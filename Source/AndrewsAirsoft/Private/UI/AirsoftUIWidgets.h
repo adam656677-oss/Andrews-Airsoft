@@ -209,4 +209,6 @@ namespace AirsoftUIWidgets
 	TSharedRef<SWidget> StatBlock(const FText& Label, const TAttribute<FText>& Value, int32 ValueSize = 20);
 	/** Footer line of controller hints: "[ESC] BACK". */
 	TSharedRef<SWidget> Hint(const FText& Key, const FText& Action);
+	/** Product picture of an asset (weapon / attachment id), fitted to Height; a dark plate with a dash when there is none. */
+	TSharedRef<SWidget> Thumbnail(FName AssetId, float Height);
 }
