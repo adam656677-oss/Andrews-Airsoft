@@ -71,7 +71,7 @@ EMISSIVE = {
 # Rain-soaked ground (night maps): darker albedo, much lower roughness (mirror-like neon reflections), animated
 # rain ripples in the normal (M_Tileable static switch RainRipples). Puddles go further (MI_Puddle).
 WET_GROUND = {
-    "AsphaltWet": {"RoughnessScale": 0.24, "RoughnessAdd": 0.02, "NormalStrength": 0.8, "Tint": (0.6, 0.6, 0.64),
+    "AsphaltWet": {"RoughnessScale": 0.12, "RoughnessAdd": 0.07, "NormalStrength": 0.8, "Tint": (0.6, 0.6, 0.64),
                    "RippleStrength": 0.25},
     "ConcreteGarageWet": {"RoughnessScale": 0.55, "RoughnessAdd": 0.0, "NormalStrength": 0.9, "Tint": (0.72, 0.72, 0.75),
                           "RippleStrength": 0.15},
