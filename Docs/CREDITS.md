@@ -47,3 +47,11 @@ All are released under [CC0 1.0 Universal](https://creativecommons.org/publicdom
 | Velvet | [Velour Velvet](https://polyhaven.com/a/velour_velvet) | Poly Haven | colormass, Rico Cilliers | 0.28 m | CC0 1.0 |
 | Walnut | [Walnut Veneer](https://polyhaven.com/a/walnut_veneer) | Poly Haven | Jenelle van Heerden | 1.80 m | CC0 1.0 |
 <!-- cc0-textures:end -->
+
+## Voice
+
+The story voice-over (`Tools/Audio/Generated/Voice/VO_*.wav`) is synthesised by
+`Tools/Audio/make_voice_neural.py` with [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M)
+(hexgrad, [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0), commercial use permitted).
+The voices are Kokoro's own synthetic voices (some blended); none imitates a real person.
+Pronunciation uses [misaki](https://github.com/hexgrad/misaki) (Apache-2.0) and spaCy `en_core_web_sm` (MIT).
