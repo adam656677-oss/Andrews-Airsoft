@@ -677,6 +677,71 @@ TSharedRef<SWidget> SAirsoftHUD::BuildTopCenter()
 				const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
 				return GS ? FText::FromString(GS->StatusMessage) : FText::GetEmpty();
 			})
+		]
+		// Story campaign: the boss's name and health once they are in the fight.
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.HAlign(HAlign_Center)
+		.Padding(FMargin(0.f, 14.f, 0.f, 0.f))
+		[
+			SNew(SBox)
+			.WidthOverride(420.f)
+			.Visibility_Lambda([this]() -> EVisibility
+			{
+				const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
+				return HudVis(!IsHidden() && GS && GS->bCampaign && !GS->BossName.IsEmpty() && GS->BossHealth > 0.f);
+			})
+			[
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.HAlign(HAlign_Center)
+				[
+					SNew(STextBlock)
+					.Font(AUI::Font(AUI::EFontWeight::Bold, 12, 260))
+					.ColorAndOpacity(AUI::Danger())
+					.ShadowOffset(FVector2D(1.f, 1.f))
+					.ShadowColorAndOpacity(FLinearColor(0.f, 0.f, 0.f, 0.8f))
+					.Text_Lambda([this]()
+					{
+						const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
+						return GS ? AUI::Upper(GS->BossName) : FText::GetEmpty();
+					})
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(FMargin(0.f, 6.f, 0.f, 0.f))
+				[
+					SNew(SBox)
+					.HeightOverride(7.f)
+					[
+						SNew(SOverlay)
+						+ SOverlay::Slot()
+						[
+							SNew(SBorder)
+							.BorderImage(AUI::WhiteBrush())
+							.BorderBackgroundColor(FLinearColor(0.f, 0.f, 0.f, 0.55f))
+							.Padding(FMargin(0.f))
+						]
+						+ SOverlay::Slot()
+						.HAlign(HAlign_Left)
+						[
+							SNew(SBox)
+							.WidthOverride_Lambda([this]() -> FOptionalSize
+							{
+								const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
+								return FOptionalSize(420.f * (GS ? FMath::Clamp(GS->BossHealth, 0.f, 1.f) : 0.f));
+							})
+							[
+								SNew(SBorder)
+								.BorderImage(AUI::WhiteBrush())
+								.BorderBackgroundColor(AUI::Danger())
+								.Padding(FMargin(0.f))
+							]
+						]
+					]
+				]
+			]
 		];
 }
 

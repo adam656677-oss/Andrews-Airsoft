@@ -1,0 +1,87 @@
+{
+  "Version": 1,
+  "Title": "Last Contract",
+  "Narrator": "Microsoft David Desktop",
+  "Missions": [
+    {
+      "Title": "Closing Time",
+      "Map": "/Game/Maps/L_Staging",
+      "Intro": [
+        "Five years ago, Andrew walked away from the Ledger. The syndicate paid him to settle its debts.",
+        "He traded the work for a quiet armory on the edge of the city. Oil, brass, and silence.",
+        "Tonight, the Ledger has come to settle a debt with him."
+      ],
+      "Objective": "Survive the hit team",
+      "Enemies": 8,
+      "MaxAlive": 4,
+      "EnemyWeapons": ["MP5", "MP7", "M870", "VECTOR"],
+      "Boss": {
+        "Name": "Kade, the Collector",
+        "Weapon": "SG4",
+        "Health": 300,
+        "Taunt": "Nothing personal, Andrew. The Ledger always collects."
+      },
+      "Outro": "Every one of them carried a matchbook from the Velvet Club."
+    },
+    {
+      "Title": "Velvet",
+      "Map": "/Game/Maps/L_VelvetClub",
+      "Intro": [
+        "The Velvet Club belongs to Silas Varga, the Ledger's newest underboss.",
+        "He put the price on Andrew's head, and he thinks the music is loud enough to hide behind.",
+        "Andrew goes in through the front door."
+      ],
+      "Objective": "Clear the club",
+      "Enemies": 14,
+      "MaxAlive": 6,
+      "EnemyWeapons": ["MP5", "VECTOR", "P90", "M870", "SG4"],
+      "Boss": {
+        "Name": "Dorian Sloane",
+        "Weapon": "VECTOR",
+        "Health": 350,
+        "Taunt": "Mister Varga sends his regards. And his best."
+      },
+      "Outro": "Varga's books name a meeting tonight. The roof of the Nightjar Garage."
+    },
+    {
+      "Title": "Nightjar",
+      "Map": "/Game/Maps/L_NightjarGarage",
+      "Intro": [
+        "Three levels of concrete stand between Andrew and the roof.",
+        "Varga's lieutenants are moving the money tonight, and every floor is watched.",
+        "Somewhere above, Mara Voss is counting the seconds."
+      ],
+      "Objective": "Fight through the garage",
+      "Enemies": 16,
+      "MaxAlive": 6,
+      "EnemyWeapons": ["M4", "TR1", "AK74", "MP7", "SG4"],
+      "Boss": {
+        "Name": "Mara Voss",
+        "Weapon": "TR1",
+        "Health": 420,
+        "Taunt": "You should have stayed retired, Andrew."
+      },
+      "Outro": "The money is gone, and so is Varga. The trail ends at Ironwood Yard."
+    },
+    {
+      "Title": "Ironwood",
+      "Map": "/Game/Maps/L_IronwoodYard",
+      "Intro": [
+        "Ironwood Yard is the Ledger's freight depot, and Silas Varga's last fortress.",
+        "He is waiting there with everyone he has left.",
+        "So is Andrew."
+      ],
+      "Objective": "Break Varga's crew",
+      "Enemies": 20,
+      "MaxAlive": 7,
+      "EnemyWeapons": ["M4", "TR1", "AK74", "SR25", "M249"],
+      "Boss": {
+        "Name": "Silas Varga",
+        "Weapon": "M249",
+        "Health": 600,
+        "Taunt": "Five years, Andrew. Five years, and you came back for this?"
+      },
+      "Outro": "The Ledger's debt is paid in full. Andrew goes home. For now."
+    }
+  ]
+}

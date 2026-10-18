@@ -3,6 +3,7 @@
 #include "AirsoftArmoryDisplay.h"
 #include "AirsoftAssets.h"
 #include "AirsoftBallistics.h"
+#include "AirsoftCampaign.h"
 #include "AirsoftCharacter.h"
 #include "AirsoftCombatComponent.h"
 #include "AirsoftEffects.h"
@@ -436,6 +437,16 @@ void AAirsoftPlayerController::OnLookStick(const FInputActionValue& Value)
 
 void AAirsoftPlayerController::OnJump()
 {
+	// Story cinematic: Space skips it.
+	if (AAirsoftCampaignGameMode* Campaign = GetWorld()->GetAuthGameMode<AAirsoftCampaignGameMode>())
+	{
+		const AAirsoftGameState* CampaignGS = GetWorld()->GetGameState<AAirsoftGameState>();
+		if (CampaignGS && CampaignGS->bCinematic)
+		{
+			Campaign->SkipCinematic();
+			return;
+		}
+	}
 	if (IsTeamCamActive())
 	{
 		CycleTeamCam();

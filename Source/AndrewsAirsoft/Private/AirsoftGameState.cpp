@@ -39,6 +39,9 @@ void AAirsoftGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	DOREPLIFETIME(AAirsoftGameState, MissionTitle);
 	DOREPLIFETIME(AAirsoftGameState, Objective);
 	DOREPLIFETIME(AAirsoftGameState, EnemiesLeft);
+	DOREPLIFETIME(AAirsoftGameState, bCinematic);
+	DOREPLIFETIME(AAirsoftGameState, BossName);
+	DOREPLIFETIME(AAirsoftGameState, BossHealth);
 }
 
 bool AAirsoftGameState::IsCampaign(const UObject* WorldContext)

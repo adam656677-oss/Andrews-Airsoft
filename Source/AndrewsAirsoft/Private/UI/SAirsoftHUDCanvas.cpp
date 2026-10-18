@@ -47,6 +47,12 @@ namespace AirsoftHUDShared
 		{
 			return true;
 		}
+		// Story cinematics: letterbox and subtitles only.
+		const AAirsoftGameState* GS = PC->GetWorld() ? PC->GetWorld()->GetGameState<AAirsoftGameState>() : nullptr;
+		if (GS && GS->bCinematic)
+		{
+			return true;
+		}
 		return PC->IsMenuOpen() || PC->IsSummaryVisible() || PC->GetReplayTime() >= 0.f;
 	}
 }
@@ -114,6 +120,18 @@ int32 SAirsoftHUDCanvas::OnPaint(const FPaintArgs& Args, const FGeometry& Allott
 		PaintXPPopups(PC, OutDrawElements, LayerId, AllottedGeometry, Size);
 	}
 	PaintReplay(PC, OutDrawElements, LayerId, AllottedGeometry, Size);
+	// Story cinematic letterbox.
+	{
+		const AAirsoftGameState* GS = PC->GetWorld() ? PC->GetWorld()->GetGameState<AAirsoftGameState>() : nullptr;
+		if (GS && GS->bCinematic)
+		{
+			const float BarH = Size.Y * 0.12f;
+			AUI::PaintRect(OutDrawElements, LayerId, AllottedGeometry, FVector2f(0.f, 0.f), FVector2f(Size.X, BarH), FLinearColor::Black);
+			AUI::PaintRect(OutDrawElements, LayerId, AllottedGeometry, FVector2f(0.f, Size.Y - BarH), FVector2f(Size.X, BarH), FLinearColor::Black);
+			FSlateFontInfo Hint = AUI::Caption(9);
+			AUI::PaintText(OutDrawElements, LayerId + 2, AllottedGeometry, TEXT("SPACE  SKIP"), Hint, FVector2f(Size.X - 140.f, Size.Y - BarH * 0.5f - 7.f), AUI::WithAlpha(AUI::TextDim(), 0.8f), false);
+		}
+	}
 
 	// Layers used: +0 shapes, +1 lines, +2 text.
 	return LayerId + 2;

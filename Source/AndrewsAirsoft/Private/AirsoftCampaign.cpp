@@ -1,5 +1,6 @@
 #include "AirsoftCampaign.h"
 
+#include "AirsoftAssets.h"
 #include "AirsoftBotController.h"
 #include "AirsoftCharacter.h"
 #include "AirsoftCombatComponent.h"
@@ -12,23 +13,70 @@
 #include "AirsoftSettings.h"
 #include "AirsoftTeamStart.h"
 #include "AirsoftWeaponData.h"
+#include "Camera/CameraActor.h"
+#include "Camera/CameraComponent.h"
+#include "Dom/JsonObject.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "GameFramework/PlayerStart.h"
 #include "HAL/IConsoleManager.h"
 #include "Kismet/GameplayStatics.h"
 #include "Misc/PackageName.h"
+#include "Sound/SoundBase.h"
 #include "TimerManager.h"
 
 // ---------------------------------------------------------------------------
-// The story
+// The story (Content/Airsoft/Data/Campaign.json)
 // ---------------------------------------------------------------------------
 
 namespace AirsoftCampaign
 {
+	namespace
+	{
+		FString GetString(const TSharedPtr<FJsonObject>& Obj, const TCHAR* Field)
+		{
+			FString Out;
+			if (Obj.IsValid())
+			{
+				Obj->TryGetStringField(Field, Out);
+			}
+			return Out;
+		}
+
+		TArray<FString> GetStrings(const TSharedPtr<FJsonObject>& Obj, const TCHAR* Field)
+		{
+			TArray<FString> Out;
+			const TArray<TSharedPtr<FJsonValue>>* Values = nullptr;
+			if (Obj.IsValid() && Obj->TryGetArrayField(Field, Values))
+			{
+				for (const TSharedPtr<FJsonValue>& V : *Values)
+				{
+					FString S;
+					if (V.IsValid() && V->TryGetString(S))
+					{
+						Out.Add(S);
+					}
+				}
+			}
+			return Out;
+		}
+
+		int32 GetInt(const TSharedPtr<FJsonObject>& Obj, const TCHAR* Field, int32 Default)
+		{
+			int32 Out = Default;
+			if (Obj.IsValid())
+			{
+				Obj->TryGetNumberField(Field, Out);
+			}
+			return Out;
+		}
+	}
+
 	FString GameTitle()
 	{
-		return TEXT("Last Contract");
+		const TSharedPtr<FJsonObject> Root = AirsoftAssets::LoadData(TEXT("Campaign.json"));
+		const FString Title = GetString(Root, TEXT("Title"));
+		return Title.IsEmpty() ? FString(TEXT("Last Contract")) : Title;
 	}
 
 	const TArray<FMission>& Missions()
@@ -36,65 +84,47 @@ namespace AirsoftCampaign
 		static const TArray<FMission> List = []()
 		{
 			TArray<FMission> Out;
+			const TSharedPtr<FJsonObject> Root = AirsoftAssets::LoadData(TEXT("Campaign.json"));
+			const TArray<TSharedPtr<FJsonValue>>* Entries = nullptr;
+			if (!Root.IsValid() || !Root->TryGetArrayField(TEXT("Missions"), Entries))
 			{
-				FMission M;
-				M.Title = TEXT("Closing Time");
-				M.MapPath = TEXT("/Game/Maps/L_Staging");
-				M.Intro = {
-					TEXT("Five years ago Andrew walked away from the Ledger, the syndicate that paid him to settle its debts."),
-					TEXT("Now he runs a quiet armory on the edge of the city. Tonight the Ledger has come to settle one with him."),
-				};
-				M.Objective = TEXT("Survive the hit team");
-				M.Enemies = 8;
-				M.MaxAlive = 4;
-				M.EnemyWeapons = { TEXT("MP5"), TEXT("MP7"), TEXT("M870"), TEXT("VECTOR") };
-				M.Outro = TEXT("Every one of them carried a matchbook from the Velvet Club.");
-				Out.Add(M);
+				UE_LOG(LogTemp, Error, TEXT("Campaign: Content/Airsoft/Data/Campaign.json is missing or has no Missions"));
+				return Out;
 			}
+			for (const TSharedPtr<FJsonValue>& Entry : *Entries)
 			{
-				FMission M;
-				M.Title = TEXT("Velvet");
-				M.MapPath = TEXT("/Game/Maps/L_VelvetClub");
-				M.Intro = {
-					TEXT("The Velvet Club belongs to Silas Varga, the Ledger's new underboss."),
-					TEXT("He put the price on Andrew's head. Andrew goes in through the front door."),
-				};
-				M.Objective = TEXT("Clear the club");
-				M.Enemies = 14;
-				M.MaxAlive = 6;
-				M.EnemyWeapons = { TEXT("MP5"), TEXT("VECTOR"), TEXT("P90"), TEXT("M870"), TEXT("SG4") };
-				M.Outro = TEXT("Varga's books name a meeting tonight: the roof of the Nightjar Garage.");
-				Out.Add(M);
-			}
-			{
-				FMission M;
-				M.Title = TEXT("Nightjar");
-				M.MapPath = TEXT("/Game/Maps/L_NightjarGarage");
-				M.Intro = {
-					TEXT("Three levels of concrete between Andrew and the roof."),
-					TEXT("Varga's lieutenants are moving the money tonight. Every floor is watched."),
-				};
-				M.Objective = TEXT("Fight through the garage");
-				M.Enemies = 16;
-				M.MaxAlive = 6;
-				M.EnemyWeapons = { TEXT("M4"), TEXT("TR1"), TEXT("AK74"), TEXT("MP7"), TEXT("SG4") };
-				M.Outro = TEXT("The money is gone, and so is Varga. The trail ends at Ironwood Yard.");
-				Out.Add(M);
-			}
-			{
-				FMission M;
-				M.Title = TEXT("Ironwood");
-				M.MapPath = TEXT("/Game/Maps/L_IronwoodYard");
-				M.Intro = {
-					TEXT("Ironwood Yard is the Ledger's freight depot, and Varga's last fortress."),
-					TEXT("He is waiting with everyone he has left. So is Andrew."),
-				};
-				M.Objective = TEXT("Break Varga's crew");
-				M.Enemies = 20;
-				M.MaxAlive = 7;
-				M.EnemyWeapons = { TEXT("M4"), TEXT("TR1"), TEXT("AK74"), TEXT("SR25"), TEXT("M249") };
-				M.Outro = TEXT("The Ledger's debt is paid in full. Andrew goes home. For now.");
-				Out.Add(M);
+				const TSharedPtr<FJsonObject> M = Entry.IsValid() ? Entry->AsObject() : nullptr;
+				if (!M.IsValid())
+				{
+					continue;
+				}
+				FMission Mission;
+				Mission.Title = GetString(M, TEXT("Title"));
+				Mission.MapPath = GetString(M, TEXT("Map"));
+				Mission.Intro = GetStrings(M, TEXT("Intro"));
+				Mission.Objective = GetString(M, TEXT("Objective"));
+				Mission.Enemies = FMath::Max(1, GetInt(M, TEXT("Enemies"), 8));
+				Mission.MaxAlive = FMath::Max(1, GetInt(M, TEXT("MaxAlive"), 5));
+				for (const FString& W : GetStrings(M, TEXT("EnemyWeapons")))
+				{
+					if (AirsoftWeapons::Find(FName(*W)))
+					{
+						Mission.EnemyWeapons.Add(FName(*W));
+					}
+				}
+				const TSharedPtr<FJsonObject>* BossObj = nullptr;
+				if (M->TryGetObjectField(TEXT("Boss"), BossObj) && BossObj)
+				{
+					Mission.Boss.Name = GetString(*BossObj, TEXT("Name"));
+					Mission.Boss.Weapon = FName(*GetString(*BossObj, TEXT("Weapon")));
+					Mission.Boss.Health = static_cast<float>(FMath::Max(100, GetInt(*BossObj, TEXT("Health"), 300)));
+					Mission.Boss.Taunt = GetString(*BossObj, TEXT("Taunt"));
+				}
+				Mission.Outro = GetString(M, TEXT("Outro"));
+				if (!Mission.MapPath.IsEmpty())
+				{
+					Out.Add(MoveTemp(Mission));
+				}
 			}
 			return Out;
 		}();
@@ -142,6 +172,11 @@ namespace AirsoftCampaign
 	{
 		return FString::Printf(TEXT("game=/Script/AndrewsAirsoft.AirsoftCampaignGameMode?Mission=%d"), Number);
 	}
+
+	FName VoiceKey(int32 Number, const FString& Line)
+	{
+		return FName(*FString::Printf(TEXT("VO_M%d_%s"), Number, *Line));
+	}
 }
 
 namespace AirsoftCampaignLocal
@@ -156,7 +191,13 @@ namespace AirsoftCampaignLocal
 	}
 
 	const FLinearColor StoryColor(0.9f, 0.88f, 0.85f);
-	const FLinearColor DangerColor(1.f, 0.16f, 0.1f);
+	const FLinearColor BossColor(1.f, 0.16f, 0.1f);
+
+	float Ease(float T)
+	{
+		const float X = FMath::Clamp(T, 0.f, 1.f);
+		return X * X * (3.f - 2.f * X);
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -216,8 +257,9 @@ void AAirsoftCampaignGameMode::StartPlay()
 	GS->PhaseEndsAt = 0.f;
 	UpdateObjectiveText();
 
-	// Story cards first; the first wave arrives as the objective comes up (PlayIntroCard).
-	PlayIntroCard(0);
+	// The player pawn is spawned during login; give it a frame before taking over the camera.
+	FTimerHandle Begin;
+	GetWorldTimerManager().SetTimer(Begin, FTimerDelegate::CreateWeakLambda(this, [this]() { BeginCinematic(); }), 0.1f, false);
 
 #if !UE_BUILD_SHIPPING
 	// Testing aid: ?DebugAutoWin=N kills whatever enemies are up every N seconds (plays the mission chain unattended).
@@ -230,78 +272,184 @@ void AAirsoftCampaignGameMode::StartPlay()
 #endif
 }
 
-void AAirsoftCampaignGameMode::PlayIntroCard(int32 Index)
-{
-	const AirsoftCampaign::FMission* Mission = AirsoftCampaign::FindMission(MissionNumber);
-	if (!Mission || bMissionOver)
-	{
-		return;
-	}
-	const FString Title = FString::Printf(TEXT("MISSION %d · %s"), MissionNumber, *Mission->Title.ToUpper());
-	if (Mission->Intro.IsValidIndex(Index))
-	{
-		AnnounceAll(Title, Mission->Intro[Index], AirsoftCampaignLocal::StoryColor, 6.f);
-		GetWorldTimerManager().SetTimer(IntroTimer, FTimerDelegate::CreateWeakLambda(this, [this, Index]() { PlayIntroCard(Index + 1); }), 6.2f, false);
-	}
-	else
-	{
-		AnnounceAll(Mission->Objective.ToUpper(), FString::Printf(TEXT("%d hostiles · they're coming"), Mission->Enemies), AirsoftColors::Accent(), 3.5f);
-		// A breath to get into cover, then the first wave.
-		FTimerHandle Start;
-		GetWorldTimerManager().SetTimer(Start, FTimerDelegate::CreateWeakLambda(this, [this]()
-		{
-			bEnemiesStarted = true;
-			TopUpEnemies();
-		}), 3.f, false);
-	}
-}
-
-void AAirsoftCampaignGameMode::DebugKillEnemies()
-{
-	APlayerController* Andrew = GetWorld()->GetFirstPlayerController();
-	const TArray<TObjectPtr<AAirsoftBotController>> Current = Enemies;
-	for (AAirsoftBotController* Bot : Current)
-	{
-		if (Bot && Bot->GetPawn() && !bMissionOver)
-		{
-			ApplyCampaignDamage(Andrew, Bot, TEXT("M4"), 10000.f, false);
-		}
-	}
-}
-
-void AAirsoftCampaignGameMode::DebugCompleteMission()
-{
-	CompleteMission();
-}
-
-namespace AirsoftCampaignLocal
-{
-	// Developer shortcuts for testing the mission flow (console: ~).
-	static FAutoConsoleCommandWithWorld GKillEnemies(TEXT("airsoft.campaign.killenemies"),
-		TEXT("Story campaign: kills every enemy that is up right now (counts as your kills)."),
-		FConsoleCommandWithWorldDelegate::CreateLambda([](UWorld* World)
-		{
-			if (AAirsoftCampaignGameMode* GM = World ? World->GetAuthGameMode<AAirsoftCampaignGameMode>() : nullptr)
-			{
-				GM->DebugKillEnemies();
-			}
-		}));
-	static FAutoConsoleCommandWithWorld GComplete(TEXT("airsoft.campaign.complete"),
-		TEXT("Story campaign: wins the current mission (unlocks the next one)."),
-		FConsoleCommandWithWorldDelegate::CreateLambda([](UWorld* World)
-		{
-			if (AAirsoftCampaignGameMode* GM = World ? World->GetAuthGameMode<AAirsoftCampaignGameMode>() : nullptr)
-			{
-				GM->DebugCompleteMission();
-			}
-		}));
-}
-
 void AAirsoftCampaignGameMode::Tick(float DeltaSeconds)
 {
 	// Not the airsoft referee's tick (no lobby, votes, rounds or bot fill).
 	AGameModeBase::Tick(DeltaSeconds);
+	if (bInCinematic)
+	{
+		UpdateCinematicCamera(DeltaSeconds);
+	}
+	if (AAirsoftGameState* GS = GetAirsoftGameState())
+	{
+		const AAirsoftCharacter* Boss = BossController ? Cast<AAirsoftCharacter>(BossController->GetPawn()) : nullptr;
+		GS->BossHealth = (Boss && !Boss->IsOut() && Boss->GetMaxHealth() > 0.f) ? Boss->GetHealth() / Boss->GetMaxHealth() : 0.f;
+	}
 }
+
+float AAirsoftCampaignGameMode::PlayVoice(const FString& Line)
+{
+	USoundBase* Sound = AirsoftAssets::Sound(AirsoftCampaign::VoiceKey(MissionNumber, Line));
+	if (!Sound)
+	{
+		return 0.f;
+	}
+	UGameplayStatics::PlaySound2D(this, Sound);
+	return Sound->GetDuration();
+}
+
+// ---------------------------------------------------------------------------
+// Opening cinematic: the camera drifts in over Andrew's shoulder to his eyes while the
+// narrator speaks; letterbox and subtitles, gameplay HUD hidden, no input until it ends.
+// ---------------------------------------------------------------------------
+
+void AAirsoftCampaignGameMode::BeginCinematic()
+{
+	const AirsoftCampaign::FMission* Mission = AirsoftCampaign::FindMission(MissionNumber);
+	APlayerController* PC = GetWorld()->GetFirstPlayerController();
+	APawn* Andrew = PC ? PC->GetPawn() : nullptr;
+	AAirsoftGameState* GS = GetAirsoftGameState();
+	if (!Mission || !PC || !Andrew || !GS)
+	{
+		EndCinematic();
+		return;
+	}
+
+	// Length: every narrated line, at least a few seconds each.
+	CinematicLength = 0.5f;
+	for (int32 i = 0; i < Mission->Intro.Num(); ++i)
+	{
+		const USoundBase* Sound = AirsoftAssets::Sound(AirsoftCampaign::VoiceKey(MissionNumber, FString::Printf(TEXT("I%d"), i)));
+		CinematicLength += FMath::Max(3.5f, (Sound ? Sound->GetDuration() : 4.5f) + 0.7f);
+	}
+
+	const FVector Eye = Andrew->GetPawnViewLocation();
+	const FRotator View = PC->GetControlRotation();
+	const FRotator Flat(0.f, View.Yaw, 0.f);
+	// Start behind and above his shoulder (pulled in if a wall is in the way), end at his eyes.
+	FVector Desired = Eye - Flat.Vector() * 340.f + FVector(0.f, 0.f, 130.f) + FRotationMatrix(Flat).GetUnitAxis(EAxis::Y) * 60.f;
+	FHitResult Hit;
+	FCollisionQueryParams Params(SCENE_QUERY_STAT(CampaignCinematic), false, Andrew);
+	if (GetWorld()->LineTraceSingleByChannel(Hit, Eye, Desired, ECC_Visibility, Params))
+	{
+		Desired = Hit.Location + (Eye - Hit.Location).GetSafeNormal() * 30.f;
+	}
+	CamFrom = Desired;
+	// End just behind his head (the camera sees his body; going through it shows the inside of his goggles),
+	// then cut to first person.
+	CamTo = Eye - Flat.Vector() * 95.f + FVector(0.f, 0.f, 22.f) + FRotationMatrix(Flat).GetUnitAxis(EAxis::Y) * 28.f;
+	CamRotFrom = (Eye + Flat.Vector() * 900.f - CamFrom).Rotation();
+	CamRotTo = (Eye + View.Vector() * 900.f - CamTo).Rotation();
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.ObjectFlags |= RF_Transient;
+	CinematicCamera = GetWorld()->SpawnActor<ACameraActor>(ACameraActor::StaticClass(), CamFrom, CamRotFrom, SpawnParams);
+	if (CinematicCamera)
+	{
+		CinematicCamera->GetCameraComponent()->SetConstraintAspectRatio(false);
+		CinematicCamera->GetCameraComponent()->SetFieldOfView(65.f);
+		PC->SetViewTarget(CinematicCamera);
+	}
+	PC->SetIgnoreMoveInput(true);
+	PC->SetIgnoreLookInput(true);
+	if (AAirsoftCharacter* C = Cast<AAirsoftCharacter>(Andrew))
+	{
+		C->ServerSetFrozen(true);
+	}
+	bInCinematic = true;
+	CinematicTime = 0.f;
+	GS->bCinematic = true;
+	PlayIntroLine(0);
+}
+
+void AAirsoftCampaignGameMode::PlayIntroLine(int32 Index)
+{
+	const AirsoftCampaign::FMission* Mission = AirsoftCampaign::FindMission(MissionNumber);
+	if (!Mission || !bInCinematic)
+	{
+		return;
+	}
+	if (!Mission->Intro.IsValidIndex(Index))
+	{
+		EndCinematic();
+		return;
+	}
+	const float Voice = PlayVoice(FString::Printf(TEXT("I%d"), Index));
+	const float Hold = FMath::Max(3.5f, (Voice > 0.f ? Voice : 4.5f) + 0.7f);
+	const FString Title = FString::Printf(TEXT("MISSION %d · %s"), MissionNumber, *Mission->Title.ToUpper());
+	AnnounceAll(Index == 0 ? Title : FString(), Mission->Intro[Index], AirsoftCampaignLocal::StoryColor, Hold);
+	GetWorldTimerManager().SetTimer(IntroTimer, FTimerDelegate::CreateWeakLambda(this, [this, Index]() { PlayIntroLine(Index + 1); }), Hold, false);
+}
+
+void AAirsoftCampaignGameMode::UpdateCinematicCamera(float DeltaSeconds)
+{
+	CinematicTime += DeltaSeconds;
+	if (!CinematicCamera)
+	{
+		return;
+	}
+	const float T = AirsoftCampaignLocal::Ease(CinematicTime / FMath::Max(CinematicLength, 0.1f));
+	// A slight rise in the middle so the move reads as a crane-down rather than a straight dolly.
+	const FVector Arc(0.f, 0.f, FMath::Sin(T * PI) * 40.f);
+	CinematicCamera->SetActorLocationAndRotation(FMath::Lerp(CamFrom, CamTo, T) + Arc, FMath::Lerp(CamRotFrom, CamRotTo, T));
+	CinematicCamera->GetCameraComponent()->SetFieldOfView(FMath::Lerp(65.f, 80.f, T));
+}
+
+void AAirsoftCampaignGameMode::SkipCinematic()
+{
+	if (bInCinematic)
+	{
+		GetWorldTimerManager().ClearTimer(IntroTimer);
+		EndCinematic();
+	}
+}
+
+void AAirsoftCampaignGameMode::EndCinematic()
+{
+	bInCinematic = false;
+	if (AAirsoftGameState* GS = GetAirsoftGameState())
+	{
+		GS->bCinematic = false;
+	}
+	APlayerController* PC = GetWorld()->GetFirstPlayerController();
+	if (PC)
+	{
+		PC->ResetIgnoreInputFlags();
+		if (APawn* Andrew = PC->GetPawn())
+		{
+			PC->SetViewTargetWithBlend(Andrew, 0.f); // a cut: a blend would pass through his head
+			if (AAirsoftCharacter* C = Cast<AAirsoftCharacter>(Andrew))
+			{
+				C->ServerSetFrozen(false);
+			}
+		}
+	}
+	if (CinematicCamera)
+	{
+		CinematicCamera->SetLifeSpan(1.f);
+		CinematicCamera = nullptr;
+	}
+	if (bEnemiesStarted || bMissionOver)
+	{
+		return;
+	}
+	const AirsoftCampaign::FMission* Mission = AirsoftCampaign::FindMission(MissionNumber);
+	if (Mission)
+	{
+		AnnounceAll(Mission->Objective.ToUpper(), FString::Printf(TEXT("%d hostiles · they're coming"), Mission->Enemies), AirsoftColors::Accent(), 3.5f);
+	}
+	// A breath to get into cover, then the first wave.
+	FTimerHandle Start;
+	GetWorldTimerManager().SetTimer(Start, FTimerDelegate::CreateWeakLambda(this, [this]()
+	{
+		bEnemiesStarted = true;
+		TopUpEnemies();
+	}), 3.f, false);
+}
+
+// ---------------------------------------------------------------------------
+// Spawning
+// ---------------------------------------------------------------------------
 
 void AAirsoftCampaignGameMode::HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer)
 {
@@ -393,8 +541,9 @@ void AAirsoftCampaignGameMode::SetPlayerDefaults(APawn* PlayerPawn)
 	{
 		return;
 	}
+	C->MaxHealth = 100.f;
 	C->Health = C->MaxHealth;
-	C->ServerSetFrozen(false);
+	C->ServerSetFrozen(bInCinematic);
 	if (AAirsoftPlayerState* PS = C->GetAirsoftPlayerState())
 	{
 		PS->ProtectedUntil = 0.f; // no airsoft spawn protection in the story
@@ -407,21 +556,22 @@ EAirsoftBotSkill AAirsoftCampaignGameMode::Difficulty() const
 	return AirsoftBots::SkillFromIndex(GI ? GI->GetUserSettings().BotSkill : 1);
 }
 
-FAirsoftLoadout AAirsoftCampaignGameMode::MakeEnemyLoadout() const
+FAirsoftLoadout AAirsoftCampaignGameMode::MakeEnemyLoadout(FName WeaponId) const
 {
 	const AirsoftCampaign::FMission* Mission = AirsoftCampaign::FindMission(MissionNumber);
 	FAirsoftLoadout L = MakeBotLoadout();
-	if (Mission && Mission->EnemyWeapons.Num() > 0)
+	if (WeaponId.IsNone() && Mission && Mission->EnemyWeapons.Num() > 0)
+	{
+		WeaponId = Mission->EnemyWeapons[FMath::RandRange(0, Mission->EnemyWeapons.Num() - 1)];
+	}
+	if (const FAirsoftWeaponDef* W = AirsoftWeapons::Find(WeaponId))
 	{
 		FAirsoftCustomization Primary;
-		Primary.WeaponId = Mission->EnemyWeapons[FMath::RandRange(0, Mission->EnemyWeapons.Num() - 1)];
-		if (const FAirsoftWeaponDef* W = AirsoftWeapons::Find(Primary.WeaponId))
+		Primary.WeaponId = WeaponId;
+		// Iron sights or a red dot: enemies don't need magnified glass.
+		if (const TArray<FName>* Optics = W->Options.Find(AirsoftWeapons::SlotOptic))
 		{
-			// Iron sights or a red dot: enemies don't need magnified glass.
-			if (const TArray<FName>* Optics = W->Options.Find(AirsoftWeapons::SlotOptic))
-			{
-				Primary.Optic = Optics->Contains(TEXT("RedDot")) && FMath::RandBool() ? FName(TEXT("RedDot")) : AirsoftWeapons::AttachOff;
-			}
+			Primary.Optic = Optics->Contains(TEXT("RedDot")) && FMath::RandBool() ? FName(TEXT("RedDot")) : AirsoftWeapons::AttachOff;
 		}
 		L.Primary = AirsoftWeapons::Clean(Primary);
 	}
@@ -450,7 +600,6 @@ AAirsoftBotController* AAirsoftCampaignGameMode::SpawnEnemy()
 	PS->bLoadoutReceived = true;
 	PS->CareerXP = 0;
 	Bot->SetSkill(Difficulty());
-	Enemies.Add(Bot);
 	return Bot;
 }
 
@@ -482,6 +631,10 @@ void AAirsoftCampaignGameMode::TopUpEnemies()
 		if (!Bot)
 		{
 			Bot = SpawnEnemy();
+			if (Bot)
+			{
+				Enemies.Add(Bot);
+			}
 		}
 		if (!Bot)
 		{
@@ -499,6 +652,41 @@ void AAirsoftCampaignGameMode::TopUpEnemies()
 	UpdateObjectiveText();
 }
 
+void AAirsoftCampaignGameMode::SpawnBoss()
+{
+	const AirsoftCampaign::FMission* Mission = AirsoftCampaign::FindMission(MissionNumber);
+	AAirsoftGameState* GS = GetAirsoftGameState();
+	if (!Mission || !GS || bMissionOver || BossController)
+	{
+		return;
+	}
+	BossController = SpawnEnemy();
+	AAirsoftPlayerState* PS = BossController ? BossController->GetPlayerState<AAirsoftPlayerState>() : nullptr;
+	if (!PS)
+	{
+		CompleteMission();
+		return;
+	}
+	PS->SetPlayerName(Mission->Boss.Name);
+	PS->Loadout = MakeEnemyLoadout(Mission->Boss.Weapon);
+	// The boss is a notch sharper than the crew.
+	BossController->SetSkill(static_cast<EAirsoftBotSkill>(FMath::Min(static_cast<int32>(Difficulty()) + 1, static_cast<int32>(EAirsoftBotSkill::Expert))));
+	Enemies.Add(BossController);
+	RestartPlayer(BossController);
+	if (AAirsoftCharacter* Boss = Cast<AAirsoftCharacter>(BossController->GetPawn()))
+	{
+		Boss->MaxHealth = Mission->Boss.Health;
+		Boss->Health = Boss->MaxHealth;
+		Boss->RegenDelay = 6.f;
+		Boss->RegenRate = 8.f; // bosses patch up slowly: keep the pressure on
+	}
+	GS->BossName = Mission->Boss.Name;
+	GS->BossHealth = 1.f;
+	const float Voice = PlayVoice(TEXT("Boss"));
+	AnnounceAll(Mission->Boss.Name.ToUpper(), FString::Printf(TEXT("“%s”"), *Mission->Boss.Taunt), AirsoftCampaignLocal::BossColor, FMath::Max(4.f, Voice + 1.f));
+	UpdateObjectiveText();
+}
+
 void AAirsoftCampaignGameMode::UpdateObjectiveText()
 {
 	AAirsoftGameState* GS = GetAirsoftGameState();
@@ -509,7 +697,18 @@ void AAirsoftCampaignGameMode::UpdateObjectiveText()
 	}
 	GS->EnemiesLeft = FMath::Max(0, Mission->Enemies - EnemiesKilled);
 	GS->RedAlive = GS->EnemiesLeft;
-	GS->StatusMessage = bMissionOver ? FString() : FString::Printf(TEXT("%s · %d hostiles left"), *Mission->Objective, GS->EnemiesLeft);
+	if (bMissionOver)
+	{
+		GS->StatusMessage.Reset();
+	}
+	else if (BossController)
+	{
+		GS->StatusMessage = FString::Printf(TEXT("Take down %s"), *Mission->Boss.Name);
+	}
+	else
+	{
+		GS->StatusMessage = FString::Printf(TEXT("%s · %d hostiles left"), *Mission->Objective, GS->EnemiesLeft);
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -532,7 +731,7 @@ bool AAirsoftCampaignGameMode::HandleHit(AController* Shooter, AController* Vict
 
 bool AAirsoftCampaignGameMode::ApplyCampaignDamage(AController* Shooter, AController* Victim, FName WeaponId, float Damage, bool bHeadshot)
 {
-	if (bMissionOver || !Victim || Shooter == Victim)
+	if (bMissionOver || bInCinematic || !Victim || Shooter == Victim)
 	{
 		return false;
 	}
@@ -571,14 +770,18 @@ bool AAirsoftCampaignGameMode::ApplyCampaignDamage(AController* Shooter, AContro
 
 void AAirsoftCampaignGameMode::OnEnemyKilled(AController* Shooter, AController* Victim, FName WeaponId, bool bHeadshot)
 {
-	++EnemiesKilled;
+	const bool bBoss = Victim == BossController;
+	if (!bBoss)
+	{
+		++EnemiesKilled;
+	}
 	AAirsoftPlayerState* ShooterPS = Shooter ? Shooter->GetPlayerState<AAirsoftPlayerState>() : nullptr;
 	const AAirsoftPlayerState* VictimPS = Victim->GetPlayerState<AAirsoftPlayerState>();
 	if (ShooterPS)
 	{
 		ShooterPS->Round.Tags++;
 		ShooterPS->Round.Streak++;
-		GiveXP(Shooter, 100, TEXT("ELIMINATED"));
+		GiveXP(Shooter, bBoss ? 500 : 100, bBoss ? TEXT("BOSS DOWN") : TEXT("ELIMINATED"));
 		if (bHeadshot)
 		{
 			GiveXP(Shooter, 50, TEXT("HEADSHOT"));
@@ -602,7 +805,7 @@ void AAirsoftCampaignGameMode::OnEnemyKilled(AController* Shooter, AController* 
 				VictimPS ? VictimPS->GetPlayerName() : FString(TEXT("Hostile")), EAirsoftTeam::Red, WeaponId);
 		}
 	}
-	// The body stays where it fell (for a while); the controller is free to come back as reinforcements.
+	// The body stays where it fell (for a while); a crew controller is free to come back as reinforcements.
 	if (APawn* Body = Victim->GetPawn())
 	{
 		Victim->UnPossess();
@@ -610,10 +813,28 @@ void AAirsoftCampaignGameMode::OnEnemyKilled(AController* Shooter, AController* 
 	}
 	UpdateObjectiveText();
 
+	if (bBoss)
+	{
+		if (AAirsoftGameState* GS = GetAirsoftGameState())
+		{
+			GS->BossHealth = 0.f;
+		}
+		CompleteMission();
+		return;
+	}
 	const AirsoftCampaign::FMission* Mission = AirsoftCampaign::FindMission(MissionNumber);
 	if (Mission && EnemiesKilled >= Mission->Enemies)
 	{
-		CompleteMission();
+		if (Mission->Boss.Name.IsEmpty())
+		{
+			CompleteMission();
+		}
+		else
+		{
+			// The crew is down: a beat of quiet, then the boss.
+			FTimerHandle BossTimer;
+			GetWorldTimerManager().SetTimer(BossTimer, FTimerDelegate::CreateWeakLambda(this, [this]() { SpawnBoss(); }), 3.f, false);
+		}
 		return;
 	}
 	// Reinforcements after a short pause, so there's a breath between waves.
@@ -635,7 +856,8 @@ void AAirsoftCampaignGameMode::OnPlayerKilled(AController* Victim, const FString
 	// The HUD's "DOWN · Killed by ..." overlay says it; no second banner on top.
 	UpdateObjectiveText();
 	const int32 Number = MissionNumber;
-	const FString Map = AirsoftCampaign::FindMission(Number) ? AirsoftCampaign::FindMission(Number)->MapPath : FString();
+	const AirsoftCampaign::FMission* Mission = AirsoftCampaign::FindMission(Number);
+	const FString Map = Mission ? Mission->MapPath : FString();
 	GetWorldTimerManager().SetTimer(EndTimer, FTimerDelegate::CreateWeakLambda(this, [this, Number, Map]()
 	{
 		UGameplayStatics::OpenLevel(this, FName(*Map), true, AirsoftCampaign::MissionOptions(Number));
@@ -661,7 +883,9 @@ void AAirsoftCampaignGameMode::CompleteMission()
 		}
 		GI->SaveProfile();
 	}
-	AnnounceAll(bLast ? TEXT("CONTRACT CLOSED") : TEXT("MISSION COMPLETE"), Mission ? Mission->Outro : FString(), AirsoftColors::Accent(), 7.f);
+	const float Voice = PlayVoice(TEXT("Outro"));
+	const float Hold = FMath::Max(7.f, Voice + 2.5f);
+	AnnounceAll(bLast ? TEXT("CONTRACT CLOSED") : TEXT("MISSION COMPLETE"), Mission ? Mission->Outro : FString(), AirsoftColors::Accent(), Hold);
 	UpdateObjectiveText();
 	GetWorldTimerManager().SetTimer(EndTimer, FTimerDelegate::CreateWeakLambda(this, [this, Next, bLast]()
 	{
@@ -675,5 +899,50 @@ void AAirsoftCampaignGameMode::CompleteMission()
 			return;
 		}
 		GI->StartMission(Next);
-	}), 8.f, false);
+	}), Hold + 1.f, false);
+}
+
+// ---------------------------------------------------------------------------
+// Developer shortcuts
+// ---------------------------------------------------------------------------
+
+void AAirsoftCampaignGameMode::DebugKillEnemies()
+{
+	APlayerController* Andrew = GetWorld()->GetFirstPlayerController();
+	const TArray<TObjectPtr<AAirsoftBotController>> Current = Enemies;
+	for (AAirsoftBotController* Bot : Current)
+	{
+		if (Bot && Bot->GetPawn() && !bMissionOver)
+		{
+			ApplyCampaignDamage(Andrew, Bot, TEXT("M4"), 100000.f, false);
+		}
+	}
+}
+
+void AAirsoftCampaignGameMode::DebugCompleteMission()
+{
+	CompleteMission();
+}
+
+namespace AirsoftCampaignLocal
+{
+	// Developer shortcuts for testing the mission flow (console: ~).
+	static FAutoConsoleCommandWithWorld GKillEnemies(TEXT("airsoft.campaign.killenemies"),
+		TEXT("Story campaign: kills every enemy that is up right now (counts as your kills)."),
+		FConsoleCommandWithWorldDelegate::CreateLambda([](UWorld* World)
+		{
+			if (AAirsoftCampaignGameMode* GM = World ? World->GetAuthGameMode<AAirsoftCampaignGameMode>() : nullptr)
+			{
+				GM->DebugKillEnemies();
+			}
+		}));
+	static FAutoConsoleCommandWithWorld GComplete(TEXT("airsoft.campaign.complete"),
+		TEXT("Story campaign: wins the current mission (unlocks the next one)."),
+		FConsoleCommandWithWorldDelegate::CreateLambda([](UWorld* World)
+		{
+			if (AAirsoftCampaignGameMode* GM = World ? World->GetAuthGameMode<AAirsoftCampaignGameMode>() : nullptr)
+			{
+				GM->DebugCompleteMission();
+			}
+		}));
 }

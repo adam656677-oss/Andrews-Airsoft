@@ -63,6 +63,11 @@ public:
 	/** The current objective line, e.g. "Clear the club". */
 	UPROPERTY(Replicated, BlueprintReadOnly) FString Objective;
 	UPROPERTY(Replicated, BlueprintReadOnly) int32 EnemiesLeft = 0;
+	/** A story cinematic is playing: letterbox, gameplay HUD hidden, subtitles only. */
+	UPROPERTY(Replicated, BlueprintReadOnly) bool bCinematic = false;
+	/** The mission's boss once they are in the fight (empty before), and their health 0..1. */
+	UPROPERTY(Replicated, BlueprintReadOnly) FString BossName;
+	UPROPERTY(Replicated, BlueprintReadOnly) float BossHealth = 0.f;
 
 	/** True on a story mission map. */
 	static bool IsCampaign(const UObject* WorldContext);
