@@ -14,7 +14,7 @@ from . import layouts
 
 LOG_PREFIX = "[AirsoftSetup] "
 TAG = "AirsoftGen"                      # every generated level actor carries this tag (re-runs delete them)
-IMPORT_VERSION = "3"                    # bump to force a re-import of every mesh/texture
+IMPORT_VERSION = "4"                    # bump to force a re-import of every mesh/texture
 
 GAME_ROOT = "/Game/Airsoft"
 MESH_ROOT = "/Game/Airsoft/Meshes"

@@ -133,7 +133,7 @@ namespace AirsoftBotNames
 		static const TArray<FPrimaryWeight> Weights = {
 			{ TEXT("M4"), 4, 2 }, { TEXT("AK74"), 4, 2 }, { TEXT("SR25"), 2, 1 }, { TEXT("VSR"), 1, 0 },
 			{ TEXT("M249"), 1, 1 }, { TEXT("MP5"), 2, 3 }, { TEXT("VECTOR"), 2, 3 }, { TEXT("MP7"), 2, 3 },
-			{ TEXT("P90"), 2, 3 }, { TEXT("M870"), 1, 2 }
+			{ TEXT("P90"), 2, 3 }, { TEXT("M870"), 1, 2 }, { TEXT("TR1"), 3, 2 }, { TEXT("SG4"), 1, 3 }
 		};
 		return Weights;
 	}

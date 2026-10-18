@@ -1541,6 +1541,320 @@ def build_g18(g):
     glock(g, "G18")
 
 
+# --------------------------------------------------------------------------------------
+# Competition-build pistols and long guns (detail pass: windows, comps, magwells, stippling)
+# --------------------------------------------------------------------------------------
+
+
+def stipple(g_obj, top, a, nf, L, x_face, t0, t1, f0, f1, pitch=0.03, depth=0.004, ang=40):
+    """Cross-hatched stippling cut into one side face (x_face = outer face x, sign gives the side)."""
+    sx = 1 if x_face > 0 else -1
+    cs = []
+    for i in range(-9, 10):
+        for d in (-1, 1):
+            c = box((x_face + sx * (0.006 - depth), -0.02 + i * pitch, -0.03), (0.012, 0.0065, 0.9), bev=0)
+            rotate(c, d * ang, "X", (0, -0.02 + i * pitch, -0.03))
+            cs.append(c)
+    cutter = join(cs, "stipple")
+    intersect(cutter, side(axis_rrect(top, a, nf, L, t0, t1, f0, f1, 0.03), 0.05, x=x_face, bev=0))
+    cut(g_obj, cutter)
+    return g_obj
+
+
+def hang_mag(mp, top, bot, z=0.23):
+    """Rotate magazine parts built hanging straight down to the grip angle."""
+    ang = -math.degrees(math.atan2(-(bot[0] - top[0]), -(bot[1] - top[1])))
+    for p_ in mp:
+        rotate(p_, ang, "X", (0, 0, z))
+        move(p_, (0, top[0], 0))
+
+
+@register("G34", "Secondary")
+def build_g34(g):
+    """Long-slide competition Glock: top lightening windows over the barrel, front and rear
+    serrations, optic plate, integral compensator, flared magwell, stippled frame."""
+    g.mats.update(Body="polymer", Slide="gunmetal", Mag="polymer", Metal="gunmetal")
+    W = 0.16
+    y0, y1, z0, z1 = -0.1, 1.36, 0.29, 0.49
+    sec = [(-W / 2, z0), (W / 2, z0), (W / 2, z1 - 0.06), (W / 2 - 0.045, z1), (-W / 2 + 0.045, z1), (-W / 2, z1 - 0.06)]
+    sl = section(sec, y0, y1, bev=0.01, seg=2)
+    cs = serrations(y0 + 0.04, y0 + 0.24, 9, z0 + 0.02, z1 - 0.03, W, depth=0.012, groove=0.012, slant=-12)
+    cs += serrations(y1 - 0.32, y1 - 0.1, 8, z0 + 0.07, z1 - 0.03, W, depth=0.01, groove=0.011, slant=12)
+    for yy in (0.74, 0.93, 1.12):  # lightening windows down to the barrel
+        cs.append(stadium_cutter((0, yy, z1), 0.14, 0.056, 0.15, normal="z"))
+    cs.append(box((0.045, 0.47, z1), (0.12, 0.3, 0.09), bev=0.006))  # ejection port
+    cs.append(box((0, 0.14, z1 + 0.004), (0.11, 0.26, 0.03), bev=0))  # optic cut
+    cs.append(cyl_y(y1 - 0.02, y1 + 0.02, 0.035, z=PB, seg=16))
+    cut(sl, cs)
+    g.add("Slide", sl)
+    plate = box((0, 0.14, z1 - 0.004), (0.1, 0.24, 0.014), bev=0.003)
+    g.add("Slide", plate)
+    for yy in (0.06, 0.22):
+        g.add("Slide", socket_screw((0, yy, z1 + 0.003), "z", 1, 0.011, 0.004))
+    rs = box((0, y0 + 0.05, z1 + 0.025), (0.11, 0.05, 0.05), bev=0.008)
+    cut(rs, box((0, y0 + 0.05, z1 + 0.05), (0.022, 0.1, 0.04), bev=0))
+    g.add("Slide", rs)
+    g.add("Slide", box((0, y1 - 0.07, z1 + 0.02), (0.03, 0.06, 0.045), bev=0.006))
+    g.tape(cyl_y(y1 - 0.1, y1 - 0.04, 0.009, z=z1 + 0.036, seg=10))  # fibre-optic front insert
+    # barrel (visible through the windows) and hood
+    g.metal(cyl_y(0.3, y1 - 0.01, 0.042, z=PB, seg=24))
+    g.metal(box((0, 0.47, z1 - 0.04), (0.09, 0.3, 0.06), bev=0.006))
+    # integral compensator: slide-profile block with top ports and side cuts
+    cy0, cy1 = y1 + 0.006, y1 + 0.25
+    csec = [(-W / 2 + 0.004, z0 + 0.03), (W / 2 - 0.004, z0 + 0.03), (W / 2 - 0.004, z1 - 0.065), (W / 2 - 0.05, z1 - 0.004), (-W / 2 + 0.05, z1 - 0.004), (-W / 2 + 0.004, z1 - 0.065)]
+    comp = section(csec, cy0, cy1, bev=0.01, seg=2)
+    ccs = [cyl_y(cy0 - 0.01, cy1 + 0.01, 0.03, z=PB, seg=16)]
+    for k in range(3):
+        ccs.append(stadium_cutter((0, cy0 + 0.05 + k * 0.07, z1), 0.035, 0.06, 0.2, normal="z"))
+    for sx in (-1, 1):
+        ccs.append(box((sx * W / 2, cy0 + 0.18, PB + 0.05), (0.035, 0.06, 0.05), bev=0))
+    cut(comp, ccs)
+    g.metal(comp)
+    for sx in (-1, 1):
+        g.metal(socket_screw((sx * (W / 2 - 0.004), cy0 + 0.035, z0 + 0.08), "x", sx, 0.012, 0.004))
+    # frame (same as the full-size frame), trigger guard, stippled grip
+    fr = side([(y0 + 0.02, z0 + 0.01), (1.18, z0 + 0.01), (1.18, 0.25), (1.14, 0.21), (0.62, 0.21), (0.24, 0.2), (0.0, 0.22), (y0 + 0.02, 0.25)], W - 0.006, bev=0.01)
+    cut(fr, [box((0, 0.86 + i * 0.08, 0.205), (0.2, 0.028, 0.02), bev=0) for i in range(3)])
+    cut(fr, [box((sx * W / 2, 0.92, 0.235), (0.02, 0.4, 0.015), bev=0) for sx in (-1, 1)])
+    g.body(fr)
+    g.body(bar([(0.23, 0.22), (0.25, 0.09), (0.32, 0.055), (0.58, 0.055), (0.64, 0.11), (0.64, 0.21)], 0.035, 0.1, bev=0.008))
+    top, bot = (0.07, 0.24), (-0.08, -0.31)
+    pts, nf, a, L = grip_profile(top, bot, 0.3, 0.27, nub=0.0, n=24, beaver=0.075, swell=0.008)
+    gw = 0.17
+    grip = side(pts, gw, bev=0.03, seg=2)
+    for sx in (-1, 1):
+        stipple(grip, top, a, nf, L, sx * gw / 2, 0.1, 0.82, -0.11, 0.11)
+    g.body(grip)
+    # magwell funnel
+    mw = side(axis_band(pts, top, a, L, 0.84, 1.0), gw + 0.05, bev=0.012, seg=2)
+    g.metal(mw)
+    # flat-faced trigger, extended slide stop and mag release
+    g.metal(trigger(0.36, 0.22, h=0.1, w=0.04, curl=0.006))
+    g.metal(box((0, 0.365, 0.17), (0.012, 0.02, 0.05), bev=0.003))
+    g.metal(box((-W / 2 - 0.006, 0.36, z0 - 0.02), (0.014, 0.2, 0.03), bev=0.004))
+    g.metal(box((-W / 2 + 0.006, 0.22, 0.17), (0.03, 0.06, 0.05), bev=0.008))
+    for yy, zz in ((0.0, 0.265), (0.33, 0.25), (0.55, 0.265)):
+        for sx in (-1, 1):
+            g.metal(pin_head((sx * (W / 2 - 0.003), yy, zz), "x", sx, 0.012, 0.004))
+    mp = straight_mag(g, (0, 0.23), 0.6, 0.22, 0.12, base=0.08, bev=0.008)
+    hang_mag(mp, top, bot)
+    g.points.update(
+        Muzzle=(0, cy1 + 0.005, PB),
+        Aim=(0, y0 + 0.05 - 0.55, z1 + 0.045),
+        LeftHand=(-0.07, -0.02, -0.04),
+        Underbarrel=(0, 0.95, 0.21),
+        Optic=(0, 0.14, z1 + 0.003),
+        MagWell=(0, top[0], 0.23),
+    )
+
+
+@register("C1911", "Secondary")
+def build_c1911(g):
+    """Custom two-tone 1911: front and rear serrations, ambi safety, extended beavertail,
+    skeletonised hammer and trigger, checkered G10-style grips, flared magwell, fibre front."""
+    B = 0.37
+    g.mats.update(Body="anodized", Slide="steel", Wood="polymer_dark", Mag="gunmetal", Metal="steel")
+    W = 0.13
+    y0, y1, z0 = -0.12, 1.27, 0.29
+    sec = [(-W / 2, z0), (W / 2, z0), (W / 2, 0.41)] + arc(0, 0.41, W / 2, 0, 180, 8)[1:-1] + [(-W / 2, 0.41)]
+    sl = section(sec, y0, y1, bev=0.008, seg=2)
+    cs = serrations(y0 + 0.05, y0 + 0.22, 9, z0 + 0.02, 0.43, W, depth=0.01, groove=0.011, slant=-8)
+    cs += serrations(y1 - 0.3, y1 - 0.1, 7, z0 + 0.04, 0.42, W, depth=0.009, groove=0.01, slant=8)
+    cs.append(box((W / 2, 0.5, 0.39), (0.06, 0.26, 0.09), bev=0.006))
+    cs.append(cyl_y(y1 - 0.03, y1 + 0.02, 0.05, z=B, seg=18))
+    for i in range(12):  # serrated sight rib
+        cs.append(box((0, 0.1 + i * 0.07, 0.475), (0.03, 0.012, 0.03), bev=0))
+    cut(sl, cs)
+    g.add("Slide", sl)
+    rs = box((0, y0 + 0.06, 0.48), (0.09, 0.06, 0.04), bev=0.006)
+    cut(rs, box((0, y0 + 0.06, 0.5), (0.02, 0.1, 0.03), bev=0))
+    g.add("Slide", rs)
+    g.add("Slide", box((0, y1 - 0.08, 0.485), (0.02, 0.06, 0.03), bev=0.005))
+    g.tape(cyl_y(y1 - 0.1, y1 - 0.06, 0.007, z=0.495, seg=10))
+    g.metal(box((W / 2 - 0.03, 0.5, 0.39), (0.02, 0.24, 0.07), bev=0.004))
+    g.metal(tube((0, y1 - 0.025, B), (0, y1 + 0.005, B), 0.048, 0.03, seg=18))
+    g.metal(tube((0, y1 - 0.02, B), (0, y1 + 0.0, B), 0.03, 0.017, seg=14))
+    g.metal(cyl_y(y1 - 0.05, y1 - 0.0, 0.035, z=0.31, seg=14))
+    # frame with full-length dust cover and rail
+    fr = side([(y0 + 0.02, z0 + 0.005), (y1 - 0.04, z0 + 0.005), (y1 - 0.04, 0.22), (0.6, 0.21), (0.22, 0.22), (0.0, 0.24), (y0 + 0.02, 0.27)], W - 0.006, bev=0.008)
+    cut(fr, [box((0, 0.82 + i * 0.07, 0.21), (0.2, 0.026, 0.02), bev=0) for i in range(4)])
+    g.body(fr)
+    g.body(bar([(0.21, 0.23), (0.23, 0.1), (0.31, 0.075), (0.5, 0.075), (0.57, 0.12), (0.58, 0.22)], 0.028, 0.08, bev=0.008))
+    top, bot = (0.05, 0.25), (-0.06, -0.31)
+    pts, nf, a, L = grip_profile(top, bot, 0.27, 0.26, swell=0.0)
+    g.body(side(pts, W - 0.006, bev=0.014))
+    for sx in (-1, 1):
+        xp = sx * (W / 2 + 0.006)
+        pn = side(axis_rrect(top, a, nf, L, 0.14, 0.86, -0.1, 0.105, 0.04), 0.024, x=xp, bev=0.01, seg=2)
+        stipple(pn, top, a, nf, L, sx * (W / 2 + 0.018), 0.2, 0.8, -0.08, 0.085, pitch=0.032, depth=0.005, ang=35)
+        g.wood(pn)
+        for t in (0.26, 0.76):
+            c = V(top) + V(a) * L * t
+            g.metal(socket_screw((sx * (W / 2 + 0.018), c.x, c.y), "x", sx, 0.015, 0.005))
+    # skeletonised hammer
+    hm = side([(y0 + 0.01, 0.31), (y0 + 0.05, 0.34), (y0 - 0.02, 0.45), (y0 - 0.075, 0.455), (y0 - 0.065, 0.41), (y0 - 0.03, 0.4)], 0.045, bev=0.006)
+    cut(hm, cyl_x(-0.1, 0.1, 0.016, y=y0 - 0.03, z=0.42, seg=12))
+    g.metal(hm)
+    # extended beavertail with memory bump
+    g.metal(side([(y0 + 0.06, 0.285), (y0 - 0.05, 0.29), (y0 - 0.14, 0.26), (y0 - 0.12, 0.235), (y0 - 0.03, 0.225), (y0 + 0.03, 0.15), (y0 + 0.06, 0.1), (y0 + 0.09, 0.12)], 0.11, bev=0.014, seg=2))
+    # ambidextrous thumb safety, slide stop, mag release
+    for sx in (-1, 1):
+        g.metal(box((sx * (W / 2 + 0.01), y0 + 0.17, 0.29), (0.014, 0.14, 0.032), bev=0.004))
+    g.metal(box((-W / 2 - 0.008, 0.36, 0.28), (0.012, 0.18, 0.03), bev=0.004))
+    g.metal(cyl_x(-W / 2 - 0.012, W / 2, 0.018, y=0.36, z=0.28, seg=10))
+    g.metal(cyl_x(-W / 2 - 0.014, -W / 2, 0.022, y=0.2, z=0.18, seg=10))
+    # skeletonised flat trigger
+    tr = side([(0.29, 0.24), (0.345, 0.24), (0.345, 0.13), (0.29, 0.13)], 0.04, bev=0.006)
+    cut(tr, [cyl_x(-0.1, 0.1, 0.009, y=0.318, z=0.215 - k * 0.032, seg=8) for k in range(2)])
+    g.metal(tr)
+    # magwell
+    g.metal(side(axis_band(pts, top, a, L, 0.86, 1.0), W + 0.045, bev=0.012, seg=2))
+    mp = straight_mag(g, (0, 0.23), 0.62, 0.16, 0.1, base=0.05, bev=0.006)
+    hang_mag(mp, top, bot)
+    g.points.update(
+        Muzzle=(0, y1 + 0.005, B),
+        Aim=(0, y0 + 0.06 - 0.55, 0.51),
+        LeftHand=(-0.06, -0.02, -0.04),
+        Underbarrel=(0, 0.95, 0.2),
+        MuzzleMount=(0, y1, B),
+        MagWell=(0, top[0], 0.23),
+    )
+
+
+def big_comp(g, y0, length, r, z=BORE):
+    """Octagonal competition compensator with three side/top port stacks."""
+    c = section(octagon(0, z, r * 2, r * 2, r * 0.55), y0, y0 + length, bev=0.008, seg=2)
+    cs = [cyl_y(y0 - 0.01, y0 + length + 0.01, r * 0.42, z=z, seg=16)]
+    for k in range(3):
+        yy = y0 + length * (0.24 + 0.24 * k)
+        for sx in (-1, 1):
+            cs.append(box((sx * r, yy, z), (r * 0.9, length * 0.11, r * 1.1), bev=0))
+        cs.append(stadium_cutter((0, yy, z + r), length * 0.09, r * 0.5, r * 0.8, normal="z"))
+    cut(c, cs)
+    g.metal(c)
+    for sx in (-1, 1):
+        g.metal(socket_screw((sx * r, y0 + length * 0.08, z), "x", sx, 0.012, 0.004))
+
+
+@register("TR1", "Primary")
+def build_tr1(g):
+    """Competition AR carbine: full-length M-LOK rail, big comp, flared magwell, extended controls."""
+    g.mats.update(Body="anodized", Furniture="polymer", Mag="polymer")
+    g.roles["Mag"] = "Secondary"
+    ar_lower(g)
+    ar_grip(g)
+    ar_upper(g)
+    buffer_tube(g, -0.34, -1.2)
+    m4_stock(g)
+    hg_end = 2.82
+    mlok_handguard(g, 0.95, hg_end, w=0.24, h=0.26)
+    handguard_hardware(g, 0.95, w=0.24, h=0.26)
+    g.body(picatinny(-0.34, hg_end, 0.62))
+    g.metal(lathe((0, hg_end - 0.04, BORE), (0, 1, 0), [(0, 0), (0, 0.036), (0.1, 0.036), (0.1, 0)], seg=20))
+    big_comp(g, hg_end + 0.05, 0.27, 0.062)
+    # flared magwell funnel with the opening cut through
+    fw = side([(0.46, 0.13), (0.94, 0.13), (0.97, 0.025), (0.43, 0.025)], 0.205, bev=0.012, seg=2)
+    cut(fw, box((0, 0.7, 0.07), (0.15, 0.38, 0.3), bev=0.006))
+    g.body(fw)
+    # extended bolt catch, oversized mag release and charging-handle latch
+    g.metal(side([(0.38, 0.41), (0.56, 0.41), (0.57, 0.33), (0.52, 0.3), (0.4, 0.36)], 0.016, x=-0.165 / 2 - 0.012, bev=0.004))
+    g.metal(cyl_x(0.165 / 2, 0.165 / 2 + 0.03, 0.032, y=0.55, z=0.32, seg=14, bev=0.004))
+    g.metal(side([(-0.42, 0.6), (-0.3, 0.6), (-0.3, 0.66), (-0.4, 0.66)], 0.07, x=-0.11, bev=0.008))
+    ar_rear_sight(g, -0.18, 0.68)
+    ar_front_sight(g, hg_end - 0.12, 0.68)
+    pmag(g, (0.695, 0.44))
+    g.points.update(
+        Muzzle=(0, hg_end + 0.05 + 0.27 + 0.005, BORE),
+        Aim=(0, -0.18 - 0.55, 0.83),
+        LeftHand=(0, 1.85, BORE - 0.14),
+        Optic=(0, 0.35, 0.68),
+        Underbarrel=(0, 1.95, BORE - 0.14),
+        Side=(0.12, 2.15, BORE - 0.01),
+        MagWell=(0, 0.695, 0.44),
+    )
+
+
+@register("SG4", "Primary")
+def build_sg4(g):
+    """Semi-auto tactical shotgun: rounded alloy receiver, ghost-ring sights, pistol grip,
+    collapsible stock, ribbed forend over the magazine tube."""
+    B = 0.42
+    g.mats.update(Body="anodized", Furniture="polymer", Metal="gunmetal", Mag="gunmetal")
+    yr, yf, RW, rt = 0.1, 1.32, 0.18, 0.56
+    rec = side([(yr, 0.02), (yr, rt - 0.08), (yr + 0.12, rt), (yf, rt), (yf, 0.02)], RW, bev=0)
+    intersect(rec, section(rounded_section(RW, -0.05, rt + 0.02, 0.07), yr - 0.1, yf + 0.1, bev=0))
+    bevel(rec, 0.012, 2)
+    cut(rec, box((RW / 2 + 0.02, 0.86, B), (0.08, 0.36, 0.14), bev=0.012), box((0, 0.95, 0.0), (0.13, 0.55, 0.08), bev=0.01))
+    cut(rec, [box((sx * RW / 2, 0.7, 0.16), (0.012, 1.0, 0.01), bev=0) for sx in (-1, 1)])
+    g.body(rec)
+    g.metal(box((RW / 2 - 0.03, 0.86, B), (0.02, 0.34, 0.12), bev=0.004))
+    g.metal(cyl_x(RW / 2 - 0.02, RW / 2 + 0.09, 0.022, y=0.78, z=B, seg=12))  # oversized bolt handle
+    g.metal(lathe((RW / 2 + 0.09, 0.78, B), (1, 0, 0), [(0, 0), (0, 0.045), (0.06, 0.045), (0.07, 0.03), (0.07, 0)], seg=16))
+    g.metal(box((0, 0.98, 0.03), (0.09, 0.46, 0.012), bev=0.004))  # shell lifter
+    g.metal(box((RW / 2 + 0.004, 0.6, 0.1), (0.012, 0.09, 0.04), bev=0.004))  # bolt release
+    for yy in (0.3, 0.66):
+        for sx in (-1, 1):
+            g.metal(pin_head((sx * (RW / 2 + 0.001), yy, 0.06), "x", sx, 0.018, 0.004))
+    g.body(picatinny(yr + 0.14, yf - 0.04, rt, h=0.05))
+    # ghost-ring rear sight with protective ears (sight line at z = SL)
+    SL = rt + 0.105
+    g.metal(box((0, yr + 0.22, rt + 0.065), (0.15, 0.12, 0.04), bev=0.008))
+    for sx in (-1, 1):
+        g.metal(side([(yr + 0.16, rt + 0.08), (yr + 0.28, rt + 0.08), (yr + 0.26, SL + 0.05), (yr + 0.18, SL + 0.05)], 0.022, x=sx * 0.062, bev=0.005))
+    ring = cyl((0, yr + 0.2, SL), (0, yr + 0.24, SL), 0.04, seg=20)
+    cut(ring, cyl((0, yr + 0.18, SL), (0, yr + 0.26, SL), 0.022, seg=16))
+    g.metal(ring)
+    # trigger group, guard, cross-bolt safety
+    g.body(side([(yr + 0.02, 0.03), (0.86, 0.03), (0.82, -0.07), (yr + 0.06, -0.07)], 0.16, bev=0.01))
+    g.body(bar([(0.36, -0.05), (0.38, -0.18), (0.46, -0.22), (0.7, -0.22), (0.78, -0.16), (0.8, -0.05)], 0.03, 0.08, bev=0.008))
+    g.metal(trigger(0.54, -0.05, h=0.12))
+    g.metal(cyl_x(-0.1, 0.1, 0.02, y=0.76, z=-0.025, seg=10))
+    # side saddle on the left: six shells (red hulls, brass heads) in a clip plate
+    g.mats.update(Wood="plum", Grip="brass")  # the furniture uses Furniture, so the Grip zone is free for brass
+    sx_ = -RW / 2 - 0.016
+    g.body(box((sx_, 0.78, 0.3), (0.024, 0.82, 0.26), bev=0.01, seg=2))
+    for k in range(6):
+        yy = 0.44 + k * 0.135
+        g.wood(cyl_z(0.15, 0.47, 0.052, x=sx_ - 0.06, y=yy, seg=20, bev=0.004))
+        g.add("Grip", cyl_z(0.1, 0.16, 0.055, x=sx_ - 0.06, y=yy, seg=20, bev=0.004))
+        g.body(box((sx_ - 0.02, yy, 0.38), (0.03, 0.05, 0.05), bev=0.006))
+    # pistol grip
+    top, bot = (0.26, -0.02), (0.08, -0.52)
+    pts, nf, a, L = grip_profile(top, bot, 0.26, 0.24, nub=0.02, beaver=0.05)
+    grip = side(pts, 0.15, bev=0.03, seg=2)
+    cut(grip, grip_texture(top, a, nf, L, 0.15, 0.26, n=8))
+    g.furn(grip)
+    # stock tube + collapsible stock
+    buffer_tube(g, yr, -1.2, z=0.44, r=0.07)
+    m4_stock(g, y_back=-1.32, z_tube=0.44)
+    # barrel, magazine tube, cap, barrel clamp, front sight
+    blen = 2.3
+    g.metal(lathe((0, yf, B), (0, 1, 0), [(0, 0), (0, 0.06), (0.1, 0.06), (0.14, 0.052), (blen, 0.05), (blen, 0.034), (blen - 0.01, 0)], seg=24))
+    g.metal(cyl_y(yf, 2.95, 0.05, z=B - 0.12, seg=20))
+    cap = lathe((0, 2.95, B - 0.12), (0, 1, 0), [(0, 0), (0, 0.056), (0.11, 0.056), (0.13, 0.045), (0.13, 0)], seg=20, bev=0.004)
+    cut(cap, box((0, 2.98, B - 0.12 + 0.056), (0.02, 0.06, 0.02), bev=0))  # sling notch
+    g.metal(cap)
+    g.metal(side([(2.8, B - 0.18), (2.92, B - 0.18), (2.92, B + 0.05), (2.8, B + 0.05)], 0.12, bev=0.012))
+    g.metal(socket_screw((0.06, 2.86, B - 0.06), "x", 1, 0.014, 0.005))
+    fy = yf + blen - 0.14
+    g.metal(side([(fy - 0.05, B + 0.04), (fy + 0.05, B + 0.04), (fy + 0.03, SL + 0.02), (fy - 0.02, SL + 0.02)], 0.03, bev=0.004))
+    for sx in (-1, 1):
+        g.metal(side([(fy - 0.06, B + 0.04), (fy + 0.06, B + 0.04), (fy + 0.04, SL + 0.03), (fy - 0.03, SL + 0.03)], 0.016, x=sx * 0.045, bev=0.004))
+    g.tape(cyl_x(-0.016, 0.016, 0.011, y=fy + 0.005, z=SL, seg=10))
+    # ribbed forend around the magazine tube
+    fe = section(rounded_section(0.19, B - 0.25, B + 0.02, 0.07), yf + 0.02, 2.2, bev=0.012, seg=2)
+    cut(fe, [box((sx * 0.095, yf + 0.22 + k * 0.1, B - 0.12), (0.02, 0.05, 0.15), bev=0) for sx in (-1, 1) for k in range(8)])
+    g.furn(fe)
+    g.metal(qd_socket((0.095, 2.12, B - 0.12), "x", 1, 0.026))
+    g.points.update(
+        Muzzle=(0, yf + blen + 0.005, B),
+        Aim=(0, yr + 0.22 - 0.55, SL),
+        LeftHand=(0, 1.75, B - 0.25),
+        Optic=(0, 0.75, rt + 0.05),
+        MagWell=(0, 0.95, 0.0),
+    )
+
+
 # ======================================================================================
 # ATTACHMENTS (origin = mount point)
 # ======================================================================================
@@ -1975,6 +2289,7 @@ WEAPON_ROWS = [
     ["AK74", "M870", "M249"],
     ["MP5", "VECTOR", "MP7", "P90"],
     ["G17", "G18", "M1911", "DEAGLE", "GRENADE"],
+    ["TR1", "SG4", "G34", "C1911"],
 ]
 
 

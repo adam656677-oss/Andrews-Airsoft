@@ -41,8 +41,8 @@ START_Z_OFFSET = 0.95   # PlayerStart capsule centre above the floor (m)
 # ---------------------------------------------------------------------------------------------
 # Weapons on display (must match AirsoftWeaponData ids)
 # ---------------------------------------------------------------------------------------------
-PRIMARY_IDS = ["M4", "AK74", "SR25", "VSR", "M249", "MP5", "VECTOR", "MP7", "P90", "M870"]
-SECONDARY_IDS = ["G17", "G18", "M1911", "DEAGLE"]
+PRIMARY_IDS = ["M4", "TR1", "AK74", "SR25", "VSR", "M249", "MP5", "VECTOR", "MP7", "P90", "M870", "SG4"]
+SECONDARY_IDS = ["G17", "G34", "G18", "M1911", "C1911", "DEAGLE"]
 WEAPON_IDS = PRIMARY_IDS + SECONDARY_IDS
 ATTACHMENT_IDS = ["RedDot", "Holo", "Scope4x", "ScopeLong", "Suppressor", "Compensator", "VerticalGrip",
                   "AngledGrip", "Laser", "Magnifier", "Bipod", "ExtMag", "DrumMag"]

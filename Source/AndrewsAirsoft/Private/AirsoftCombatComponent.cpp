@@ -1093,7 +1093,8 @@ void UAirsoftCombatComponent::UpdateViewmodel(float DeltaTime)
 	SlideKick = FMath::Max(SlideKick - DeltaTime / 0.07f, 0.f);
 
 	// Hip and aimed placements (camera space: X forward, Y right, Z up).
-	const FVector Hip = bPistol ? FVector(30.f, 10.f, -12.f) : FVector(20.f, 11.f, -15.f);
+	// Shooter-style hip carry: the gun sits low in the right third of the screen, not filling it.
+	const FVector Hip = bPistol ? FVector(36.f, 12.f, -15.f) : FVector(30.f, 14.f, -20.f);
 	const FVector Aimed = -Gun->AimPointLocal;
 	const float Eased = 1.f - FMath::Square(1.f - AimAlpha);
 	FVector Loc = FMath::Lerp(Hip, Aimed, Eased);

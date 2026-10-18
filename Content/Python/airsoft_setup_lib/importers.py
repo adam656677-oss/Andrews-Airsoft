@@ -170,8 +170,12 @@ def import_ui_thumbnails(force=False):
     """Product renders as armory pictures (AirsoftAssets::Thumbnail). Lineup sheets (_*.jpg) are skipped."""
     n = 0
     for cat in THUMB_CATEGORIES:
-        for src in sorted(glob.glob(os.path.join(C.project_dir(), "Docs", "Renders", cat, "*.jpg"))):
-            aid = os.path.splitext(os.path.basename(src))[0]
+        # The committed .jpg copies win; a fresh generator render (.png only) is used when there is no .jpg yet.
+        found = {}
+        for ext in ("png", "jpg"):
+            for p in glob.glob(os.path.join(C.project_dir(), "Docs", "Renders", cat, "*." + ext)):
+                found[os.path.splitext(os.path.basename(p))[0]] = p
+        for aid, src in sorted(found.items()):
             if aid.startswith("_"):
                 continue
             name = "T_Thumb_" + aid
@@ -244,7 +248,9 @@ def _fbx_options(build_nanite, combine, remove_degenerates=True):
     for k, v in (("combine_meshes", combine), ("auto_generate_collision", False), ("generate_lightmap_u_vs", False),
                  ("remove_degenerates", remove_degenerates), ("build_nanite", build_nanite), ("one_convex_hull_per_ucx", True),
                  ("convert_scene", C.FBX_CONVERT_SCENE), ("force_front_x_axis", C.FBX_FORCE_FRONT_X),
-                 ("convert_scene_unit", False), ("import_uniform_scale", 1.0),
+                 # The generators' FBX files are in metres (UnitScaleFactor 100); without unit conversion
+                 # every mesh came in 100x too small (a 94 cm AK-74 was under 1 cm and invisible).
+                 ("convert_scene_unit", True), ("import_uniform_scale", 1.0),
                  ("reorder_material_to_fbx_order", True), ("transform_vertex_to_absolute", True),
                  ("compute_weighted_normals", True)):
         C.try_set(sm, k, v, quiet=True)
@@ -361,6 +367,13 @@ def import_mesh(entry, aid, piece, force=False):
             C.save_asset(sm)
         C.SUMMARY.inc("meshes unchanged (skipped)")
         return sm
+    if sm:
+        # Re-importing over an existing asset reuses the settings it was first imported with, so a mesh
+        # brought in before the metres fix would stay 100x too small: fix its stored settings first.
+        try:
+            C.try_set(sm.get_editor_property("asset_import_data"), "convert_scene_unit", True, quiet=True)
+        except Exception:
+            pass
     dest = C.mesh_dir(cat, aid)
     C.ensure_dir(dest)
     name = "SM_%s_%s" % (aid, pn)

@@ -225,6 +225,61 @@ namespace AirsoftWeapons
 				W.StatRange = 0.6f; W.StatRate = 0.25f; W.StatControl = 0.35f; W.StatHandling = 0.8f;
 				Add(W);
 			}
+			// Competition builds: integral comps (no muzzle slot), magwells, optic-ready.
+			{
+				FAirsoftWeaponDef W;
+				W.Id = TEXT("TR1"); W.Name = TEXT("TR-1 Combat Carbine"); W.Kind = TEXT("AEG"); W.Class = TEXT("Rifle");
+				W.Description = TEXT("Competition-built carbine. Big comp, full-length rail, almost no muzzle climb.");
+				W.FireModes = FModes{ EAirsoftFireMode::Auto, EAirsoftFireMode::Semi };
+				W.FireInterval = 0.058f; W.MagSize = 30; W.Reserve = 210; W.ReloadTime = 1.9f; W.EmptyReloadTime = 2.3f;
+				W.MuzzleVelocity = 11500.f; W.MaxRange = 7000.f;
+				W.HipSpread = 2.2f; W.AimSpread = 0.25f; W.RecoilUp = 0.35f; W.RecoilSide = 0.15f; W.AimFOV = 60.f; W.AimTime = 0.18f;
+				W.Sound = TEXT("FireRifle");
+				W.Options = { { SlotOptic, AllOptics }, { SlotGrip, AllGrips }, { SlotLaser, LaserOpts }, { SlotMag, ARMags } };
+				W.Defaults = { { SlotOptic, TEXT("Holo") }, { SlotGrip, TEXT("AngledGrip") } };
+				W.StatRange = 0.8f; W.StatRate = 0.85f; W.StatControl = 0.85f; W.StatHandling = 0.75f;
+				Add(W);
+			}
+			{
+				FAirsoftWeaponDef W;
+				W.Id = TEXT("SG4"); W.Name = TEXT("SG-4 Tactical Shotgun"); W.Kind = TEXT("Gas"); W.Class = TEXT("Shotgun");
+				W.Description = TEXT("Semi-auto tactical shotgun. Three BBs a shell, as fast as you can pull.");
+				W.FireModes = FModes{ EAirsoftFireMode::Semi };
+				W.FireInterval = 0.28f; W.MagSize = 7; W.Reserve = 42; W.ReloadTime = 2.4f; W.EmptyReloadTime = 2.4f;
+				W.MuzzleVelocity = 9600.f; W.MaxRange = 3600.f;
+				W.HipSpread = 4.0f; W.AimSpread = 2.8f; W.RecoilUp = 1.8f; W.RecoilSide = 0.6f; W.AimFOV = 66.f; W.AimTime = 0.22f;
+				W.Pellets = 3; W.Sound = TEXT("FireShotgun");
+				W.Options = { { SlotOptic, { AttachOff, TEXT("RedDot"), TEXT("Holo") } }, { SlotLaser, LaserOpts } };
+				W.StatRange = 0.32f; W.StatRate = 0.45f; W.StatControl = 0.5f; W.StatHandling = 0.65f;
+				Add(W);
+			}
+			{
+				FAirsoftWeaponDef W;
+				W.Id = TEXT("G34"); W.Name = TEXT("G34 Competition"); W.Kind = TEXT("Gas"); W.Class = TEXT("Pistol"); W.Slot = EAirsoftSlot::Secondary;
+				W.Description = TEXT("Long-slide competition build with a comp. Flat, fast and accurate.");
+				W.FireModes = FModes{ EAirsoftFireMode::Semi };
+				W.FireInterval = 0.1f; W.MagSize = 22; W.Reserve = 88; W.ReloadTime = 1.4f; W.EmptyReloadTime = 1.6f;
+				W.MuzzleVelocity = 9300.f; W.MaxRange = 4300.f;
+				W.HipSpread = 1.6f; W.AimSpread = 0.4f; W.RecoilUp = 0.7f; W.RecoilSide = 0.2f; W.AimFOV = 68.f; W.AimTime = 0.12f;
+				W.Sound = TEXT("FirePistol"); W.SpeedMultiplier = 1.05f;
+				W.Options = { { SlotOptic, { AttachOff, TEXT("RedDot") } }, { SlotLaser, LaserOpts } };
+				W.Defaults = { { SlotOptic, TEXT("RedDot") } };
+				W.StatRange = 0.5f; W.StatRate = 0.65f; W.StatControl = 0.85f; W.StatHandling = 0.95f;
+				Add(W);
+			}
+			{
+				FAirsoftWeaponDef W;
+				W.Id = TEXT("C1911"); W.Name = TEXT("1911 Custom"); W.Kind = TEXT("Gas"); W.Class = TEXT("Pistol"); W.Slot = EAirsoftSlot::Secondary;
+				W.Description = TEXT("Two-tone custom 1911. Crisp trigger, flat shooting, built to be carried.");
+				W.FireModes = FModes{ EAirsoftFireMode::Semi };
+				W.FireInterval = 0.12f; W.MagSize = 14; W.Reserve = 70; W.ReloadTime = 1.45f; W.EmptyReloadTime = 1.65f;
+				W.MuzzleVelocity = 9500.f; W.MaxRange = 4400.f;
+				W.HipSpread = 1.5f; W.AimSpread = 0.4f; W.RecoilUp = 1.1f; W.RecoilSide = 0.22f; W.AimFOV = 68.f; W.AimTime = 0.12f;
+				W.Sound = TEXT("FirePistol"); W.SpeedMultiplier = 1.04f;
+				W.Options = { { SlotMuzzle, { AttachOff, TEXT("Suppressor") } }, { SlotLaser, LaserOpts } };
+				W.StatRange = 0.5f; W.StatRate = 0.5f; W.StatControl = 0.75f; W.StatHandling = 0.95f;
+				Add(W);
+			}
 			return Out;
 		}
 
@@ -312,13 +367,13 @@ namespace AirsoftWeapons
 
 	const TArray<FName>& Primaries()
 	{
-		static const TArray<FName> List = { TEXT("M4"), TEXT("AK74"), TEXT("SR25"), TEXT("VSR"), TEXT("M249"), TEXT("MP5"), TEXT("VECTOR"), TEXT("MP7"), TEXT("P90"), TEXT("M870") };
+		static const TArray<FName> List = { TEXT("M4"), TEXT("TR1"), TEXT("AK74"), TEXT("SR25"), TEXT("VSR"), TEXT("M249"), TEXT("MP5"), TEXT("VECTOR"), TEXT("MP7"), TEXT("P90"), TEXT("M870"), TEXT("SG4") };
 		return List;
 	}
 
 	const TArray<FName>& Secondaries()
 	{
-		static const TArray<FName> List = { TEXT("G17"), TEXT("G18"), TEXT("M1911"), TEXT("DEAGLE") };
+		static const TArray<FName> List = { TEXT("G17"), TEXT("G34"), TEXT("G18"), TEXT("M1911"), TEXT("C1911"), TEXT("DEAGLE") };
 		return List;
 	}
 
