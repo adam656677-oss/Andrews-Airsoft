@@ -7,11 +7,15 @@
 #include "AirsoftSaveGame.h"
 #include "AirsoftWeaponData.h"
 #include "Camera/PlayerCameraManager.h"
+#include "Components/InstancedStaticMeshComponent.h"
 #include "Components/PointLightComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/GameViewportClient.h"
 #include "Engine/HitResult.h"
+#include "Engine/PointLight.h"
 #include "Engine/StaticMesh.h"
+#include "Engine/StaticMeshActor.h"
+#include "EngineUtils.h"
 #include "Engine/World.h"
 #include "GameFramework/Actor.h"
 #include "GameFramework/Pawn.h"
@@ -328,6 +332,11 @@ void UAirsoftEffectsSubsystem::Deinitialize()
 	LiveLights.Reset();
 	FreeLights.Reset();
 	SurfaceCache.Reset();
+	RainDrops.Reset();
+	RainTransforms.Reset();
+	AmbientSources.Reset();
+	RainMesh = nullptr;
+	RainMID = nullptr;
 	SmokePool = FAirsoftFXPool();
 	GlowPool = FAirsoftFXPool();
 	DebrisPool = FAirsoftFXPool();
@@ -355,6 +364,8 @@ void UAirsoftEffectsSubsystem::Tick(float DeltaTime)
 	UpdateParticles(DeltaTime);
 	UpdateLights(DeltaTime);
 	UpdateRain(DeltaTime);
+	UpdateRainStreaks(DeltaTime);
+	UpdateAmbient(DeltaTime);
 }
 
 void UAirsoftEffectsSubsystem::RefreshUserOptions()
@@ -411,6 +422,274 @@ void UAirsoftEffectsSubsystem::UpdateRain(float DeltaTime)
 		}
 		const float Size = FMath::FRandRange(7.f, 14.f);
 		Ring(Hit.ImpactPoint + Hit.ImpactNormal * 0.4, Hit.ImpactNormal, DustColor(EAirsoftSurface::Water), 1.f, Size, 0.22f, FMath::FRandRange(0.4f, 0.6f));
+	}
+}
+
+void UAirsoftEffectsSubsystem::UpdateRainStreaks(float DeltaTime)
+{
+	// Camera-local rain: a fixed number of drops fall through a cylinder around the camera and respawn above it
+	// when they reach the ground (found with a trace) or drift out of range. Drops under a roof (trace up hits
+	// something) keep falling hidden, so indoors stays dry and the instance count never changes. One instanced
+	// mesh, one draw call, ~2 traces per respawn.
+	const UAirsoftEffectsSettings* S = UAirsoftEffectsSettings::Get();
+	UWorld* World = GetWorld();
+	const int32 Wanted = (bRainMap && bCinematic) ? FMath::RoundToInt(static_cast<float>(S->RainStreaks) * QualityScale) : 0;
+	if (Wanted <= 0 || !bHasView || !World)
+	{
+		if (RainMesh && RainMesh->IsVisible())
+		{
+			RainMesh->SetVisibility(false);
+		}
+		return;
+	}
+	if (!RainMesh || !IsValid(RainMesh) || RainDrops.Num() != Wanted)
+	{
+		UMaterialInterface* Mat = MaterialFor(EAirsoftFXLayer::Smoke);
+		AActor* Owner = EnsureOwner();
+		if (!Mat || !Owner)
+		{
+			return;
+		}
+		if (!RainMesh || !IsValid(RainMesh))
+		{
+			RainMesh = NewObject<UInstancedStaticMeshComponent>(Owner, TEXT("RainStreaks"), RF_Transient);
+			RainMesh->SetMobility(EComponentMobility::Movable);
+			RainMesh->SetStaticMesh(AirsoftAssets::Sphere());
+			RainMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			RainMesh->SetGenerateOverlapEvents(false);
+			RainMesh->SetCanEverAffectNavigation(false);
+			RainMesh->SetCastShadow(false);
+			RainMesh->bReceivesDecals = false;
+			RainMesh->bAffectDynamicIndirectLighting = false;
+			RainMesh->bAffectDistanceFieldLighting = false;
+			RainMesh->SetupAttachment(Owner->GetRootComponent());
+			RainMesh->RegisterComponent();
+			RainMID = UMaterialInstanceDynamic::Create(Mat, RainMesh);
+			if (RainMID)
+			{
+				RainMID->SetVectorParameterValue(TEXT("Color"), S->RainStreakColor);
+				RainMID->SetScalarParameterValue(TEXT("Opacity"), S->RainStreakOpacity);
+				RainMID->SetScalarParameterValue(TEXT("Emissive"), S->RainStreakEmissive);
+				RainMID->SetScalarParameterValue(TEXT("Rim"), 0.f);
+				RainMesh->SetMaterial(0, RainMID);
+			}
+		}
+		RainMesh->ClearInstances();
+		RainDrops.SetNum(Wanted);
+		RainTransforms.SetNum(Wanted);
+		for (int32 i = 0; i < Wanted; ++i)
+		{
+			RainDrops[i].Location = ViewLocation + FVector(0.0, 0.0, -100000.0); // respawned below
+			RainDrops[i].FloorZ = RainDrops[i].Location.Z + 1.0;
+			RainTransforms[i] = FTransform(FQuat::Identity, ViewLocation, FVector::ZeroVector);
+			RainMesh->AddInstance(RainTransforms[i], /*bWorldSpace*/ true);
+		}
+	}
+	RainMesh->SetVisibility(true);
+
+	const FVector Velocity = S->RainWind + FVector(0.0, 0.0, -FMath::Max(100.f, S->RainStreakSpeed));
+	const FVector Fall = Velocity.GetSafeNormal();
+	const FQuat Rot = FRotationMatrix::MakeFromX(Fall).ToQuat();
+	const double Radius = FMath::Max(200.f, S->RainStreakRadius);
+	const double Inner = FMath::Clamp(static_cast<double>(S->RainStreakInnerRadius), 0.0, Radius * 0.5);
+	const double Top = FMath::Max(200.f, S->RainStreakHeight);
+	FCollisionQueryParams Query(SCENE_QUERY_STAT(AirsoftFXRainStreak), false);
+	if (const APlayerController* PC = World->GetFirstPlayerController())
+	{
+		if (const APawn* Viewer = PC->GetPawn())
+		{
+			Query.AddIgnoredActor(Viewer);
+		}
+	}
+	for (int32 i = 0; i < RainDrops.Num(); ++i)
+	{
+		FRainDrop& D = RainDrops[i];
+		D.Location += Velocity * static_cast<double>(DeltaTime);
+		const FVector2D Flat(D.Location.X - ViewLocation.X, D.Location.Y - ViewLocation.Y);
+		if (D.Location.Z < D.FloorZ || Flat.SizeSquared() > Radius * Radius * 1.3)
+		{
+			// Respawn: a random spot in the ring around the camera, somewhere up the column (spread so the
+			// first frames are not a sheet of drops), then find its floor and whether it is under a roof.
+			const double A = FMath::FRandRange(0.0, 2.0 * UE_DOUBLE_PI);
+			const double R = FMath::Sqrt(FMath::FRandRange(Inner * Inner / (Radius * Radius), 1.0)) * Radius;
+			const bool bFirst = D.Location.Z < ViewLocation.Z - 50000.0;
+			D.Location = ViewLocation + FVector(FMath::Cos(A) * R, FMath::Sin(A) * R, bFirst ? FMath::FRandRange(-150.0, Top) : FMath::FRandRange(Top * 0.5, Top));
+			FHitResult Hit;
+			D.bSheltered = World->LineTraceSingleByChannel(Hit, D.Location, D.Location + FVector(0.0, 0.0, 3000.0), ECC_Visibility, Query);
+			D.FloorZ = World->LineTraceSingleByChannel(Hit, D.Location, D.Location - FVector(0.0, 0.0, Top + 2500.0), ECC_Visibility, Query)
+				? Hit.ImpactPoint.Z : D.Location.Z - Top - 2500.0;
+		}
+		// At least ~1 px wide so TSR does not lose the far streaks.
+		const double Width = FMath::Max(static_cast<double>(S->RainStreakWidth), FVector::Dist(D.Location, ViewLocation) * static_cast<double>(PixelAngle) * 1.1);
+		const FVector Scale = D.bSheltered ? FVector::ZeroVector : FVector(S->RainStreakLength, Width, Width) / AirsoftEffectsPrivate::FXBasicShapeSize;
+		RainTransforms[i] = FTransform(Rot, D.Location - Fall * (S->RainStreakLength * 0.5), Scale);
+	}
+	RainMesh->BatchUpdateInstancesTransforms(0, RainTransforms, /*bWorldSpace*/ true, /*bMarkRenderStateDirty*/ true, /*bTeleport*/ true);
+}
+
+void UAirsoftEffectsSubsystem::ScanAmbientSources()
+{
+	bAmbientScanned = true;
+	AmbientSources.Reset();
+	UWorld* World = GetWorld();
+	const UAirsoftEffectsSettings* S = UAirsoftEffectsSettings::Get();
+	if (!World || (S->EmberSourceKeywords.Num() == 0 && S->SteamSourceKeywords.Num() == 0))
+	{
+		return;
+	}
+	auto Matches = [](const FString& Name, const TArray<FString>& Keys)
+	{
+		for (const FString& K : Keys)
+		{
+			if (!K.IsEmpty() && Name.Contains(K))
+			{
+				return true;
+			}
+		}
+		return false;
+	};
+	for (TActorIterator<AStaticMeshActor> It(World); It; ++It)
+	{
+		const UStaticMeshComponent* Comp = It->GetStaticMeshComponent();
+		const UStaticMesh* Mesh = Comp ? Comp->GetStaticMesh() : nullptr;
+		if (!Mesh)
+		{
+			continue;
+		}
+		const FString Name = Mesh->GetName();
+		const bool bFire = Matches(Name, S->EmberSourceKeywords);
+		if (!bFire && !Matches(Name, S->SteamSourceKeywords))
+		{
+			continue;
+		}
+		// Top centre of the mesh (fire: over the flames; vent: the grate). A prop's pieces share one origin.
+		const FBoxSphereBounds B = Comp->Bounds;
+		const FVector Loc(B.Origin.X, B.Origin.Y, B.Origin.Z + B.BoxExtent.Z * (bFire ? 0.8 : 1.0));
+		bool bDup = false;
+		for (const FAmbientSource& Src : AmbientSources)
+		{
+			bDup = bDup || (Src.bFire == bFire && FVector::DistSquared2D(Src.Location, Loc) < FMath::Square(60.0));
+		}
+		if (bDup)
+		{
+			continue;
+		}
+		FAmbientSource& Src = AmbientSources.AddDefaulted_GetRef();
+		Src.Location = Loc;
+		Src.bFire = bFire;
+		Src.Phase = FMath::FRandRange(0.f, 100.f);
+	}
+	// Fires flicker the (movable) point light placed with them, if any is within 2 m.
+	for (FAmbientSource& Src : AmbientSources)
+	{
+		if (!Src.bFire)
+		{
+			continue;
+		}
+		double Best = FMath::Square(200.0);
+		for (TActorIterator<APointLight> It(World); It; ++It)
+		{
+			UPointLightComponent* L = It->PointLightComponent;
+			const double D2 = L ? FVector::DistSquared(L->GetComponentLocation(), Src.Location) : TNumericLimits<double>::Max();
+			if (L && D2 < Best && L->Mobility == EComponentMobility::Movable)
+			{
+				Best = D2;
+				Src.Light = L;
+				Src.LightBase = L->Intensity;
+			}
+		}
+	}
+	if (AmbientSources.Num() > 0)
+	{
+		UE_LOG(LogAirsoftFX, Log, TEXT("Ambient effect sources: %d"), AmbientSources.Num());
+	}
+}
+
+void UAirsoftEffectsSubsystem::UpdateAmbient(float DeltaTime)
+{
+	if (!bAmbientScanned)
+	{
+		ScanAmbientSources();
+	}
+	if (AmbientSources.Num() == 0 || !bHasView)
+	{
+		return;
+	}
+	const UAirsoftEffectsSettings* S = UAirsoftEffectsSettings::Get();
+	AmbientTime += DeltaTime;
+	const double Cull = FMath::Square(static_cast<double>(S->AmbientCullDistance));
+	for (FAmbientSource& Src : AmbientSources)
+	{
+		const bool bNear = FVector::DistSquared(Src.Location, ViewLocation) < Cull;
+		if (Src.bFire)
+		{
+			if (UPointLightComponent* L = Src.Light.Get())
+			{
+				// Fire light: two detuned waves plus a little noise, never below 1 - FireFlicker.
+				const float T = static_cast<float>(AmbientTime) + Src.Phase;
+				const float N = 0.5f + 0.3f * FMath::Sin(T * 11.3f) + 0.2f * FMath::Sin(T * 23.7f + 1.7f) + 0.1f * FMath::PerlinNoise1D(T * 6.f);
+				L->SetIntensity(Src.LightBase * (1.f - S->FireFlicker * FMath::Clamp(N, 0.f, 1.f)));
+			}
+		}
+		if (!bNear || !bCinematic)
+		{
+			continue;
+		}
+		const float Rate = (Src.bFire ? S->EmbersPerSecond : S->SteamPuffsPerSecond) * QualityScale;
+		Src.Accumulator = FMath::Min(Src.Accumulator + DeltaTime * Rate, 3.f);
+		while (Src.Accumulator >= 1.f)
+		{
+			Src.Accumulator -= 1.f;
+			if (Src.bFire)
+			{
+				if (LiveEmbers >= FMath::RoundToInt(static_cast<float>(S->MaxEmbers) * QualityScale) || !bGlowAdditive)
+				{
+					continue;
+				}
+				FAirsoftFXParticle P;
+				P.Layer = EAirsoftFXLayer::Glow;
+				P.Kind = 1;
+				P.Seed = FMath::FRandRange(0.f, 6.28f);
+				const FVector2D Off = FMath::RandPointInCircle(18.f);
+				P.Location = Src.Location + FVector(Off.X, Off.Y, 0.0);
+				P.Velocity = FVector(FMath::FRandRange(-25.f, 25.f), FMath::FRandRange(-25.f, 25.f), FMath::FRandRange(70.f, 150.f));
+				P.Gravity = -35.f;   // hot: keeps rising
+				P.Drag = 0.7f;
+				P.bAlignToVelocity = true;
+				P.StretchSeconds = 0.035f;
+				P.Size0 = FVector(1.6f, 0.9f, 0.9f);
+				P.Size1 = FVector(0.8f, 0.4f, 0.4f);
+				P.Color = FLinearColor(1.f, FMath::FRandRange(0.3f, 0.5f), 0.08f);
+				P.Alpha = FMath::FRandRange(8.f, 16.f);
+				P.Life = FMath::FRandRange(1.4f, 3.2f);
+				P.FadeIn = 0.05f;
+				P.FadePow = 1.6f;
+				if (Spawn(P))
+				{
+					++LiveEmbers;
+				}
+			}
+			else
+			{
+				// Steam: soft grey puffs that rise slowly, swell and drift with the rain wind (lit by the neon).
+				const FVector2D Off = FMath::RandPointInCircle(30.f);
+				FAirsoftFXParticle P;
+				P.Layer = EAirsoftFXLayer::Smoke;
+				P.Location = Src.Location + FVector(Off.X, Off.Y, 5.0);
+				P.Velocity = FVector(S->RainWind.X * 0.4, S->RainWind.Y * 0.4, FMath::FRandRange(45.0, 75.0));
+				P.Drag = 0.25f;
+				P.Gravity = -6.f;
+				P.Size0 = FVector(FMath::FRandRange(35.f, 55.f));
+				P.Size1 = FVector(FMath::FRandRange(190.f, 290.f));
+				P.Color = FLinearColor(0.62f, 0.66f, 0.7f);
+				P.Alpha = 0.12f;
+				P.Emissive = 0.04f;
+				P.Life = FMath::FRandRange(3.f, 4.5f);
+				P.FadeIn = 0.25f;
+				P.FadePow = 1.4f;
+				Spawn(P);
+			}
+		}
 	}
 }
 
@@ -538,6 +817,9 @@ AActor* UAirsoftEffectsSubsystem::EnsureOwner()
 		Particles.Reset();
 		LiveLights.Reset();
 		FreeLights.Reset();
+		RainDrops.Reset();
+		RainMesh = nullptr;
+		RainMID = nullptr;
 		SmokePool = FAirsoftFXPool();
 		GlowPool = FAirsoftFXPool();
 		DebrisPool = FAirsoftFXPool();
@@ -718,6 +1000,7 @@ void UAirsoftEffectsSubsystem::Release(const FAirsoftFXParticle& P)
 
 void UAirsoftEffectsSubsystem::UpdateParticles(float DeltaTime)
 {
+	LiveEmbers = 0;
 	for (int32 i = Particles.Num() - 1; i >= 0; --i)
 	{
 		FAirsoftFXParticle& P = Particles[i];
@@ -727,6 +1010,13 @@ void UAirsoftEffectsSubsystem::UpdateParticles(float DeltaTime)
 			Release(P);
 			Particles.RemoveAtSwap(i);
 			continue;
+		}
+		if (P.Kind == 1)
+		{
+			// Ember: carried up by the fire's draught, swirling sideways.
+			++LiveEmbers;
+			const float W = P.Age * 4.7f + P.Seed;
+			P.Velocity += FVector(FMath::Sin(W), FMath::Cos(W * 0.83f + 1.3f), 0.0) * static_cast<double>(140.f * DeltaTime);
 		}
 		if (P.Age >= 0.f)
 		{

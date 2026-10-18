@@ -43,22 +43,41 @@ GLASS = {
     "BoxTruck": ((0.04, 0.045, 0.05), 0.55, 0.05, 0.0),
     "Goggles": ((0.025, 0.027, 0.03), 0.62, 0.04, 0.0),       # smoked lens (the gear component also sets it at runtime)
     "BackBar_4m": ((0.25, 0.16, 0.05), 0.45, 0.06, 0.6),        # bottles, lit by the LED shelf
-    "StreetLamp": ((1.0, 0.62, 0.3), 0.5, 0.3, 12.0), "Chandelier": ((1.0, 0.85, 0.65), 0.35, 0.05, 4.0),
+    "StreetLamp": ((1.0, 0.62, 0.3), 0.5, 0.3, 6.0), "Chandelier": ((1.0, 0.85, 0.65), 0.35, 0.05, 4.0),
     "WallSconce": ((1.0, 0.8, 0.6), 0.6, 0.4, 8.0), "CeilingLight_Brass": ((1.0, 0.86, 0.68), 0.75, 0.6, 10.0),
     "FloodlightTower": ((1.0, 0.92, 0.8), 0.6, 0.2, 30.0), "MovingHeadLight": ((0.9, 0.9, 1.0), 0.5, 0.1, 6.0),
     "BankersLamp": ((0.05, 0.35, 0.12), 0.85, 0.15, 1.5), "Laser": ((0.6, 0.05, 0.05), 0.4, 0.05, 2.0),
     "Garage_TicketBooth": ((0.05, 0.07, 0.08), 0.3, 0.03, 0.0),
+    "Street_Shopfront": ((0.05, 0.06, 0.065), 0.1, 0.02, 0.0), "Street_Vending": ((0.08, 0.09, 0.1), 0.12, 0.02, 0.0),
 }
 # Emissive pieces: (colour override or None = use the baked BC, intensity)
 EMISSIVE = {
-    "*": (None, 12.0), "NeonSign_Velvet": (None, 45.0), "StreetLamp": (None, 30.0), "Chandelier": (None, 22.0),
+    "*": (None, 12.0), "NeonSign_Velvet": (None, 30.0), "StreetLamp": (None, 16.0), "Chandelier": (None, 22.0),
     "WallSconce": (None, 16.0), "BackBar_4m": (None, 28.0), "DJBooth": (None, 18.0), "Car_Sedan": (None, 9.0),
     "Car_Coupe": (None, 9.0), "BoxTruck": (None, 8.0), "GunDisplayBay": (None, 6.0), "CeilingLight_Brass": (None, 14.0),
     "BankersLamp": (None, 10.0), "ArmorySign": (None, 8.0), "MovingHeadLight": (None, 20.0),
     "Garage_LightFluo": (None, 16.0), "Garage_LightSodium": (None, 22.0), "Garage_ExitSign": (None, 5.0),
     "Garage_ElevatorDoors": (None, 5.0), "Garage_PayMachine": (None, 3.0), "Garage_TicketBooth": (None, 5.0),
     "Garage_BarrierArm": (None, 6.0),
+    # neon street kit: tube colours / lightbox faces are in the baked BC (BC x Intensity). Lightboxes sit lower than
+    # bare tubes so their faces stay coloured instead of clipping to white under the night exposure.
+    "Neon_BladeRamen": (None, 10.0), "Neon_BladeHotel": (None, 18.0), "Neon_BladeGames": (None, 18.0),
+    "Neon_BladeIzakaya": (None, 7.0), "Neon_BladeVelvet": (None, 20.0), "Neon_Karaoke": (None, 10.0),
+    "Neon_BoxPawn": (None, 16.0), "Neon_PharmacyCross": (None, 13.0), "Neon_Cocktails": (None, 18.0),
+    "Neon_ArrowBar": (None, 14.0), "Neon_OpenSign": (None, 16.0), "Street_Shopfront": (None, 4.0),
+    "Street_Vending": (None, 4.0), "Street_FireBarrel": (None, 16.0), "Street_FacadeBay_A": (None, 4.0),
+    "Street_FacadeBay_B": (None, 4.0), "Street_FacadeBay_C": (None, 4.0), "Street_FacadeBay_D": (None, 4.0),
 }
+# Rain-soaked ground (night maps): darker albedo, much lower roughness (mirror-like neon reflections), animated
+# rain ripples in the normal (M_Tileable static switch RainRipples). Puddles go further (MI_Puddle).
+WET_GROUND = {
+    "AsphaltWet": {"RoughnessScale": 0.24, "RoughnessAdd": 0.02, "NormalStrength": 0.8, "Tint": (0.6, 0.6, 0.64),
+                   "RippleStrength": 0.25},
+    "ConcreteGarageWet": {"RoughnessScale": 0.55, "RoughnessAdd": 0.0, "NormalStrength": 0.9, "Tint": (0.72, 0.72, 0.75),
+                          "RippleStrength": 0.15},
+}
+PUDDLE = {"RoughnessScale": 0.03, "RoughnessAdd": 0.0, "NormalStrength": 0.12, "Tint": (0.3, 0.3, 0.34),
+          "RippleStrength": 0.6}
 RETICLE = ((1.0, 0.05, 0.03), 30.0)
 
 _cache = {}
@@ -324,12 +343,38 @@ def build_tileable():
     ao = g.mul((orm, "R"), g.lerp(None, (hgt, "R"), hao, -600, 300, const_a=1.0), -450, 320)
     ns = g.scalar("NormalStrength", 1.0, -750, 520)
     normal = g.lerp(g.const3((0, 0, 1), -600, 560), (nrm, "RGB"), ns, -450, 480)
+    normal = g.switch("RainRipples", _rain_ripples(g, normal, -2600, 900), normal, -150, 480, default=False)
     out(base, MP.MP_BASE_COLOR)
     out(rough, MP.MP_ROUGHNESS)
     out(metal, MP.MP_METALLIC)
     out(ao, MP.MP_AMBIENT_OCCLUSION)
     out(normal, MP.MP_NORMAL)
     return _finish(m)
+
+
+def _rain_ripples(g, normal, x, y):
+    """Wet-ground shimmer: the material's own normal map sampled twice at a small world scale (RippleTile metres),
+    panned in different directions and added to the base normal's slope (RippleStrength). The ring-shaped
+    drop ripples come from AirsoftEffects; this keeps the whole wet surface alive between them."""
+    wp = g.e(unreal.MaterialExpressionWorldPosition, x, y)
+    rt = g.scalar("RippleTile", 0.7, x, y + 120, "Rain")
+    ruv = g.op(unreal.MaterialExpressionDivide, g.mask(wp, x + 150, y, r=True, g=True), g.mul(rt, None, x + 150, y + 120, const_b=100.0),
+               x + 300, y)
+    p1 = g.e(unreal.MaterialExpressionPanner, x + 450, y - 60, speed_x=0.035, speed_y=0.06)
+    link(ruv, p1, "Coordinate")
+    p2 = g.e(unreal.MaterialExpressionPanner, x + 450, y + 80, speed_x=-0.05, speed_y=0.025)
+    link(g.mul(ruv, None, x + 300, y + 120, const_b=1.37), p2, "Coordinate")
+    n1 = g.tex("Normal", "T_Default_N", ST.SAMPLERTYPE_NORMAL, x + 650, y - 60, p1)
+    n2 = g.tex("Normal", "T_Default_N", ST.SAMPLERTYPE_NORMAL, x + 650, y + 120, p2)
+    d = g.mask(g.add((n1, "RGB"), (n2, "RGB"), x + 900, y), x + 1050, y, r=True, g=True)
+    d = g.mul(d, g.scalar("RippleStrength", 0.25, x + 900, y + 140, "Rain"), x + 1200, y)
+    rg = g.add(g.mask(normal, x + 1050, y + 250, r=True, g=True), d, x + 1350, y + 100)
+    app = g.e(unreal.MaterialExpressionAppendVector, x + 1500, y + 150)
+    link(rg, app, "A")
+    link(g.mask(normal, x + 1350, y + 300, b=True), app, "B")
+    nn = g.e(unreal.MaterialExpressionNormalize, x + 1650, y + 150)
+    link(app, nn, "")
+    return nn
 
 
 def build_emissive():
@@ -438,6 +483,7 @@ def build_fx_smoke():
     """Lit translucent puff on a sphere (C++ sets Color/Opacity/Rim/Emissive per effect). Rim=1 draws only the
     edge, so a flattened sphere reads as an expanding ripple ring."""
     m = _new_material(MASTER_FX_SMOKE)
+    C.try_set(m, "used_with_instanced_static_meshes", True, quiet=True)   # AirsoftEffects rain streaks (one ISM)
     C.try_set(m, "blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT)
     C.try_set(m, "shading_model", unreal.MaterialShadingModel.MSM_DEFAULT_LIT)
     C.try_set(m, "enable_responsive_aa", True, quiet=True)
@@ -461,6 +507,7 @@ def build_fx_smoke():
 def build_fx_glow():
     """Additive unlit glow on a (stretched) sphere: BB tracers, sparks, flashes (C++ sets Color/Intensity)."""
     m = _new_material(MASTER_FX_GLOW)
+    C.try_set(m, "used_with_instanced_static_meshes", True, quiet=True)
     C.try_set(m, "blend_mode", unreal.BlendMode.BLEND_ADDITIVE)
     C.try_set(m, "shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
     C.try_set(m, "enable_responsive_aa", True, quiet=True)
@@ -476,7 +523,8 @@ def build_fx_glow():
 
 
 MASTER_VERSION = "1"     # bump when a master graph changes; unchanged masters are not rebuilt (saves shader compiles)
-FX_MASTER_VERSION = "fx1"  # the M_FX* effects masters only; bump to rebuild just those
+FX_MASTER_VERSION = "fx2"  # the M_FX* effects masters only; bump to rebuild just those (fx2: ISM usage for rain)
+TILE_MASTER_VERSION = "t2"  # M_Tileable only (t2: RainRipples switch)
 
 
 def build_masters(force=False):
@@ -485,7 +533,8 @@ def build_masters(force=False):
                      ("M_Glass", build_glass), ("M_Masked", build_masked), ("M_SignText", build_sign),
                      ("M_FXSmoke", build_fx_smoke), ("M_FXGlow", build_fx_glow)):
         path = "%s/%s" % (C.MAT_ROOT, name)
-        version = FX_MASTER_VERSION if name.startswith("M_FX") else MASTER_VERSION
+        version = FX_MASTER_VERSION if name.startswith("M_FX") else (TILE_MASTER_VERSION if name == "M_Tileable" else
+                                                                      MASTER_VERSION)
         existing = C.load(path)
         if existing is not None and not force and C.get_metadata(existing, "AirsoftMaster") == version:
             built[name] = existing
@@ -586,15 +635,20 @@ def build_tileable_instances(materials):
             sc = {"TileMeters": tm, "ColorVariation": 0.3 if have else 0.0, "MetallicScale": 1.0}
             if not have and mid in METALLIC_TILE:
                 sc["MetallicScale"] = 1.0
+            wet = WET_GROUND.get(mid, {})
+            sc.update({k: v for k, v in wet.items() if k != "Tint"})
+            if wet.get("Tint"):
+                tint = tuple(a * b for a, b in zip(tint, wet["Tint"]))
             make_mi(tileable_path(mid), tile, scalars=sc, vectors={"Tint": tint},
-                    textures={"BaseColor": tx["BC"], "Normal": tx["N"], "ORM": tx["ORM"], "Height": tx["H"]})
+                    textures={"BaseColor": tx["BC"], "Normal": tx["N"], "ORM": tx["ORM"], "Height": tx["H"]},
+                    switches={"RainRipples": True} if wet else None)
         if not have:
             C.SUMMARY.miss("tileable textures (flat colour used)", mid)
     # specials
     puddle_base = C.load(tileable_path("AsphaltWet")) or C.load(tileable_path("Asphalt"))
     make_mi("%s/Special/MI_Puddle" % C.MI_ROOT, puddle_base,
-            scalars={"WorldAligned": 1.0, "RoughnessScale": 0.05, "RoughnessAdd": 0.0, "NormalStrength": 0.15,
-                     "ColorVariation": 0.0}, vectors={"Tint": (0.45, 0.45, 0.5)})
+            scalars=dict({k: v for k, v in PUDDLE.items() if k != "Tint"}, WorldAligned=1.0, ColorVariation=0.0),
+            vectors={"Tint": PUDDLE["Tint"]}, switches={"RainRipples": True})
     grass = C.load(tileable_path("Grass"))
     make_mi("%s/Special/MI_Foliage_World" % C.MI_ROOT, grass,
             scalars={"WorldAligned": 1.0, "TileMeters": 1.0}, vectors={"Tint": (0.45, 0.6, 0.3)})

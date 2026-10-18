@@ -963,6 +963,16 @@ def _velvet_street():
            wall_prop("Neon_BladeGames", -42.0, NU, 4.0, NY),
            wall_prop("Neon_BladeRamen", -50.0, NU, 7.6, NY),
            wall_prop("Neon_Karaoke", -45.8, NU, 3.66, NY)]
+    # upper storeys: more blades stacked up the facade (emissive only - Lumen lights the street from their tubes,
+    # the fixture lights stay on the low row that pools on the pavement)
+    for (aid, x, z) in (("Neon_BladeIzakaya", -13.8, 7.4), ("Neon_BladeRamen", -5.8, 7.6), ("Neon_BladeHotel", 6.2, 7.5),
+                        ("Neon_BladeIzakaya", 10.2, 4.0), ("Neon_BladeRamen", 18.2, 4.0), ("Neon_BladeHotel", 26.2, 7.4),
+                        ("Neon_BladeGames", 34.2, 4.0), ("Neon_BladeIzakaya", 42.2, 7.6), ("Neon_BladeRamen", 30.2, 8.0),
+                        ("Neon_BladeHotel", -1.8, 11.0), ("Neon_BladeGames", 14.2, 10.8), ("Neon_BladeHotel", 38.2, 11.0),
+                        ("Neon_BladeVelvet", 50.2, 8.6), ("Neon_BladeGames", -17.8, 11.2)):
+        it.append(wall_prop(aid, x, NU, z, NY, lit=z < 6.0))
+    it += [wall_prop("Neon_Karaoke", 20.2, NU, 10.6, NY, lit=False), wall_prop("Neon_BoxPawn", -15.8, NU, 7.3, NY, lit=False),
+           wall_prop("Neon_Cocktails", 44.2, NU, 7.2, NY, lit=False), wall_prop("Neon_Karaoke", -3.8, NU, 14.2, NY, lit=False)]
     it.append(prop("Street_Vending", 34.8, NF + 0.68, 0.0, NY))
     # valet-lot wall (Blue spawn gate) between the north blocks: a lightbox over the gate, backdrop beyond
     it += [wall_prop("Neon_Karaoke", -33.0, -30.2 + 0.0, 4.3, NY, lit=False),
@@ -986,6 +996,13 @@ def _velvet_street():
            wall_prop("Neon_ArrowBar", 6.0, SU, 3.75, SY),
            wall_prop("Neon_PharmacyCross", 10.0, SU, 4.6, SY),
            wall_prop("Neon_Karaoke", 12.5, SU, 4.6, SY, lit=False)]
+    for (aid, x, z) in (("Neon_BladeRamen", -10.2, 8.4), ("Neon_BladeIzakaya", -2.2, 8.8), ("Neon_BladeGames", 5.8, 8.3),
+                        ("Neon_BladeIzakaya", 21.8, 8.6), ("Neon_BladeHotel", -14.2, 11.6)):
+        it.append(wall_prop(aid, x, SF - FACADE_SKIN, z, SY, lit=False))
+    it += [wall_prop("Neon_BladeHotel", 16.0, SU, 3.9, SY), wall_prop("Neon_BoxPawn", -24.2, SF - FACADE_SKIN, 12.2, SY, lit=False),
+           wall_prop("Neon_Karaoke", -5.0, SU, 6.2, SY, lit=False)]
+    for (x, z) in ((-15.0, 6.6), (4.0, 6.5), (9.0, 6.9), (19.5, 6.6), (23.8, 6.3), (-23.6, 6.8)):
+        it.append(wall_prop("Street_ACUnit", x, SU, z, SY))
     it.append(prop("Street_Vending", 9.3, SF - 0.68, 0.0, SY))
     # blocks either side of the club (beyond the street ends of the playable area)
     it += [slab(-62, -14, -37, -10, 0, 18, "BrickDark", name="BlockW"), slab(37, -14, 62, -10, 0, 18, "BrickDark", name="BlockE")]
@@ -1002,7 +1019,8 @@ def _velvet_street():
     for sx in (1.0, -1.0):
         xf = sx * 62.0
         it += [slab(min(xf, xf + sx * 6), -42, max(xf, xf + sx * 6), -4, 0, 22, "BrickDark", name="StreetEnd")]
-        it += facade_storeys(-38.0, -6.0, xf, 0.4, 6, 180.0 if sx > 0 else 0.0, seed=50 + int(sx), axis="y")
+        it += facade_storeys(-38.0, -6.0, xf, 0.4, 6, 180.0 if sx > 0 else 0.0, seed=50 + int(sx), axis="y",
+                             kinds=("B", "B", "D", "C"))
         it += [prop("Neon_Karaoke", xf - sx * (FACADE_SKIN + 0.02), -20.0, 9.0, 180.0 if sx > 0 else 0.0, light=True),
                prop("Neon_BladeHotel", xf - sx * FACADE_SKIN, -27.0, 5.0, 180.0 if sx > 0 else 0.0, light=True)]
     # overhead cables across the street, a steam vent in the road and a fire barrel by the valet gate
@@ -1011,6 +1029,13 @@ def _velvet_street():
     it += [prop("Street_SteamVent", -8.5, -21.8, -0.15, 0.0), prop("Street_SteamVent", 21.0, -18.4, -0.15, 90.0),
            prop("Street_FireBarrel", -34.3, -28.7, 0.0, 0.0, light=True),
            prop("Street_FireBarrel", 33.6, -7.8, 0.0, 0.0, light=True)]
+
+    # light budget: past the playable street ends (|x| > 40 m) signs and shops glow by emission only (Lumen),
+    # without their own light actors
+    for k, i in enumerate(it):
+        if abs(i["p"][0]) > 40.0 and (i["t"] == "light" or (i["t"] == "prop" and i.get("light"))):
+            it[k] = None if i["t"] == "light" else dict(i, light=None)
+    it = [i for i in it if i is not None]
 
     # ---- haze: teal-blue street fog, denser toward the street ends so the canyon fades out ----
     it += [fogvol(0, -20.2, 4.0, 40.0, 11.0, 6.0, density=0.22, color=(0.48, 0.78, 0.86)),

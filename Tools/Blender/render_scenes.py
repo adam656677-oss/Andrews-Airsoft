@@ -103,8 +103,10 @@ def literal_tables(path, names):
 L = load_layouts()
 _LT = literal_tables(os.path.join(LIB_DIR, "lighting.py"), ("PRESETS", "FIXTURES"))
 PRESETS, FIXTURES = _LT["PRESETS"], _LT["FIXTURES"]
-_MT = literal_tables(os.path.join(LIB_DIR, "materials.py"), ("GLASS", "EMISSIVE", "RETICLE", "FALLBACK_COLOR"))
+_MT = literal_tables(os.path.join(LIB_DIR, "materials.py"), ("GLASS", "EMISSIVE", "RETICLE", "FALLBACK_COLOR", "WET_GROUND",
+                                                              "PUDDLE"))
 GLASS, EMISSIVE, RETICLE, FALLBACK_COLOR = _MT["GLASS"], _MT["EMISSIVE"], _MT["RETICLE"], _MT["FALLBACK_COLOR"]
+WET_GROUND, PUDDLE = _MT.get("WET_GROUND", {}), _MT.get("PUDDLE", {})
 MATS = json.load(open(os.path.join(DATA_DIR, "Materials.json")))["Materials"]
 
 # Game-side constants (Source/AndrewsAirsoft): default attachments per gun (AirsoftWeaponData.cpp),
@@ -485,9 +487,11 @@ def tile_mat(mid, tint=None, uv_scale=1.0, res=2048, puddle=False):
     orm = tex(nb, paths["ORM"], "Non-Color", res, "ORM", uv)
     nrm = tex(nb, paths["N"], "Non-Color", res, "N", uv)
     col = bc.outputs["Color"]
-    if puddle:   # MI_Puddle: AsphaltWet, roughness * 0.05, normal 0.15, tint (0.45, 0.45, 0.5)
-        col = vmul(nb, col, (0.45, 0.45, 0.5))
-        rough_scale, nstr = 0.05, 0.15
+    wet = PUDDLE if puddle else WET_GROUND.get(mid)
+    rough_add = 0.0
+    if puddle:   # MI_Puddle (materials.PUDDLE on top of the wet AsphaltWet instance)
+        col = vmul(nb, col, tuple(a * b for a, b in zip(WET_GROUND.get("AsphaltWet", {}).get("Tint", (1, 1, 1)), PUDDLE["Tint"])))
+        rough_scale, rough_add, nstr = PUDDLE["RoughnessScale"], PUDDLE["RoughnessAdd"], PUDDLE["NormalStrength"]
     else:
         macro = tex(nb, paths["BC"], "sRGB", min(res, 1024), "BC", nb.vscale(uv, (0.071, 0.071, 0.071)))
         dot = nb.node("ShaderNodeVectorMath", operation="DOT_PRODUCT")
@@ -498,13 +502,42 @@ def tile_mat(mid, tint=None, uv_scale=1.0, res=2048, puddle=False):
         if tint:
             col = vmul(nb, col, tuple(min(4.0, c * 1.8) for c in L.TINTS.get(tint, (0.5, 0.5, 0.5))))
         rough_scale, nstr = 1.0, 1.0
+        if wet:      # materials.WET_GROUND: darker, glossier rain-soaked ground
+            col = vmul(nb, col, wet["Tint"])
+            rough_scale, rough_add, nstr = wet["RoughnessScale"], wet["RoughnessAdd"], wet["NormalStrength"]
     _ao, rough, metal = nb.separate(orm.outputs["Color"])
     nb.nt.links.new(col, bsdf.inputs["Base Color"])
-    nb.nt.links.new(nb.mul(rough, rough_scale, clamp=True), bsdf.inputs["Roughness"])
+    nb.nt.links.new(nb.add(nb.mul(rough, rough_scale), rough_add, clamp=True), bsdf.inputs["Roughness"])
     nb.nt.links.new(metal, bsdf.inputs["Metallic"])
-    nb.nt.links.new(dx_normal(nb, nrm, nstr), bsdf.inputs["Normal"])
+    normal = dx_normal(nb, nrm, nstr)
+    if wet and wet.get("RippleStrength"):
+        # the game's RainRipples shimmer + AirsoftEffects drop rings, frozen: scattered concentric rings
+        bump = nb.node("ShaderNodeBump")
+        bump.inputs["Strength"].default_value = min(1.0, wet["RippleStrength"] * 1.2)
+        bump.inputs["Distance"].default_value = 0.0012
+        nb.nt.links.new(nb.add(ripple_rings(nb, 2.6, 0.0), ripple_rings(nb, 3.7, 1.0)), bump.inputs["Height"])
+        nb.nt.links.new(normal, bump.inputs["Normal"])
+        normal = bump.outputs["Normal"]
+    nb.nt.links.new(normal, bsdf.inputs["Normal"])
     _mat_cache[key] = m
     return m
+
+
+def ripple_rings(nb, scale, seed):
+    """Rain-drop rings on wet ground (height): a Voronoi cell per drop, ring radius = the drop's age (cell colour),
+    a few wavelets that fade as the ring grows; about half the cells hold a live ripple."""
+    geo = nb.node("ShaderNodeNewGeometry")
+    pos = nb.vadd(geo.outputs["Position"], (seed * 13.1, seed * 7.7, 0.0))
+    v = nb.node("ShaderNodeTexVoronoi", feature="F1", voronoi_dimensions="2D")
+    nb._in(v.inputs["Vector"], pos)
+    v.inputs["Scale"].default_value = scale
+    v.inputs["Randomness"].default_value = 1.0
+    age, live, _ = nb.separate(v.outputs["Color"])
+    x = nb.sub(v.outputs["Distance"], nb.mul(age, 0.42))
+    env = nb.maprange(nb.math("ABSOLUTE", x), 0.0, 0.09, 1.0, 0.0, smooth=True)
+    wavelets = nb.math("COSINE", nb.mul(x, 2.0 * math.pi / 0.045))
+    amp = nb.mul(nb.math("POWER", nb.sub(1.0, age), 1.5), nb.math("GREATER_THAN", live, 0.45))
+    return nb.mul(nb.mul(wavelets, env), amp)
 
 
 def box_material(mat, tint=None, glow=20.0, res=2048):
@@ -1032,9 +1065,9 @@ class Builder:
                        "text": it["letter"], "size": 90.0, "glow": 2.0}, unlit_rgb=rgb)
 
     def rain(self, spec):
-        """Shot-only rain (in game the effects subsystem only rings ripples on wet ground and puddles around the
-        camera - AirsoftEffects RainMapKeywords - there are no falling streaks): thin streaks along the fall
-        direction, each turned to face the camera, lit only by the scene's own lights. Drops nearer than
+        """Rain streaks (stand-in for AirsoftEffects' camera-local rain on RainMapKeywords maps: ~320 lit streaks
+        within 11 m plus ripples on wet ground): thin streaks along the fall direction, each turned to face the
+        camera, lit only by the scene's own lights. Drops nearer than
         spec["near"] m are left out (a lens would blur them away; sharp they read as scratches)."""
         import random as _random
         rng = _random.Random(spec.get("seed", 3))
@@ -1072,6 +1105,35 @@ class Builder:
         o.visible_diffuse = False
         self.coll.objects.link(o)
         print(f"  rain: {len(faces)} streaks", flush=True)
+
+    def embers(self, spec):
+        """Shot-only stand-in for AirsoftEffects embers (glow particles rising from Street_FireBarrel): short
+        camera-facing orange streaks drifting up and sideways in a cone above the fire, hottest near it."""
+        import random as _random
+        rng = _random.Random(spec.get("seed", 11))
+        cx, cy, cz = spec["at"]
+        cam = bl(self.cam_pos)
+        verts, faces = [], []
+        for _ in range(int(spec.get("count", 40))):
+            h = rng.random() ** 1.6 * spec.get("height", 3.0)
+            r = spec.get("radius", 0.4) * (0.3 + h * 0.6) * math.sqrt(rng.random())
+            a = rng.uniform(0, 2 * math.pi)
+            p = bl((cx + r * math.cos(a), cy + r * math.sin(a), cz + h))
+            d = bl((rng.uniform(-0.4, 0.4), rng.uniform(-0.4, 0.4), 1.0)).normalized()
+            side = d.cross(cam - p)
+            if side.length < 1e-6:
+                continue
+            side = side.normalized() * rng.uniform(0.004, 0.009) * 0.5
+            b = p + d * rng.uniform(0.02, 0.07)
+            k = len(verts)
+            verts += [tuple(p - side), tuple(p + side), tuple(b + side), tuple(b - side)]
+            faces.append((k, k + 1, k + 2, k + 3))
+        me = bpy.data.meshes.new("Embers")
+        me.from_pydata(verts, [], faces)
+        me.materials.append(emission_mat("Embers", (1.0, 0.38, 0.06), spec.get("glow", 40.0)))
+        o = bpy.data.objects.new("Embers", me)
+        o.visible_shadow = False
+        self.coll.objects.link(o)
 
     # ---- whole map ------------------------------------------------------------------------
     def build(self, extra=()):
@@ -1166,12 +1228,13 @@ def setup_environment(preset_name, shot):
         ramp = nt.nodes.new("ShaderNodeValToRGB")
         nt.links.new(sep.outputs["Z"], ramp.inputs["Fac"])
         el = ramp.color_ramp.elements
-        el[0].position, el[0].color = 0.0, (0.0005, 0.0005, 0.0007, 1)
-        el[1].position, el[1].color = 0.5, (0.010, 0.008, 0.013, 1)
+        st = shot.get("sky_tint", (1.0, 1.0, 1.0))
+        el[0].position, el[0].color = 0.0, (0.0005 * st[0], 0.0005 * st[1], 0.0007 * st[2], 1)
+        el[1].position, el[1].color = 0.5, (0.010 * st[0], 0.008 * st[1], 0.013 * st[2], 1)
         e2 = el.new(0.6)
-        e2.color = (0.0035, 0.0045, 0.009, 1)
+        e2.color = (0.0035 * st[0], 0.0045 * st[1], 0.009 * st[2], 1)
         e3 = el.new(1.0)
-        e3.color = (0.0012, 0.0018, 0.0045, 1)
+        e3.color = (0.0012 * st[0], 0.0018 * st[1], 0.0045 * st[2], 1)
         nt.links.new(ramp.outputs["Color"], bg.inputs["Color"])
         bg.inputs["Strength"].default_value = p["sky"]["intensity"] * shot.get("sky_strength", 1.0)
     scn.world = world
@@ -1326,6 +1389,17 @@ def post_process(src, png_out, jpg_out, shot):
     r = np.sqrt(u * u * 0.9 + v * v * 0.6)
     vig = 1.0 - shot.get("vignette", 0.32) * np.clip((r - 0.35) / 0.95, 0.0, 1.0) ** 1.6
     a *= vig[..., None]
+    split = shot.get("split")
+    if split:   # lighting.PRESETS "grade" stand-in: teal shadows / warm highlights in display space
+        lum = a.mean(axis=2, keepdims=True)
+        wt = np.clip((lum - 0.04) / 0.5, 0.0, 1.0) ** 0.8
+        sh, hi = np.array(split["shadows"], np.float32), np.array(split["highlights"], np.float32)
+        a = a * (sh * (1.0 - wt) + hi * wt)
+        if split.get("gamma", 1.0) != 1.0:      # deeper blacks (the preset's contrast)
+            a = np.clip(a, 0.0, None) ** split["gamma"]
+        if split.get("saturation", 1.0) != 1.0:
+            lum = a.mean(axis=2, keepdims=True)
+            a = lum + (a - lum) * split["saturation"]
     rng = np.random.default_rng(7)
     g = rng.normal(0.0, 1.0, (h, w)).astype(np.float32)
     g = (g + np.roll(g, 1, 0) + np.roll(g, 1, 1)) / 3.0      # slightly soft grain, not per-pixel noise
@@ -1451,8 +1525,37 @@ shot("weapon_hero", file="08_Armory_M4_Hero", map="Staging",
      extra=[{"t": "gun", "id": "M4", "fit": {"Optic": "Scope4x", "Muzzle": "Suppressor"}, "skin": "FDE", "team": "Blue",
              "p": (-12.16, 9.06, 1.3), "rot": (0.0, 175.0, 90.0), "rest": True}])
 
-# Nightjar Garage (night, rain). Rain streaks are shot-only geometry: the game has wet materials, puddles, fog and
-# ripples on wet ground around the camera (AirsoftEffects), but no falling rain (that needs a Niagara system).
+# Neon street (Velvet Club re-dress, Tools/Blender/club/neon_kit.py): rain-soaked canyon of stacked signs. Haze is
+# teal-blue like lighting.PRESETS velvet_night (fog inscatter + teal volumetric albedo); "split" stands in for its
+# colour-wheel grade; rain streaks / embers stand in for AirsoftEffects' camera-local rain and fire-barrel embers.
+NEON_HAZE = {"rect": (-68, -42, 68, -4), "top": 18.0, "density": 0.0013, "color": (0.36, 0.82, 0.9), "g": 0.7}
+NEON_SPLIT = {"shadows": (0.8, 1.0, 1.12), "highlights": (1.04, 1.0, 0.96), "saturation": 1.18, "gamma": 1.18}
+NEON_SKY = (0.7, 1.5, 1.6)
+
+shot("neon_canyon", file="20_Neon_Canyon", map="VelvetClub",
+     caption="Velvet Club street re-dressed - third-person height down the neon canyon in the rain",
+     cam=(-17.0, -17.6, 2.0), target=(22.0, -21.0, 4.0), lens=22, fstop=0,
+     exposure=1.25, sun_mult=0.5, haze=NEON_HAZE, fog_scale=0.05, bloom=0.6, bloom_size=0.9, split=NEON_SPLIT,
+     sky_tint=NEON_SKY, samples=64, noise=0.02,
+     rain={"box": (-15.5, -29.5, 0.0, 26.0, -10.8, 9.0), "count": 11000, "len": 0.55, "width": 0.004, "alpha": 0.2,
+           "near": 2.5, "tilt": (0.06, 0.03)})
+shot("neon_wet", file="21_Neon_WetStreet", map="VelvetClub",
+     caption="Velvet Club street - low over the wet asphalt: neon smeared across puddles and rain rings",
+     cam=(14.6, -20.8, 0.3), target=(-8.0, -19.5, 2.4), lens=24, fstop=2.8, focus=(5.0, -21.0, 0.5),
+     exposure=1.25, sun_mult=0.5, haze=NEON_HAZE, fog_scale=0.05, bloom=0.6, bloom_size=0.9, split=NEON_SPLIT,
+     sky_tint=NEON_SKY, samples=64, noise=0.02,
+     rain={"box": (-20.0, -29.5, 0.0, 13.0, -10.8, 8.0), "count": 9000, "len": 0.5, "width": 0.004, "alpha": 0.2,
+           "near": 2.0, "tilt": (0.06, 0.03)})
+shot("neon_entrance", file="22_Neon_ClubEntrance", map="VelvetClub",
+     caption="Velvet Club - the entrance under its blade sign, shutters lit by their tubes, the queue rope",
+     cam=(-14.5, -20.5, 1.65), target=(-1.0, -10.4, 3.3), lens=24, fstop=4.0, focus=(-6.0, -11.4, 2.5),
+     exposure=1.25, sun_mult=0.5, haze=NEON_HAZE, fog_scale=0.05, bloom=0.6, bloom_size=0.9, split=NEON_SPLIT,
+     sky_tint=NEON_SKY, samples=64, noise=0.02,
+     rain={"box": (-11.0, -26.0, 0.0, 12.0, -10.6, 8.0), "count": 8000, "len": 0.5, "width": 0.004, "alpha": 0.2,
+           "near": 2.5, "tilt": (0.06, 0.03)})
+
+# Nightjar Garage (night, rain). Rain streaks here are denser than the game's camera-local AirsoftEffects rain
+# (which only covers ~11 m around the camera); wet materials, puddles, fog and ripples match the game.
 GARAGE_HAZE = {"rect": (-36, -23, 36, 23), "top": 6.3, "density": 0.0025, "color": (0.78, 0.82, 0.92), "g": 0.55}
 ROOF_HAZE = {"rect": (-170, -170, 170, 170), "top": 45.0, "density": 0.0032, "color": (0.72, 0.74, 0.82), "g": 0.6}
 ROOF_RAIN = {"box": (-31, -23, 6.7, 31, 23, 13.5), "count": 14000, "len": 0.7, "width": 0.007, "alpha": 0.4, "near": 3.0}
@@ -1496,6 +1599,8 @@ def build_scene(sh, opts):
         b.item_light(dict(it, t="light"))
     for spec in ([sh["rain"]] if isinstance(sh.get("rain"), dict) else sh.get("rain", [])):
         b.rain(spec)
+    for spec in sh.get("embers", []):
+        b.embers(spec)
     return b, cam
 
 

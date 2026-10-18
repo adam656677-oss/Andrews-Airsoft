@@ -722,6 +722,714 @@
         "TintMetallic": 0.0
       },
       "Notes": "Unreal cm, character space (X forward, Y right, Z up). Origin = the anchor bone's pivot in the assumed UE5 Manny reference pose; UAirsoftTeamGearComponent attaches it to that bone from the skeleton's reference pose. Offset/Rotation/Scale are tuned with airsoft.gear.tune. Mask: R = kit colourway (PrimaryTint), G = SecondaryTint, B = team colour (AccentTint)."
+    },
+    "Suit": {
+      "Pieces": [
+        {
+          "Name": "Chest",
+          "Kind": "Static",
+          "Slots": [
+            "M_Suit_Chest"
+          ],
+          "Bounds": {
+            "Min": [
+              -12.2,
+              -26.0,
+              -36.3
+            ],
+            "Max": [
+              17.8,
+              26.0,
+              18.4
+            ]
+          },
+          "Triangles": 14402,
+          "TextureSize": 4096,
+          "Anchor": {
+            "Bone": "spine_05",
+            "Offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Scale": 1.0,
+            "AssumedBonePos": [
+              -2.2,
+              0.0,
+              137.0
+            ]
+          }
+        },
+        {
+          "Name": "Waist",
+          "Kind": "Static",
+          "Slots": [
+            "M_Suit_Waist"
+          ],
+          "Bounds": {
+            "Min": [
+              -12.1,
+              -19.5,
+              -22.5
+            ],
+            "Max": [
+              16.9,
+              19.5,
+              0.3
+            ]
+          },
+          "Triangles": 5906,
+          "TextureSize": 2048,
+          "Anchor": {
+            "Bone": "spine_03",
+            "Offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Scale": 1.0,
+            "AssumedBonePos": [
+              -1.8,
+              0.0,
+              119.0
+            ]
+          }
+        },
+        {
+          "Name": "Hips",
+          "Kind": "Static",
+          "Slots": [
+            "M_Suit_Hips"
+          ],
+          "Bounds": {
+            "Min": [
+              -15.8,
+              -21.9,
+              -17.2
+            ],
+            "Max": [
+              15.2,
+              21.9,
+              5.7
+            ]
+          },
+          "Triangles": 9802,
+          "TextureSize": 4096,
+          "Anchor": {
+            "Bone": "pelvis",
+            "Offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Scale": 1.0,
+            "AssumedBonePos": [
+              0.0,
+              0.0,
+              97.0
+            ]
+          }
+        },
+        {
+          "Name": "UpperArmL",
+          "Kind": "Static",
+          "Slots": [
+            "M_Suit_UpperArmL"
+          ],
+          "Bounds": {
+            "Min": [
+              -8.1,
+              -28.4,
+              -27.7
+            ],
+            "Max": [
+              9.2,
+              5.7,
+              10.1
+            ]
+          },
+          "Triangles": 1344,
+          "TextureSize": 2048,
+          "Anchor": {
+            "Bone": "upperarm_l",
+            "Offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Scale": 1.0,
+            "AlignBone": "lowerarm_l",
+            "ModelDir": [
+              0.0998,
+              -0.7184,
+              -0.6885
+            ],
+            "AssumedBonePos": [
+              -1.0,
+              -17.5,
+              142.5
+            ]
+          }
+        },
+        {
+          "Name": "ForearmL",
+          "Kind": "Static",
+          "Slots": [
+            "M_Suit_ForearmL"
+          ],
+          "Bounds": {
+            "Min": [
+              -6.3,
+              -21.2,
+              -22.8
+            ],
+            "Max": [
+              8.7,
+              8.2,
+              8.4
+            ]
+          },
+          "Triangles": 2200,
+          "TextureSize": 2048,
+          "Anchor": {
+            "Bone": "lowerarm_l",
+            "Offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Scale": 1.0,
+            "AlignBone": "hand_l",
+            "ModelDir": [
+              0.1605,
+              -0.662,
+              -0.7322
+            ],
+            "AssumedBonePos": [
+              1.8,
+              -38.0,
+              122.9
+            ]
+          }
+        },
+        {
+          "Name": "ThighL",
+          "Kind": "Static",
+          "Slots": [
+            "M_Suit_ThighL"
+          ],
+          "Bounds": {
+            "Min": [
+              -11.3,
+              -10.8,
+              -49.3
+            ],
+            "Max": [
+              11.8,
+              11.3,
+              12.4
+            ]
+          },
+          "Triangles": 1568,
+          "TextureSize": 2048,
+          "Anchor": {
+            "Bone": "thigh_l",
+            "Offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Scale": 1.0,
+            "AlignBone": "calf_l",
+            "ModelDir": [
+              0.0282,
+              -0.0282,
+              -0.9992
+            ],
+            "AssumedBonePos": [
+              0.0,
+              -9.4,
+              93.0
+            ]
+          }
+        },
+        {
+          "Name": "ShinL",
+          "Kind": "Static",
+          "Slots": [
+            "M_Suit_ShinL"
+          ],
+          "Bounds": {
+            "Min": [
+              -9.7,
+              -7.0,
+              -44.6
+            ],
+            "Max": [
+              7.1,
+              6.8,
+              7.5
+            ]
+          },
+          "Triangles": 1680,
+          "TextureSize": 2048,
+          "Anchor": {
+            "Bone": "calf_l",
+            "Offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Scale": 1.0,
+            "AlignBone": "foot_l",
+            "ModelDir": [
+              -0.0877,
+              -0.019,
+              -0.996
+            ],
+            "AssumedBonePos": [
+              1.2,
+              -10.6,
+              50.5
+            ]
+          }
+        },
+        {
+          "Name": "ShoeL",
+          "Kind": "Static",
+          "Slots": [
+            "M_Suit_ShoeL"
+          ],
+          "Bounds": {
+            "Min": [
+              -8.3,
+              -5.7,
+              -8.5
+            ],
+            "Max": [
+              21.5,
+              5.4,
+              1.1
+            ]
+          },
+          "Triangles": 6000,
+          "TextureSize": 2048,
+          "Anchor": {
+            "Bone": "foot_l",
+            "Offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Scale": 1.0,
+            "AssumedBonePos": [
+              -2.5,
+              -11.4,
+              8.5
+            ]
+          }
+        },
+        {
+          "Name": "UpperArmR",
+          "Kind": "Static",
+          "Slots": [
+            "M_Suit_UpperArmR"
+          ],
+          "Bounds": {
+            "Min": [
+              -8.1,
+              -5.7,
+              -27.7
+            ],
+            "Max": [
+              9.2,
+              28.4,
+              10.1
+            ]
+          },
+          "Triangles": 1344,
+          "TextureSize": 2048,
+          "Anchor": {
+            "Bone": "upperarm_r",
+            "Offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Scale": 1.0,
+            "AlignBone": "lowerarm_r",
+            "ModelDir": [
+              0.0998,
+              0.7184,
+              -0.6885
+            ],
+            "AssumedBonePos": [
+              -1.0,
+              17.5,
+              142.5
+            ]
+          }
+        },
+        {
+          "Name": "ForearmR",
+          "Kind": "Static",
+          "Slots": [
+            "M_Suit_ForearmR"
+          ],
+          "Bounds": {
+            "Min": [
+              -6.3,
+              -8.2,
+              -22.8
+            ],
+            "Max": [
+              8.7,
+              21.2,
+              8.4
+            ]
+          },
+          "Triangles": 2200,
+          "TextureSize": 2048,
+          "Anchor": {
+            "Bone": "lowerarm_r",
+            "Offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Scale": 1.0,
+            "AlignBone": "hand_r",
+            "ModelDir": [
+              0.1605,
+              0.662,
+              -0.7322
+            ],
+            "AssumedBonePos": [
+              1.8,
+              38.0,
+              122.9
+            ]
+          }
+        },
+        {
+          "Name": "ThighR",
+          "Kind": "Static",
+          "Slots": [
+            "M_Suit_ThighR"
+          ],
+          "Bounds": {
+            "Min": [
+              -11.3,
+              -11.3,
+              -49.3
+            ],
+            "Max": [
+              11.8,
+              10.8,
+              12.4
+            ]
+          },
+          "Triangles": 1568,
+          "TextureSize": 2048,
+          "Anchor": {
+            "Bone": "thigh_r",
+            "Offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Scale": 1.0,
+            "AlignBone": "calf_r",
+            "ModelDir": [
+              0.0282,
+              0.0282,
+              -0.9992
+            ],
+            "AssumedBonePos": [
+              0.0,
+              9.4,
+              93.0
+            ]
+          }
+        },
+        {
+          "Name": "ShinR",
+          "Kind": "Static",
+          "Slots": [
+            "M_Suit_ShinR"
+          ],
+          "Bounds": {
+            "Min": [
+              -9.7,
+              -6.8,
+              -44.6
+            ],
+            "Max": [
+              7.1,
+              7.0,
+              7.5
+            ]
+          },
+          "Triangles": 1680,
+          "TextureSize": 2048,
+          "Anchor": {
+            "Bone": "calf_r",
+            "Offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Scale": 1.0,
+            "AlignBone": "foot_r",
+            "ModelDir": [
+              -0.0877,
+              0.019,
+              -0.996
+            ],
+            "AssumedBonePos": [
+              1.2,
+              10.6,
+              50.5
+            ]
+          }
+        },
+        {
+          "Name": "ShoeR",
+          "Kind": "Static",
+          "Slots": [
+            "M_Suit_ShoeR"
+          ],
+          "Bounds": {
+            "Min": [
+              -8.3,
+              -5.4,
+              -8.5
+            ],
+            "Max": [
+              21.5,
+              5.7,
+              1.1
+            ]
+          },
+          "Triangles": 6000,
+          "TextureSize": 2048,
+          "Anchor": {
+            "Bone": "foot_r",
+            "Offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Scale": 1.0,
+            "AssumedBonePos": [
+              -2.5,
+              11.4,
+              8.5
+            ]
+          }
+        }
+      ],
+      "Points": {
+        "Pivot": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -15.8,
+          -28.4,
+          -49.3
+        ],
+        "Max": [
+          21.5,
+          28.4,
+          18.4
+        ]
+      },
+      "Anchor": {
+        "Bone": "spine_05",
+        "Offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Scale": 1.0,
+        "AssumedBonePos": [
+          -2.2,
+          0.0,
+          137.0
+        ]
+      },
+      "Outfit": {
+        "Outfit": "Suit",
+        "Tint": "Suit",
+        "TintRoughness": 0.5,
+        "RoughnessDetail": 1.0,
+        "TintMetallic": 0.0
+      },
+      "Notes": "Unreal cm, character space (X forward, Y right, Z up). Every piece has its own Anchor: its origin is that bone's pivot in the assumed UE5 Manny reference pose and UAirsoftTeamGearComponent::ApplySuit attaches it from the skeleton's reference pose (tune with airsoft.gear.tune Suit/<Piece>). Mask: R = suit cloth, G = shirt, B = tie and pocket square."
+    },
+    "HairSlick": {
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Static",
+          "Slots": [
+            "M_HairSlick_Body"
+          ],
+          "Bounds": {
+            "Min": [
+              -9.9,
+              -8.8,
+              0.7
+            ],
+            "Max": [
+              10.3,
+              8.8,
+              21.5
+            ]
+          },
+          "Triangles": 6000,
+          "TextureSize": 2048,
+          "Anchor": {
+            "Bone": "head",
+            "Offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Scale": 1.0,
+            "AssumedBonePos": [
+              0.0,
+              0.0,
+              158.5
+            ]
+          }
+        }
+      ],
+      "Points": {
+        "Pivot": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -9.9,
+          -8.8,
+          0.7
+        ],
+        "Max": [
+          10.3,
+          8.8,
+          21.5
+        ]
+      },
+      "Anchor": {
+        "Bone": "head",
+        "Offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Scale": 1.0,
+        "AssumedBonePos": [
+          0.0,
+          0.0,
+          158.5
+        ]
+      },
+      "Outfit": {
+        "Outfit": "Suit",
+        "Tint": "Hair",
+        "TintRoughness": 0.5,
+        "RoughnessDetail": 1.0,
+        "TintMetallic": 0.0
+      },
+      "Notes": "Unreal cm, character space (X forward, Y right, Z up). Every piece has its own Anchor: its origin is that bone's pivot in the assumed UE5 Manny reference pose and UAirsoftTeamGearComponent::ApplySuit attaches it from the skeleton's reference pose (tune with airsoft.gear.tune HairSlick/<Piece>). Mask: R = hair colour."
     }
   },
   "TeamGear": {
@@ -931,5 +1639,141 @@
       8.8
     ],
     "Notes": "Per-player variant: each slot picks an asset by weight (and Chance for optional slots) and each colourway group picks one entry, all hashed from the PlayerState id. Tints are linear; albedo = 0.75 * tint (the baked base colour is neutral grey 0.75 where the mask is set). Team colours come from AirsoftColors::Team."
+  },
+  "Suit": {
+    "Version": 1,
+    "Assets": [
+      "Suit",
+      "HairSlick"
+    ],
+    "Colorways": {
+      "Suit": [
+        {
+          "Name": "Charcoal",
+          "Primary": [
+            0.047,
+            0.047,
+            0.051
+          ]
+        },
+        {
+          "Name": "MidnightNavy",
+          "Primary": [
+            0.016,
+            0.021,
+            0.047
+          ]
+        },
+        {
+          "Name": "Oxblood",
+          "Primary": [
+            0.074,
+            0.013,
+            0.017
+          ]
+        },
+        {
+          "Name": "Black",
+          "Primary": [
+            0.021,
+            0.021,
+            0.023
+          ]
+        }
+      ],
+      "Shirt": [
+        {
+          "Name": "Black",
+          "Primary": [
+            0.022,
+            0.022,
+            0.024
+          ],
+          "Weight": 0.65
+        },
+        {
+          "Name": "White",
+          "Primary": [
+            1.0,
+            1.0,
+            0.97
+          ],
+          "Weight": 0.35
+        }
+      ],
+      "Tie": [
+        {
+          "Name": "Black",
+          "Primary": [
+            0.016,
+            0.016,
+            0.017
+          ],
+          "Weight": 0.6
+        },
+        {
+          "Name": "Graphite",
+          "Primary": [
+            0.032,
+            0.032,
+            0.035
+          ],
+          "Weight": 0.25
+        },
+        {
+          "Name": "Wine",
+          "Primary": [
+            0.05,
+            0.008,
+            0.012
+          ],
+          "Weight": 0.15
+        }
+      ],
+      "Hair": [
+        {
+          "Name": "Black",
+          "Primary": [
+            0.013,
+            0.011,
+            0.01
+          ],
+          "Weight": 0.4
+        },
+        {
+          "Name": "DarkBrown",
+          "Primary": [
+            0.034,
+            0.021,
+            0.014
+          ],
+          "Weight": 0.35
+        },
+        {
+          "Name": "Brown",
+          "Primary": [
+            0.075,
+            0.046,
+            0.028
+          ],
+          "Weight": 0.15
+        },
+        {
+          "Name": "Grey",
+          "Primary": [
+            0.17,
+            0.17,
+            0.17
+          ],
+          "Weight": 0.1
+        }
+      ]
+    },
+    "MultiplayerSuits": [
+      "Charcoal",
+      "MidnightNavy",
+      "Black"
+    ],
+    "Notes": "UAirsoftTeamGearComponent::ApplySuit dresses a body in every Assets entry. Suit pieces: R = suit colour (caller), G = shirt, B = tie and pocket square (dark from Tie, or the team colour in the multiplayer outfit); HairSlick: R = hair. Shirt / Tie / Hair are picked by Weight, hashed from the variant seed. Tints are linear; albedo = 0.75 * tint."
   }
 }

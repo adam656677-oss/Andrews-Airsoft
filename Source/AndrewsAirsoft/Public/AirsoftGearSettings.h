@@ -1,4 +1,4 @@
-// Andrew's Airsoft - third-person team gear settings (Project Settings > Game > Airsoft Team Gear).
+// Andrew's Airsoft - third-person team gear and suit settings (Project Settings > Game > Airsoft Team Gear).
 
 #pragma once
 
@@ -52,6 +52,14 @@ public:
 	/** Scale of the head set on the stand-in sphere head (the sphere is bigger than a real head). */
 	UPROPERTY(Config, EditAnywhere, Category = "Team Gear", meta = (ClampMin = "0.1"))
 	float FallbackHeadScale = 1.25f;
+
+	/** Master switch for the tailored suit outfit (story missions, the multiplayer Suit outfit). */
+	UPROPERTY(Config, EditAnywhere, Category = "Suit")
+	bool bEnableSuit = true;
+
+	/** Multiplayer suit: the tie and pocket square take the team colour scaled by this (1 = the full, bright team colour). */
+	UPROPERTY(Config, EditAnywhere, Category = "Suit", meta = (ClampMin = "0", ClampMax = "1"))
+	float SuitTeamTieScale = 0.6f;
 
 	static const UAirsoftGearSettings* Get() { return GetDefault<UAirsoftGearSettings>(); }
 };

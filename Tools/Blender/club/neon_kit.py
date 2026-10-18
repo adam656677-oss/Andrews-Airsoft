@@ -13,6 +13,7 @@ Signs are original designs (invented shop names, generic words, no brands):
     Neon_BladeHotel     vertical black blade, H-O-T-E-L in magenta outline tubes, cyan border
     Neon_BladeIzakaya   vertical cream lightbox, "居酒屋" (tavern) in red, magenta border
     Neon_BladeGames     vertical blade, G-A-M-E-S, one colour per letter
+    Neon_BladeVelvet    the club's own blade: V-E-L-V-E-T in magenta and pink tubes, violet border
     Neon_BoxPawn        wall box: "質" (pawn) roundel + PAWN / & LOANS green and amber tubes
     Neon_PharmacyCross  projecting double-sided green LED cross with a bright tube outline
     Neon_Cocktails      cocktail glass icon + COCKTAILS on a raceway
@@ -64,12 +65,12 @@ CJK_CANDIDATES = ["/usr/share/fonts/opentype/ipafont-gothic/ipag.ttf", "/usr/sha
 CJK = next((p for p in CJK_CANDIDATES if os.path.exists(p)), None)
 
 NEON = {}       # asset id -> {"fn", "kw"}
-LINEUP = [
+LINEUP = [   # front row first (rows step back, away from the camera)
+    ["Street_FireBarrel", "Street_SteamVent", "Neon_OpenSign", "Street_ACUnit", "Street_Vending"],
+    ["Neon_Cocktails", "Neon_ArrowBar", "Neon_PharmacyCross", "Neon_Karaoke", "Neon_BoxPawn"],
+    ["Neon_BladeVelvet", "Neon_BladeHotel", "Neon_BladeGames", "Neon_BladeRamen", "Neon_BladeIzakaya"],
+    ["Street_Shopfront", "Street_Shutter", "Street_Awning"],
     ["Street_FacadeBay_A", "Street_FacadeBay_B", "Street_FacadeBay_C", "Street_FacadeBay_D"],
-    ["Street_Shopfront", "Street_Shutter", "Street_Awning", "Street_Cables"],
-    ["Neon_BladeHotel", "Neon_BladeGames", "Neon_BladeRamen", "Neon_BladeIzakaya", "Neon_Karaoke", "Neon_BoxPawn"],
-    ["Neon_Cocktails", "Neon_ArrowBar", "Neon_PharmacyCross", "Neon_OpenSign", "Street_Vending", "Street_ACUnit"],
-    ["Street_FireBarrel", "Street_SteamVent"],
 ]
 
 
@@ -596,6 +597,19 @@ def blade_games(A):
     A.lens = 50
 
 
+@asset("Neon_BladeVelvet", res=1024, collision="Box", edge=0.004, ao_dist=0.12)
+def blade_velvet(A):
+    """The club's own blade over the queue: V-E-L-V-E-T in magenta / pink, violet border."""
+    A.piece("Emissive", "Emissive", res=1024, emissive=True)
+    xc, zc = blade_tube_letters(A, "VELVET", ["magenta", "pink", "magenta", "pink", "magenta", "pink"], 0.8, 3.9, 0.22, 0.0,
+                                "violet", frame_mat="lacquer_black")
+    A.point("Light", (xc, 0, zc))
+    A.point("WallMount", (0, 0, zc))
+    A.preview["Emissive"] = {"emit_tex": 8.0}
+    A.view = (0.25, -1.0, 0.15)
+    A.lens = 50
+
+
 @asset("Neon_BladeIzakaya", res=1024, collision="Box", edge=0.004, ao_dist=0.12)
 def blade_izakaya(A):
     A.piece("Emissive", "Emissive", res=1024, emissive=True)
@@ -1073,12 +1087,12 @@ def facade_bay(A, states, ac=False, seed=1, skin="stucco_facade"):
 
 @asset("Street_FacadeBay_A", res=2048, collision="None", edge=0.004, ao_dist=0.2)
 def facade_a(A):
-    facade_bay(A, [1, 4], ac=False, seed=1, skin="stucco_facade")
+    facade_bay(A, [1, 0], ac=False, seed=1, skin="stucco_facade")
 
 
 @asset("Street_FacadeBay_B", res=2048, collision="None", edge=0.004, ao_dist=0.2)
 def facade_b(A):
-    facade_bay(A, [0, 2], ac=True, seed=2, skin="stucco_brown")
+    facade_bay(A, [0, 0], ac=True, seed=2, skin="stucco_brown")
 
 
 @asset("Street_FacadeBay_C", res=2048, collision="None", edge=0.004, ao_dist=0.2)
@@ -1088,7 +1102,7 @@ def facade_c(A):
 
 @asset("Street_FacadeBay_D", res=2048, collision="None", edge=0.004, ao_dist=0.2)
 def facade_d(A):
-    facade_bay(A, [5, 7], ac=False, seed=4, skin="stucco_facade")
+    facade_bay(A, [0, 5], ac=False, seed=4, skin="stucco_facade")
 
 
 # --------------------------------------------------------------------------------------
@@ -1219,7 +1233,7 @@ def lineup(res=(3840, 2160), samples=24):
     bpy.context.view_layer.update()
     st = pk.setup_studio(back=(0.02, 0.02, 0.024))
     lo, hi = pk.bbox_of(placed)
-    pk.frame(st, lo, hi, view=(1.0, -0.1, 0.35), lens=50, margin=1.03, key_scale=0.35)
+    pk.frame(st, lo, hi, view=(1.0, -0.15, 0.6), lens=50, margin=1.03, key_scale=0.35)
     png = os.path.join(PNG_RENDERS, "_Lineup_4K.png")
     pk.render(png, res, samples)
     to_jpg(png, os.path.join(RENDERS, "_Lineup_4K.jpg"))

@@ -1,5 +1,7 @@
 // Andrew's Airsoft - code-driven visual effects: muzzle puffs, BB impacts per
-// surface, the tag pop, grenade bursts and footstep dust.
+// surface, the tag pop, grenade bursts and footstep dust; on night maps the
+// ambience too: falling rain streaks around the camera, rain ripples, embers
+// over fire barrels (with a flickering light) and steam from street vents.
 //
 // Plastic BBs, not bullets: no blood, no bullet holes, no casings. Everything is
 // cosmetic and local to each machine (never replicated, never touches gameplay),
@@ -22,6 +24,7 @@
 class AActor;
 class UMaterialInterface;
 class UMaterialInstanceDynamic;
+class UInstancedStaticMeshComponent;
 class UPointLightComponent;
 class UStaticMeshComponent;
 struct FHitResult;
@@ -112,12 +115,42 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category = "Looks") float ShakeScale = 1.f;
 
 	// --- Rain ---------------------------------------------------------------------
-	/** Map name fragments where it rains: ripples appear on wet ground and puddles around the camera. */
-	UPROPERTY(Config, EditAnywhere, Category = "Rain") TArray<FString> RainMapKeywords = { TEXT("NightjarGarage") };
+	/** Map name fragments where it rains: streaks fall around the camera, ripples appear on wet ground and puddles. */
+	UPROPERTY(Config, EditAnywhere, Category = "Rain") TArray<FString> RainMapKeywords = { TEXT("NightjarGarage"), TEXT("VelvetClub") };
 	/** Ripples per second (0 = off); a short downward trace each. */
 	UPROPERTY(Config, EditAnywhere, Category = "Rain", meta = (ClampMin = "0")) float RainRipplesPerSecond = 14.f;
 	/** Ripples land within this distance of the camera (cm). */
 	UPROPERTY(Config, EditAnywhere, Category = "Rain") float RainRippleRadius = 1200.f;
+	/** Falling streaks kept around the camera (one instanced mesh, one draw; 0 = off). Scaled by graphics quality. */
+	UPROPERTY(Config, EditAnywhere, Category = "Rain", meta = (ClampMin = "0", ClampMax = "2000")) int32 RainStreaks = 320;
+	/** Streaks fall within this horizontal distance of the camera (cm); none closer than RainStreakInnerRadius. */
+	UPROPERTY(Config, EditAnywhere, Category = "Rain") float RainStreakRadius = 1100.f;
+	UPROPERTY(Config, EditAnywhere, Category = "Rain") float RainStreakInnerRadius = 70.f;
+	/** Streaks start up to this far above the camera (cm). */
+	UPROPERTY(Config, EditAnywhere, Category = "Rain") float RainStreakHeight = 800.f;
+	/** Fall speed (cm/s) and wind drift (cm/s). */
+	UPROPERTY(Config, EditAnywhere, Category = "Rain") float RainStreakSpeed = 950.f;
+	UPROPERTY(Config, EditAnywhere, Category = "Rain") FVector RainWind = FVector(70.0, 30.0, 0.0);
+	/** Streak size (cm): length is the drop's travel during a ~1/25 s exposure; width is kept >= ~1 px. */
+	UPROPERTY(Config, EditAnywhere, Category = "Rain") float RainStreakLength = 38.f;
+	UPROPERTY(Config, EditAnywhere, Category = "Rain") float RainStreakWidth = 0.45f;
+	/** Lit translucent streak (M_FXSmoke): picks up the colour of the neon and lamps around it. */
+	UPROPERTY(Config, EditAnywhere, Category = "Rain") float RainStreakOpacity = 0.22f;
+	UPROPERTY(Config, EditAnywhere, Category = "Rain") float RainStreakEmissive = 0.08f;
+	UPROPERTY(Config, EditAnywhere, Category = "Rain") FLinearColor RainStreakColor = FLinearColor(0.72f, 0.78f, 0.84f);
+
+	// --- Ambient sources (found once per map by static mesh name) -------------------
+	/** Static meshes whose name contains one of these give off embers and flicker the light next to them. */
+	UPROPERTY(Config, EditAnywhere, Category = "Ambient") TArray<FString> EmberSourceKeywords = { TEXT("FireBarrel") };
+	/** Static meshes whose name contains one of these puff steam (street vents). */
+	UPROPERTY(Config, EditAnywhere, Category = "Ambient") TArray<FString> SteamSourceKeywords = { TEXT("SteamVent") };
+	UPROPERTY(Config, EditAnywhere, Category = "Ambient", meta = (ClampMin = "0")) float EmbersPerSecond = 6.f;
+	UPROPERTY(Config, EditAnywhere, Category = "Ambient", meta = (ClampMin = "0")) int32 MaxEmbers = 28;
+	UPROPERTY(Config, EditAnywhere, Category = "Ambient", meta = (ClampMin = "0")) float SteamPuffsPerSecond = 2.f;
+	/** Light intensity swing of a fire's light, 0..1. */
+	UPROPERTY(Config, EditAnywhere, Category = "Ambient", meta = (ClampMin = "0", ClampMax = "1")) float FireFlicker = 0.35f;
+	/** Ambient sources farther than this from the camera are idle (cm). */
+	UPROPERTY(Config, EditAnywhere, Category = "Ambient") float AmbientCullDistance = 3500.f;
 
 	static const UAirsoftEffectsSettings* Get() { return GetDefault<UAirsoftEffectsSettings>(); }
 };
@@ -181,6 +214,9 @@ struct FAirsoftFXParticle
 	FRotator Rotation = FRotator::ZeroRotator;
 	FRotator Spin = FRotator::ZeroRotator;
 	float LastParam = -1.f;
+	/** 0 = one-shot effect, 1 = ambient ember (counted against MaxEmbers, wobbles as it rises). */
+	uint8 Kind = 0;
+	float Seed = 0.f;
 };
 
 USTRUCT()
@@ -258,6 +294,9 @@ private:
 	void UpdateLights(float DeltaTime);
 	void UpdateView();
 	void UpdateRain(float DeltaTime);
+	void UpdateRainStreaks(float DeltaTime);
+	void UpdateAmbient(float DeltaTime);
+	void ScanAmbientSources();
 	void RefreshUserOptions();
 	bool ShouldSpawnAt(const FVector& Location, float MaxDistance) const;
 	float ViewDistance(const FVector& Location) const;
@@ -287,6 +326,9 @@ private:
 	UPROPERTY() TObjectPtr<UMaterialInterface> SmokeMat;
 	UPROPERTY() TObjectPtr<UMaterialInterface> GlowMat;
 	UPROPERTY() TObjectPtr<UMaterialInterface> DebrisMat;
+	/** Rain streaks: one instanced sphere mesh (stretched along the fall), instances moved every frame. */
+	UPROPERTY() TObjectPtr<UInstancedStaticMeshComponent> RainMesh;
+	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> RainMID;
 
 	struct FLiveLight
 	{
@@ -303,7 +345,31 @@ private:
 		double Time = -100.0;
 	};
 
+	struct FRainDrop
+	{
+		FVector Location = FVector::ZeroVector;
+		double FloorZ = 0.0;
+		/** Under a roof / deck: falls hidden so the instance count stays fixed. */
+		bool bSheltered = false;
+	};
+
+	struct FAmbientSource
+	{
+		FVector Location = FVector::ZeroVector;
+		bool bFire = false;
+		float Accumulator = 0.f;
+		float Phase = 0.f;
+		TWeakObjectPtr<UPointLightComponent> Light;
+		float LightBase = 0.f;
+	};
+
 	TArray<FAirsoftFXParticle> Particles;
+	TArray<FRainDrop> RainDrops;
+	TArray<FTransform> RainTransforms;
+	TArray<FAmbientSource> AmbientSources;
+	bool bAmbientScanned = false;
+	int32 LiveEmbers = 0;
+	double AmbientTime = 0.0;
 	TArray<FLiveLight> LiveLights;
 	TArray<int32> FreeLights;
 	TMap<FObjectKey, EAirsoftSurface> SurfaceCache;

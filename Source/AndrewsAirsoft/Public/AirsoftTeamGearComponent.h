@@ -1,6 +1,8 @@
 // Andrew's Airsoft - third-person airsoft team gear: plate carrier, helmet or soft cap, goggles,
 // mesh lower-face mask, team armband and (sometimes) knee pads, attached to the body's bones and
 // coloured for the team. Data: Content/Airsoft/Data/Gear.json (Tools/Blender/gear/build_teamgear.py).
+// The same component also dresses a body in the tailored suit outfit (ApplySuit: jacket, shirt and tie,
+// trousers, belt, shoes and a slicked-back haircut as rigid per-bone pieces; Tools/Blender/gear/build_suit.py).
 //
 // Placement never depends on bone local axes: every piece is modelled in character space
 // (+X forward, +Z up) with its origin at its anchor bone's pivot, and the attach transform is
@@ -17,7 +19,18 @@
 
 class USceneComponent;
 class USkinnedMeshComponent;
+class UStaticMesh;
 class UStaticMeshComponent;
+
+/** What a third-person body wears. */
+UENUM(BlueprintType)
+enum class EAirsoftOutfit : uint8
+{
+	/** Plate carrier, helmet or cap, goggles, mask, armband (ApplyTo). */
+	TeamGear,
+	/** Tailored suit; in multiplayer the tie and pocket square carry the team colour (ApplySuit). */
+	Suit
+};
 
 UCLASS(ClassGroup = (Airsoft), meta = (BlueprintSpawnableComponent))
 class ANDREWSAIRSOFT_API UAirsoftTeamGearComponent : public UActorComponent
@@ -34,6 +47,24 @@ public:
 	 * Returns true if at least one piece is attached.
 	 */
 	bool ApplyTo(USkinnedMeshComponent* Body, EAirsoftTeam Team, int32 VariantSeed);
+
+	/**
+	 * Dresses Body in the tailored suit instead of the team gear (removes any team gear first). InSuitColor tints the
+	 * cloth (see SuitColor() for the Gear.json colourways); VariantSeed picks the shirt (unless Shirt names one of
+	 * Gear.json Suit.Colorways.Shirt, e.g. "Black" / "White"), the dark tie and the hair colour deterministically.
+	 * Only owns the pieces it attaches (hides nothing on the body). Pieces whose mesh is not imported are skipped;
+	 * returns true if at least one piece is attached (false: keep whatever fallback look the caller uses).
+	 */
+	bool ApplySuit(USkinnedMeshComponent* Body, FLinearColor InSuitColor, int32 VariantSeed, FName Shirt = NAME_None);
+
+	/** TeamGear: ApplyTo. Suit: a multiplayer suit (colourway from Gear.json Suit.MultiplayerSuits by seed), tie in the team colour. */
+	bool ApplyOutfit(USkinnedMeshComponent* Body, EAirsoftOutfit Outfit, EAirsoftTeam Team, int32 VariantSeed);
+
+	/** A suit colourway from Gear.json Suit.Colorways.Suit: "Charcoal", "MidnightNavy", "Oxblood", "Black". Unknown names give Charcoal. */
+	static FLinearColor SuitColor(FName Colorway);
+
+	/** True while the suit (rather than team gear) is worn. */
+	bool IsWearingSuit() const { return bSuit && Components.Num() > 0; }
 
 	/** Head set only (helmet or cap, goggles, mask) on the stand-in sphere head used when the mannequin is missing. */
 	bool ApplyToFallbackHead(USceneComponent* Head, EAirsoftTeam Team, int32 VariantSeed);
@@ -77,9 +108,16 @@ private:
 		FName Bone;
 		FLinearColor Primary = FLinearColor::Black;
 		FLinearColor Secondary = FLinearColor::Black;
+		/** Mask B colour when bTeamAccent is false (the suit's tie). */
+		FLinearColor Accent = FLinearColor::Black;
+		/** Mask B takes the team colour (team gear patches, the multiplayer suit's tie). */
+		bool bTeamAccent = true;
 	};
 
 	bool Build(USceneComponent* InParent, bool bInFallback, EAirsoftTeam Team, int32 VariantSeed);
+	bool BuildSuit(USkinnedMeshComponent* Body, FLinearColor InSuitColor, int32 VariantSeed, FName Shirt, bool bTeamTie, EAirsoftTeam Team);
+	/** Creates, attaches and registers one piece's mesh component. */
+	bool AddPart(const FPart& Part, UStaticMesh* Mesh, USceneComponent* InParent, bool bInFallback, EAirsoftTeam Team);
 	/** True while the owning player views the world through this body's own camera. */
 	bool IsOwnerViewing() const;
 	bool ComputeRelative(const FPart& Part, FTransform& OutRelative) const;
@@ -97,6 +135,11 @@ private:
 	EAirsoftTeam AppliedTeam = EAirsoftTeam::None;
 	bool bApplied = false;
 	bool bFallback = false;
+	/** The suit outfit is applied (else team gear); with its inputs, for Rebuild. */
+	bool bSuit = false;
+	bool bSuitTeamTie = false;
+	FLinearColor AppliedSuitColor = FLinearColor::Black;
+	FName AppliedShirt;
 	bool bWantVisible = true;
 	bool bOwnerViewHidden = false;
 };

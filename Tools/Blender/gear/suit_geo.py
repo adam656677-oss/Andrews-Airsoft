@@ -300,13 +300,7 @@ def shell(P, N, thick, closed_t=False, band_rows=(3, 3), band_cols=4, steps=3, a
     M = tg.Mesh()
     attrs = attrs or {}
 
-    def at(name, j, i):
-        a = attrs.get(name)
-        if a is None:
-            return None
-        return a[j, i]
-
-    def grid_attrs(sl=slice(None)):
+    def grid_attrs():
         out = {}
         for k in ("sd", "ss", "puv"):
             if k in attrs:
@@ -361,7 +355,7 @@ def shell(P, N, thick, closed_t=False, band_rows=(3, 3), band_cols=4, steps=3, a
         if rl:
             loops.append(([(j, 0) for j in range(nu)][::-1], El[:, 0][::-1], True))
     rim_faces = []
-    for idx, E, rev in loops:
+    for idx, E, _rev in loops:
         n = len(idx)
         rows = [[oid(j, i) for j, i in idx]]
         for k in range(1, steps):
@@ -455,3 +449,69 @@ def superellipse(n, w, d, e=0.6):
     a = np.linspace(0, 2 * math.pi, n, endpoint=False)
     c, s = np.cos(a), np.sin(a)
     return np.stack([np.sign(s) * np.abs(s) ** e * w, np.sign(c) * np.abs(c) ** e * d], -1)
+
+
+# --------------------------------------------------------------------------------------
+# Implicit solids (shoes, hair): a distance function meshed with surface nets
+# --------------------------------------------------------------------------------------
+
+
+class FnField:
+    """Wraps f(points) -> signed distance with the handkit Field interface used for meshing."""
+
+    def __init__(self, f, lo, hi):
+        self.f = f
+        self.lo, self.hi = np.asarray(lo, np.float64), np.asarray(hi, np.float64)
+
+    def eval(self, p):
+        return self.f(np.asarray(p, np.float64))
+
+    def bounds(self, pad=0.0):
+        return self.lo - pad, self.hi + pad
+
+    def gradient(self, p, h=2e-4):
+        g = np.zeros_like(p)
+        for i in range(3):
+            e = np.zeros(3)
+            e[i] = h
+            g[:, i] = (self.eval(p + e) - self.eval(p - e)) / (2 * h)
+        return g
+
+    def project(self, p, iters=3):
+        for _ in range(iters):
+            d = self.eval(p)
+            g = self.gradient(p)
+            g2 = np.maximum(np.einsum("ij,ij->i", g, g), 1e-8)
+            p = p - (d / g2)[:, None] * g
+        return p
+
+
+def mesh_fn(F, h):
+    lo, hi = F.bounds(3 * h)
+    v, q = hk.mesh_field(F, h, lo, hi)
+    v = F.project(v, 3)
+    v_ = v[q]
+    n = np.cross(v_[:, 1] - v_[:, 0], v_[:, 2] - v_[:, 0]) + np.cross(v_[:, 2] - v_[:, 0], v_[:, 3] - v_[:, 0])
+    g = F.gradient(v_.mean(axis=1), 3e-4)
+    flip = np.einsum("ij,ij->i", n, g) < 0
+    q = q.copy()
+    q[flip] = q[flip][:, ::-1]
+    return v, q
+
+
+def sd_poly2(P, poly):
+    """Signed distance (negative inside) from (N, 2) points to a closed CCW polygon."""
+    poly = np.asarray(poly, np.float64)
+    a = poly
+    b = np.roll(poly, -1, axis=0)
+    ab = b - a
+    ap = P[:, None, :] - a[None]
+    t = np.clip(np.einsum("nmk,mk->nm", ap, ab) / np.maximum(np.einsum("mk,mk->m", ab, ab), 1e-14), 0, 1)
+    d = np.linalg.norm(ap - t[..., None] * ab[None], axis=2).min(axis=1)
+    x, y = P[:, 0], P[:, 1]
+    ins = np.zeros(len(P), bool)
+    for i in range(len(poly)):
+        xi, yi = a[i]
+        xj, yj = b[i]
+        ins ^= ((yi > y) != (yj > y)) & (x < (xj - xi) * (y - yi) / (yj - yi + 1e-12) + xi)
+    return np.where(ins, -d, d)

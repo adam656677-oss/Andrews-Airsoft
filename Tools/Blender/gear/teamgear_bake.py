@@ -16,6 +16,7 @@ teeth.  One call bakes the whole piece into a texture set (Tools/Blender/CONVENT
 Pattern periods adapt to the piece's texel size so the 1-sample emission bakes never alias.
 """
 
+import math
 import os
 import time
 
@@ -61,14 +62,32 @@ ZONES = {
     "zipper": dict(role=None, col=(0.020, 0.020, 0.022), rough=0.5, kind="zipper", wear=0.5, grime=0.5, var=0.2, stitch=False, bump=0.8),
     "vent": dict(role=None, col=(0.012, 0.012, 0.013), rough=0.7, kind="vent", wear=0.0, grime=0.4, var=0.1, stitch=False, bump=0.8),
     "label": dict(role=None, col=(0.05, 0.05, 0.052), rough=0.7, kind="cordura", wear=0.2, grime=0.3, var=0.1, stitch=True, bump=0.3),
+    # --- tailored suit (build_suit.py): clean, pressed cloth, no edge binding, almost no dust
+    "wool": dict(role="P", lum=0.75, rough=0.74, kind="wool", wear=0.12, grime=0.22, var=0.10, stitch=False, bump=0.35, dust=0.15),
+    "wool_edge": dict(role="P", lum=0.75, rough=0.72, kind="wool", wear=0.15, grime=0.22, var=0.10, stitch=True, binding=False, bump=0.35,
+                      dust=0.15, stitch_contrast=0.25),
+    "shirt": dict(role="S", lum=0.75, rough=0.58, kind="shirting", wear=0.05, grime=0.12, var=0.06, stitch=False, bump=0.3, dust=0.0),
+    "silk": dict(role="A", lum=0.72, rough=0.40, kind="silk", wear=0.08, grime=0.12, var=0.08, stitch=False, bump=0.35, dust=0.0),
+    "pocket_sq": dict(role="A", lum=0.75, rough=0.45, kind="silk", wear=0.05, grime=0.1, var=0.06, stitch=False, bump=0.3, dust=0.0),
+    "hair": dict(role="P", lum=0.75, rough=0.42, kind="hair", wear=0.0, grime=0.0, var=0.22, stitch=False, bump=0.75, dust=0.0),
+    "leather": dict(role=None, col=(0.0105, 0.0100, 0.0100), rough=0.20, kind="leather", wear=0.25, grime=0.25, var=0.12, stitch=False, bump=0.3,
+                    wear_col=(0.022, 0.020, 0.019), wear_rough=0.32, dust=0.1),
+    "leather_belt": dict(role=None, col=(0.011, 0.010, 0.010), rough=0.36, kind="leather", wear=0.35, grime=0.3, var=0.15, stitch=True, binding=False,
+                         bump=0.35, wear_col=(0.03, 0.026, 0.024), dust=0.1, stitch_contrast=0.6),
+    "sole": dict(role=None, col=(0.014, 0.011, 0.009), rough=0.55, kind="satin", wear=0.5, grime=0.5, var=0.15, stitch=False, bump=0.3,
+                 wear_col=(0.035, 0.028, 0.022)),
+    "lace": dict(role=None, col=(0.012, 0.012, 0.013), rough=0.6, kind="elastic", wear=0.1, grime=0.2, var=0.1, stitch=False, bump=0.5, dust=0.0),
+    "button": dict(role=None, col=(0.016, 0.015, 0.015), rough=0.28, kind="satin", wear=0.3, grime=0.2, var=0.15, stitch=False, bump=0.1,
+                   wear_col=(0.04, 0.036, 0.034), dust=0.0),
 }
 
 # design periods (metres) of the finest pattern features
 PERIODS = {"weave": 0.0011, "fiber": 0.0005, "webbing": 0.0010, "loop": 0.0009, "elastic": 0.0012, "stipple": 0.0016, "twill": 0.0011,
-           "stitch": 0.0032, "grit": 0.0012, "foam": 0.0012, "mesh": 0.0028}
+           "stitch": 0.0032, "grit": 0.0012, "foam": 0.0012, "mesh": 0.0028, "wool": 0.0008, "shirting": 0.0005, "silk": 0.0007,
+           "hair": 0.0011}
 
 # strength of the baked low-frequency wrinkles per pattern kind (soft goods only)
-WRINKLE = {"cordura": 0.9, "webbing": 0.45, "loop": 0.5, "elastic": 0.45, "twill": 0.8, "patch": 0.25}
+WRINKLE = {"cordura": 0.9, "webbing": 0.45, "loop": 0.5, "elastic": 0.45, "twill": 0.8, "patch": 0.25, "wool": 0.16, "shirting": 0.28, "silk": 0.15}
 
 WAVE_K = 2 * np.pi / 20.0  # Blender wave texture: period = 2*pi / (20 * scale)
 
@@ -224,6 +243,35 @@ def pattern(g, Z):
         slot = nb.mul(g.mr(g.m("ABSOLUTE", nb.sub(cell, 0.5)), 0.30, 0.22, 0.0, 1.0, True), g.mr(g.m("ABSOLUTE", y), 0.0048, 0.0040, 0.0, 1.0, True))
         out["dark"] = slot
         out["h"] = nb.sub(1.0, slot)
+    elif kind == "wool":
+        # worsted suiting: a fine, low twill with soft fibre fuzz
+        per = g.per(PERIODS["wool"])
+        d = nb.wave(g.p, wave_scale(per), "DIAGONAL")
+        fib = nb.noise(p, fiber_s * 0.4, 3.0, 0.6)
+        out["h"] = nb.add(nb.mul(d, 0.45), nb.mul(fib, 0.55))
+    elif kind == "shirting":
+        w = _weave(g, g.per(PERIODS["shirting"]))
+        out["h"] = nb.add(nb.mul(w, 0.6), nb.mul(nb.noise(p, fiber_s * 0.5, 2.0, 0.5), 0.4))
+    elif kind == "silk":
+        # repp silk: fine diagonal ribs
+        per = g.per(PERIODS["silk"])
+        d = nb.wave(nb.vscale(g.p, (1.0, 1.0, 0.6)), wave_scale(per * 1.6), "DIAGONAL")
+        out["h"] = nb.add(nb.mul(d, 0.75), nb.mul(nb.noise(p, fiber_s * 0.3, 2.0, 0.5), 0.25))
+    elif kind == "leather":
+        # polished calf: very fine grain, broad soft creases
+        grain = nb.voronoi(p, 1.0 / g.per(0.0011), "F1")
+        crease = nb.noise(nb.vscale(p, (1.0, 3.0, 1.0)), 60.0, 3.0, 0.55)
+        out["h"] = nb.add(nb.mul(g.mr(grain, 0.0, 0.6, 1.0, 0.0, True), 0.25), nb.mul(crease, 0.75))
+    elif kind == "hair":
+        # combed strands along the flow lines (puv.x = lateral position across the strands)
+        per = g.per(PERIODS["hair"])
+        warp = nb.noise(p, 90.0, 2.0, 0.5)
+        across = nb.add(g.pu, nb.mul(warp, per * 2.5))
+        cell = g.m("FRACT", nb.math("DIVIDE", across, per))
+        strand = g.m("SINE", nb.mul(cell, math.pi))
+        clump = nb.noise(nb.vscale(p, (0.15, 1.0, 1.0)), 140.0, 3.0, 0.6)
+        out["h"] = nb.add(nb.mul(strand, 0.6), nb.mul(clump, 0.4))
+        out["light"] = 0.0
     elif kind == "patch":
         # puv = (u, v, aspect) with v in [-1, 1], u in [-aspect, aspect]
         u, v, asp = g.pu, g.pv, g.pw
@@ -260,6 +308,12 @@ def stitches(g, Z, h):
         return h, 0.0, 0.0
     sd, ss = g.sd, g.ss
     pitch = max(PERIODS["stitch"], 5.0 * g.tex_m)
+    if not Z.get("binding", True):
+        # a single fine pick stitch near the edge, no tape binding
+        row = g.mr(g.absd(sd, 0.0045), 0.00055, 0.00025, 0.0, 1.0, True)
+        dash = g.mr(g.m("PINGPONG", nb.math("DIVIDE", ss, pitch * 0.8), 0.5), 0.12, 0.2, 0.0, 1.0, True)
+        stitch = nb.mul(row, dash)
+        return nb.add(h, nb.mul(stitch, 0.5)), stitch, 0.0
     row = g.mr(g.absd(sd, 0.0042), 0.00065, 0.00030, 0.0, 1.0, True)
     for k in range(1, Z.get("rows", 1)):
         row = g.mx(row, g.mr(g.absd(sd, 0.0042 + 0.0058 * k), 0.00065, 0.00030, 0.0, 1.0, True))
@@ -308,7 +362,7 @@ def zone_graph(mat, zname, mask_img, seed, tex_m, edge_radius=0.0015):
         m1 = nb.noise(g.p, 24.0, 3.0, 0.55, 0.5)
         m2 = nb.noise(g.p, 70.0, 2.0, 0.5)
         macro = nb.add(nb.mul(m1, 0.75), nb.mul(m2, 0.25))
-    if Z.get("stitch"):
+    if Z.get("stitch") and Z.get("binding", True):
         # binding tape near the edge: finer webbing texture
         bw = nb.wave(g.p, wave_scale(g.per(PERIODS["webbing"])), "DIAGONAL")
         h = nb.lerp(binding, h, nb.add(nb.mul(bw, 0.5), nb.mul(stitch, 0.9)))
@@ -323,7 +377,7 @@ def zone_graph(mat, zname, mask_img, seed, tex_m, edge_radius=0.0015):
     mot = nb.noise(p, 2.5, 3.0, 0.5)
     mot2 = nb.noise(p, 30.0, 2.0, 0.5)
     var = nb.mul(nb.add(nb.sub(mot, 0.5), nb.mul(nb.sub(mot2, 0.5), 0.5)), Z["var"])
-    dust = nb.mul(nb.maprange(nb.noise(p, 9.0, 3.0), 0.58, 0.8, 0.0, 1.0), 0.18)
+    dust = nb.mul(nb.maprange(nb.noise(p, 9.0, 3.0), 0.58, 0.8, 0.0, 1.0), 0.18 * Z.get("dust", 1.0))
     dark = pt["dark"]
     light = pt["light"]
     if role:
@@ -335,8 +389,9 @@ def zone_graph(mat, zname, mask_img, seed, tex_m, edge_radius=0.0015):
         if not isinstance(light, float) or light:
             cv = nb.lerp(light, cv, 0.97)
         if Z.get("stitch"):
-            cv = nb.lerp(nb.mul(binding, 0.9), cv, lum * 0.9)
-            cv = nb.lerp(nb.mul(stitch, 0.85), cv, min(1.0, lum * 1.12))
+            if Z.get("binding", True):
+                cv = nb.lerp(nb.mul(binding, 0.9), cv, lum * 0.9)
+            cv = nb.lerp(nb.mul(stitch, 0.85 * Z.get("stitch_contrast", 1.0)), cv, min(1.0, lum * 1.12))
         cv = nb.lerp(nb.mul(wear, 0.5), cv, min(1.0, lum * 1.25))
         cv = nb.mul(cv, nb.sub(1.0, nb.mul(grime, 0.5)))
         cv = nb.lerp(dust, cv, lum * 1.1)
@@ -350,7 +405,7 @@ def zone_graph(mat, zname, mask_img, seed, tex_m, edge_radius=0.0015):
             col = nb.mixc(1.0, col, nb.combine(mg, mg, mg), "MULTIPLY")
         col = nb.mixc(nb.mul(nb.sub(h, 0.5), 0.12), col, tuple(c * 1.6 for c in base))
         if Z.get("stitch"):
-            col = nb.mixc(nb.mul(stitch, 0.8), col, tuple(min(1.0, c * 2.2) for c in base))
+            col = nb.mixc(nb.mul(stitch, 0.8 * Z.get("stitch_contrast", 1.0)), col, tuple(min(1.0, c * 2.2) for c in base))
         wc = Z.get("wear_col", tuple(min(1.0, c * 2.0 + 0.02) for c in base))
         col = nb.mixc(wear, col, wc)
         col = nb.mixc(nb.mul(grime, 0.6), col, (0.0, 0.0, 0.0))

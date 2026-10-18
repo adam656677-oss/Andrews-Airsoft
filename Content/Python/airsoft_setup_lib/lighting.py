@@ -26,23 +26,31 @@ PRESETS = {
         "exposure": (-1.5, 3.2, 0.3), "white_temp": 6200.0, "bloom": 0.45, "vignette": 0.3, "grain": 0.1,
         "ca": 0.06, "saturation": 1.02, "contrast": 1.03, "local_exposure": (0.75, 0.9),
     },
+    # Velvet Club: rain-soaked neon street. Teal-blue haze (height fog + volumetric fog with a teal albedo so
+    # every sign blooms its own colour into the air), cool moon, the neon and sodium practicals do the work.
+    # Grade (shared with nightjar_rain; FPostProcessSettings colour wheels, (r, g, b, w)): cool teal shadows,
+    # slightly warm highlights, saturated neon; local exposure keeps the signs from clipping.
     "velvet_night": {
-        "sun": {"pitch": -38.0, "yaw": 125.0, "lux": 0.25, "temp": 8500, "angle": 0.6},
-        "sky": {"intensity": 0.35, "lower": (0.01, 0.01, 0.015)}, "clouds": True,
-        "fog": {"density": 0.06, "falloff": 0.35, "start": 300.0, "inscatter": (0.04, 0.05, 0.08),
-                "vol_scatter": 0.6, "vol_albedo": (205, 200, 220), "vol_extinction": 2.0, "vol_distance": 6000.0},
-        "exposure": (-2.5, 1.0, 0.6), "white_temp": 6500.0, "bloom": 0.8, "vignette": 0.35, "grain": 0.15,
-        "ca": 0.1, "saturation": 1.05, "contrast": 1.06, "local_exposure": (0.7, 0.85),
+        "sun": {"pitch": -38.0, "yaw": 125.0, "lux": 0.2, "temp": 9500, "angle": 0.6},
+        "sky": {"intensity": 0.3, "lower": (0.008, 0.012, 0.014)}, "clouds": True,
+        "fog": {"density": 0.075, "falloff": 0.3, "start": 200.0, "inscatter": (0.03, 0.065, 0.08),
+                "vol_scatter": 0.7, "vol_albedo": (185, 228, 235), "vol_extinction": 2.4, "vol_distance": 6000.0},
+        "exposure": (-2.5, 1.0, 0.8), "white_temp": 6300.0, "bloom": 1.0, "vignette": 0.4, "grain": 0.16,
+        "ca": 0.1, "saturation": 1.12, "contrast": 1.08, "local_exposure": (0.62, 0.85),
+        "grade": {"shadows_gain": (0.9, 1.0, 1.1, 1.0), "shadows_saturation": (1.0, 1.0, 1.0, 1.15),
+                  "highlights_gain": (1.04, 1.0, 0.96, 1.0), "midtones_saturation": (1.0, 1.0, 1.0, 1.06)},
     },
     # Nightjar Garage: rainy night, overcast moon, wet haze; sodium + cold fluorescent practicals do the work.
     # Exposure range matches velvet_night so both night maps meter alike.
     "nightjar_rain": {
         "sun": {"pitch": -35.0, "yaw": 200.0, "lux": 0.2, "temp": 9000, "angle": 1.5},
         "sky": {"intensity": 0.3, "lower": (0.012, 0.011, 0.012)}, "clouds": True,
-        "fog": {"density": 0.08, "falloff": 0.3, "start": 200.0, "inscatter": (0.055, 0.05, 0.06),
+        "fog": {"density": 0.08, "falloff": 0.3, "start": 200.0, "inscatter": (0.04, 0.058, 0.066),
                 "vol_scatter": 0.65, "vol_albedo": (205, 200, 212), "vol_extinction": 2.4, "vol_distance": 6000.0},
         "exposure": (-2.5, 1.0, 0.6), "white_temp": 6300.0, "bloom": 0.85, "vignette": 0.35, "grain": 0.18,
-        "ca": 0.1, "saturation": 1.0, "contrast": 1.07, "local_exposure": (0.7, 0.85),
+        "ca": 0.1, "saturation": 1.04, "contrast": 1.07, "local_exposure": (0.7, 0.85),
+        "grade": {"shadows_gain": (0.9, 1.0, 1.1, 1.0), "shadows_saturation": (1.0, 1.0, 1.0, 1.15),
+                  "highlights_gain": (1.04, 1.0, 0.96, 1.0), "midtones_saturation": (1.0, 1.0, 1.0, 1.06)},
     },
     "menu_armory": {
         "sun": {"pitch": -30.0, "yaw": 40.0, "lux": 0.05, "temp": 6500, "angle": 1.0, "shadows": False},
@@ -83,6 +91,37 @@ FIXTURES = {
                         "shadows": False},
     "Garage_TicketBooth": {"kind": "point", "point": "Light", "color": "Warm", "cd": 1.6, "radius": 5.0, "src": 15.0,
                            "shadows": False},
+    # Neon street kit (Tools/Blender/club/neon_kit.py). Signs light the wet street in their own colour: unshadowed
+    # (cheap; the emissive tubes also feed Lumen), large source radius so the highlight on wet asphalt is a soft
+    # smear instead of a pin-prick, high volumetric scattering so each sign glows in the teal haze.
+    "Neon_BladeRamen": {"kind": "point", "point": "Light", "color": "Red", "cd": 9.0, "radius": 11.0, "src": 45.0,
+                        "shadows": False, "vol": 3.0},
+    "Neon_BladeHotel": {"kind": "point", "point": "Light", "color": "Magenta", "cd": 11.0, "radius": 12.0, "src": 55.0,
+                        "shadows": False, "vol": 3.0},
+    "Neon_BladeGames": {"kind": "point", "point": "Light", "color": "Cyan", "cd": 9.0, "radius": 11.0, "src": 50.0,
+                        "shadows": False, "vol": 3.0},
+    "Neon_BladeIzakaya": {"kind": "point", "point": "Light", "color": "Pink", "cd": 8.0, "radius": 10.0, "src": 45.0,
+                          "shadows": False, "vol": 3.0},
+    "Neon_BladeVelvet": {"kind": "point", "point": "Light", "color": "Magenta", "cd": 12.0, "radius": 12.0, "src": 60.0,
+                         "shadows": False, "vol": 3.0},
+    "Neon_Karaoke": {"kind": "rect", "point": "Light", "color": "Violet", "cd": 8.0, "radius": 11.0, "w": 260.0, "h": 70.0,
+                     "pitch": -20.0, "shadows": False, "vol": 2.5},
+    "Neon_BoxPawn": {"kind": "rect", "point": "Light", "color": "Green", "cd": 8.0, "radius": 11.0, "w": 240.0, "h": 90.0,
+                     "pitch": -20.0, "shadows": False, "vol": 2.5},
+    "Neon_PharmacyCross": {"kind": "point", "point": "Light", "color": "Green", "cd": 6.0, "radius": 9.0, "src": 35.0,
+                           "shadows": False, "vol": 2.5},
+    "Neon_Cocktails": {"kind": "point", "point": "Light", "color": "Pink", "cd": 6.0, "radius": 9.0, "src": 50.0,
+                       "shadows": False, "vol": 2.5},
+    "Neon_ArrowBar": {"kind": "point", "point": "Light", "color": "Amber", "cd": 5.0, "radius": 8.0, "src": 50.0,
+                      "shadows": False, "vol": 2.0},
+    "Neon_OpenSign": {"kind": "point", "point": "Light", "color": "Red", "cd": 0.6, "radius": 3.0, "src": 15.0,
+                      "shadows": False},
+    "Street_Shopfront": {"kind": "rect", "point": "Light", "color": "Warm", "cd": 4.0, "radius": 9.0, "w": 340.0, "h": 200.0,
+                         "pitch": -25.0, "shadows": False, "vol": 1.5},
+    "Street_Vending": {"kind": "point", "point": "Light", "color": "Cool", "cd": 1.5, "radius": 4.0, "src": 30.0,
+                       "shadows": False},
+    "Street_FireBarrel": {"kind": "point", "point": "Light", "color": (1.0, 0.42, 0.1), "cd": 6.0, "radius": 8.0,
+                          "src": 15.0, "shadows": False, "vol": 2.0},
 }
 SHADOW_BUDGET = 12
 
@@ -251,6 +290,12 @@ def build_post(p, spawn):
         set_pp(s, "color_contrast", unreal.Vector4(x=1.0, y=1.0, z=1.0, w=float(con)))
     except Exception:
         pass
+    for key, prop in (("shadows_gain", "color_gain_shadows"), ("shadows_saturation", "color_saturation_shadows"),
+                      ("highlights_gain", "color_gain_highlights"), ("midtones_saturation", "color_saturation_midtones"),
+                      ("shadows_offset", "color_offset_shadows")):
+        v = (p.get("grade") or {}).get(key)
+        if v:
+            set_pp(s, prop, unreal.Vector4(x=float(v[0]), y=float(v[1]), z=float(v[2]), w=float(v[3])))
     hi, sh = p["local_exposure"]
     set_pp(s, "local_exposure_highlight_contrast_scale", float(hi))
     set_pp(s, "local_exposure_shadow_contrast_scale", float(sh))

@@ -1,6 +1,7 @@
 #include "AirsoftTeamGearComponent.h"
 
 #include "AirsoftAssets.h"
+#include "AirsoftCharacter.h"
 #include "AirsoftGearSettings.h"
 #include "Components/SceneComponent.h"
 #include "Components/SkinnedMeshComponent.h"
@@ -62,6 +63,10 @@ namespace AirsoftTeamGear
 		TArray<FGearPieceDef> Pieces;
 		FGearAnchor Anchor;
 		FName Colorway;
+		/** Non-empty for outfit assets (Gear.json "Outfit" block, e.g. the suit) instead of team gear. */
+		FName Outfit;
+		/** Outfit mask roles: "Suit" (R cloth, G shirt, B tie) or "Hair" (R hair). */
+		FName SuitTint;
 		float TintRoughness = 0.5f;
 		float RoughnessDetail = 1.f;
 		float TintMetallic = 0.f;
@@ -91,9 +96,20 @@ namespace AirsoftTeamGear
 		TArray<FGearOption> Options;
 	};
 
+	struct FSuitColor
+	{
+		FName Name;
+		FLinearColor Color = FLinearColor::Black;
+		float Weight = 1.f;
+	};
+
 	struct FGearDatabase
 	{
 		TMap<FName, FGearAssetDef> Assets;
+		/** Gear.json "Suit": assets worn together, colourway groups (Suit, Shirt, Tie, Hair), multiplayer suit colourways. */
+		TArray<FName> SuitAssets;
+		TMap<FName, TArray<FSuitColor>> SuitColorways;
+		TArray<FName> MultiplayerSuits;
 		TMap<FName, TArray<FGearColorway>> Colorways;
 		TArray<FGearSlot> Slots;
 		/** Cranium centre relative to the head pivot (cm): the stand-in sphere head stands for it. */
@@ -173,6 +189,28 @@ namespace AirsoftTeamGear
 			Slot(TEXT("Arm"), 1.f, { { FName(TEXT("Armband")), 1.f } });
 			Slot(TEXT("Knees"), 0.55f, { { FName(TEXT("KneePads")), 1.f } });
 		}
+		if (Db.SuitAssets.Num() == 0)
+		{
+			Db.SuitAssets = { FName(TEXT("Suit")), FName(TEXT("HairSlick")) };
+		}
+		if (Db.MultiplayerSuits.Num() == 0)
+		{
+			Db.MultiplayerSuits = { FName(TEXT("Charcoal")), FName(TEXT("MidnightNavy")), FName(TEXT("Black")) };
+		}
+		auto SuitDefault = [&Db](const TCHAR* Group, std::initializer_list<FSuitColor> Colors)
+		{
+			if (!Db.SuitColorways.Contains(FName(Group)))
+			{
+				Db.SuitColorways.Add(FName(Group), TArray<FSuitColor>(Colors));
+			}
+		};
+		SuitDefault(TEXT("Suit"), { { FName(TEXT("Charcoal")), FLinearColor(0.047f, 0.047f, 0.051f), 1.f }, { FName(TEXT("MidnightNavy")), FLinearColor(0.016f, 0.021f, 0.047f), 1.f },
+			{ FName(TEXT("Oxblood")), FLinearColor(0.074f, 0.013f, 0.017f), 1.f }, { FName(TEXT("Black")), FLinearColor(0.021f, 0.021f, 0.023f), 1.f } });
+		SuitDefault(TEXT("Shirt"), { { FName(TEXT("Black")), FLinearColor(0.022f, 0.022f, 0.024f), 0.65f }, { FName(TEXT("White")), FLinearColor(1.f, 1.f, 0.97f), 0.35f } });
+		SuitDefault(TEXT("Tie"), { { FName(TEXT("Black")), FLinearColor(0.016f, 0.016f, 0.017f), 0.6f }, { FName(TEXT("Graphite")), FLinearColor(0.032f, 0.032f, 0.035f), 0.25f },
+			{ FName(TEXT("Wine")), FLinearColor(0.05f, 0.008f, 0.012f), 0.15f } });
+		SuitDefault(TEXT("Hair"), { { FName(TEXT("Black")), FLinearColor(0.013f, 0.011f, 0.01f), 0.4f }, { FName(TEXT("DarkBrown")), FLinearColor(0.034f, 0.021f, 0.014f), 0.35f },
+			{ FName(TEXT("Brown")), FLinearColor(0.075f, 0.046f, 0.028f), 0.15f }, { FName(TEXT("Grey")), FLinearColor(0.17f, 0.17f, 0.17f), 0.1f } });
 		if (Db.Colorways.Num() == 0)
 		{
 			auto Add = [&Db](const TCHAR* Group, const TCHAR* Name, const FLinearColor& P, const FLinearColor& S)
@@ -222,12 +260,31 @@ namespace AirsoftTeamGear
 				{
 					const TSharedPtr<FJsonObject>* AssetObj = nullptr;
 					const TSharedPtr<FJsonObject>* TeamGear = nullptr;
-					if (!Pair.Value.IsValid() || !Pair.Value->TryGetObject(AssetObj) || !(*AssetObj)->TryGetObjectField(TEXT("TeamGear"), TeamGear))
+					const TSharedPtr<FJsonObject>* OutfitObj = nullptr;
+					if (!Pair.Value.IsValid() || !Pair.Value->TryGetObject(AssetObj))
 					{
-						continue; // not team gear (e.g. the first-person gloves)
+						continue;
+					}
+					const bool bOutfit = !(*AssetObj)->TryGetObjectField(TEXT("TeamGear"), TeamGear) && (*AssetObj)->TryGetObjectField(TEXT("Outfit"), OutfitObj);
+					if (bOutfit)
+					{
+						TeamGear = OutfitObj; // same tint fields
+					}
+					else if (!TeamGear)
+					{
+						continue; // neither team gear nor an outfit (e.g. the first-person gloves)
 					}
 					FGearAssetDef Def;
 					Def.Id = FName(*Pair.Key);
+					if (bOutfit)
+					{
+						Def.Outfit = ReadName(*OutfitObj, TEXT("Outfit"));
+						Def.SuitTint = ReadName(*OutfitObj, TEXT("Tint"));
+						if (Def.Outfit.IsNone())
+						{
+							Def.Outfit = FName(TEXT("Suit"));
+						}
+					}
 					const TSharedPtr<FJsonObject>* AnchorObj = nullptr;
 					if ((*AssetObj)->TryGetObjectField(TEXT("Anchor"), AnchorObj))
 					{
@@ -342,8 +399,60 @@ namespace AirsoftTeamGear
 				}
 			}
 		}
+		const TSharedPtr<FJsonObject>* SuitObj = nullptr;
+		if (Root.IsValid() && Root->TryGetObjectField(TEXT("Suit"), SuitObj))
+		{
+			const TArray<TSharedPtr<FJsonValue>>* List = nullptr;
+			if ((*SuitObj)->TryGetArrayField(TEXT("Assets"), List))
+			{
+				for (const TSharedPtr<FJsonValue>& V : *List)
+				{
+					FString Name;
+					if (V.IsValid() && V->TryGetString(Name) && !Name.IsEmpty())
+					{
+						Db.SuitAssets.Add(FName(*Name));
+					}
+				}
+			}
+			if ((*SuitObj)->TryGetArrayField(TEXT("MultiplayerSuits"), List))
+			{
+				for (const TSharedPtr<FJsonValue>& V : *List)
+				{
+					FString Name;
+					if (V.IsValid() && V->TryGetString(Name) && !Name.IsEmpty())
+					{
+						Db.MultiplayerSuits.Add(FName(*Name));
+					}
+				}
+			}
+			const TSharedPtr<FJsonObject>* Groups = nullptr;
+			if ((*SuitObj)->TryGetObjectField(TEXT("Colorways"), Groups))
+			{
+				for (const auto& Group : (*Groups)->Values)
+				{
+					const TArray<TSharedPtr<FJsonValue>>* Entries = nullptr;
+					if (!Group.Value.IsValid() || !Group.Value->TryGetArray(Entries))
+					{
+						continue;
+					}
+					TArray<FSuitColor>& Out = Db.SuitColorways.FindOrAdd(FName(*Group.Key));
+					for (const TSharedPtr<FJsonValue>& Entry : *Entries)
+					{
+						const TSharedPtr<FJsonObject>* Obj = nullptr;
+						if (Entry.IsValid() && Entry->TryGetObject(Obj))
+						{
+							FSuitColor C;
+							C.Name = ReadName(*Obj, TEXT("Name"));
+							C.Color = ReadColor(*Obj, TEXT("Primary"), FLinearColor(0.04f, 0.04f, 0.043f));
+							C.Weight = FMath::Max(0.f, ReadFloat(*Obj, TEXT("Weight"), 1.f));
+							Out.Add(C);
+						}
+					}
+				}
+			}
+		}
 		AddDefaults(Db);
-		UE_LOG(LogAirsoftGear, Log, TEXT("Team gear: %d assets, %d slots from %s"), Db.Assets.Num(), Db.Slots.Num(), *Path);
+		UE_LOG(LogAirsoftGear, Log, TEXT("Team gear: %d assets, %d slots, %d suit assets from %s"), Db.Assets.Num(), Db.Slots.Num(), Db.SuitAssets.Num(), *Path);
 		return Db;
 	}
 
@@ -425,6 +534,51 @@ namespace AirsoftTeamGear
 		return Last;
 	}
 
+	/** A suit colourway by name (nullptr when the group or name is unknown). */
+	static const FSuitColor* FindSuitColor(FName Group, FName Name)
+	{
+		if (const TArray<FSuitColor>* List = GearDatabase().SuitColorways.Find(Group))
+		{
+			for (const FSuitColor& C : *List)
+			{
+				if (C.Name == Name)
+				{
+					return &C;
+				}
+			}
+		}
+		return nullptr;
+	}
+
+	/** Weighted pick from a suit colourway group, hashed from the seed. */
+	static FLinearColor PickSuitColor(FName Group, int32 Seed, const FLinearColor& Default)
+	{
+		const TArray<FSuitColor>* List = GearDatabase().SuitColorways.Find(Group);
+		if (!List || List->Num() == 0)
+		{
+			return Default;
+		}
+		float Total = 0.f;
+		for (const FSuitColor& C : *List)
+		{
+			Total += C.Weight;
+		}
+		if (Total <= 0.f)
+		{
+			return (*List)[0].Color;
+		}
+		float R = GearUnit(Seed, TEXT("Suit/") + Group.ToString()) * Total;
+		for (const FSuitColor& C : *List)
+		{
+			if (R < C.Weight)
+			{
+				return C.Color;
+			}
+			R -= C.Weight;
+		}
+		return List->Last().Color;
+	}
+
 	/** Component-space transform of a bone in the reference pose. */
 	static FTransform RefPoseComponentSpace(const FReferenceSkeleton& Ref, int32 BoneIndex)
 	{
@@ -493,6 +647,10 @@ bool UAirsoftTeamGearComponent::IsOwnerViewing() const
 	}
 	// Bots are locally controlled on the server too, but never by a PlayerController.
 	const APlayerController* PC = Cast<APlayerController>(Pawn->GetController());
+	if (const AAirsoftCharacter* C = Cast<AAirsoftCharacter>(Pawn); C && C->IsThirdPersonView())
+	{
+		return false; // third-person camera: the owner sees their own gear / suit
+	}
 	return PC && PC->GetViewTarget() == Pawn;
 }
 
@@ -526,7 +684,7 @@ bool UAirsoftTeamGearComponent::ApplyTo(USkinnedMeshComponent* Body, EAirsoftTea
 		return false;
 	}
 	UObject* Asset = Body->GetSkinnedAsset();
-	if (bApplied && !bFallback && Parent.Get() == Body && ParentAsset.Get() == Asset && AppliedSeed == VariantSeed)
+	if (bApplied && !bFallback && !bSuit && Parent.Get() == Body && ParentAsset.Get() == Asset && AppliedSeed == VariantSeed)
 	{
 		if (Team != AppliedTeam)
 		{
@@ -545,7 +703,7 @@ bool UAirsoftTeamGearComponent::ApplyToFallbackHead(USceneComponent* Head, EAirs
 		Clear();
 		return false;
 	}
-	if (bApplied && bFallback && Parent.Get() == Head && AppliedSeed == VariantSeed)
+	if (bApplied && bFallback && !bSuit && Parent.Get() == Head && AppliedSeed == VariantSeed)
 	{
 		if (Team != AppliedTeam)
 		{
@@ -571,6 +729,7 @@ void UAirsoftTeamGearComponent::Clear()
 	Parent.Reset();
 	ParentAsset.Reset();
 	bApplied = false;
+	bSuit = false;
 }
 
 bool UAirsoftTeamGearComponent::Build(USceneComponent* InParent, bool bInFallback, EAirsoftTeam Team, int32 VariantSeed)
@@ -591,6 +750,7 @@ bool UAirsoftTeamGearComponent::Build(USceneComponent* InParent, bool bInFallbac
 	Parent = InParent;
 	ParentAsset = Skinned ? Skinned->GetSkinnedAsset() : nullptr;
 	bFallback = bInFallback;
+	bSuit = false;
 	AppliedSeed = VariantSeed;
 	AppliedTeam = Team;
 	bApplied = true;
@@ -643,37 +803,166 @@ bool UAirsoftTeamGearComponent::Build(USceneComponent* InParent, bool bInFallbac
 			Part.Primary = Primary;
 			Part.Secondary = Secondary;
 
-			FTransform Relative;
-			if (!ComputeRelative(Part, Relative))
+			AddPart(Part, Mesh, InParent, bInFallback, Team);
+		}
+	}
+	return Components.Num() > 0;
+}
+
+bool UAirsoftTeamGearComponent::AddPart(const FPart& Part, UStaticMesh* Mesh, USceneComponent* InParent, bool bInFallback, EAirsoftTeam Team)
+{
+	using namespace AirsoftTeamGear;
+	const UAirsoftGearSettings* Settings = UAirsoftGearSettings::Get();
+	AActor* Owner = GetOwner();
+	if (!Mesh || !InParent || !Owner)
+	{
+		return false;
+	}
+	// Components must stay named TeamGear_*: AAirsoftCharacter finds them by that prefix for its third-person camera.
+	FTransform Relative;
+	if (!ComputeRelative(Part, Relative))
+	{
+		return false;
+	}
+	const FName CompName = MakeUniqueObjectName(Owner, UStaticMeshComponent::StaticClass(), FName(*FString::Printf(TEXT("TeamGear_%s_%s"), *Part.AssetId.ToString(), *Part.Piece.ToString())));
+	UStaticMeshComponent* Comp = NewObject<UStaticMeshComponent>(Owner, CompName);
+	Comp->SetStaticMesh(Mesh);
+	Comp->SetupAttachment(InParent, Part.Bone);
+	if (bInFallback)
+	{
+		Comp->SetUsingAbsoluteScale(true);
+	}
+	Comp->SetRelativeTransform(Relative);
+	Comp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Comp->SetGenerateOverlapEvents(false);
+	Comp->SetCanEverAffectNavigation(false);
+	Comp->bReceivesDecals = false;
+	Comp->SetOwnerNoSee(true); // the owner sees first-person arms instead
+	const bool bGlass = Part.Kind == TEXT("Glass");
+	Comp->SetCastShadow(Settings->bCastShadows && !bGlass);
+	Comp->bCastHiddenShadow = Settings->bOwnerSeesShadow && !bGlass;
+	if (bGlass && Settings->GlassCullDistance > 0.f)
+	{
+		Comp->SetCullDistance(Settings->GlassCullDistance);
+	}
+	Comp->SetVisibility(bWantVisible && GShowGear && !bOwnerViewHidden);
+	Comp->RegisterComponent();
+	ApplyMaterials(Comp, Part, Team);
+	Components.Add(Comp);
+	Parts.Add(Part); // parallel to Components
+	return true;
+}
+
+bool UAirsoftTeamGearComponent::ApplySuit(USkinnedMeshComponent* Body, FLinearColor InSuitColor, int32 VariantSeed, FName Shirt)
+{
+	if (!Body)
+	{
+		Clear();
+		return false;
+	}
+	if (bApplied && bSuit && !bSuitTeamTie && Parent.Get() == Body && ParentAsset.Get() == Body->GetSkinnedAsset() && AppliedSeed == VariantSeed
+		&& AppliedShirt == Shirt && AppliedSuitColor.Equals(InSuitColor, 1e-4f))
+	{
+		return HasGear();
+	}
+	return BuildSuit(Body, InSuitColor, VariantSeed, Shirt, false, AppliedTeam);
+}
+
+bool UAirsoftTeamGearComponent::ApplyOutfit(USkinnedMeshComponent* Body, EAirsoftOutfit Outfit, EAirsoftTeam Team, int32 VariantSeed)
+{
+	using namespace AirsoftTeamGear;
+	if (Outfit == EAirsoftOutfit::TeamGear)
+	{
+		return ApplyTo(Body, Team, VariantSeed);
+	}
+	if (!Body)
+	{
+		Clear();
+		return false;
+	}
+	if (bApplied && bSuit && bSuitTeamTie && Parent.Get() == Body && ParentAsset.Get() == Body->GetSkinnedAsset() && AppliedSeed == VariantSeed)
+	{
+		if (Team != AppliedTeam)
+		{
+			SetTeam(Team);
+		}
+		return HasGear();
+	}
+	const TArray<FName>& Choices = GearDatabase().MultiplayerSuits;
+	const FName Pick = Choices.Num() > 0 ? Choices[static_cast<int32>(GearHash(VariantSeed + GSeedOffset, TEXT("Suit/Multiplayer")) % static_cast<uint32>(Choices.Num()))] : FName(TEXT("Charcoal"));
+	return BuildSuit(Body, SuitColor(Pick), VariantSeed, NAME_None, true, Team);
+}
+
+FLinearColor UAirsoftTeamGearComponent::SuitColor(FName Colorway)
+{
+	using namespace AirsoftTeamGear;
+	if (const FSuitColor* C = FindSuitColor(FName(TEXT("Suit")), Colorway))
+	{
+		return C->Color;
+	}
+	if (const FSuitColor* C = FindSuitColor(FName(TEXT("Suit")), FName(TEXT("Charcoal"))))
+	{
+		return C->Color;
+	}
+	return FLinearColor(0.047f, 0.047f, 0.051f);
+}
+
+bool UAirsoftTeamGearComponent::BuildSuit(USkinnedMeshComponent* Body, FLinearColor InSuitColor, int32 VariantSeed, FName Shirt, bool bTeamTie, EAirsoftTeam Team)
+{
+	using namespace AirsoftTeamGear;
+	Clear();
+	const UAirsoftGearSettings* Settings = UAirsoftGearSettings::Get();
+	if (!Body || !Body->GetSkinnedAsset() || !GetOwner() || !Settings->bEnableSuit || GetNetMode() == NM_DedicatedServer)
+	{
+		return false;
+	}
+	Parent = Body;
+	ParentAsset = Body->GetSkinnedAsset();
+	bFallback = false;
+	bSuit = true;
+	bSuitTeamTie = bTeamTie;
+	AppliedSuitColor = InSuitColor;
+	AppliedShirt = Shirt;
+	AppliedSeed = VariantSeed;
+	AppliedTeam = Team;
+	bApplied = true;
+	bOwnerViewHidden = IsOwnerViewing();
+
+	const FGearDatabase& Db = GearDatabase();
+	const int32 Seed = VariantSeed + GSeedOffset;
+	static const FName GroupShirt(TEXT("Shirt")), GroupTie(TEXT("Tie")), GroupHair(TEXT("Hair")), TintHair(TEXT("Hair")), SlotSuit(TEXT("Suit"));
+	const FSuitColor* Named = Shirt.IsNone() ? nullptr : FindSuitColor(GroupShirt, Shirt);
+	const FLinearColor ShirtColor = Named ? Named->Color : PickSuitColor(GroupShirt, Seed, FLinearColor(0.022f, 0.022f, 0.024f));
+	const FLinearColor TieColor = PickSuitColor(GroupTie, Seed, FLinearColor(0.016f, 0.016f, 0.017f));
+	const FLinearColor HairColor = PickSuitColor(GroupHair, Seed, FLinearColor(0.013f, 0.011f, 0.01f));
+	for (const FName AssetId : Db.SuitAssets)
+	{
+		const FGearAssetDef* Def = Db.Assets.Find(AssetId);
+		if (!Def)
+		{
+			WarnOnce(TEXT("suit/") + AssetId.ToString(), FString::Printf(TEXT("Suit asset %s is not in Gear.json - skipped"), *AssetId.ToString()));
+			continue;
+		}
+		const bool bHair = Def->SuitTint == TintHair;
+		for (const FGearPieceDef& PieceDef : Def->Pieces)
+		{
+			UStaticMesh* Mesh = AirsoftAssets::FindMesh(TEXT("Gear"), AssetId, PieceDef.Name.ToString());
+			if (!Mesh)
 			{
-				continue;
+				continue; // not imported yet: the caller keeps its fallback look
 			}
-			const FName CompName = MakeUniqueObjectName(Owner, UStaticMeshComponent::StaticClass(), FName(*FString::Printf(TEXT("TeamGear_%s_%s"), *AssetId.ToString(), *PieceDef.Name.ToString())));
-			UStaticMeshComponent* Comp = NewObject<UStaticMeshComponent>(Owner, CompName);
-			Comp->SetStaticMesh(Mesh);
-			Comp->SetupAttachment(InParent, Part.Bone);
-			if (bInFallback)
-			{
-				Comp->SetUsingAbsoluteScale(true);
-			}
-			Comp->SetRelativeTransform(Relative);
-			Comp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-			Comp->SetGenerateOverlapEvents(false);
-			Comp->SetCanEverAffectNavigation(false);
-			Comp->bReceivesDecals = false;
-			Comp->SetOwnerNoSee(true); // the owner sees first-person arms instead
-			const bool bGlass = Part.Kind == TEXT("Glass");
-			Comp->SetCastShadow(Settings->bCastShadows && !bGlass);
-			Comp->bCastHiddenShadow = Settings->bOwnerSeesShadow && !bGlass;
-			if (bGlass && Settings->GlassCullDistance > 0.f)
-			{
-				Comp->SetCullDistance(Settings->GlassCullDistance);
-			}
-			Comp->SetVisibility(bWantVisible && GShowGear && !bOwnerViewHidden);
-			Comp->RegisterComponent();
-			ApplyMaterials(Comp, Part, Team);
-			Components.Add(Comp);
-			Parts.Add(Part);
+			FPart Part;
+			Part.AssetId = AssetId;
+			Part.Piece = PieceDef.Name;
+			Part.Kind = PieceDef.Kind;
+			Part.Slot = SlotSuit;
+			Part.AnchorKey = PieceDef.bOwnAnchor ? FName(*FString::Printf(TEXT("%s/%s"), *AssetId.ToString(), *PieceDef.Name.ToString())) : AssetId;
+			Part.Bone = PieceDef.bOwnAnchor ? PieceDef.Anchor.Bone : Def->Anchor.Bone;
+			Part.Primary = bHair ? HairColor : InSuitColor;
+			Part.Secondary = bHair ? HairColor : ShirtColor;
+			Part.Accent = bHair ? HairColor : TieColor;
+			Part.bTeamAccent = bTeamTie && !bHair;
+			AddPart(Part, Mesh, Body, false, Team);
 		}
 	}
 	return Components.Num() > 0;
@@ -789,11 +1078,12 @@ void UAirsoftTeamGearComponent::ApplyMaterials(UStaticMeshComponent* Comp, const
 			}
 			continue;
 		}
-		// M_AirsoftPBR: Mask R = kit colourway, G = secondary, B = team colour. TintRoughness 0.5 with
+		// M_AirsoftPBR: Mask R = kit colourway, G = secondary, B = team colour (the suit: cloth, shirt, tie). TintRoughness 0.5 with
 		// RoughnessDetail 1 keeps the baked fabric roughness inside the tinted areas.
 		MID->SetVectorParameterValue(TEXT("PrimaryTint"), Part.Primary);
 		MID->SetVectorParameterValue(TEXT("SecondaryTint"), Part.Secondary);
-		MID->SetVectorParameterValue(TEXT("AccentTint"), AirsoftColors::Team(Team));
+		const float TeamScale = Part.Slot == TEXT("Suit") ? UAirsoftGearSettings::Get()->SuitTeamTieScale : 1.f;
+		MID->SetVectorParameterValue(TEXT("AccentTint"), Part.bTeamAccent ? AirsoftColors::Team(Team) * TeamScale : Part.Accent);
 		MID->SetScalarParameterValue(TEXT("TintRoughness"), Def ? Def->TintRoughness : 0.5f);
 		MID->SetScalarParameterValue(TEXT("RoughnessDetail"), Def ? Def->RoughnessDetail : 1.f);
 		MID->SetScalarParameterValue(TEXT("TintMetallic"), Def ? Def->TintMetallic : 0.f);
@@ -854,6 +1144,11 @@ void UAirsoftTeamGearComponent::Rebuild()
 		const bool bWasFallback = bFallback;
 		const int32 Seed = AppliedSeed;
 		const EAirsoftTeam Team = AppliedTeam;
+		if (bSuit)
+		{
+			BuildSuit(Cast<USkinnedMeshComponent>(P), AppliedSuitColor, Seed, AppliedShirt, bSuitTeamTie, Team);
+			return;
+		}
 		Build(P, bWasFallback, Team, Seed);
 	}
 }

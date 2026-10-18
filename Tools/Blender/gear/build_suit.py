@@ -88,12 +88,43 @@ class Builder:
         if M is None or not M.n:
             return None
         self.count += 1
+        if os.environ.get("SUIT_COUNT"):
+            import traceback
+            log(f"    + {piece:10s} {zone:12s} {sum(len(f) - 2 for f in M.f):6d} tris  <- {traceback.extract_stack()[-2].name}:{traceback.extract_stack()[-2].lineno}")
         ob = tg.to_object(f"{self.aid}_{piece}_{self.count}", M, zone, self.coll, smooth_angle)
         self.parts.setdefault(piece, []).append(ob)
         return ob
 
-    def finish(self):
-        return {piece: tg.join(objs, f"SM_{self.aid}_{piece}") for piece, objs in self.parts.items()}
+    def finish(self, decimate=None):
+        out = {}
+        for piece, objs in self.parts.items():
+            ob = tg.join(objs, f"SM_{self.aid}_{piece}")
+            tg.weld(ob, 1e-7)
+            drop_loose(ob)
+            target = (decimate or {}).get(piece)
+            if target and tg.tri_count(ob) > target:
+                md = ob.modifiers.new("dec", "DECIMATE")
+                md.ratio = target / tg.tri_count(ob)
+                md.use_collapse_triangulate = True
+                bpy.ops.object.select_all(action="DESELECT")
+                bpy.context.view_layer.objects.active = ob
+                ob.select_set(True)
+                bpy.ops.object.modifier_apply(modifier=md.name)
+                ob.select_set(False)
+            out[piece] = ob
+        return out
+
+
+def drop_loose(ob):
+    import bmesh
+    bm = bmesh.new()
+    bm.from_mesh(ob.data)
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context="VERTS")
+    bm.to_mesh(ob.data)
+    bm.free()
+
+
+DECIMATE = {"ShoeL": 6000, "Body": 6000}
 
 
 # --------------------------------------------------------------------------------------
@@ -117,6 +148,10 @@ class Jacket:
         k = wf * (1 - 0.015 * gauss(S, 1.10, 0.12)) + wb * (1 - 0.075 * gauss(S, 1.10, 0.11)) + ws * (1 - 0.10 * gauss(S, 1.12, 0.10))
         drape = chest * k
         R = np.where(S < sg.S_SPLIT, np.maximum(R, drape), R)
+        # canvassed chest: bridge the hollows between the pectorals and under the collarbones
+        bridge = sg.box_smooth(sg.box_smooth(R, 1, 9, 4, periodic=True), 0, 7, 2)
+        chest_w = wf * smoothstep(1.10, 1.20, S) * smoothstep(1.50, 1.42, S)
+        R = R + np.maximum(bridge - R, 0.0) * chest_w
         # skirt: never comes back in below the widest hip, slight flare to the hem
         hip = S[:, 0] < 0.975
         top = np.nonzero(~hip)[0][0]
@@ -215,21 +250,21 @@ def build_torso(B):
     jk = Jacket()
     B.jacket = jk
     for piece, bone, s_lo, s_hi in TORSO_SEGMENTS:
-        P, N, TH, S, (lo, hi) = jk.grid(s_lo, s_hi, nt=84, du=0.012)
+        P, N, TH, S, (lo, hi) = jk.grid(s_lo, s_hi, nt=64, du=0.016)
         nu, nt = P.shape[:2]
         thick = np.full((nu, nt), J["thick"])
         # the lower segment tucks 1.5 mm under its upper neighbour; the upper one thins out over the overlap
         upper = {"Waist": 1.160, "Hips": 0.995}.get(piece)
         if upper:
-            P = P - N * (0.0026 * smoothstep(upper - 0.004, upper + 0.006, S))[..., None]
+            P = P - N * (0.0018 * smoothstep(upper - 0.004, upper + 0.006, S))[..., None]
         if s_lo > J["hem"]:
             # the upper segment eases in over its last 2.5 cm to meet the one underneath without a ledge
-            P = P - N * (0.0022 * smoothstep(s_lo + 0.025, s_lo, S))[..., None]
-            thick = thick * (0.3 + 0.7 * smoothstep(s_lo, s_lo + 0.025, S))
+            P = P - N * (0.0016 * smoothstep(s_lo + 0.03, s_lo, S))[..., None]
+            thick = thick * (0.25 + 0.75 * smoothstep(s_lo, s_lo + 0.03, S))
         is_top = s_hi > 2.0
         is_bot = s_lo < J["hem"]
         attrs = {"sd": np.ones((nu, nt)), "ss": TH * 0.15, "puv": np.stack([TH * 0.15, S, np.zeros_like(S)], -1)}
-        M = sg.shell(P, N, thick, closed_t=False, band_rows=(4 if is_bot else 1, 2 if is_top else 1), band_cols=12, attrs=attrs)
+        M = sg.shell(P, N, thick, closed_t=False, band_rows=(3 if is_bot else 1, 2 if is_top else 1), band_cols=9, attrs=attrs)
         B.add(M, "wool", piece)
     build_lapels(B, jk)
     build_collar(B, jk)
@@ -264,7 +299,7 @@ def build_lapels(B, jk):
             pts = clip_poly_v(ol, lo, hi)
             if pts is None:
                 continue
-            M = tg.pillow(pts, 0.0036, m, n=64, kind="round", puff=0.0008, steps=3, inner=False,
+            M = tg.pillow(pts, 0.0036, m, n=48, kind="round", puff=0.0008, steps=3, inner=False,
                           face_insets=(0.0, 0.002, 0.005, 0.010), scales=(0.6, 0.3))
             B.add(M, "wool_edge", piece)
 
@@ -312,7 +347,7 @@ def build_collar(B, jk):
     """Jacket collar: a short stand round the back of the neck folded over into a fall that lies on the
     jacket, narrowing at the front into the notch where it meets the lapel."""
     J = JACKET
-    n = 56
+    n = 44
     t = np.linspace(0.0, 1.0, n)
     e0 = jk.edge_theta(np.array([J["gorge"]]))[0]
     th = e0 + t * (2 * math.pi - 2 * e0)
@@ -329,7 +364,7 @@ def build_collar(B, jk):
     s_L = s_nl - (0.036 + 0.006 * e) * (0.5 + 0.5 * e) - (1 - e) * 0.010
     PL = jk.surf.point(th_L, s_L)
     NL = jk.surf.normal(th_L, s_L)
-    stand = 0.014 * e
+    stand = 0.009 * e
     # fold line: just above the neckline round the back, on the roll line at the gorge
     T = Pn + ax * stand[:, None] + Nn * (0.004 + 0.002 * e)[:, None] - out * (0.003 * e)[:, None]
     rings = []
@@ -344,7 +379,7 @@ def build_collar(B, jk):
         Bb = B0 - nn * 0.0015
         U = B0 + (L - B0) * 0.6 + Nl * 0.0004
         rings.append(np.array([L + Nl * 0.0010, f1, f2, To, Ti, St, Bb, U]))
-    B.add(sg.loft(rings, caps=True, attrs={"sd": [np.full(8, 0.004)] * n, "ss": [np.full(8, x * 0.5) for x in t]}), "wool_edge", "Chest")
+    B.add(sg.loft(rings, caps=True, attrs={"sd": [np.full(8, 1.0)] * n, "ss": [np.full(8, x * 0.5) for x in t]}), "wool_edge", "Chest")
 
 
 def build_shirt(B, jk):
@@ -367,11 +402,11 @@ def build_shirt(B, jk):
     nl = s_scan[np.argmax(d <= SHIRT["neck_r"], axis=1)]
     nl = sg.box_smooth(nl, 0, 5, 2)
     for piece, lo, hi in (("Waist", SHIRT["bottom"], 1.19), ("Chest", 1.16, 9.0)):
-        nt = 40
+        nt = 32
         tcol = np.linspace(-SHIRT["side"], SHIRT["side"], nt)
         top = np.minimum(np.interp(tcol, th_n, nl), hi)
         bot = np.full(nt, lo)
-        nu = max(4, int(math.ceil(float(np.max(top - bot)) / 0.014)) + 1)
+        nu = max(4, int(math.ceil(float(np.max(top - bot)) / 0.02)) + 1)
         u = np.linspace(0, 1, nu)[:, None]
         Sg = bot[None, :] + (top - bot)[None, :] * u
         THg = np.broadcast_to(tcol[None, :], Sg.shape)
@@ -428,15 +463,15 @@ def build_shirt_collar(B, ss):
     nc = NECK_COLLAR
     a, ax = neck_frame()
     # band (stand), open under the knot
-    th = np.linspace(math.radians(9), math.radians(351), 64)
+    th = np.linspace(math.radians(9), math.radians(351), 40)
     H = nc["h"] * (0.88 + 0.12 * (0.5 - 0.5 * np.cos(th)))
-    rows = [shirt_collar_ring(th, H * f, 0.0015 * f)[0] for f in np.linspace(0, 1, 5)]
+    rows = [shirt_collar_ring(th, H * f, 0.0015 * f)[0] for f in np.linspace(0, 1, 4)]
     P = np.stack(rows)
     N = np.broadcast_to(shirt_collar_ring(th)[1][None], P.shape)
     B.add(sg.shell(P, N, 0.0022, band_rows=(1, 1), band_cols=1), "shirt", "Chest")
     # leaves: folded over the band, spreading into collar points over the chest at the front
     for side in (1.0, -1.0):
-        al = np.linspace(math.radians(7), math.radians(180), 40)
+        al = np.linspace(math.radians(7), math.radians(180), 26)
         al = al if side > 0 else 2 * math.pi - al
         fr = np.maximum(np.cos(al), 0.0) ** 2
         Ht = nc["h"] * (0.88 + 0.12 * (0.5 - 0.5 * np.cos(al)))
@@ -444,11 +479,11 @@ def build_shirt_collar(B, ss):
         spread = side * np.radians(38) * fr
         Lb, dL = shirt_collar_ring(al + spread, -0.006 - 0.046 * fr, 0.006 + 0.012 * fr)
         cols = []
-        for f in np.linspace(0, 1, 7):
+        for f in np.linspace(0, 1, 6):
             bul = math.sin(math.pi * min(1.0, f * 1.4)) * 0.004
             cols.append(T + (Lb - T) * f + (d * (1 - f) + dL * f) * bul)
         P = np.stack(cols)
-        N = np.stack([d * (1 - f) + dL * f for f in np.linspace(0, 1, 7)])
+        N = np.stack([d * (1 - f) + dL * f for f in np.linspace(0, 1, 6)])
         B.add(sg.shell(P, N, 0.0018, band_rows=(1, 2), band_cols=2), "shirt", "Chest")
 
 
@@ -495,7 +530,7 @@ def build_tie(B, ss):
         hang = np.interp(V, [z_tip, 1.15, 1.30, z_top - 0.02, z_top], [0.011, 0.007, 0.004, 0.006, 0.010])
         return P + N * (H + hang)[:, None], N
 
-    M = tg.pillow(ol, 0.0040, m, n=60, kind="round", puff=0.0015, steps=3, inner=False, face_insets=(0.0, 0.002, 0.005, 0.01),
+    M = tg.pillow(ol, 0.0040, m, n=48, kind="round", puff=0.0015, steps=3, inner=False, face_insets=(0.0, 0.002, 0.005, 0.01),
                   scales=(0.6, 0.3))
     B.add(M, "silk", "Chest")
 
@@ -528,7 +563,7 @@ def inside_jacket(jk, Q, margin=0.0):
     return r < jk.surf.lat(th, s) - margin
 
 
-SLEEVE = dict(ease=0.017, top_r=0.074, elbow_r=0.060, hem_r=0.047, thick=0.0036, hem_back=0.006)
+SLEEVE = dict(ease=0.015, top_r=0.068, elbow_r=0.057, hem_r=0.046, thick=0.0036, hem_back=0.006)
 TROUSER = dict(ease=0.013, top_r=0.104, knee_r=0.067, hem_r=0.058, thick=0.0032)
 
 
@@ -541,7 +576,7 @@ def build_sleeves(B):
     # upper sleeve: from inside the jacket shoulder to just past the elbow
     lb = sg.LimbBody(Fa, sh, el, (1.0, 0.0, 0.0), -0.08, up_len + 0.06)
     V = lb.V[:, None]
-    prof = np.interp(V, [-0.08, 0.0, 0.10, up_len, up_len + 0.06], [SLEEVE["top_r"] + 0.004, SLEEVE["top_r"], SLEEVE["top_r"] - 0.004,
+    prof = np.interp(V, [-0.08, 0.0, 0.10, up_len, up_len + 0.06], [SLEEVE["top_r"], SLEEVE["top_r"], SLEEVE["top_r"] - 0.004,
                                                                    SLEEVE["elbow_r"], SLEEVE["elbow_r"] - 0.001])
     R = np.maximum(lb.R + SLEEVE["ease"], prof)
     R = sg.box_smooth(sg.box_smooth(R, 0, 7, 3), 1, 5, 2, periodic=True)
@@ -558,7 +593,7 @@ def build_sleeves(B):
     def v_top(th):
         return np.interp(np.mod(th, 2 * math.pi), np.concatenate([ths, [2 * math.pi]]), np.concatenate([v_top_tab, v_top_tab[:1]]))
 
-    P, N, TH, Vg = limb_grid(up, v_top, lambda th: np.full(th.shape, up_len + 0.055), 28, 0.014)
+    P, N, TH, Vg = limb_grid(up, v_top, lambda th: np.full(th.shape, up_len + 0.055), 24, 0.018)
     P, N = P[::-1], N[::-1]  # rows from the bottom (elbow) up
     M = sg.shell(P, N, SLEEVE["thick"], closed_t=True, band_rows=(1, 0), rims=(True, False, False, False))
     B.add(M, "wool", "UpperArmL")
@@ -576,13 +611,13 @@ def build_sleeves(B):
         # th = 0 points forward (thumb side in the A-pose), pi the back of the arm
         return fo_len - 0.008 + SLEEVE["hem_back"] * (0.5 - 0.5 * np.cos(th))
 
-    P, N, TH, Vg = limb_grid(lo, lambda th: np.full(th.shape, -0.065), v_hem, 26, 0.014)
+    P, N, TH, Vg = limb_grid(lo, lambda th: np.full(th.shape, -0.065), v_hem, 24, 0.018)
     M = sg.shell(P, N, SLEEVE["thick"], closed_t=True, band_rows=(0, 3), rims=(False, True, False, False))
     B.add(M, "wool", "ForearmL")
     # shirt cuff showing past the sleeve
     Rc = np.minimum(R - 0.0055, R)
     cu = lb2.surface(Rc)
-    P, N, TH, Vg = limb_grid(cu, lambda th: v_hem(th) - 0.035, lambda th: v_hem(th) + 0.013, 24, 0.008)
+    P, N, TH, Vg = limb_grid(cu, lambda th: v_hem(th) - 0.035, lambda th: v_hem(th) + 0.013, 20, 0.012)
     B.add(sg.shell(P, N, 0.0028, closed_t=True, band_rows=(0, 3), rims=(False, True, False, False)), "shirt", "ForearmL")
     # sleeve buttons: four, kissing, on the back of the cuff
     for k in range(4):
@@ -596,7 +631,7 @@ def build_sleeves(B):
 def button(p, n, r, h):
     """Small four-hole suit button (lathe) sitting on a surface point p with normal n."""
     prof = [(0.0, 0.0), (r * 0.95, 0.0), (r, h * 0.35), (r * 0.92, h * 0.8), (r * 0.7, h), (r * 0.62, h * 0.82), (0.0, h * 0.7)]
-    M = tg.lathe(prof, 20, axis=n, center=p - n * 0.0004)
+    M = tg.lathe(prof, 14, axis=n, center=p - n * 0.0004)
     return M
 
 
@@ -614,10 +649,10 @@ def build_trousers(B):
     R = sg.box_smooth(sg.box_smooth(R, 0, 5, 3), 1, 5, 3, periodic=True)
     ts = sg.TorsoSurface(R)
     B.trouser_top = ts
-    nt = 72
+    nt = 48
     th = np.linspace(0, 2 * math.pi, nt, endpoint=False)
     lo, hi = 0.835, 1.005
-    nu = int(math.ceil((hi - lo) / 0.012)) + 1
+    nu = int(math.ceil((hi - lo) / 0.017)) + 1
     Sg, THg = np.meshgrid(np.linspace(lo, hi, nu), th, indexing="ij")
     P, N = ts.point(THg, Sg), ts.normal(THg, Sg)
     B.add(sg.shell(P, N, 0.003, closed_t=True, band_rows=(0, 2), rims=(False, True, False, False)), "wool", "Hips")
@@ -635,7 +670,7 @@ def build_trousers(B):
     R = R + 0.0028 * gauss(lb.TH[None, :], 0.0, 0.07) + 0.0028 * gauss(lb.TH[None, :], 2 * math.pi, 0.07)
     R = sg.box_smooth(R, 0, 7, 3)
     up = lb.surface(R)
-    P, N, _, _ = limb_grid(up, lambda t: np.full(t.shape, -0.12), lambda t: np.full(t.shape, tl + 0.065), 32, 0.016, th0=-math.pi)
+    P, N, _, _ = limb_grid(up, lambda t: np.full(t.shape, -0.12), lambda t: np.full(t.shape, tl + 0.065), 28, 0.022, th0=-math.pi)
     B.add(sg.shell(P, N, T["thick"], closed_t=True, inner=False), "wool", "ThighL")
     # shin with a slight break over the shoe
     cl = float(np.linalg.norm(an - kn))
@@ -658,7 +693,7 @@ def build_trousers(B):
         a = lb2.a[2]
         return (a - zt) / max(-lb2.ax[2], 1e-3)
 
-    P, N, _, _ = limb_grid(sh_, lambda t: np.full(t.shape, -0.07), v_hem, 32, 0.016, th0=-math.pi)
+    P, N, _, _ = limb_grid(sh_, lambda t: np.full(t.shape, -0.07), v_hem, 28, 0.022, th0=-math.pi)
     B.add(sg.shell(P, N, T["thick"], closed_t=True, band_rows=(0, 3), rims=(False, True, False, False)), "wool", "ShinL")
     B.shin = sh_
 
@@ -666,7 +701,7 @@ def build_trousers(B):
 def build_belt(B, ts):
     """Leather belt on the waistband: strap, buckle, tongue and loops."""
     zc, w, th_ = 0.986, 0.032, 0.0036
-    nt = 96
+    nt = 64
     t = np.linspace(0, 2 * math.pi, nt, endpoint=False)
     rows = [ts.point(t, np.full(nt, z)) + ts.normal(t, np.full(nt, z)) * 0.0012 for z in np.linspace(zc - w / 2, zc + w / 2, 4)]
     P = np.stack(rows)
@@ -684,7 +719,7 @@ def build_belt(B, ts):
         Nn = ts.normal(th, zc + V)
         return Pp + Nn * (H + th_ + 0.0012)[:, None], Nn
 
-    B.add(tg.pillow(ol, 0.0032, m, n=48, kind="round", steps=2, inner=True), "leather_belt", "Hips")
+    B.add(tg.pillow(ol, 0.0032, m, n=32, kind="round", steps=2, inner=False, face_insets=(0.0, 0.002), scales=(0.5,)), "leather_belt", "Hips")
     # buckle: a rounded rectangular frame, polished steel
     c = ts.point(np.array([0.0]), np.array([zc]))[0]
     n = ts.normal(np.array([0.0]), np.array([zc]))[0]
@@ -722,7 +757,7 @@ def build_belt(B, ts):
             Nn = ts.normal(th, zc + V)
             return Pp + Nn * (H + th_ + 0.0012)[:, None], Nn
 
-        B.add(tg.pillow(lp, 0.0022, ml, n=24, kind="round", steps=2, inner=False), "wool", "Hips")
+        B.add(tg.pillow(lp, 0.0022, ml, n=16, kind="round", steps=1, inner=False, face_insets=(0.0,), scales=(0.5,)), "wool", "Hips")
 
 
 def fix_ring(M, c, n):
@@ -774,7 +809,7 @@ def build_details(B):
         m = jacket_patch_map(jk, th0, 0.928)
         ol = tg.rrect(0.150, 0.052, 0.006, 3, 0.0, -0.024)
         ol[:, 1] = np.where(ol[:, 1] < -0.02, ol[:, 1] - 0.004 * np.cos(ol[:, 0] / 0.075 * math.pi / 2), ol[:, 1])
-        B.add(tg.pillow(ol, 0.0028, m, n=56, kind="round", puff=0.0006, steps=2, inner=False, face_insets=(0.0, 0.002, 0.005), scales=(0.5,)),
+        B.add(tg.pillow(ol, 0.0028, m, n=40, kind="round", puff=0.0006, steps=2, inner=False, face_insets=(0.0, 0.002, 0.005), scales=(0.5,)),
               "wool_edge", "Hips")
     # chest welt pocket (wearer's left), tilted up towards the arm, with a pocket square
     th0 = math.radians(44)
@@ -796,6 +831,132 @@ def offset_map(mapf, du=0.0, dv=0.0, dh=0.0):
     def m(U, V, H):
         return mapf(A(U) + du, A(V) + dv, A(H) + dh)
     return m
+
+
+# --------------------------------------------------------------------------------------
+# Shoes: plain cap-toe oxford on a slim last
+# --------------------------------------------------------------------------------------
+
+FOOT_Y = tb.bone("foot_l")[1]
+# footprint (x forward, y' = outward from the foot's centre line), heel to toe round the outside
+SHOE_FOOT = np.array([(-0.106, 0.0), (-0.099, 0.027), (-0.076, 0.036), (-0.030, 0.039), (0.030, 0.045), (0.088, 0.050), (0.128, 0.046),
+                      (0.161, 0.034), (0.181, 0.017), (0.188, -0.001), (0.183, -0.017), (0.166, -0.031), (0.130, -0.043), (0.088, -0.048),
+                      (0.040, -0.041), (-0.020, -0.034), (-0.076, -0.034), (-0.099, -0.025)])
+SHOE_TOP_X = [-0.106, -0.085, -0.050, -0.010, 0.030, 0.070, 0.110, 0.150, 0.190]
+SHOE_TOP_Z = [0.058, 0.063, 0.076, 0.095, 0.093, 0.080, 0.070, 0.058, 0.040]
+
+
+def shoe_fns():
+    foot = tg.resample(SHOE_FOOT, 160)
+
+    def sole(p):
+        xy = np.stack([p[:, 0], (p[:, 1] - FOOT_Y) / 1.08], -1)
+        d2 = sg.sd_poly2(xy, foot) - 0.0026
+        top = np.where(p[:, 0] < -0.034, 0.027, 0.0105)
+        top = 0.0105 + (0.027 - 0.0105) * smoothstep(-0.028, -0.036, p[:, 0])
+        dz = np.maximum(-p[:, 2], p[:, 2] - top)
+        return hk.smax(d2, dz, 0.0015)
+
+    def upper(p):
+        xy = np.stack([p[:, 0], (p[:, 1] - FOOT_Y) / 1.08], -1)
+        d2 = sg.sd_poly2(xy, foot) + 0.0004
+        yc = 0.004 * smoothstep(0.0, 0.15, p[:, 0])
+        h = np.interp(p[:, 0], SHOE_TOP_X, SHOE_TOP_Z)
+        w = np.interp(p[:, 0], [-0.11, 0.0, 0.09, 0.19], [0.036, 0.042, 0.049, 0.024])
+        top = h - 0.014 * ((xy[:, 1] - yc) / w) ** 2
+        d = hk.smax(d2, p[:, 2] - top, 0.016)
+        return hk.smax(d, 0.004 - p[:, 2], 0.0)
+
+    def grooves(p, d):
+        xy_y = p[:, 1] - FOOT_Y
+        # toe cap seam, vamp (throat) seam round the lacing, and the closed lacing gap
+        cap = np.abs(p[:, 0] - (0.128 - 4.0 * xy_y ** 2)) - 0.0007
+        throat = np.abs(np.hypot((p[:, 0] - 0.040) / 1.7, xy_y) - 0.026) - 0.0006
+        throat = np.maximum(throat, -(p[:, 0] - 0.040))
+        lace_gap = np.maximum(np.abs(xy_y - 0.0035) - 0.0009, np.maximum(-0.002 - p[:, 0], p[:, 0] - 0.058))
+        g = np.minimum(np.minimum(cap, throat), lace_gap)
+        near = d > -0.0009
+        return np.where(near & (g < 0), np.maximum(d, -g - 0.0), d)
+
+    def f(p):
+        ds, du = sole(p), upper(p)
+        d = hk.smin(ds, du, 0.002)
+        return grooves(p, d)
+
+    return f, sole, upper
+
+
+def build_shoe(B):
+    f, sole, upper = shoe_fns()
+    F = sg.FnField(f, (-0.12, FOOT_Y - 0.06, -0.005), (0.20, FOOT_Y + 0.06, 0.11))
+    v, q = sg.mesh_fn(F, 0.0026)
+    c = v[q].mean(axis=1)
+    is_sole = sole(c) < upper(c) + 0.0004
+    for zone, sel in (("leather", ~is_sole), ("sole", is_sole)):
+        M = tg.Mesh()
+        M.add_verts(v)
+        M.add_faces(q[sel])
+        B.add(M, zone, "ShoeL")
+    # laces: five bars across the closed lacing
+    for k in range(5):
+        x = 0.004 + k * 0.0125
+        y0 = FOOT_Y + 0.0035
+        pts = []
+        for yy in (-0.011, 0.011):
+            o = np.array([[x, y0 + yy, 0.2]])
+            hit = tb.march(F, o, (0.0, 0.0, -1.0))[0]
+            pts.append(hit + np.array([0.0, 0.0, 0.0006]))
+        B.add(tg.cyl(pts[0], pts[1], 0.0013, 6), "lace", "ShoeL", smooth_angle=60)
+
+
+# --------------------------------------------------------------------------------------
+# Hair: short, slicked back
+# --------------------------------------------------------------------------------------
+
+HAIR_C = tb.HEAD + tb.CRANIUM_C
+HAIRLINE_AZ = [0, 25, 45, 62, 72, 88, 108, 140, 180]
+HAIRLINE_EL = [27, 24, 17, -4, -6, 5, -8, -30, -44]
+
+
+def hair_fns():
+    Fh = tb.field("head")
+
+    def coords(p):
+        q = (p - HAIR_C) / tb.CRANIUM_R
+        az = np.degrees(np.arctan2(np.abs(q[:, 1]), q[:, 0]))
+        el = np.degrees(np.arcsin(np.clip(q[:, 2] / np.maximum(np.linalg.norm(q, axis=1), 1e-9), -1, 1)))
+        return az, el
+
+    def f(p):
+        az, el = coords(p)
+        el_min = np.interp(az, HAIRLINE_AZ, HAIRLINE_EL)
+        e = np.radians(el - el_min)
+        tau = 0.0050 + 0.0080 * smoothstep(8.0, 48.0, el)
+        tau = tau + 0.0075 * gauss(el, 40.0, 12.0) * gauss(az, 0.0, 38.0)  # lift at the front, combed back
+        tau = tau + 0.0020 * smoothstep(110, 160, az) * smoothstep(-35, 0, el)  # a little fullness at the back
+        tau = tau * (0.45 + 0.55 * smoothstep(0.0, 0.16, e))  # thins to a clean hairline
+        psi = np.arctan2(p[:, 2] - HAIR_C[2], p[:, 1] - HAIR_C[1]) + 0.05 * np.sin(p[:, 0] * 40.0)
+        tau = tau - 0.0012 * (0.5 + 0.5 * np.cos(psi * 31.0)) ** 2 * smoothstep(0.0, 0.1, e) * smoothstep(150.0, 115.0, az)
+        d = Fh.eval(p) - tau
+        return hk.smax(d, -e * 0.10, 0.0035)
+
+    return f, Fh
+
+
+def build_hair(B):
+    f, Fh = hair_fns()
+    H = tb.HEAD
+    F = sg.FnField(f, H + (-0.13, -0.11, -0.02), H + (0.13, 0.11, 0.23))
+    v, q = sg.mesh_fn(F, 0.0024)
+    c = v[q].mean(axis=1)
+    keep = Fh.eval(c) > -0.0015  # drop the cut faces inside the head
+    # strand flow coordinates for the bake: lines of constant psi run from the hairline back and down
+    psi = np.arctan2(v[:, 2] - HAIR_C[2], v[:, 1] - HAIR_C[1])
+    puv = np.stack([psi * 0.1, v[:, 0], np.zeros(len(v))], -1)
+    M = tg.Mesh()
+    M.add_verts(v, puv=puv)
+    M.add_faces(q[keep])
+    B.add(M, "hair", "Body")
 
 
 # --------------------------------------------------------------------------------------
@@ -873,11 +1034,11 @@ def noir_rig():
         return lo
 
     lights = {
-        "key": area("Key", (1.0, 0.80, 0.58), 70.0, 1.2, (2.2, -1.6, 2.4), sy=0.9),
-        "rim_l": area("RimL", (0.35, 0.85, 1.0), 140.0, 0.35, (-1.8, 1.6, 2.0), sy=2.0),
-        "rim_r": area("RimR", (0.40, 0.80, 1.0), 100.0, 0.35, (-1.8, -1.9, 1.8), sy=2.0),
-        "fill": area("Fill", (0.55, 0.70, 0.95), 10.0, 2.0, (2.5, 2.0, 1.0)),
-        "top": area("Top", (1.0, 0.9, 0.8), 20.0, 0.8, (0.3, 0.0, 3.2)),
+        "key": area("Key", (1.0, 0.84, 0.66), 32.0, 1.2, (2.2, -1.6, 2.4), sy=0.9),
+        "rim_l": area("RimL", (0.30, 0.85, 1.0), 170.0, 0.35, (-1.8, 1.6, 2.0), sy=2.0),
+        "rim_r": area("RimR", (0.35, 0.80, 1.0), 120.0, 0.35, (-1.8, -1.9, 1.8), sy=2.0),
+        "fill": area("Fill", (0.45, 0.65, 0.95), 5.0, 2.0, (2.5, 2.0, 1.0)),
+        "top": area("Top", (1.0, 0.9, 0.8), 9.0, 0.8, (0.3, 0.0, 3.2)),
     }
     # wet dark floor with a soft gradient backdrop
     floor = bpy.data.objects.new("Floor", bpy.data.meshes.new("Floor"))
@@ -941,7 +1102,7 @@ def preview(builders, tag, samples=12, views=None):
     B = Builder("Suit", coll)
     for fn in builders:
         fn(B)
-    obs = list(B.finish().values())
+    obs = list(B.finish(DECIMATE).values())
     for ob in obs:
         log(f"  {ob.name}: {tg.tri_count(ob)} tris")
     preview_materials(obs)
@@ -957,15 +1118,370 @@ def preview(builders, tag, samples=12, views=None):
         log("wrote", p)
 
 
+# --------------------------------------------------------------------------------------
+# Asset registry
+# --------------------------------------------------------------------------------------
+
+def build_suit_all(B):
+    build_torso(B)
+    build_sleeves(B)
+    build_trousers(B)
+    build_details(B)
+    build_shoe(B)
+
+
+SPECS = {
+    "Suit": dict(fn=build_suit_all, tint="Suit",
+                 pieces={"Chest": ("spine_05", None, 4096), "Waist": ("spine_03", None, 2048), "Hips": ("pelvis", None, 4096),
+                         "UpperArmL": ("upperarm_l", "lowerarm_l", 2048), "ForearmL": ("lowerarm_l", "hand_l", 2048),
+                         "ThighL": ("thigh_l", "calf_l", 2048), "ShinL": ("calf_l", "foot_l", 2048), "ShoeL": ("foot_l", None, 2048)},
+                 mirror={"UpperArmR": "UpperArmL", "ForearmR": "ForearmL", "ThighR": "ThighL", "ShinR": "ShinL", "ShoeR": "ShoeL"},
+                 decimate={"ShoeL": 6000}),
+    "HairSlick": dict(fn=build_hair, tint="Hair", pieces={"Body": ("head", None, 2048)}, decimate={"Body": 6000}),
+}
+ASSET_ORDER = ["Suit", "HairSlick"]
+
+# Colourways (linear tints; albedo = 0.75 * tint where the mask is set)
+SUIT_COLORWAYS = {
+    "Suit": [
+        {"Name": "Charcoal", "Primary": [0.047, 0.047, 0.051]},
+        {"Name": "MidnightNavy", "Primary": [0.016, 0.021, 0.047]},
+        {"Name": "Oxblood", "Primary": [0.074, 0.013, 0.017]},
+        {"Name": "Black", "Primary": [0.021, 0.021, 0.023]},
+    ],
+    "Shirt": [
+        {"Name": "Black", "Primary": [0.022, 0.022, 0.024], "Weight": 0.65},
+        {"Name": "White", "Primary": [1.0, 1.0, 0.97], "Weight": 0.35},
+    ],
+    "Tie": [
+        {"Name": "Black", "Primary": [0.016, 0.016, 0.017], "Weight": 0.6},
+        {"Name": "Graphite", "Primary": [0.032, 0.032, 0.035], "Weight": 0.25},
+        {"Name": "Wine", "Primary": [0.050, 0.008, 0.012], "Weight": 0.15},
+    ],
+    "Hair": [
+        {"Name": "Black", "Primary": [0.013, 0.011, 0.010], "Weight": 0.4},
+        {"Name": "DarkBrown", "Primary": [0.034, 0.021, 0.014], "Weight": 0.35},
+        {"Name": "Brown", "Primary": [0.075, 0.046, 0.028], "Weight": 0.15},
+        {"Name": "Grey", "Primary": [0.17, 0.17, 0.17], "Weight": 0.10},
+    ],
+}
+TINT_DEFAULTS = {"TintRoughness": 0.5, "RoughnessDetail": 1.0, "TintMetallic": 0.0}
+
+
+def piece_info(aid, piece):
+    spec = SPECS[aid]
+    if piece in spec["pieces"]:
+        return spec["pieces"][piece]
+    src = spec["mirror"][piece]
+    bone, align, res = spec["pieces"][src]
+    swap = lambda b: (b[:-2] + "_r") if b and b.endswith("_l") else b  # noqa: E731
+    return swap(bone), swap(align), res
+
+
+def anchor_block(aid, piece):
+    bone, align, _ = piece_info(aid, piece)
+    a = {"Bone": bone, "Offset": [0.0, 0.0, 0.0], "Rotation": [0.0, 0.0, 0.0], "Scale": 1.0}
+    if align:
+        a["AlignBone"] = align
+        a["ModelDir"] = tb.dir_ue(tb.bone(align) - tb.bone(bone))
+    a["AssumedBonePos"] = tb.bone_ue(bone)
+    return a
+
+
+def export_fbx(ob, path):
+    bpy.ops.object.select_all(action="DESELECT")
+    ob.select_set(True)
+    bpy.context.view_layer.objects.active = ob
+    bpy.ops.export_scene.fbx(
+        filepath=path, use_selection=True, object_types={"MESH"}, axis_forward="X", axis_up="Z", apply_unit_scale=True, global_scale=1.0,
+        apply_scale_options="FBX_SCALE_ALL", use_tspace=True, mesh_smooth_type="FACE", add_leaf_bones=False, use_mesh_modifiers=True,
+        path_mode="STRIP", embed_textures=False, bake_anim=False)
+    ob.select_set(False)
+
+
+def ue(p):
+    return [round(p[0] * 100, 1) + 0.0, round(-p[1] * 100, 1) + 0.0, round(p[2] * 100, 1) + 0.0]
+
+
+def bounds_ue(obs):
+    lo, hi = studio.bbox(obs)
+    a, b = ue(lo), ue(hi)
+    return {"Min": [min(a[i], b[i]) for i in range(3)], "Max": [max(a[i], b[i]) for i in range(3)]}
+
+
+def assign_single(ob, name):
+    me = ob.data
+    m = bpy.data.materials.get(name) or bpy.data.materials.new(name)
+    me.materials.clear()
+    me.materials.append(m)
+    me.polygons.foreach_set("material_index", np.zeros(len(me.polygons), np.int32))
+    me.update()
+
+
+def mirror_object(src, name):
+    me = src.data.copy()
+    me.name = name
+    me.transform(Matrix.Diagonal((1.0, -1.0, 1.0, 1.0)))
+    me.flip_normals()
+    ob = bpy.data.objects.new(name, me)
+    for c in src.users_collection:
+        c.objects.link(ob)
+    return ob
+
+
+def build_asset(aid, res_scale, do_bake, coll, seed):
+    t0 = time.time()
+    spec = SPECS[aid]
+    out_dir = os.path.join(OUT_ROOT, aid)
+    os.makedirs(out_dir, exist_ok=True)
+    B = Builder(aid, coll)
+    spec["fn"](B)
+    obs = B.finish(spec.get("decimate"))
+    log(f"  {aid}: geometry {time.time() - t0:.0f}s")
+    pieces, built = [], {}
+    for piece in list(spec["pieces"]) + list(spec.get("mirror", {})):
+        bone, _align, res_full = piece_info(aid, piece)
+        res = max(256, int(res_full * res_scale))
+        if piece in spec.get("mirror", {}):
+            src = spec["mirror"][piece]
+            ob = mirror_object(built[src], f"SM_{aid}_{piece}")
+            for k, pth in bk.texture_paths(out_dir, aid, src).items():
+                if os.path.exists(pth):
+                    shutil.copyfile(pth, bk.texture_paths(out_dir, aid, piece)[k])
+            assign_single(ob, f"M_{aid}_{piece}")
+        else:
+            ob = obs[piece]
+            ob.data.transform(Matrix.Translation(Vector(tuple(-tb.bone(bone)))))
+            bk.uv_unwrap(ob, res, 62.0, 4)
+            if do_bake:
+                t1 = time.time()
+                tbk.bake_piece(ob, out_dir, aid, piece, res, seed=seed, log=log)
+                log(f"  {aid}.{piece}: baked {res}px in {time.time() - t1:.0f}s")
+            assign_single(ob, f"M_{aid}_{piece}")
+        built[piece] = ob
+        tris = tg.tri_count(ob)
+        export_fbx(ob, os.path.join(out_dir, f"SM_{aid}_{piece}.fbx"))
+        pieces.append({"Name": piece, "Kind": "Static", "Slots": [f"M_{aid}_{piece}"], "Bounds": bounds_ue([ob]), "Triangles": tris,
+                       "TextureSize": res, "Anchor": anchor_block(aid, piece)})
+        log(f"  {aid}.{piece}: {tris} tris, bone {bone}")
+    mins = [p["Bounds"]["Min"] for p in pieces]
+    maxs = [p["Bounds"]["Max"] for p in pieces]
+    outfit = {"Outfit": "Suit", "Tint": spec["tint"]}
+    outfit.update(TINT_DEFAULTS)
+    first = list(spec["pieces"])[0]
+    entry = {
+        "Pieces": pieces,
+        "Points": {"Pivot": [0.0, 0.0, 0.0]},
+        "Bounds": {"Min": [min(m[i] for m in mins) for i in range(3)], "Max": [max(m[i] for m in maxs) for i in range(3)]},
+        "Anchor": anchor_block(aid, first),
+        "Outfit": outfit,
+        "Notes": "Unreal cm, character space (X forward, Y right, Z up). Every piece has its own Anchor: its origin is that bone's pivot in the "
+        "assumed UE5 Manny reference pose and UAirsoftTeamGearComponent::ApplySuit attaches it from the skeleton's reference pose "
+        "(tune with airsoft.gear.tune " + aid + "/<Piece>). Mask: " + ("R = suit cloth, G = shirt, B = tie and pocket square."
+                                                                      if spec["tint"] == "Suit" else "R = hair colour."),
+    }
+    log(f"  {aid}: done in {time.time() - t0:.0f}s, {sum(p['Triangles'] for p in pieces)} tris")
+    return entry
+
+
+TUNED = ("Offset", "Rotation", "Scale")
+
+
+def keep_tuning(old, new):
+    if not old:
+        return
+    oldp = {p.get("Name"): p for p in old.get("Pieces", [])}
+    pairs = [(old.get("Anchor"), new.get("Anchor"))] + [(oldp.get(p["Name"], {}).get("Anchor"), p.get("Anchor")) for p in new.get("Pieces", [])]
+    for a, b in pairs:
+        if a and b and a.get("Bone") == b.get("Bone"):
+            for k in TUNED:
+                if k in a:
+                    b[k] = a[k]
+
+
+def write_json(entries):
+    path = os.path.join(gl.DATA_DIR, "Gear.json")
+    data = {"Version": 1, "Assets": {}}
+    if os.path.exists(path):
+        with open(path) as f:
+            data = json.load(f)
+    data.setdefault("Assets", {})
+    for aid, e in entries.items():
+        keep_tuning(data["Assets"].get(aid), e)
+        data["Assets"][aid] = e
+    data["Suit"] = {
+        "Version": 1,
+        "Assets": ASSET_ORDER,
+        "Colorways": SUIT_COLORWAYS,
+        "MultiplayerSuits": ["Charcoal", "MidnightNavy", "Black"],
+        "Notes": "UAirsoftTeamGearComponent::ApplySuit dresses a body in every Assets entry. Suit pieces: R = suit colour (caller), "
+        "G = shirt, B = tie and pocket square (dark from Tie, or the team colour in the multiplayer outfit); HairSlick: R = hair. "
+        "Shirt / Tie / Hair are picked by Weight, hashed from the variant seed. Tints are linear; albedo = 0.75 * tint.",
+    }
+    with open(path, "w", newline="\n") as f:
+        json.dump(data, f, indent=2)
+        f.write("\n")
+    log(f"wrote {path}")
+
+
+# --------------------------------------------------------------------------------------
+# Renders (baked textures, moody lighting)
+# --------------------------------------------------------------------------------------
+
+
+def cw(group, name):
+    return tuple(next(c for c in SUIT_COLORWAYS[group] if c["Name"] == name)["Primary"])
+
+
+def import_asset(aid, coll, tints, offset=(0, 0, 0), rot_z=0.0, proxy_res=2048):
+    out_dir = os.path.join(OUT_ROOT, aid)
+    obs = []
+    for piece in list(SPECS[aid]["pieces"]) + list(SPECS[aid].get("mirror", {})):
+        f = os.path.join(out_dir, f"SM_{aid}_{piece}.fbx")
+        if not os.path.exists(f):
+            continue
+        before = set(bpy.data.objects)
+        bpy.ops.import_scene.fbx(filepath=f, axis_forward="X", axis_up="Z")
+        bone, _, _ = piece_info(aid, piece)
+        for o in [o for o in bpy.data.objects if o not in before]:
+            if o.type != "MESH":
+                bpy.data.objects.remove(o)
+                continue
+            for c in list(o.users_collection):
+                c.objects.unlink(o)
+            coll.objects.link(o)
+            o.matrix_world = Matrix.Translation(Vector(offset)) @ Matrix.Rotation(rot_z, 4, "Z") @ Matrix.Translation(Vector(tuple(tb.bone(bone))))
+            paths = bk.texture_paths(out_dir, aid, piece)
+            if all(os.path.exists(p) for p in paths.values()):
+                m = bk.preview_material(f"PV_{aid}_{piece}_{len(bpy.data.materials)}", paths, tints, proxy_res=proxy_res)
+            else:
+                m = gl.simple_mat(f"PVF_{aid}", (0.04, 0.04, 0.045), 0.7)
+            o.data.materials.clear()
+            o.data.materials.append(m)
+            obs.append(o)
+    return obs
+
+
+def mannequin_trimmed(coll, color=(0.30, 0.30, 0.31)):
+    """Stand-in body for the renders, with its box feet removed (the shoes stand in for them)."""
+    import bmesh
+    ob = mannequin(coll, color)
+    bm = bmesh.new()
+    bm.from_mesh(ob.data)
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if v.co.z < 0.115], context="VERTS")
+    bm.to_mesh(ob.data)
+    bm.free()
+    return ob
+
+
+def dress(coll, suit, shirt, tie, hair, off=(0, 0, 0), rz=0.0, proxy_res=1024):
+    obs = import_asset("Suit", coll, {"P": cw("Suit", suit), "S": cw("Shirt", shirt), "A": cw("Tie", tie)}, off, rz, proxy_res)
+    obs += import_asset("HairSlick", coll, {"P": cw("Hair", hair)}, off, rz, proxy_res)
+    return obs
+
+
+def save_jpg(png, jpg, quality=92):
+    os.makedirs(os.path.dirname(jpg), exist_ok=True)
+    from PIL import Image
+    Image.open(png).convert("RGB").save(jpg, quality=quality, subsampling=0)
+
+
+PRODUCTS = {
+    # name: (suit, shirt, tie, hair, view dir, target, distance, lens, res)
+    "Suit": ("Charcoal", "Black", "Black", "Black", (0.85, -0.62, 0.10), (0.0, 0.0, 0.93), 4.6, 50, (1920, 1080)),
+    "Suit_Detail": ("Charcoal", "Black", "Black", "Black", (0.9, -0.45, 0.10), (0.03, 0.0, 1.36), 1.6, 50, (1920, 1080)),
+    "Suit_Navy": ("MidnightNavy", "White", "Black", "DarkBrown", (0.9, -0.45, 0.10), (0.03, 0.0, 1.30), 2.2, 50, (1920, 1080)),
+    "Suit_Shoes": ("Charcoal", "Black", "Black", "Black", (0.9, -0.85, 0.35), (0.06, 0.0, 0.10), 1.0, 50, (1920, 1080)),
+    "HairSlick": ("Charcoal", "Black", "Black", "DarkBrown", (0.6, -0.9, 0.15), (0.0, 0.0, 1.67), 0.9, 60, (1920, 1080)),
+}
+
+
+def render_products(samples):
+    os.makedirs(SCRATCH, exist_ok=True)
+    for name, (suit, shirt, tie, hair, vd, tgt, dist, lens, res) in PRODUCTS.items():
+        reset_scene()
+        coll = bpy.data.collections.new("R")
+        bpy.context.scene.collection.children.link(coll)
+        dress(coll, suit, shirt, tie, hair, proxy_res=2048)
+        mannequin_trimmed(coll)
+        rig = noir_rig()
+        place_cam(rig["cam"], tgt, vd, dist, lens)
+        png = os.path.join(SCRATCH, f"{name}.png")
+        t0 = time.time()
+        render(png, res, samples)
+        save_jpg(png, os.path.join(RENDER_DIR, f"{name}.jpg"))
+        log(f"  wrote {RENDER_DIR}/{name}.jpg ({time.time() - t0:.0f}s)")
+
+
+LINEUP = [
+    # (suit, shirt, tie, hair, y offset, rotation deg)  -- the camera looks along -X, +Y is screen right
+    ("Charcoal", "Black", "Black", "Black", -1.65, 0.0),
+    ("MidnightNavy", "White", "Black", "DarkBrown", -0.55, -32.0),
+    ("Oxblood", "Black", "Wine", "Grey", 0.55, 32.0),
+    ("Charcoal", "Black", "Black", "Black", 1.65, 180.0),
+]
+
+
+def render_lineup(samples, res=(3840, 1800)):
+    reset_scene()
+    coll = bpy.data.collections.new("Lineup")
+    bpy.context.scene.collection.children.link(coll)
+    base = mannequin_trimmed(coll)
+    for suit, shirt, tie, hair, y, rz in LINEUP:
+        off = (0.0, y, 0.0)
+        R = math.radians(rz)
+        man = bpy.data.objects.new("Man", base.data)
+        coll.objects.link(man)
+        man.matrix_world = Matrix.Translation(Vector(off)) @ Matrix.Rotation(R, 4, "Z")
+        dress(coll, suit, shirt, tie, hair, off, R)
+    coll.objects.unlink(base)
+    rig = noir_rig()
+    place_cam(rig["cam"], (0.0, 0.0, 0.95), (1.0, 0.0, 0.07), 6.4, 50)
+    png = os.path.join(SCRATCH, "_Suit_Lineup.png")
+    t0 = time.time()
+    render(png, res, samples)
+    save_jpg(png, os.path.join(RENDER_DIR, "_Suit_Lineup.jpg"))
+    log(f"  wrote {RENDER_DIR}/_Suit_Lineup.jpg ({time.time() - t0:.0f}s)")
+
+
 def main(argv):
     flags = [a for a in argv if a.startswith("--")]
+    res = int(argv[argv.index("--res") + 1]) if "--res" in argv else 4096
+    samples = int(argv[argv.index("--samples") + 1]) if "--samples" in argv else 48
+    skip = {argv[i + 1] for i, a in enumerate(argv) if a in ("--res", "--samples")}
+    only = [a for a in argv if not a.startswith("--") and a not in skip]
     if "--preview" in flags:
         views = None
         if "--close" in flags:
             views = {"cfront": ((1.0, -0.15, 0.12), (0.05, 0, 1.36), 1.1), "cback": ((-1.0, -0.3, 0.3), (0, 0, 1.40), 1.1),
                      "ctq": ((0.7, -0.8, 0.2), (0.05, 0, 1.36), 1.1)}
-        preview([build_torso, build_sleeves, build_trousers, build_details], "suit", views=views)
+        if "--feet" in flags:
+            views = {"shoe": ((1.0, -1.0, 0.5), (0.04, 0.11, 0.05), 0.75), "shoeb": ((-1.0, 0.6, 0.4), (0.0, 0.11, 0.08), 0.75)}
+        if "--head" in flags:
+            views = {"hf": ((1.0, -0.4, 0.15), (0, 0, 1.66), 0.75), "hb": ((-1.0, -0.5, 0.3), (0, 0, 1.66), 0.75),
+                     "hs": ((0.0, -1.0, 0.1), (0, 0, 1.66), 0.75)}
+        preview([build_torso, build_sleeves, build_trousers, build_details, build_shoe, build_hair], "suit", views=views)
         return
+    if "--renders-only" in flags:
+        render_products(samples)
+        render_lineup(samples)
+        return
+    if "--lineup-only" in flags:
+        render_lineup(samples)
+        return
+    ids = [a for a in ASSET_ORDER if not only or a in only]
+    entries = {}
+    for i, aid in enumerate(ids):
+        reset_scene()
+        coll = bpy.data.collections.new(aid)
+        bpy.context.scene.collection.children.link(coll)
+        log(f"== {aid}")
+        entries[aid] = build_asset(aid, res / 4096.0, "--no-bake" not in flags, coll, seed=float(i + 11))
+    if entries:
+        write_json(entries)
+    if "--no-render" not in flags:
+        render_products(samples)
+        render_lineup(samples)
 
 
 if __name__ == "__main__":
