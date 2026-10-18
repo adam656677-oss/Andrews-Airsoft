@@ -120,6 +120,8 @@ protected:
 	void PlayDamageFeedback(float Amount);
 	/** Campaign death: the body goes limp (mannequin ragdoll) and the gun is dropped from view. */
 	void ApplyCampaignDeath();
+	/** Campaign: suits instead of airsoft gear (Andrew charcoal, crews navy, bosses oxblood). */
+	void ApplyCampaignWardrobe();
 	double LastDamageTime = -100.0;
 	bool bRagdolled = false;
 	void UpdateCamera(float DeltaSeconds);

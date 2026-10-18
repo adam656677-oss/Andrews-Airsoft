@@ -444,9 +444,58 @@ void AAirsoftCharacter::ApplyTeamLook()
 			TeamBand->SetVisibility(!TeamGear->HasArmband()); // the glowing band only when the gear isn't imported
 		}
 	}
+	if (AAirsoftGameState::IsCampaign(this))
+	{
+		ApplyCampaignWardrobe();
+	}
 	if (Combat)
 	{
 		Combat->RefreshVisuals();
+	}
+}
+
+void AAirsoftCharacter::ApplyCampaignWardrobe()
+{
+	// Story missions: tailored suits, not airsoft kit. No helmets, plate carriers or armbands.
+	if (TeamGear)
+	{
+		TeamGear->Clear();
+	}
+	if (TeamBand)
+	{
+		TeamBand->SetVisibility(false);
+	}
+	const AAirsoftPlayerState* PS = GetAirsoftPlayerState();
+	const bool bAndrew = GetTeam() == EAirsoftTeam::Blue;
+	const AAirsoftGameState* GS = GetWorld() ? GetWorld()->GetGameState<AAirsoftGameState>() : nullptr;
+	const bool bBoss = !bAndrew && PS && GS && !GS->BossName.IsEmpty() && PS->GetPlayerName() == GS->BossName;
+	// Andrew: charcoal. The Ledger's crews: midnight navy. Bosses: oxblood.
+	const FLinearColor Suit = bAndrew ? FLinearColor(0.011f, 0.011f, 0.013f)
+		: (bBoss ? FLinearColor(0.07f, 0.008f, 0.012f) : FLinearColor(0.012f, 0.016f, 0.03f));
+	if (BodyMID)
+	{
+		BodyMID->SetVectorParameterValue(TEXT("Color"), Suit);
+	}
+	if (!bHasMannequin)
+	{
+		return;
+	}
+	for (UMeshComponent* Body : { static_cast<UMeshComponent*>(GetMesh()), static_cast<UMeshComponent*>(PoseMesh.Get()) })
+	{
+		if (!Body)
+		{
+			continue;
+		}
+		for (int32 Slot = 0; Slot < Body->GetNumMaterials(); ++Slot)
+		{
+			if (UMaterialInstanceDynamic* MID = Body->CreateDynamicMaterialInstance(Slot))
+			{
+				MID->SetVectorParameterValue(TEXT("Paint Tint"), Suit);
+				MID->SetScalarParameterValue(TEXT("MetalPaintMetallic"), 0.f);
+				MID->SetScalarParameterValue(TEXT("MetalPaintRoughness"), 0.72f);
+				MID->SetScalarParameterValue(TEXT("EmissivePower"), 0.f);
+			}
+		}
 	}
 }
 
@@ -690,15 +739,10 @@ void AAirsoftCharacter::ApplyCampaignDeath()
 	USkeletalMeshComponent* Body = GetMesh();
 	if (bUsePoseMesh)
 	{
-		// The posed copy can't simulate: show the real mesh and move the team gear onto it.
+		// The posed copy can't simulate: show the real mesh (already in the same suit) instead.
 		PoseMesh->SetVisibility(false);
 		Body->SetVisibility(true);
 		Body->SetCastShadow(true);
-		if (TeamGear)
-		{
-			const AAirsoftPlayerState* GearPS = GetAirsoftPlayerState();
-			TeamGear->ApplyTo(Body, GetTeam(), GearPS ? GearPS->GetPlayerId() : 0);
-		}
 	}
 	Body->SetCollisionProfileName(TEXT("Ragdoll"));
 	Body->SetCollisionResponseToChannel(ECC_BB, ECR_Ignore);

@@ -115,6 +115,8 @@ protected:
 	void UpdateObjectiveText();
 	EAirsoftBotSkill Difficulty() const;
 	APawn* FindPlayerPawn() const;
+	/** The story's neon-noir look: an unbound post-process volume over the whole map. */
+	void ApplyNoirGrade();
 	/** Plays a voice line for the player; returns its length in seconds (0 if the sound isn't imported). */
 	float PlayVoice(const FString& Line);
 

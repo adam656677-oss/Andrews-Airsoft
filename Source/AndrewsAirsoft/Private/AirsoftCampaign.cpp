@@ -16,6 +16,7 @@
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
 #include "Dom/JsonObject.h"
+#include "Engine/PostProcessVolume.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "GameFramework/PlayerStart.h"
@@ -256,6 +257,7 @@ void AAirsoftCampaignGameMode::StartPlay()
 	GS->Phase = EAirsoftPhase::Live;
 	GS->PhaseEndsAt = 0.f;
 	UpdateObjectiveText();
+	ApplyNoirGrade();
 
 	// The player pawn is spawned during login; give it a frame before taking over the camera.
 	FTimerHandle Begin;
@@ -285,6 +287,43 @@ void AAirsoftCampaignGameMode::Tick(float DeltaSeconds)
 		const AAirsoftCharacter* Boss = BossController ? Cast<AAirsoftCharacter>(BossController->GetPawn()) : nullptr;
 		GS->BossHealth = (Boss && !Boss->IsOut() && Boss->GetMaxHealth() > 0.f) ? Boss->GetHealth() / Boss->GetMaxHealth() : 0.f;
 	}
+}
+
+void AAirsoftCampaignGameMode::ApplyNoirGrade()
+{
+	// Neon-noir grade over every story map: teal-blue shadows, warm-magenta highlights, deeper contrast,
+	// a touch less saturation, bloom on the practical lights, vignette, film grain and lens fringing.
+	FActorSpawnParameters Params;
+	Params.ObjectFlags |= RF_Transient;
+	APostProcessVolume* Volume = GetWorld()->SpawnActor<APostProcessVolume>(APostProcessVolume::StaticClass(), FTransform::Identity, Params);
+	if (!Volume)
+	{
+		return;
+	}
+	Volume->bUnbound = true;
+	Volume->Priority = 50.f;
+	Volume->BlendWeight = 1.f;
+	FPostProcessSettings& S = Volume->Settings;
+	S.bOverride_ColorSaturation = true;
+	S.ColorSaturation = FVector4(0.86f, 0.86f, 0.92f, 1.f);
+	S.bOverride_ColorContrast = true;
+	S.ColorContrast = FVector4(1.16f, 1.16f, 1.16f, 1.f);
+	S.bOverride_ColorOffsetShadows = true;
+	S.ColorOffsetShadows = FVector4(0.f, 0.004f, 0.014f, 0.f);
+	S.bOverride_ColorGainHighlights = true;
+	S.ColorGainHighlights = FVector4(1.07f, 0.96f, 1.05f, 1.f);
+	S.bOverride_ColorGammaMidtones = true;
+	S.ColorGammaMidtones = FVector4(0.98f, 0.98f, 1.02f, 1.f);
+	S.bOverride_BloomIntensity = true;
+	S.BloomIntensity = 1.15f;
+	S.bOverride_VignetteIntensity = true;
+	S.VignetteIntensity = 0.62f;
+	S.bOverride_FilmGrainIntensity = true;
+	S.FilmGrainIntensity = 0.22f;
+	S.bOverride_SceneFringeIntensity = true;
+	S.SceneFringeIntensity = 0.7f;
+	S.bOverride_AutoExposureBias = true;
+	S.AutoExposureBias = -0.35f;
 }
 
 float AAirsoftCampaignGameMode::PlayVoice(const FString& Line)
@@ -672,6 +711,7 @@ void AAirsoftCampaignGameMode::SpawnBoss()
 	// The boss is a notch sharper than the crew.
 	BossController->SetSkill(static_cast<EAirsoftBotSkill>(FMath::Min(static_cast<int32>(Difficulty()) + 1, static_cast<int32>(EAirsoftBotSkill::Expert))));
 	Enemies.Add(BossController);
+	GS->BossName = Mission->Boss.Name; // before the spawn: the body picks its suit from it
 	RestartPlayer(BossController);
 	if (AAirsoftCharacter* Boss = Cast<AAirsoftCharacter>(BossController->GetPawn()))
 	{
