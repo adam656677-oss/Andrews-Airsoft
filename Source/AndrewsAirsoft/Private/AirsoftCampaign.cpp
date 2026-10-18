@@ -305,25 +305,25 @@ void AAirsoftCampaignGameMode::ApplyNoirGrade()
 	Volume->BlendWeight = 1.f;
 	FPostProcessSettings& S = Volume->Settings;
 	S.bOverride_ColorSaturation = true;
-	S.ColorSaturation = FVector4(0.86f, 0.86f, 0.92f, 1.f);
+	S.ColorSaturation = FVector4(1.f, 1.f, 1.04f, 1.f); // keep the neon saturated
 	S.bOverride_ColorContrast = true;
-	S.ColorContrast = FVector4(1.16f, 1.16f, 1.16f, 1.f);
+	S.ColorContrast = FVector4(1.1f, 1.1f, 1.1f, 1.f);
 	S.bOverride_ColorOffsetShadows = true;
-	S.ColorOffsetShadows = FVector4(0.f, 0.004f, 0.014f, 0.f);
+	S.ColorOffsetShadows = FVector4(0.f, 0.004f, 0.012f, 0.f);
 	S.bOverride_ColorGainHighlights = true;
-	S.ColorGainHighlights = FVector4(1.07f, 0.96f, 1.05f, 1.f);
+	S.ColorGainHighlights = FVector4(1.04f, 0.98f, 1.02f, 1.f);
 	S.bOverride_ColorGammaMidtones = true;
 	S.ColorGammaMidtones = FVector4(0.98f, 0.98f, 1.02f, 1.f);
 	S.bOverride_BloomIntensity = true;
 	S.BloomIntensity = 1.15f;
 	S.bOverride_VignetteIntensity = true;
-	S.VignetteIntensity = 0.62f;
+	S.VignetteIntensity = 0.45f;
 	S.bOverride_FilmGrainIntensity = true;
 	S.FilmGrainIntensity = 0.22f;
 	S.bOverride_SceneFringeIntensity = true;
-	S.SceneFringeIntensity = 0.7f;
+	S.SceneFringeIntensity = 0.35f;
 	S.bOverride_AutoExposureBias = true;
-	S.AutoExposureBias = -0.35f;
+	S.AutoExposureBias = 0.f;
 }
 
 float AAirsoftCampaignGameMode::PlayVoice(const FString& Line)
