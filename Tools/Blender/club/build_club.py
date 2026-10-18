@@ -26,6 +26,7 @@ from club_registry import ASSETS, LINEUPS  # noqa: E402
 import club_assets  # noqa: F401,E402  (registers assets)
 import armory_assets  # noqa: F401,E402
 import vehicles  # noqa: F401,E402
+import luxury_cars  # noqa: F401,E402  (AVERNE luxury cars; product shots: build_cars.py)
 
 ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
 OUT = os.path.join(ROOT, "SourceAssets", "Props")

@@ -810,10 +810,22 @@ def bake_piece(ob, asset, piece, res, out_dir, log=print):
     save_png(orm, base + "_ORM.png")
     del orm
     mres = min(1024, res)
-    msk = downsample(data[..., 0:1], res // mres)[..., 0]
-    del data
-    if asset.mask and msk.max() > 0.01:
-        m3 = np.stack([msk, np.zeros_like(msk), np.zeros_like(msk)], -1)
+    # role mask: recipe mask 1.0 -> R (primary), 0.5 -> G (secondary, e.g. a two-tone upper body)
+    raw = data[..., 0]
+    prim = np.clip((raw - 0.75) / 0.2, 0.0, 1.0)
+    sec = ((raw > 0.3) & (raw < 0.7)).astype(np.float32)
+    msk = downsample(prim[..., None], res // mres)[..., 0]
+    msk2 = downsample(sec[..., None], res // mres)[..., 0]
+    del data, raw, prim, sec
+    # where a texel holds both roles (the two-tone line) give it wholly to the larger one: a split texel would let
+    # the neutral base colour through (lerp(1, tint, 0.5) twice) and draw a light line along the boundary
+    both = (msk > 0.0) & (msk2 > 0.0)
+    tot = np.clip(msk + msk2, 0.0, 1.0)
+    rwin = both & (msk >= msk2)
+    msk = np.where(rwin, tot, np.where(both, 0.0, msk))
+    msk2 = np.where(both & ~rwin, tot, np.where(both, 0.0, msk2))
+    if asset.mask and max(msk.max(), msk2.max()) > 0.01:
+        m3 = np.stack([msk, msk2, np.zeros_like(msk)], -1)
     else:
         m3 = np.zeros((mres, mres, 3), np.float32)
     save_png(m3, base + "_M.png")

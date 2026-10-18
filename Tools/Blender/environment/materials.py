@@ -135,12 +135,12 @@ def render_lineup(ids):
         o = bpy.data.objects.new('Swatch_' + mid, me)
         bpy.context.scene.collection.objects.link(o)
         o.location = (x0, y0, 0)
-        tile = SPECS[mid][0]
+        tile = bl.lib_tile(mid)
         me.materials.append(bl.lib_material(mid, uv_scale=1.0 / tile))
         objs.append(o)
         # label
         cu = bpy.data.curves.new('Label_' + mid, 'FONT')
-        cu.body = '%s  (%.1f m)' % (mid, tile)
+        cu.body = '%s  (%.2f m)' % (mid, tile)
         cu.size = 0.13
         cu.align_x = 'CENTER'
         t = bpy.data.objects.new('Label_' + mid, cu)
@@ -152,6 +152,8 @@ def render_lineup(ids):
     bl.cycles_setup(10, 3840, 2160, '1024')
     bpy.context.view_layer.update()
     pts = bl.bbox_world(objs)
+    from mathutils import Vector as _V
+    pts = list(pts) + [_V((o.location.x + size / 2 + 0.32, o.location.y, 0.0)) for o in objs]   # the labels
     cam, tgt, d = bl.camera_fit(pts, az_deg=0.0, el_deg=58.0, lens=50, margin=1.04)
     from mathutils import Vector
     lo = Vector((min(p.x for p in pts), min(p.y for p in pts), 0))
@@ -175,6 +177,10 @@ def refresh_json():
             f.read(16)
             w = struct.unpack('>I', f.read(4))[0]
         e = dict(old.get(mid, {}))
+        if e.get('Source'):   # photo-scanned set (Tools/Textures/fetch_cc0.py): its own size and resolution
+            e['Resolution'] = w
+            ents[mid] = e
+            continue
         e.update({'TileMeters': tile, 'BC': 'Materials/%s/T_%s_BC.png' % (mid, mid),
                   'N': 'Materials/%s/T_%s_N.png' % (mid, mid), 'ORM': 'Materials/%s/T_%s_ORM.png' % (mid, mid),
                   'H': ('Materials/%s/T_%s_H.png' % (mid, mid)) if os.path.exists(pre + 'H.png') else None,
@@ -184,13 +190,30 @@ def refresh_json():
     write_json(ents)
 
 
+def scanned_ids():
+    path = os.path.join(ROOT, 'Content', 'Airsoft', 'Data', 'Materials.json')
+    try:
+        with open(path) as f:
+            mats = json.load(f).get('Materials', {})
+    except (OSError, ValueError):
+        return []
+    return [m for m, e in mats.items() if e.get('Source')]
+
+
 def main():
     from envlib.bl import parse_args
     if '--json-only' in sys.argv:
         refresh_json()
         return
     o = parse_args()
-    ids = o['ids'] or list(SPECS.keys())
+    ids = o['ids']
+    if not ids:
+        # materials replaced by CC0 photo scans (Materials.json "Source", Tools/Textures/fetch_cc0.py) are
+        # only regenerated procedurally when named explicitly: python materials.py -- Asphalt
+        scanned = set(scanned_ids())
+        ids = [m for m in SPECS if m not in scanned]
+        if scanned:
+            print('  skipping photo-scanned: %s (name them to rebuild procedurally)' % ', '.join(sorted(scanned)))
     if not o['lineup_only']:
         for mid in ids:
             write_json({mid: build(mid, o['res'])})  # incremental, survives interruption

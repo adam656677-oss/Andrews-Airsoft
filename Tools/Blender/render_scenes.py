@@ -104,9 +104,10 @@ L = load_layouts()
 _LT = literal_tables(os.path.join(LIB_DIR, "lighting.py"), ("PRESETS", "FIXTURES"))
 PRESETS, FIXTURES = _LT["PRESETS"], _LT["FIXTURES"]
 _MT = literal_tables(os.path.join(LIB_DIR, "materials.py"), ("GLASS", "EMISSIVE", "RETICLE", "FALLBACK_COLOR", "WET_GROUND",
-                                                              "PUDDLE"))
+                                                              "PUDDLE", "CAR_PAINT"))
 GLASS, EMISSIVE, RETICLE, FALLBACK_COLOR = _MT["GLASS"], _MT["EMISSIVE"], _MT["RETICLE"], _MT["FALLBACK_COLOR"]
 WET_GROUND, PUDDLE = _MT.get("WET_GROUND", {}), _MT.get("PUDDLE", {})
+CAR_PAINT = _MT.get("CAR_PAINT", {})
 MATS = json.load(open(os.path.join(DATA_DIR, "Materials.json")))["Materials"]
 
 # Game-side constants (Source/AndrewsAirsoft): default attachments per gun (AirsoftWeaponData.cpp),
@@ -343,12 +344,13 @@ def emission_mat(name, rgb, strength, tex_path=None, res=1024):
     return m
 
 
-def glass_mat(aid):
-    """materials.build_glass: tinted translucent glass with Fresnel opacity and optional glow."""
-    key = ("glass", aid)
+def glass_mat(aid, piece=None):
+    """materials.build_glass: tinted translucent glass with Fresnel opacity and optional glow
+    (GLASS["<Id>/<Piece>"] overrides the asset entry, e.g. a car's rear privacy glass)."""
+    key = ("glass", aid, piece)
     if key in _mat_cache:
         return _mat_cache[key]
-    tint, opac, rough, glow = GLASS.get(aid, GLASS["*"])
+    tint, opac, rough, glow = GLASS.get(f"{aid}/{piece}") or GLASS.get(aid, GLASS["*"])
     m, nb, out = new_mat(f"Glass_{aid}")
     p = nb.node("ShaderNodeBsdfPrincipled")
     p.inputs["Base Color"].default_value = (*tint, 1.0)
@@ -409,6 +411,17 @@ def baked_mat(aid, piece, d, res):
         metal = nb.lerp(msum, metal, inst_attr(nb, "tMet", "Fac"))
         rdet = nb.add(inst_attr(nb, "tRough", "Fac"), nb.mul(nb.sub(rough, 0.5), 0.35))
         rough = nb.lerp(msum, rough, rdet)
+        if aid in CAR_PAINT and piece == "Body":   # materials.build_carpaint: clear coat + flake on the paint roles
+            cc, ccr, fstr, fsc = CAR_PAINT[aid]
+            tcn = nb.node("ShaderNodeTexCoord")
+            vor = nb.node("ShaderNodeTexNoise")
+            vor.inputs["Scale"].default_value = fsc * 100.0
+            vor.inputs["Detail"].default_value = 0.0
+            nb.nt.links.new(tcn.outputs["Object"], vor.inputs["Vector"])
+            fl = nb.add(1.0, nb.mul(nb.mul(nb.sub(vor.outputs["Fac"], 0.5), 2.0 * fstr), msum))
+            col = vmul(nb, col, nb.combine(fl, fl, fl))
+            nb.nt.links.new(nb.mul(msum, cc), bsdf.inputs["Coat Weight"])
+            bsdf.inputs["Coat Roughness"].default_value = ccr
     nb.nt.links.new(col, bsdf.inputs["Base Color"])
     nb.nt.links.new(rough, bsdf.inputs["Roughness"])
     nb.nt.links.new(metal, bsdf.inputs["Metallic"])
@@ -613,7 +626,7 @@ class Library:
         for o in obs:
             o.name = f"{aid}_{pn}"
             if role == "glass":
-                mats = [glass_mat(aid)]
+                mats = [glass_mat(aid, pn)]
             elif role == "reticle":
                 col, inten = RETICLE
                 mats = [emission_mat("Reticle", col, inten)]
@@ -781,7 +794,8 @@ class Builder:
             e["tP"], e["tS"], e["tA"], e["tMet"], e["tRough"] = p, s, accent or DISPLAY_ACCENT, met, rough
         else:
             col, met, rough = tint_for(tint_aid, tint) if tint_aid else ((1.0, 1.0, 1.0), 0.0, 0.55)
-            e["tP"], e["tS"], e["tA"], e["tMet"], e["tRough"] = col, (1.0, 1.0, 1.0), (1.0, 0.45, 0.08), met, rough
+            sec = L.TINTS.get(L.SECONDARY_TINT.get(tint_aid), (1.0, 1.0, 1.0)) if tint_aid and hasattr(L, "SECONDARY_TINT") else (1.0, 1.0, 1.0)
+            e["tP"], e["tS"], e["tA"], e["tMet"], e["tRough"] = col, sec, (1.0, 0.45, 0.08), met, rough
         self.coll.objects.link(e)
         return e
 

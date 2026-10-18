@@ -22,7 +22,7 @@ LEVELS = (("Street", 0.0), ("Mid", 3.3), ("Roof", 6.6))
 Z1, Z2, Z3 = 0.0, 3.3, 6.6
 SLAB = 0.30            # structural slab (its underside is the ceiling of the storey below)
 WEAR = 0.05            # wearing course on top of every deck
-PARKED = ["Body", "Glass"]     # parked vehicles: lights off (skip the Emissive head/tail-light piece)
+PARKED = ["Body", "Glass", "GlassPrivacy", "Wheels", "Interior"]   # parked vehicles: lights off (no Emissive piece)
 GX, GY = 30.0, 23.0    # garage deck half extents (x, y)
 T = 0.25               # wall thickness
 RAMP_X = 11.0          # ramps run x = -11 .. +11
@@ -217,7 +217,7 @@ def build(L=None):
     # =========================================================================================
     # Parking rows: stall lines, wheel stops and parked cars on all three decks
     # =========================================================================================
-    paints = ["Black", "Gunmetal", "DeepRed", "White", "Black", "Gunmetal"]
+    paints = ["Obsidian", "Gunmetal", "DeepBurgundy", "PearlWhite", "MidnightBlue", "Obsidian"]   # 6 entries (rng stream)
     rows = [(-20.15, 90.0, "N"), (-9.15, -90.0, "N"), (9.15, 90.0, "S"), (20.15, -90.0, "S")]
     rowy = {-20.15: (-22.75, -17.6), -9.15: (-11.6, -6.6), 9.15: (6.6, 11.6), 20.15: (17.6, 22.75)}
     occupied = _parking_plan()
@@ -317,9 +317,10 @@ def _parking_plan():
                     if lvl == 0 and yc == 9.15 and -12.0 < xc < 4.0:
                         continue                      # A works
                     if rng.random() < (0.5 if lvl == 0 else 0.45):
-                        aid = rng.choice(["Car_Sedan", "Car_Coupe", "Car_Sedan"])
+                        # list lengths (3 / 2) are part of the random stream: keep them so the occupied stalls stay put
+                        aid = rng.choice(["Car_GrandTourer", "Car_SUV", "Car_Hypercar"])
                         out[(lvl, xc, yc)] = aid
-                        out[(2 - lvl, round(-xc, 2), -yc)] = rng.choice(["Car_Sedan", "Car_Coupe"])
+                        out[(2 - lvl, round(-xc, 2), -yc)] = rng.choice(["Car_SUV", "Car_GrandTourer"])
     return out
 
 
@@ -445,7 +446,7 @@ def _street_level(L, rng):
            L.box(-4.5, 2.8, 2.565, 0.3, 0.16, 0.012, "Emissive:Warm", glow=30.0, coll=False, name="WorkLampLens")]
     # --- entrance cross-aisle (west of R1): lane divider and a breakdown ---
     it += [prop("Garage_JerseyBarrier", -20.2, 0.05, z, 0.0), prop("Garage_JerseyBarrier", -14.4, 0.05, z, 0.0),
-           prop("Car_Sedan", -19.0, 3.4, z, 172.0, tint="White", pieces=PARKED),
+           prop("Car_SUV", -19.0, 3.4, z, 172.0, tint="PearlWhite", pieces=PARKED),
            prop("Garage_Cone", -21.4, 2.2, z, 0.0), prop("Garage_Cone", -16.8, 4.6, z, 30.0)]
     # --- north aisle chicane: plywood hoarding + barriers (closing half the lane) ---
     it += [prop("Barricade_Plywood_4m", -2.0, -15.4, z, 90.0), prop("Garage_JerseyBarrier", 2.2, -15.6, z, 0.0),
@@ -458,7 +459,7 @@ def _street_level(L, rng):
            prop("TrashBags", 19.2, 16.2, z, 0.0)]
     # --- east: elevator lobby (pay machines), behind R1's head ---
     it += [prop("Garage_PayMachine", 29.25, 5.4, z, 180.0), prop("Garage_PayMachine", 29.25, 12.6, z, 180.0),
-           prop("Garage_JerseyBarrier", 26.4, 9.0, z, 90.0), prop("Car_Coupe", 18.0, -0.4, z, 96.0, tint="DeepRed", pieces=PARKED),
+           prop("Garage_JerseyBarrier", 26.4, 9.0, z, 90.0), prop("Car_GrandTourer", 18.0, -0.4, z, 96.0, tint="DeepBurgundy", pieces=PARKED),
            prop("Garage_JerseyBarrier", 13.4, 1.9, z, 90.0), prop("Garage_Cone", 12.4, -0.2, z, 0.0)]
     # puddles only where rain blows in under the open sides: deep under the deck a mirror patch only shows the
     # dark soffit and reads as a black sheet
@@ -480,7 +481,7 @@ def _mid_level(L, rng):
            prop("Garage_Cone", 0.2, -0.45, z, 20.0), prop("Garage_PayMachine", -1.6, 0.85, z, -90.0)]
     it += [prop("Garage_JerseyBarrier", -14.5, 0.0, z, 90.0), prop("Garage_JerseyBarrier", 14.5, 0.0, z, 90.0)]
     # --- north aisle: a fender-bender blocking a lane ---
-    it += [prop("WreckedCar", -6.0, -14.2, z, 28.0), prop("Car_Coupe", -1.4, -13.2, z, -152.0, tint="White"),
+    it += [prop("WreckedCar", -6.0, -14.2, z, 28.0), prop("Car_Hypercar", -1.4, -13.2, z, -152.0, tint="PearlWhite"),
            prop("Garage_Cone", 1.6, -15.6, z, 0.0), prop("Garage_Cone", -9.6, -12.6, z, 0.0),
            prop("Garage_JerseyBarrier", 9.4, -15.4, z, 0.0), prop("Barricade_Plywood_4m", 14.6, -12.8, z, -90.0)]
     # --- south aisle: repair zone with scaffold + hoarding ---
@@ -490,8 +491,8 @@ def _mid_level(L, rng):
            prop("Garage_Cone", 3.4, 14.4, z, 0.0), prop("Garage_Cone", 0.6, 15.6, z, 50.0)]
     # --- cross aisles ---
     it += [prop("Garage_JerseyBarrier", -20.0, -2.8, z, 0.0), prop("Garage_JerseyBarrier", 20.0, 2.8, z, 0.0),
-           prop("Car_Sedan", 20.2, -3.4, z, 8.0, tint="Gunmetal", pieces=PARKED),
-           prop("Car_Sedan", -20.6, 3.6, z, 176.0, tint="Black", pieces=PARKED),
+           prop("Car_GrandTourer", 20.2, -3.4, z, 8.0, tint="Gunmetal", pieces=PARKED),
+           prop("Car_SUV", -20.6, 3.6, z, 176.0, tint="Obsidian", pieces=PARKED),
            prop("Garage_PayMachine", 29.25, 12.6, z, 180.0), prop("Dumpster", -29.0, 11.0, z, 0.0, tint="Green")]
     for (x, y, sx, sy) in ((-24.0, 21.6, 2.4, 0.9), (2.0, -21.5, 2.0, 1.0)):      # open sides only (see street)
         it += _puddle(L, x, y, z, sx, sy)

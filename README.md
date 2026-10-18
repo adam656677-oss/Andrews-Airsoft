@@ -30,6 +30,7 @@ These are offline Blender renders of the real map layouts and assets (`Tools/Ble
 | ![Weapons](Docs/Renders/Weapons/_Lineup_4K.jpg) | ![Attachments](Docs/Renders/Attachments/_Lineup_4K.jpg) |
 | ![First-person gloves](Docs/Renders/Gear/Gloves_FirstPerson.jpg) | ![Pistol grip](Docs/Renders/Gear/Gloves_FirstPerson_Pistol.jpg) |
 | ![Velvet Club props](Docs/Renders/PropsClub/_Lineup_Club_4K.jpg) | ![The Armory](Docs/Renders/PropsClub/_Lineup_Armory_4K.jpg) |
+| ![AVERNE luxury cars](Docs/Renders/Cars/_Lineup_4K.jpg) | ![Neon street kit](Docs/Renders/PropsNeon/_Lineup_4K.jpg) |
 | ![Field props](Docs/Renders/Props/_Lineup_4K.jpg) | ![Architecture kit](Docs/Renders/Architecture/_Lineup_4K.jpg) |
 | ![Materials](Docs/Renders/Materials/_Lineup_4K.jpg) | ![Ironwood Yard plan](Tools/Unreal/Plans/IronwoodYard.png) |
 

@@ -94,7 +94,7 @@ footer { font-size: 13px; color: var(--muted); max-width: 70ch; }
   <header>
     <div class="slug"><span>Andrew &middot; <b>Last Contract</b></span><span>Voice recording script</span><span>Draft 1</span></div>
     <h1>Last Contract<br>Voice Script</h1>
-    <p class="lede">Every spoken line in the game, grouped by character, with direction for how each voice should sound. Lines marked <strong>In game</strong> already play today with a temporary computer voice; recording them under the same file name replaces it. Lines marked <strong>Next build</strong> are written and waiting to be wired in.</p>
+    <p class="lede">Every spoken line in the game, grouped by character, with direction for how each voice should sound. Lines marked <strong>In game</strong> already play today with a temporary synthetic voice (Kokoro TTS, made by <code>Tools/Audio/make_voice_neural.py</code>); recording them under the same file name replaces it. Lines marked <strong>Next build</strong> are written and waiting to be wired in.</p>
     <div class="rating"><span class="m">M</span><span>Rated Mature: strong language, blood and gun violence.</span></div>
   </header>
 
@@ -134,37 +134,37 @@ const CAST = [
     tags: ["Male, 50s to 60s", "Low baritone", "Slow", "Dry"],
     dir: "A weathered storyteller who has seen this before. Low, unhurried, close to the mic. Lands the last word of each sentence and lets it sit. No drama in the voice; the words carry it.",
     ph: "Pace about 130 words a minute. Pauses at commas are real pauses.",
-    tts: "Microsoft David, slowed 15%, low pitch" },
+    tts: "Kokoro TTS: am_michael 65% + am_onyx 35%, speed 0.82, plate reverb" },
   { id: "andrew", name: "Andrew", role: "The lead. Says very little",
     tags: ["Male, 40s", "Quiet", "Economical", "Controlled"],
     dir: "A man who stopped wasting words years ago. Calm under fire, tired rather than angry. Never shouts unless hurt. Short lines, often under his breath, as if talking to himself.",
     ph: "Effort sounds (breaths, grunts) matter as much as words. Record them dry.",
-    tts: "Not voiced yet" },
+    tts: "Not in game yet (draft: Kokoro am_fenrir 70% + am_onyx 30%)" },
   { id: "kade", name: "Kade, the Collector", role: "Boss, Mission 1",
     tags: ["Male, 30s", "Cocky", "Street-hard", "Fast"],
     dir: "A hired collector who thinks this is an easy job. Smirking, loud, a bit of swagger. Gets rattled and ugly as the fight turns against him.",
     ph: "Starts loose and amused; the mid-fight line should sound genuinely scared under the anger.",
-    tts: "Microsoft David, very low pitch" },
+    tts: "Kokoro TTS: am_puck, speed 1.10" },
   { id: "dorian", name: "Dorian Sloane", role: "Boss, Mission 2 (Velvet Club manager)",
     tags: ["Male, 40s", "Smooth", "Theatrical", "Condescending"],
     dir: "Runs Varga's nightclub and loves the sound of his own voice. Silky, unhurried, amused by violence as long as it happens to other people. Polished diction.",
     ph: "Smile while delivering the threats. The death line loses all the polish.",
-    tts: "Microsoft David, very low pitch" },
+    tts: "Kokoro TTS: bm_fable, speed 0.93" },
   { id: "mara", name: "Mara Voss", role: "Boss, Mission 3 (Varga's lieutenant)",
     tags: ["Female, 30s to 40s", "Cold", "Clipped", "Precise"],
     dir: "Ex-military, all business, and the only one who knew Andrew before. Flat, controlled delivery with contempt underneath. Never raises her voice except to give an order.",
     ph: "Think of commands over a radio: short, final, no wasted breath.",
-    tts: "Microsoft Zira" },
+    tts: "Kokoro TTS: af_kore, speed 1.02" },
   { id: "varga", name: "Silas Varga", role: "Final boss, Mission 4 (Ledger underboss)",
     tags: ["Male, 50s", "Deep", "Measured", "Menacing charm"],
     dir: "Old money in the underworld. Speaks softly because he has never needed to shout. Intimate, almost fond of Andrew, which makes him worse. Rich low register.",
     ph: "Keep it close to the mic and quiet. Menace comes from control, not volume.",
-    tts: "Microsoft David, very low pitch" },
+    tts: "Kokoro TTS: bm_george 45% + bm_lewis 35% + am_onyx 20%, speed 0.85, darker EQ" },
   { id: "crew", name: "Ledger Crew", role: "Enemy combat barks, 3 voices",
     tags: ["Male and female, 20s to 40s", "Shouted", "Panicked", "Profane"],
     dir: "Three distinct hired guns. Voice A: aggressive and loud. Voice B: nervous, younger, voice cracks. Voice C: older veteran, gravelly, calm until he isn't. Shouted across a room, with gunfire assumed around them.",
     ph: "Record shouted at full effort but back off the mic to avoid clipping.",
-    tts: "Not voiced yet" }
+    tts: "Not in game yet (draft: Kokoro am_eric / am_liam / am_echo + am_onyx)" }
 ];
 
 // status: "live" = already plays in the game today; "new" = written, wired in next build

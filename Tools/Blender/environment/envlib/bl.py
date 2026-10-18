@@ -138,8 +138,14 @@ def lib_paths(mat_id):
 
 
 def lib_tile(mat_id):
-    from mat_defs import SPECS
-    return SPECS[mat_id][0]
+    """TileMeters of a library material: Materials.json first (photo-scanned sets from
+    Tools/Textures/fetch_cc0.py record their real-world size there), else the procedural spec."""
+    try:
+        with open(os.path.join(DATA, 'Materials.json')) as f:
+            return float(json.load(f)['Materials'][mat_id]['TileMeters'])
+    except (OSError, KeyError, ValueError, TypeError):
+        from mat_defs import SPECS
+        return SPECS[mat_id][0]
 
 
 def dx_normal_node(nt, img_node, uv_map=None, strength=1.0):

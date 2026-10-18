@@ -13,6 +13,9 @@ All music, motifs, riffs and sound design are original. They aim at a genre (bro
 neo-noir, dark industrial techno, lounge noir, action-movie gunfire), not at any existing
 film score, song or sound design.
 
+The story voice-over in `Generated/Voice/` is the one exception: it is text-to-speech, see
+[Story voice-over](#story-voice-over).
+
 ## Regenerate
 
 ```bash
@@ -313,6 +316,73 @@ Here `fn(rng, var)` returns a float array: `(n,)` for mono, `(2, n)` for stereo.
 handles seeding, finishing (trim / fade / normalise, or loop high-pass + loudness), writing
 the variation files, the check table and the contact sheet. Run `make_sounds.py Key` while
 iterating. To retune a gun, edit its row in `cinematic.WEAPONS`.
+
+## Story voice-over
+
+The "Last Contract" campaign lines (`Content/Airsoft/Data/Campaign.json`: mission intros,
+boss taunts, outros) are spoken by **Kokoro-82M** (`hexgrad/Kokoro-82M`, Apache-2.0, commercial
+use allowed), an open neural TTS model that runs on the CPU. The voices are Kokoro's own
+synthetic voices, some blended into new ones; none imitates a real actor or character.
+Cast, direction and every line are in `Docs/Last_Contract_Voice_Script.html`.
+
+`make_voice_neural.py` writes the same 20 files as before into `Generated/Voice/`:
+`VO_M<n>_I<k>.wav` (narrator, intro line k), `VO_M<n>_Boss.wav` (the boss's taunt) and
+`VO_M<n>_Outro.wav`. They import as `/Game/Airsoft/Audio/VO_...`, and
+`AirsoftCampaign::VoiceKey()` plays them; the opening cinematic and subtitle holds are sized
+from each file's length. The old Windows-voice script `make_voice.ps1` still works as a
+no-download fallback and writes the same names.
+
+```bash
+# once (Python 3.10-3.12; on Windows use .ttsvenv\Scripts\ instead of .ttsvenv/bin/)
+python -m venv .ttsvenv
+.ttsvenv/bin/pip install torch --index-url https://download.pytorch.org/whl/cpu
+.ttsvenv/bin/pip install kokoro soundfile "misaki[en]"
+.ttsvenv/bin/pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
+
+.ttsvenv/bin/python Tools/Audio/make_voice_neural.py                  # all 20 lines (+ check table)
+.ttsvenv/bin/python Tools/Audio/make_voice_neural.py VO_M4_Boss       # just this line
+.ttsvenv/bin/python Tools/Audio/make_voice_neural.py --cast           # who speaks with which voice
+.ttsvenv/bin/python Tools/Audio/make_voice_neural.py --check          # measure only
+.ttsvenv/bin/python Tools/Audio/make_voice_neural.py --asr openai/whisper-base.en   # + transcribe back (needs transformers)
+.ttsvenv/bin/python Tools/Audio/make_voice_neural.py --next-build Saved/VoiceNextBuild
+```
+
+The first run downloads the model (~330 MB) and the voices from Hugging Face (`HF_HOME` sets
+the cache). The 20 lines take about 4 minutes on a 4-core CPU (longer when the machine is busy). Re-runs are deterministic: each
+sentence seeds torch from `crc32(<file>#<sentence>)`, the reverb and dither from the file name.
+
+| Role | Kokoro voice (blend) | Speed | Post |
+|---|---|---|---|
+| Narrator (intros, outros) | `am_michael` 65 % + `am_onyx` 35 % | 0.82 | warm EQ, 2.5:1 compression, subtle dark plate (0.9 s, wet 0.16) |
+| Kade (M1) | `am_puck` | 1.10 | brighter, firmer compression, small room |
+| Dorian Sloane (M2) | `bm_fable` | 0.93 | smooth, softened top, small room |
+| Mara Voss (M3) | `af_kore` | 1.02 | tight (110 Hz high-pass), clipped, very short room |
+| Silas Varga (M4) | `bm_george` 45 % + `bm_lewis` 35 % + `am_onyx` 20 % | 0.85 | darkest: +2 dB low shelf, -3.5 dB above 5.5 kHz, small room |
+
+How a line is built:
+
+* **Pacing.** Each sentence is synthesised on its own and joined with a per-character gap
+  (narrator 0.55 s). Kokoro's per-phoneme durations are scaled: commas are lengthened (narrator
+  x1.8, "pauses at commas are real pauses"), the last word of a sentence is leaned on, and
+  `DIRECTION` in the script carries the per-line notes from the voice script ("slow down on
+  *settle a debt*", the beat before "So is Andrew.", the late "For now."). No spoken phoneme may
+  last longer than 0.3 s (Kokoro sometimes stretches a final "s"/"z" into a long hiss), and each
+  sentence is cut right after its last phoneme.
+* **Pronunciation.** `PRONOUNCE` fixes names the lexicon gets wrong (Mara, Silas) with inline
+  phonemes; everything else comes from misaki's lexicon (espeak-ng is the fallback for unknown words).
+* **Post** (48 kHz): 2x FFT resample from Kokoro's 24 kHz, 65-110 Hz high-pass, character EQ,
+  RMS compressor, synthesised reverb (`dsp.make_ir`), tail cut, loudness-normalised to
+  **-18 LUFS** (BS.1770) with a look-ahead limiter keeping true peak **<= -1 dBTP**,
+  TPDF-dithered 16-bit mono. Leading silence 0.1 s (0.25 s before "So is Andrew."), about
+  0.2 s after the last word.
+
+The check table printed at the end lists length, words per minute, LUFS, true peak, leading
+and trailing silence (-50 dBFS) and clipped samples, and flags anything out of range.
+
+`--next-build DIR` also voices the spoken lines marked *Next build* in the voice script
+(Andrew's openers, replies and barks, the bosses' mid-fight and death lines, the crew barks;
+the effort/death-sound rows are skipped) under the script's file names. The game does not load
+those keys yet, so they must go outside `Generated/` (the importer imports every WAV in it).
 
 ## Size
 

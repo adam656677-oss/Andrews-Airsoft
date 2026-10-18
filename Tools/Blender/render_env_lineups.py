@@ -3,7 +3,10 @@ Render-only: the Architecture and field-Props 3840x2160 lineups from the environ
 generator's scratch checkpoints (ENV_SCRATCH/<Id>.blend, P_<Id>.blend), using the
 generator's own lineup layout and studio.
 
-    ENV_SCRATCH=/path/to/cache python Tools/Blender/render_env_lineups.py -- [architecture] [props]
+    ENV_SCRATCH=/path/to/cache python Tools/Blender/render_env_lineups.py -- [architecture] [props] [materials]
+
+"materials" renders the tileable-material swatch lineup (environment/materials.py's layout) to
+Docs/Renders/Materials/_Lineup_4K.png plus the 2560x1440 JPG next to it; it needs no scratch cache.
 
 The generator's camera fit (envlib.bl.camera_fit) under-estimates the distance needed for
 points nearer than the target (it adds the depth offset instead of subtracting it), which
@@ -137,8 +140,23 @@ def lineup(rows, cat, prefix="", spacing=0.6, az=-35.0, el=24.0, lens=50.0):
     bl.product_shot(placed, os.path.join(bl.RENDERS, cat, "_Lineup_4K.png"), az=az, el=el, lens=lens, samples=16, margin=1.04, w=3840, h=2160, tex_limit="1024")
 
 
+def material_lineup():
+    import materials
+
+    materials.render_lineup(list(materials.SPECS))
+    png = os.path.join(bl.RENDERS, "Materials", "_Lineup_4K.png")
+    try:
+        from PIL import Image
+
+        Image.open(png).convert("RGB").resize((2560, 1440), Image.LANCZOS).save(png[:-4] + ".jpg", quality=90)
+    except ImportError:
+        print("PIL missing: JPG not written", flush=True)
+
+
 def main(argv):
     which = [a for a in argv if not a.startswith("--")] or ["architecture", "props"]
+    if "materials" in which:
+        material_lineup()
     if "architecture" in which:
         lineup(ARCH_ROWS, "Architecture", spacing=1.0, el=24.0)
     if "props" in which:

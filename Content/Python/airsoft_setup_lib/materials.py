@@ -17,6 +17,7 @@ MASTER_MASKED = C.MAT_ROOT + "/M_Masked"
 MASTER_SIGN = C.MAT_ROOT + "/M_SignText"
 MASTER_FX_SMOKE = C.MAT_ROOT + "/M_FXSmoke"     # C++ AirsoftEffects: dust / gas puffs, ripples
 MASTER_FX_GLOW = C.MAT_ROOT + "/M_FXGlow"       # C++ AirsoftEffects / BB tracers: additive glow
+MASTER_CARPAINT = C.MAT_ROOT + "/M_CarPaint"    # clear-coat metallic-flake paint for the luxury car bodies
 DEF = C.TEX_ROOT + "/Defaults/"
 
 # Flat colours for tileables whose textures are not generated yet (multiplied into a white texture).
@@ -39,7 +40,9 @@ METALLIC_TILE = {"Brass": 1.0, "DiamondPlate": 1.0, "CorrodedMetal": 0.6}
 # Glass pieces: (tint, opacity, roughness, glow) keyed by asset id ("*" = default)
 GLASS = {
     "*": ((0.08, 0.12, 0.13), 0.22, 0.04, 0.0),
-    "Car_Sedan": ((0.03, 0.035, 0.04), 0.6, 0.03, 0.0), "Car_Coupe": ((0.03, 0.035, 0.04), 0.6, 0.03, 0.0),
+    "Car_Limousine": ((0.03, 0.035, 0.04), 0.55, 0.02, 0.0), "Car_GrandTourer": ((0.03, 0.035, 0.04), 0.55, 0.02, 0.0),
+    "Car_Hypercar": ((0.025, 0.028, 0.032), 0.6, 0.02, 0.0), "Car_SUV": ((0.03, 0.035, 0.04), 0.55, 0.02, 0.0),
+    "Car_SUV/GlassPrivacy": ((0.008, 0.009, 0.01), 0.86, 0.02, 0.0),        # rear privacy glass (per-piece key)
     "BoxTruck": ((0.04, 0.045, 0.05), 0.55, 0.05, 0.0),
     "Goggles": ((0.025, 0.027, 0.03), 0.62, 0.04, 0.0),       # smoked lens (the gear component also sets it at runtime)
     "BackBar_4m": ((0.25, 0.16, 0.05), 0.45, 0.06, 0.6),        # bottles, lit by the LED shelf
@@ -53,8 +56,8 @@ GLASS = {
 # Emissive pieces: (colour override or None = use the baked BC, intensity)
 EMISSIVE = {
     "*": (None, 12.0), "NeonSign_Velvet": (None, 30.0), "StreetLamp": (None, 16.0), "Chandelier": (None, 22.0),
-    "WallSconce": (None, 16.0), "BackBar_4m": (None, 28.0), "DJBooth": (None, 18.0), "Car_Sedan": (None, 9.0),
-    "Car_Coupe": (None, 9.0), "BoxTruck": (None, 8.0), "GunDisplayBay": (None, 6.0), "CeilingLight_Brass": (None, 14.0),
+    "WallSconce": (None, 16.0), "BackBar_4m": (None, 28.0), "DJBooth": (None, 18.0), "Car_Limousine": (None, 10.0),
+    "Car_GrandTourer": (None, 10.0), "Car_Hypercar": (None, 12.0), "Car_SUV": (None, 10.0), "BoxTruck": (None, 8.0), "GunDisplayBay": (None, 6.0), "CeilingLight_Brass": (None, 14.0),
     "BankersLamp": (None, 10.0), "ArmorySign": (None, 8.0), "MovingHeadLight": (None, 20.0),
     "Garage_LightFluo": (None, 16.0), "Garage_LightSodium": (None, 22.0), "Garage_ExitSign": (None, 5.0),
     "Garage_ElevatorDoors": (None, 5.0), "Garage_PayMachine": (None, 3.0), "Garage_TicketBooth": (None, 5.0),
@@ -79,6 +82,11 @@ WET_GROUND = {
 PUDDLE = {"RoughnessScale": 0.03, "RoughnessAdd": 0.0, "NormalStrength": 0.12, "Tint": (0.3, 0.3, 0.34),
           "RippleStrength": 0.6}
 RETICLE = ((1.0, 0.05, 0.03), 30.0)
+# Car bodies on M_CarPaint (Body piece only): ClearCoat, ClearCoatRoughness, FlakeStrength, FlakeScale (flakes per cm)
+CAR_PAINT = {
+    "Car_Limousine": (1.0, 0.02, 0.10, 2.5), "Car_GrandTourer": (1.0, 0.02, 0.14, 2.5),
+    "Car_Hypercar": (1.0, 0.03, 0.16, 2.5), "Car_SUV": (1.0, 0.02, 0.08, 2.5),
+}
 
 _cache = {}
 
@@ -285,6 +293,70 @@ def build_pbr():
     out(rough, MP.MP_ROUGHNESS)
     out(normal, MP.MP_NORMAL)
     out((orm, "R"), MP.MP_AMBIENT_OCCLUSION)
+    return _finish(m)
+
+
+def build_carpaint():
+    """M_AirsoftPBR's role-mask tinting under a clear coat: base layer = tinted metallic paint with a fine
+    world-space flake sparkle (masked areas only), clear coat (CustomData0/1) only where the role mask is set,
+    so chrome, rubber and trim on the same texture set stay uncoated."""
+    m = _new_material(MASTER_CARPAINT)
+    C.try_set(m, "blend_mode", unreal.BlendMode.BLEND_OPAQUE)
+    C.try_set(m, "shading_model", unreal.MaterialShadingModel.MSM_CLEAR_COAT)
+    g = Graph(m)
+    bc = g.tex("BaseColor", "T_Default_BC", ST.SAMPLERTYPE_COLOR, -1600, -500)
+    nrm = g.tex("Normal", "T_Default_N", ST.SAMPLERTYPE_NORMAL, -1600, 300)
+    orm = g.tex("ORM", "T_Default_ORM", ST.SAMPLERTYPE_MASKS, -1600, 0)
+    msk = g.tex("Mask", "T_Default_M", ST.SAMPLERTYPE_MASKS, -1600, -250)
+    pt = g.vector("PrimaryTint", (1, 1, 1), -1300, -900, "Tint")
+    st = g.vector("SecondaryTint", (1, 1, 1), -1300, -750, "Tint")
+    at = g.vector("AccentTint", (1.0, 0.45, 0.08), -1300, -600, "Tint")
+    bt = g.vector("BaseTint", (1, 1, 1), -1300, -1050, "Tint")
+    tm = g.scalar("TintMetallic", 0.5, -1300, 150, "Tint")
+    tr = g.scalar("TintRoughness", 0.32, -1300, 250, "Tint")
+    rd = g.scalar("RoughnessDetail", 0.35, -1300, 350, "Tint")
+    cc = g.scalar("ClearCoat", 1.0, -500, 650, "Coat")
+    ccr = g.scalar("ClearCoatRoughness", 0.02, -500, 750, "Coat")
+    fs = g.scalar("FlakeStrength", 0.12, -1300, -1250, "Coat")
+    fsc = g.scalar("FlakeScale", 2.5, -1300, -1350, "Coat")
+    ns = g.scalar("NormalStrength", 1.0, -500, 450)
+    one = g.const3((1, 1, 1), -1050, -1100)
+    lp = g.lerp(one, pt, (msk, "R"), -1000, -900)
+    ls = g.lerp(one, st, (msk, "G"), -1000, -750)
+    la = g.lerp(one, at, (msk, "B"), -1000, -600)
+    tint = g.mul(g.mul(lp, ls, -800, -800), la, -650, -750)
+    base_bt = g.mul((bc, "RGB"), bt, -800, -500)
+    base_t = g.mul(base_bt, tint, -500, -650)
+    rg = g.add((msk, "R"), (msk, "G"), -1000, -250)
+    msum = g.sat(g.add(rg, (msk, "B"), -850, -250), -700, -250)
+    # metallic flake: a fine noise in world space (cm * FlakeScale) brightening / darkening the tinted base
+    flake = None
+    noise_cls = getattr(unreal, "MaterialExpressionNoise", None)
+    if noise_cls is not None:
+        wp = g.e(unreal.MaterialExpressionWorldPosition, -1800, -1300)
+        n = g.e(noise_cls, -1500, -1300)
+        for prop, val in (("scale", 1.0), ("levels", 1), ("output_min", -1.0), ("output_max", 1.0), ("turbulence", False),
+                          ("quality", 1)):
+            C.try_set(n, prop, val, quiet=True)
+        fn = getattr(getattr(unreal, "NoiseFunction", None), "NOISEFUNCTION_GRADIENT_ALU", None)
+        if fn is not None:
+            C.try_set(n, "noise_function", fn, quiet=True)
+        link(g.mul(wp, fsc, -1650, -1300), n, "Position")
+        flake = g.add(g.mul(n, g.mul(fs, msum, -1350, -1150), -1200, -1250), None, -1050, -1250, const_b=1.0)
+    if flake is not None:
+        base_t = g.mul(base_t, flake, -350, -650)
+    metal_t = g.lerp((orm, "B"), tm, msum, -500, 0)
+    rdet = g.add(tr, g.mul(g.sub((orm, "G"), None, -1000, 300, const_b=0.5), rd, -850, 300), -700, 250)
+    rough_t = g.lerp((orm, "G"), rdet, msum, -500, 150)
+    flat = g.const3((0, 0, 1), -500, 550)
+    normal = g.lerp(flat, (nrm, "RGB"), ns, -250, 450)
+    out(base_t, MP.MP_BASE_COLOR)
+    out(metal_t, MP.MP_METALLIC)
+    out(g.sat(rough_t, -150, 150), MP.MP_ROUGHNESS)
+    out(normal, MP.MP_NORMAL)
+    out((orm, "R"), MP.MP_AMBIENT_OCCLUSION)
+    out(g.mul(cc, msum, -300, 650), MP.MP_CUSTOM_DATA0)        # ClearCoat
+    out(ccr, MP.MP_CUSTOM_DATA1)                                # ClearCoatRoughness
     return _finish(m)
 
 
@@ -525,15 +597,17 @@ def build_fx_glow():
 MASTER_VERSION = "1"     # bump when a master graph changes; unchanged masters are not rebuilt (saves shader compiles)
 FX_MASTER_VERSION = "fx2"  # the M_FX* effects masters only; bump to rebuild just those (fx2: ISM usage for rain)
 TILE_MASTER_VERSION = "t2"  # M_Tileable only (t2: RainRipples switch)
+CARPAINT_MASTER_VERSION = "c1"  # M_CarPaint only (c1: clear coat + flake over the role-mask tints)
 
 
 def build_masters(force=False):
     built = {}
     for name, fn in (("M_AirsoftPBR", build_pbr), ("M_Tileable", build_tileable), ("M_Emissive", build_emissive),
                      ("M_Glass", build_glass), ("M_Masked", build_masked), ("M_SignText", build_sign),
-                     ("M_FXSmoke", build_fx_smoke), ("M_FXGlow", build_fx_glow)):
+                     ("M_FXSmoke", build_fx_smoke), ("M_FXGlow", build_fx_glow), ("M_CarPaint", build_carpaint)):
         path = "%s/%s" % (C.MAT_ROOT, name)
         version = FX_MASTER_VERSION if name.startswith("M_FX") else (TILE_MASTER_VERSION if name == "M_Tileable" else
+                                                                      CARPAINT_MASTER_VERSION if name == "M_CarPaint" else
                                                                       MASTER_VERSION)
         existing = C.load(path)
         if existing is not None and not force and C.get_metadata(existing, "AirsoftMaster") == version:
@@ -732,6 +806,7 @@ def variant_color(aid, entry, name):
 def build_piece_instances(reg):
     pbr, glass, emis, masked = (C.load(MASTER_PBR), C.load(MASTER_GLASS), C.load(MASTER_EMISSIVE),
                                 C.load(MASTER_MASKED))
+    carpaint = C.load(MASTER_CARPAINT) or pbr
     n = 0
     for aid, e in sorted(reg.items()):
         cat = e["Category"]
@@ -749,7 +824,7 @@ def build_piece_instances(reg):
                 if pn == "Reticle":
                     make_mi(path, emis, scalars={"Intensity": RETICLE[1]}, vectors={"Color": RETICLE[0]})
                 elif role == "glass":
-                    tint, opac, rough, glow = GLASS.get(aid, GLASS["*"])
+                    tint, opac, rough, glow = GLASS.get("%s/%s" % (aid, pn)) or GLASS.get(aid, GLASS["*"])
                     make_mi(path, glass, scalars={"Opacity": opac, "Roughness": rough, "Glow": glow},
                             vectors={"Tint": tint})
                 elif role == "emissive":
@@ -768,16 +843,24 @@ def build_piece_instances(reg):
                         names = variant_names(aid, e)
                         if dflt or names:
                             vec["PrimaryTint"] = variant_color(aid, e, dflt or names[0])
+                        if aid in L.SECONDARY_TINT:
+                            vec["SecondaryTint"] = L.TINTS.get(L.SECONDARY_TINT[aid], (1, 1, 1))
                         if aid in L.TINT_SURFACE:
                             sc["TintMetallic"], sc["TintRoughness"] = L.TINT_SURFACE[aid]
-                    base = make_mi(path, pbr, scalars=sc, vectors=vec,
+                    parent = pbr
+                    if aid in CAR_PAINT and pn == "Body":
+                        parent = carpaint
+                        sc["ClearCoat"], sc["ClearCoatRoughness"], sc["FlakeStrength"], sc["FlakeScale"] = CAR_PAINT[aid]
+                    base = make_mi(path, parent, scalars=sc, vectors=vec,
                                    textures={"BaseColor": tx["BC"], "Normal": tx["N"], "ORM": tx["ORM"],
                                              "Mask": tx["M"]},
-                                   switches={"UseMask": has_mask})
+                                   switches={"UseMask": has_mask} if parent is pbr else None)   # M_CarPaint: no switch
                     if has_mask and base is not None and cat not in C.NO_COLLISION_CATEGORIES:
                         for vn in variant_names(aid, e):
-                            make_mi("%s_%s" % (path, vn), base, vectors={"PrimaryTint": variant_color(aid, e, vn)},
-                                    scalars=sc, clear=True)
+                            vv = {"PrimaryTint": variant_color(aid, e, vn)}
+                            if "SecondaryTint" in vec:
+                                vv["SecondaryTint"] = vec["SecondaryTint"]
+                            make_mi("%s_%s" % (path, vn), base, vectors=vv, scalars=sc, clear=True)
                     if not tx["BC"]:
                         C.SUMMARY.miss("piece textures", "%s/%s" % (aid, pn))
                 n += 1

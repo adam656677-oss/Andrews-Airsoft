@@ -507,104 +507,369 @@
         "Emissive": 512
       }
     },
-    "Car_Coupe": {
-      "Group": "Club",
+    "Car_GrandTourer": {
+      "Group": "Cars",
       "Pieces": [
         {
           "Name": "Body",
           "Kind": "Body",
           "Slots": [
-            "M_Car_Coupe_Body"
+            "M_Car_GrandTourer_Body"
+          ]
+        },
+        {
+          "Name": "Interior",
+          "Kind": "Static",
+          "Slots": [
+            "M_Car_GrandTourer_Interior"
           ]
         },
         {
           "Name": "Glass",
           "Kind": "Glass",
           "Slots": [
-            "M_Car_Coupe_Glass"
+            "M_Car_GrandTourer_Glass"
           ]
         },
         {
           "Name": "Emissive",
           "Kind": "Emissive",
           "Slots": [
-            "M_Car_Coupe_Emissive"
+            "M_Car_GrandTourer_Emissive"
+          ]
+        },
+        {
+          "Name": "Wheels",
+          "Kind": "Static",
+          "Slots": [
+            "M_Car_GrandTourer_Wheels"
           ]
         }
       ],
-      "Points": {},
+      "Points": {
+        "HeadlightL": [
+          242.5,
+          -62.0,
+          58.5
+        ],
+        "HeadlightR": [
+          242.5,
+          62.0,
+          58.5
+        ],
+        "TaillightL": [
+          -240.0,
+          -70.0,
+          84.0
+        ],
+        "TaillightR": [
+          -240.0,
+          70.0,
+          84.0
+        ]
+      },
       "Bounds": {
         "Min": [
-          -269.8,
-          -100.0,
+          -254.6,
+          -115.9,
           0.0
         ],
         "Max": [
-          269.8,
-          100.0,
-          134.4
+          246.0,
+          115.9,
+          129.5
         ]
       },
       "Collision": "Convex",
       "Triangles": {
-        "Body": 93460,
-        "Glass": 2940,
-        "Emissive": 1724
+        "Body": 43328,
+        "Interior": 12184,
+        "Glass": 2440,
+        "Emissive": 1560,
+        "Wheels": 36464
       },
       "TextureSize": {
         "Body": 4096,
-        "Glass": 1024,
-        "Emissive": 512
+        "Interior": 2048,
+        "Glass": 256,
+        "Emissive": 512,
+        "Wheels": 2048
       }
     },
-    "Car_Sedan": {
-      "Group": "Club",
+    "Car_Hypercar": {
+      "Group": "Cars",
       "Pieces": [
         {
           "Name": "Body",
           "Kind": "Body",
           "Slots": [
-            "M_Car_Sedan_Body"
+            "M_Car_Hypercar_Body"
+          ]
+        },
+        {
+          "Name": "Interior",
+          "Kind": "Static",
+          "Slots": [
+            "M_Car_Hypercar_Interior"
           ]
         },
         {
           "Name": "Glass",
           "Kind": "Glass",
           "Slots": [
-            "M_Car_Sedan_Glass"
+            "M_Car_Hypercar_Glass"
           ]
         },
         {
           "Name": "Emissive",
           "Kind": "Emissive",
           "Slots": [
-            "M_Car_Sedan_Emissive"
+            "M_Car_Hypercar_Emissive"
+          ]
+        },
+        {
+          "Name": "Wheels",
+          "Kind": "Static",
+          "Slots": [
+            "M_Car_Hypercar_Wheels"
           ]
         }
       ],
-      "Points": {},
+      "Points": {
+        "HeadlightL": [
+          227.9,
+          -58.0,
+          42.5
+        ],
+        "HeadlightR": [
+          227.9,
+          58.0,
+          42.5
+        ],
+        "TaillightL": [
+          -235.0,
+          -62.0,
+          75.0
+        ],
+        "TaillightR": [
+          -235.0,
+          62.0,
+          75.0
+        ]
+      },
       "Bounds": {
         "Min": [
-          -256.0,
-          -109.4,
+          -241.5,
+          -111.1,
           0.0
         ],
         "Max": [
-          256.5,
-          109.4,
-          146.5
+          244.0,
+          111.1,
+          111.5
         ]
       },
       "Collision": "Convex",
       "Triangles": {
-        "Body": 99738,
-        "Glass": 3736,
-        "Emissive": 3236
+        "Body": 40108,
+        "Interior": 11548,
+        "Glass": 2060,
+        "Emissive": 1944,
+        "Wheels": 34624
       },
       "TextureSize": {
         "Body": 4096,
-        "Glass": 1024,
-        "Emissive": 512
+        "Interior": 2048,
+        "Glass": 256,
+        "Emissive": 512,
+        "Wheels": 2048
+      }
+    },
+    "Car_Limousine": {
+      "Group": "Cars",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Car_Limousine_Body"
+          ]
+        },
+        {
+          "Name": "Interior",
+          "Kind": "Static",
+          "Slots": [
+            "M_Car_Limousine_Interior"
+          ]
+        },
+        {
+          "Name": "Glass",
+          "Kind": "Glass",
+          "Slots": [
+            "M_Car_Limousine_Glass"
+          ]
+        },
+        {
+          "Name": "Emissive",
+          "Kind": "Emissive",
+          "Slots": [
+            "M_Car_Limousine_Emissive"
+          ]
+        },
+        {
+          "Name": "Wheels",
+          "Kind": "Static",
+          "Slots": [
+            "M_Car_Limousine_Wheels"
+          ]
+        }
+      ],
+      "Points": {
+        "HeadlightL": [
+          290.0,
+          -62.0,
+          93.0
+        ],
+        "HeadlightR": [
+          290.0,
+          62.0,
+          93.0
+        ],
+        "TaillightL": [
+          -290.0,
+          -62.0,
+          88.0
+        ],
+        "TaillightR": [
+          -290.0,
+          62.0,
+          88.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -292.2,
+          -121.8,
+          0.0
+        ],
+        "Max": [
+          298.9,
+          121.8,
+          156.5
+        ]
+      },
+      "Collision": "Convex",
+      "Triangles": {
+        "Body": 61560,
+        "Interior": 16512,
+        "Glass": 2640,
+        "Emissive": 2520,
+        "Wheels": 36464
+      },
+      "TextureSize": {
+        "Body": 4096,
+        "Interior": 2048,
+        "Glass": 256,
+        "Emissive": 512,
+        "Wheels": 2048
+      }
+    },
+    "Car_SUV": {
+      "Group": "Cars",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Car_SUV_Body"
+          ]
+        },
+        {
+          "Name": "Interior",
+          "Kind": "Static",
+          "Slots": [
+            "M_Car_SUV_Interior"
+          ]
+        },
+        {
+          "Name": "Glass",
+          "Kind": "Glass",
+          "Slots": [
+            "M_Car_SUV_Glass"
+          ]
+        },
+        {
+          "Name": "GlassPrivacy",
+          "Kind": "Glass",
+          "Slots": [
+            "M_Car_SUV_GlassPrivacy"
+          ]
+        },
+        {
+          "Name": "Emissive",
+          "Kind": "Emissive",
+          "Slots": [
+            "M_Car_SUV_Emissive"
+          ]
+        },
+        {
+          "Name": "Wheels",
+          "Kind": "Static",
+          "Slots": [
+            "M_Car_SUV_Wheels"
+          ]
+        }
+      ],
+      "Points": {
+        "HeadlightL": [
+          257.5,
+          -73.5,
+          110.0
+        ],
+        "HeadlightR": [
+          257.5,
+          73.5,
+          110.0
+        ],
+        "TaillightL": [
+          -257.5,
+          -76.0,
+          104.0
+        ],
+        "TaillightR": [
+          -257.5,
+          76.0,
+          104.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -259.3,
+          -119.3,
+          0.0
+        ],
+        "Max": [
+          265.1,
+          119.3,
+          193.5
+        ]
+      },
+      "Collision": "Convex",
+      "Triangles": {
+        "Body": 54018,
+        "Interior": 17305,
+        "Glass": 1320,
+        "GlassPrivacy": 1280,
+        "Emissive": 2136,
+        "Wheels": 37328
+      },
+      "TextureSize": {
+        "Body": 4096,
+        "Interior": 2048,
+        "Glass": 256,
+        "GlassPrivacy": 256,
+        "Emissive": 512,
+        "Wheels": 2048
       }
     },
     "CeilingLight_Brass": {

@@ -9,10 +9,14 @@ FONTS = os.path.join(HERE, "fonts")
 # Lineup sheet layout (rows back to front).
 LINEUPS = {
     "club": [
-        ["BoxTruck", "Car_Sedan", "Car_Coupe", "Dumpster", "Kiosk"],
+        ["BoxTruck", "Dumpster", "Kiosk"],
         ["BackBar_4m", "SpeakerStack", "DJBooth", "NeonSign_Velvet", "StreetLamp"],
         ["BarCounter_4m", "BoothSofa_Curved", "Chandelier", "Planter_Concrete", "MovingHeadLight"],
         ["BarStool", "BoothTable", "HighTable", "Armchair_Leather", "VelvetRopePost", "WallSconce", "Bollard", "TrashBags"],
+    ],
+    "cars": [
+        ["Car_Limousine", "Car_SUV"],
+        ["Car_GrandTourer", "Car_Hypercar"],
     ],
     "armory": [
         ["WallPanel_Walnut_4m", "ArmorySign"],

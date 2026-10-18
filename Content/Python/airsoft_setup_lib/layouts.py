@@ -56,6 +56,9 @@ TINTS = {
     "Blue": (0.04, 0.13, 0.32), "Green": (0.07, 0.2, 0.09), "Rust": (0.36, 0.13, 0.05),
     "Sand": (0.5, 0.4, 0.26), "DeepGreen": (0.02, 0.06, 0.035), "Burgundy": (0.16, 0.012, 0.03),
     "Orange": (0.7, 0.22, 0.03), "Teal": (0.02, 0.18, 0.2),
+    # luxury car colourways (Tools/Blender/club/luxury_cars.py; clear-coated metallic on M_CarPaint)
+    "Obsidian": (0.005, 0.005, 0.006), "MidnightBlue": (0.006, 0.014, 0.045), "DeepBurgundy": (0.075, 0.004, 0.012),
+    "PearlWhite": (0.70, 0.69, 0.66),
 }
 EMISSIVE_COLORS = {
     "Warm": (1.0, 0.7, 0.42), "Gold": (1.0, 0.76, 0.38), "Sodium": (1.0, 0.55, 0.2),
@@ -68,8 +71,10 @@ EMISSIVE_COLORS = {
 # Paint variants created for tintable (role-mask) props; JSON "TintVariants" are merged on top.
 TINT_VARIANTS = {
     "Container_20ft": ["Red", "Blue", "Green", "Rust", "Sand", "Grey"],
-    "Car_Sedan": ["Black", "DeepRed", "Gunmetal", "White"],
-    "Car_Coupe": ["Black", "DeepRed", "Gunmetal", "White"],
+    "Car_Limousine": ["Obsidian", "MidnightBlue", "DeepBurgundy", "Gunmetal", "PearlWhite"],
+    "Car_GrandTourer": ["Obsidian", "MidnightBlue", "DeepBurgundy", "Gunmetal", "PearlWhite"],
+    "Car_Hypercar": ["Obsidian", "MidnightBlue", "DeepBurgundy", "Gunmetal", "PearlWhite"],
+    "Car_SUV": ["Obsidian", "MidnightBlue", "DeepBurgundy", "Gunmetal", "PearlWhite"],
     "BoxTruck": ["White", "Grey", "Blue"],
     "OilDrum": ["Blue", "Red", "Green"],
     "FlagPole_Objective": ["Blue", "Red"],
@@ -78,10 +83,16 @@ TINT_VARIANTS = {
     "Street_Awning": ["Burgundy", "DeepGreen", "Teal", "Black", "Red"],
 }
 # Default PrimaryTint baked into the base instance of masked props (guns stay white: the game tints them).
-DEFAULT_TINT = {"Container_20ft": "Blue", "Car_Sedan": "Gunmetal", "Car_Coupe": "Black", "BoxTruck": "White",
+DEFAULT_TINT = {"Container_20ft": "Blue", "Car_Limousine": "DeepBurgundy", "Car_GrandTourer": "MidnightBlue",
+                "Car_Hypercar": "Gunmetal", "Car_SUV": "Obsidian", "BoxTruck": "White",
                 "OilDrum": "Blue", "Dumpster": "Green", "Street_Shutter": "Grey", "Street_Awning": "Burgundy"}
-# Car paint is glossy: TintMetallic / TintRoughness for the masked areas.
-TINT_SURFACE = {"Car_Sedan": (0.55, 0.28), "Car_Coupe": (0.6, 0.25), "BoxTruck": (0.0, 0.45),
+# Second paint role (mask G): the limousine's two-tone upper body (bonnet, roof, pillars, boot) stays obsidian;
+# a placement tinted Obsidian is therefore single-tone.
+SECONDARY_TINT = {"Car_Limousine": "Obsidian"}
+# Car paint is glossy: TintMetallic / TintRoughness for the masked areas (luxury cars: base layer under M_CarPaint's
+# clear coat, so the roughness here is the metallic base, not the gloss).
+TINT_SURFACE = {"Car_Limousine": (0.45, 0.32), "Car_GrandTourer": (0.55, 0.3), "Car_Hypercar": (0.6, 0.3),
+                "Car_SUV": (0.4, 0.32), "BoxTruck": (0.0, 0.45),
                 "Container_20ft": (0.0, 0.5), "OilDrum": (0.0, 0.45), "Dumpster": (0.0, 0.5)}
 
 
@@ -160,10 +171,15 @@ KNOWN_ASSETS = {
     "BoothTable": _K("Props", (-45.5, -45.5, 0), (45.5, 45.5, 74), "cyl:MarbleBlack", coll="Convex", los=False),
     "BoxTruck": _K("Props", (-378.3, -153.5, 0), (372, 153.5, 335), "truck:PaintedSteel", coll="Convex",
                    tintable=True),
-    "Car_Coupe": _K("Props", (-269.8, -115, 0), (269.8, 115, 134.4), "car:PaintedSteel", coll="Convex",
-                    tintable=True),
-    "Car_Sedan": _K("Props", (-256, -118.5, 0), (256.5, 118.5, 146.5), "car:PaintedSteel", coll="Convex",
-                    tintable=True),
+    # luxury cars (Tools/Blender/club/luxury_cars.py; bounds include the door mirrors)
+    "Car_Limousine": _K("Props", (-292.2, -121.8, 0), (298.9, 121.8, 156.5), "car:PaintedSteel", coll="Convex",
+                        tintable=True),
+    "Car_GrandTourer": _K("Props", (-254.6, -115.9, 0), (246.0, 115.9, 129.5), "car:PaintedSteel", coll="Convex",
+                          tintable=True),
+    "Car_Hypercar": _K("Props", (-241.5, -111.1, 0), (244.0, 111.1, 111.5), "car:PaintedSteel", coll="Convex",
+                       tintable=True),
+    "Car_SUV": _K("Props", (-259.3, -119.3, 0), (265.1, 119.3, 193.5), "car:PaintedSteel", coll="Convex",
+                  tintable=True),
     "Chandelier": _K("Props", (-44.1, -44.1, 0), (44.1, 44.1, 123), "hanglamp:Brass", coll="Convex", los=False),
     "DJBooth": _K("Props", (-43, -122, 0), (45.6, 122, 120.8), "box:MarbleBlack", coll="Box"),
     "Dumpster": _K("Props", (-58, -100, 0), (58, 100, 130), "box:PaintedSteel", coll="Box", tintable=True),
@@ -1193,15 +1209,15 @@ def _velvet():
 
     # ---- street (Blue side) ----
     it += [prop("BoxTruck", -21, -20.3, -0.15, 90, tint="White"),
-           prop("Car_Sedan", 1.5, -20.2, -0.15, 8, tint="Black"),
-           prop("Car_Coupe", 30.5, -20.0, -0.15, 75, tint="White"),
+           prop("Car_GrandTourer", 1.5, -20.2, -0.15, 8, tint="Obsidian"),          # arriving at the club
+           prop("Car_Hypercar", 30.5, -20.0, -0.15, 75, tint="Gunmetal"),
            prop("Kiosk", -24.2, -12.0, 0, 0),
-           prop("Car_Sedan", -27.5, -24.6, -0.15, 0, tint="Black"),
-           prop("Car_Coupe", -10.5, -24.6, -0.15, 180, tint="DeepRed"),
-           prop("Car_Sedan", 7.5, -24.6, -0.15, 0, tint="Gunmetal"),
-           prop("Car_Coupe", 25, -24.6, -0.15, 180, tint="Black"),
-           prop("Car_Sedan", -14.5, -15.4, -0.15, 180, tint="Gunmetal"),
-           prop("Car_Coupe", 15.5, -15.4, -0.15, 0, tint="DeepRed"),
+           prop("Car_SUV", -27.5, -24.6, -0.15, 0, tint="Obsidian"),               # south kerb: guests' cars
+           prop("Car_GrandTourer", -10.5, -24.6, -0.15, 180, tint="DeepBurgundy"),
+           prop("Car_SUV", 7.5, -24.6, -0.15, 0, tint="PearlWhite"),
+           prop("Car_GrandTourer", 25, -24.6, -0.15, 180, tint="MidnightBlue"),
+           prop("Car_Limousine", -14.5, -15.4, -0.15, 180, tint="DeepBurgundy"),   # club kerb: the limousines
+           prop("Car_Limousine", 15.5, -15.4, -0.15, 0, tint="Obsidian"),
            prop("Kiosk", 12, -28.1, 0, 90),
            prop("Dumpster", -3.0, -28.6, 0, 90, tint="Green"), prop("TrashBags", -5.3, -28.4, 0, 30),
            prop("Planter_Concrete", -6.6, -10.9, 0, 0), prop("Planter_Concrete", 6.6, -10.9, 0, 0),
@@ -1230,8 +1246,8 @@ def _velvet():
            slab(-25.6, -30.2, -25.2, -29.0, 0, 2.6, "Brick", name="GatePier"),
            slab(-32.4, -27.4, -22.2, -27.0, 0, 2.4, "Brick", name="ValetScreen"),
            prop("Planter_Concrete", -33.1, -27.2, 0, 0), prop("Planter_Concrete", -21.5, -27.2, 0, 0),
-           prop("Car_Coupe", -33.4, -38.6, 0, 0, tint="Gunmetal"), prop("Car_Sedan", -24.8, -38.6, 0, 180,
-                                                                         tint="Black"),
+           prop("Car_SUV", -33.2, -38.6, 0, 0, tint="Obsidian"), prop("Car_Limousine", -25.3, -38.6, 0, 180,
+                                                                     tint="MidnightBlue"),
            slab(-36.0, -30.8, -35.6, -30.6, 0.6, 3.0, "Emissive:Warm", glow=6, coll=False, name="LotLamp"),
            light("point", -29, -35, 4.5, color="Sodium", cd=10, radius=12, shadows=True),
            blocker(-36.2, -40.2, -21.8, -30.2, 10.0, 14.0)]
@@ -1244,13 +1260,13 @@ def _velvet():
     # ---- west alley ----
     it += [prop("Dumpster", -31.5, 4.0, 0, 90, tint="Rust"), prop("TrashBags", -33.6, 6.2, 0, 0),
            prop("TrashBags", -29.6, 6.0, 0, 120), prop("Crate_Wood", -27.4, 12.0, 0, 5),
-           prop("Crate_Wood", -27.4, 12.0, 0.62, 12), prop("Car_Coupe", -32.4, 16.5, 0, 95, tint="Gunmetal"),
+           prop("Crate_Wood", -27.4, 12.0, 0.62, 12), prop("Car_GrandTourer", -32.4, 16.5, 0, 95, tint="Gunmetal"),
            prop("PalletStack", -34.6, -4.5, 0, 90), prop("OilDrum", -27.3, -3.0, 0, 0, tint="Red"),
            prop("Dumpster", -34.6, 24.6, 0, 90, tint="Blue"), prop("StreetLamp", -26.7, 2.0, 0, 0,
                                                                    light={"shadows": False, "cd": 12})]
     # ---- east alley ----
     it += [prop("Dumpster", 31.5, -2.0, 0, 90, tint="Green"), prop("TrashBags", 33.6, 0.3, 0, 40),
-           prop("Car_Sedan", 32.3, 9.5, 0, 92, tint="DeepRed"), prop("PalletStack", 27.5, 14.5, 0, 0),
+           prop("Car_SUV", 32.3, 9.5, 0, 92, tint="DeepBurgundy"), prop("PalletStack", 27.5, 14.5, 0, 0),
            prop("Crate_Wood", 34.4, 15.5, 0, 30), prop("OilDrum", 27.4, 1.5, 0, 0, tint="Blue"),
            prop("StreetLamp", 26.7, 12.0, 0, 180, light={"shadows": False, "cd": 12})]
     # ---- back alley + loading dock (Red side) ----

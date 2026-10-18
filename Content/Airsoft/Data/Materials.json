@@ -2,25 +2,52 @@
   "Version": 1,
   "Materials": {
     "Asphalt": {
-      "TileMeters": 3.0,
+      "TileMeters": 2.1,
       "BC": "Materials/Asphalt/T_Asphalt_BC.png",
       "N": "Materials/Asphalt/T_Asphalt_N.png",
       "ORM": "Materials/Asphalt/T_Asphalt_ORM.png",
       "H": "Materials/Asphalt/T_Asphalt_H.png",
       "Opacity": null,
       "Resolution": 4096,
-      "ArchUVScale": 0.66667,
-      "HeightRangeM": 0.00795
+      "ArchUVScale": 0.95238,
+      "HeightRangeM": 0.008,
+      "Source": {
+        "Site": "Poly Haven",
+        "Asset": "clean_asphalt",
+        "Name": "Clean Asphalt",
+        "Url": "https://polyhaven.com/a/clean_asphalt",
+        "Authors": [
+          "Dimitrios Savva"
+        ],
+        "License": "CC0 1.0",
+        "ScanMeters": 2.1,
+        "Repeat": 1,
+        "Download": "4k"
+      }
     },
     "AsphaltWet": {
-      "TileMeters": 3.0,
+      "TileMeters": 4.2,
       "BC": "Materials/AsphaltWet/T_AsphaltWet_BC.png",
       "N": "Materials/AsphaltWet/T_AsphaltWet_N.png",
       "ORM": "Materials/AsphaltWet/T_AsphaltWet_ORM.png",
       "H": null,
       "Opacity": null,
       "Resolution": 4096,
-      "ArchUVScale": 0.66667
+      "ArchUVScale": 0.47619,
+      "Source": {
+        "Site": "Poly Haven",
+        "Asset": "clean_asphalt",
+        "Name": "Clean Asphalt",
+        "Url": "https://polyhaven.com/a/clean_asphalt",
+        "Authors": [
+          "Dimitrios Savva"
+        ],
+        "License": "CC0 1.0",
+        "ScanMeters": 2.1,
+        "Repeat": 2,
+        "Download": "4k",
+        "ProceduralLayers": "asphalt_wet"
+      }
     },
     "Bark": {
       "TileMeters": 1.0,
@@ -31,7 +58,21 @@
       "Opacity": null,
       "Resolution": 4096,
       "ArchUVScale": 2.0,
-      "HeightRangeM": 0.03401
+      "HeightRangeM": 0.034,
+      "Source": {
+        "Site": "Poly Haven",
+        "Asset": "bark_willow",
+        "Name": "Bark Willow",
+        "Url": "https://polyhaven.com/a/bark_willow",
+        "Authors": [
+          "Dario Barresi",
+          "Dimitrios Savva"
+        ],
+        "License": "CC0 1.0",
+        "ScanMeters": 1.0,
+        "Repeat": 1,
+        "Download": "4k"
+      }
     },
     "Brass": {
       "TileMeters": 0.5,
@@ -44,115 +85,270 @@
       "ArchUVScale": 4.0
     },
     "Brick": {
-      "TileMeters": 1.8,
+      "TileMeters": 1.4,
       "BC": "Materials/Brick/T_Brick_BC.png",
       "N": "Materials/Brick/T_Brick_N.png",
       "ORM": "Materials/Brick/T_Brick_ORM.png",
       "H": "Materials/Brick/T_Brick_H.png",
       "Opacity": null,
       "Resolution": 4096,
-      "ArchUVScale": 1.11111,
-      "HeightRangeM": 0.00858
+      "ArchUVScale": 1.42857,
+      "HeightRangeM": 0.01,
+      "Source": {
+        "Site": "Poly Haven",
+        "Asset": "red_brick",
+        "Name": "Red Brick",
+        "Url": "https://polyhaven.com/a/red_brick",
+        "Authors": [
+          "Rob Tuytel"
+        ],
+        "License": "CC0 1.0",
+        "ScanMeters": 1.4,
+        "Repeat": 1,
+        "Download": "4k"
+      }
     },
     "BrickDark": {
-      "TileMeters": 1.8,
+      "TileMeters": 3.0,
       "BC": "Materials/BrickDark/T_BrickDark_BC.png",
       "N": "Materials/BrickDark/T_BrickDark_N.png",
       "ORM": "Materials/BrickDark/T_BrickDark_ORM.png",
       "H": null,
       "Opacity": null,
       "Resolution": 4096,
-      "ArchUVScale": 1.11111
+      "ArchUVScale": 0.66667,
+      "Source": {
+        "Site": "Poly Haven",
+        "Asset": "brick_wall_001",
+        "Name": "Brick Wall 001",
+        "Url": "https://polyhaven.com/a/brick_wall_001",
+        "Authors": [
+          "Rob Tuytel",
+          "Dimitrios Savva"
+        ],
+        "License": "CC0 1.0",
+        "ScanMeters": 3.0,
+        "Repeat": 1,
+        "Download": "4k"
+      }
     },
     "Burlap": {
-      "TileMeters": 0.5,
+      "TileMeters": 0.268,
       "BC": "Materials/Burlap/T_Burlap_BC.png",
       "N": "Materials/Burlap/T_Burlap_N.png",
       "ORM": "Materials/Burlap/T_Burlap_ORM.png",
       "H": null,
       "Opacity": null,
-      "Resolution": 4096,
-      "ArchUVScale": 4.0
+      "Resolution": 2048,
+      "ArchUVScale": 7.46269,
+      "Source": {
+        "Site": "Poly Haven",
+        "Asset": "hessian_230",
+        "Name": "Hessian 230",
+        "Url": "https://polyhaven.com/a/hessian_230",
+        "Authors": [
+          "colormass",
+          "Rico Cilliers"
+        ],
+        "License": "CC0 1.0",
+        "ScanMeters": 0.268,
+        "Repeat": 1,
+        "Download": "2k"
+      }
     },
     "Canvas": {
-      "TileMeters": 1.0,
+      "TileMeters": 0.271,
       "BC": "Materials/Canvas/T_Canvas_BC.png",
       "N": "Materials/Canvas/T_Canvas_N.png",
       "ORM": "Materials/Canvas/T_Canvas_ORM.png",
       "H": null,
       "Opacity": null,
-      "Resolution": 4096,
-      "ArchUVScale": 2.0
+      "Resolution": 2048,
+      "ArchUVScale": 7.38007,
+      "Source": {
+        "Site": "Poly Haven",
+        "Asset": "rough_linen",
+        "Name": "Rough Linen",
+        "Url": "https://polyhaven.com/a/rough_linen",
+        "Authors": [
+          "colormass",
+          "Rico Cilliers"
+        ],
+        "License": "CC0 1.0",
+        "ScanMeters": 0.271,
+        "Repeat": 1,
+        "Download": "2k"
+      }
     },
     "Carpet": {
-      "TileMeters": 1.0,
+      "TileMeters": 1.7,
       "BC": "Materials/Carpet/T_Carpet_BC.png",
       "N": "Materials/Carpet/T_Carpet_N.png",
       "ORM": "Materials/Carpet/T_Carpet_ORM.png",
       "H": null,
       "Opacity": null,
       "Resolution": 4096,
-      "ArchUVScale": 2.0
+      "ArchUVScale": 1.17647,
+      "Source": {
+        "Site": "ambientCG",
+        "Asset": "Carpet016",
+        "Name": "Carpet 016",
+        "Url": "https://ambientcg.com/view?id=Carpet016",
+        "Authors": [
+          "ambientCG (Lennart Demes)"
+        ],
+        "License": "CC0 1.0",
+        "ScanMeters": 1.7,
+        "Repeat": 1,
+        "Download": "4k",
+        "ProceduralLayers": "carpet"
+      }
     },
     "Concrete": {
-      "TileMeters": 2.4,
+      "TileMeters": 2.71,
       "BC": "Materials/Concrete/T_Concrete_BC.png",
       "N": "Materials/Concrete/T_Concrete_N.png",
       "ORM": "Materials/Concrete/T_Concrete_ORM.png",
       "H": null,
       "Opacity": null,
       "Resolution": 4096,
-      "ArchUVScale": 0.83333
+      "ArchUVScale": 0.73801,
+      "Source": {
+        "Site": "Poly Haven",
+        "Asset": "concrete_wall_008",
+        "Name": "Concrete Wall 008",
+        "Url": "https://polyhaven.com/a/concrete_wall_008",
+        "Authors": [
+          "Dario Barresi",
+          "Charlotte Baglioni"
+        ],
+        "License": "CC0 1.0",
+        "ScanMeters": 2.71,
+        "Repeat": 1,
+        "Download": "4k"
+      }
     },
     "ConcreteFloor": {
-      "TileMeters": 4.0,
+      "TileMeters": 3.0,
       "BC": "Materials/ConcreteFloor/T_ConcreteFloor_BC.png",
       "N": "Materials/ConcreteFloor/T_ConcreteFloor_N.png",
       "ORM": "Materials/ConcreteFloor/T_ConcreteFloor_ORM.png",
       "H": null,
       "Opacity": null,
       "Resolution": 4096,
-      "ArchUVScale": 0.5
+      "ArchUVScale": 0.66667,
+      "Source": {
+        "Site": "Poly Haven",
+        "Asset": "concrete_floor_worn_001",
+        "Name": "Concrete Floor Worn 001",
+        "Url": "https://polyhaven.com/a/concrete_floor_worn_001",
+        "Authors": [
+          "Dimitrios Savva",
+          "Rico Cilliers"
+        ],
+        "License": "CC0 1.0",
+        "ScanMeters": 3.0,
+        "Repeat": 1,
+        "Download": "4k"
+      }
     },
     "ConcreteGarage": {
-      "TileMeters": 4.0,
+      "TileMeters": 5.0,
       "BC": "Materials/ConcreteGarage/T_ConcreteGarage_BC.png",
       "N": "Materials/ConcreteGarage/T_ConcreteGarage_N.png",
       "ORM": "Materials/ConcreteGarage/T_ConcreteGarage_ORM.png",
       "H": null,
       "Opacity": null,
       "Resolution": 4096,
-      "ArchUVScale": 0.5
+      "ArchUVScale": 0.4,
+      "Source": {
+        "Site": "Poly Haven",
+        "Asset": "brushed_concrete",
+        "Name": "Brushed Concrete",
+        "Url": "https://polyhaven.com/a/brushed_concrete",
+        "Authors": [
+          "Dario Barresi",
+          "Dimitrios Savva"
+        ],
+        "License": "CC0 1.0",
+        "ScanMeters": 2.5,
+        "Repeat": 2,
+        "Download": "4k",
+        "ProceduralLayers": "garage"
+      }
     },
     "ConcreteGarageWet": {
-      "TileMeters": 4.0,
+      "TileMeters": 5.0,
       "BC": "Materials/ConcreteGarageWet/T_ConcreteGarageWet_BC.png",
       "N": "Materials/ConcreteGarageWet/T_ConcreteGarageWet_N.png",
       "ORM": "Materials/ConcreteGarageWet/T_ConcreteGarageWet_ORM.png",
       "H": null,
       "Opacity": null,
       "Resolution": 4096,
-      "ArchUVScale": 0.5
+      "ArchUVScale": 0.4,
+      "Source": {
+        "Site": "Poly Haven",
+        "Asset": "brushed_concrete",
+        "Name": "Brushed Concrete",
+        "Url": "https://polyhaven.com/a/brushed_concrete",
+        "Authors": [
+          "Dario Barresi",
+          "Dimitrios Savva"
+        ],
+        "License": "CC0 1.0",
+        "ScanMeters": 2.5,
+        "Repeat": 2,
+        "Download": "4k",
+        "ProceduralLayers": "garage_wet"
+      }
     },
     "CorrodedMetal": {
-      "TileMeters": 1.0,
+      "TileMeters": 2.2,
       "BC": "Materials/CorrodedMetal/T_CorrodedMetal_BC.png",
       "N": "Materials/CorrodedMetal/T_CorrodedMetal_N.png",
       "ORM": "Materials/CorrodedMetal/T_CorrodedMetal_ORM.png",
       "H": null,
       "Opacity": null,
       "Resolution": 4096,
-      "ArchUVScale": 2.0
+      "ArchUVScale": 0.90909,
+      "Source": {
+        "Site": "Poly Haven",
+        "Asset": "rust_coarse_01",
+        "Name": "Rust Coarse 01",
+        "Url": "https://polyhaven.com/a/rust_coarse_01",
+        "Authors": [
+          "Dimitrios Savva",
+          "Rico Cilliers"
+        ],
+        "License": "CC0 1.0",
+        "ScanMeters": 2.2,
+        "Repeat": 1,
+        "Download": "4k"
+      }
     },
     "DiamondPlate": {
-      "TileMeters": 0.6,
+      "TileMeters": 0.84,
       "BC": "Materials/DiamondPlate/T_DiamondPlate_BC.png",
       "N": "Materials/DiamondPlate/T_DiamondPlate_N.png",
       "ORM": "Materials/DiamondPlate/T_DiamondPlate_ORM.png",
       "H": null,
       "Opacity": null,
       "Resolution": 4096,
-      "ArchUVScale": 3.33333
+      "ArchUVScale": 2.38095,
+      "Source": {
+        "Site": "ambientCG",
+        "Asset": "DiamondPlate009",
+        "Name": "Diamond Plate 009",
+        "Url": "https://ambientcg.com/view?id=DiamondPlate009",
+        "Authors": [
+          "ambientCG (Lennart Demes)"
+        ],
+        "License": "CC0 1.0",
+        "ScanMeters": 0.84,
+        "Repeat": 1,
+        "Download": "4k",
+        "ScanMetersNote": "est.: 28 lug rows per scan (FFT) at the procedural plate's 30 mm pitch"
+      }
     },
     "Dirt": {
       "TileMeters": 2.0,
@@ -163,7 +359,20 @@
       "Opacity": null,
       "Resolution": 4096,
       "ArchUVScale": 1.0,
-      "HeightRangeM": 0.04154
+      "HeightRangeM": 0.04,
+      "Source": {
+        "Site": "Poly Haven",
+        "Asset": "dirt",
+        "Name": "Dirt",
+        "Url": "https://polyhaven.com/a/dirt",
+        "Authors": [
+          "Charlotte Baglioni"
+        ],
+        "License": "CC0 1.0",
+        "ScanMeters": 2.0,
+        "Repeat": 1,
+        "Download": "4k"
+      }
     },
     "ForestFloor": {
       "TileMeters": 2.0,
@@ -174,7 +383,20 @@
       "Opacity": null,
       "Resolution": 4096,
       "ArchUVScale": 1.0,
-      "HeightRangeM": 0.0387
+      "HeightRangeM": 0.039,
+      "Source": {
+        "Site": "Poly Haven",
+        "Asset": "dry_decay_leaves",
+        "Name": "Dry Decay Leaves",
+        "Url": "https://polyhaven.com/a/dry_decay_leaves",
+        "Authors": [
+          "Amal Kumar"
+        ],
+        "License": "CC0 1.0",
+        "ScanMeters": 2.0,
+        "Repeat": 1,
+        "Download": "4k"
+      }
     },
     "Granite": {
       "TileMeters": 1.5,
@@ -194,28 +416,67 @@
       "H": null,
       "Opacity": null,
       "Resolution": 4096,
-      "ArchUVScale": 1.0
+      "ArchUVScale": 1.0,
+      "Source": {
+        "Site": "Poly Haven",
+        "Asset": "leafy_grass",
+        "Name": "Leafy Grass",
+        "Url": "https://polyhaven.com/a/leafy_grass",
+        "Authors": [
+          "Charlotte Baglioni"
+        ],
+        "License": "CC0 1.0",
+        "ScanMeters": 2.0,
+        "Repeat": 1,
+        "Download": "4k"
+      }
     },
     "Gravel": {
-      "TileMeters": 1.5,
+      "TileMeters": 2.0,
       "BC": "Materials/Gravel/T_Gravel_BC.png",
       "N": "Materials/Gravel/T_Gravel_N.png",
       "ORM": "Materials/Gravel/T_Gravel_ORM.png",
       "H": "Materials/Gravel/T_Gravel_H.png",
       "Opacity": null,
       "Resolution": 4096,
-      "ArchUVScale": 1.33333,
-      "HeightRangeM": 0.0342
+      "ArchUVScale": 1.0,
+      "HeightRangeM": 0.034,
+      "Source": {
+        "Site": "ambientCG",
+        "Asset": "Gravel033",
+        "Name": "Gravel 033",
+        "Url": "https://ambientcg.com/view?id=Gravel033",
+        "Authors": [
+          "ambientCG (Lennart Demes)"
+        ],
+        "License": "CC0 1.0",
+        "ScanMeters": 2.0,
+        "Repeat": 1,
+        "Download": "4k"
+      }
     },
     "Leather": {
-      "TileMeters": 0.5,
+      "TileMeters": 0.4,
       "BC": "Materials/Leather/T_Leather_BC.png",
       "N": "Materials/Leather/T_Leather_N.png",
       "ORM": "Materials/Leather/T_Leather_ORM.png",
       "H": null,
       "Opacity": null,
-      "Resolution": 4096,
-      "ArchUVScale": 4.0
+      "Resolution": 2048,
+      "ArchUVScale": 5.0,
+      "Source": {
+        "Site": "Poly Haven",
+        "Asset": "brown_leather",
+        "Name": "Brown Leather",
+        "Url": "https://polyhaven.com/a/brown_leather",
+        "Authors": [
+          "Rob Tuytel"
+        ],
+        "License": "CC0 1.0",
+        "ScanMeters": 0.4,
+        "Repeat": 1,
+        "Download": "2k"
+      }
     },
     "MarbleBlack": {
       "TileMeters": 2.0,
@@ -228,14 +489,27 @@
       "ArchUVScale": 1.0
     },
     "Mud": {
-      "TileMeters": 2.0,
+      "TileMeters": 1.3,
       "BC": "Materials/Mud/T_Mud_BC.png",
       "N": "Materials/Mud/T_Mud_N.png",
       "ORM": "Materials/Mud/T_Mud_ORM.png",
       "H": null,
       "Opacity": null,
       "Resolution": 4096,
-      "ArchUVScale": 1.0
+      "ArchUVScale": 1.53846,
+      "Source": {
+        "Site": "Poly Haven",
+        "Asset": "brown_mud_02",
+        "Name": "Brown Mud 02",
+        "Url": "https://polyhaven.com/a/brown_mud_02",
+        "Authors": [
+          "Rob Tuytel"
+        ],
+        "License": "CC0 1.0",
+        "ScanMeters": 1.3,
+        "Repeat": 1,
+        "Download": "4k"
+      }
     },
     "Netting": {
       "TileMeters": 1.0,
@@ -249,14 +523,27 @@
       "BlendMode": "Masked"
     },
     "OSB": {
-      "TileMeters": 1.5,
+      "TileMeters": 2.51,
       "BC": "Materials/OSB/T_OSB_BC.png",
       "N": "Materials/OSB/T_OSB_N.png",
       "ORM": "Materials/OSB/T_OSB_ORM.png",
       "H": null,
       "Opacity": null,
       "Resolution": 4096,
-      "ArchUVScale": 1.33333
+      "ArchUVScale": 0.79681,
+      "Source": {
+        "Site": "Poly Haven",
+        "Asset": "oriented_strand_board",
+        "Name": "Oriented Strand Board",
+        "Url": "https://polyhaven.com/a/oriented_strand_board",
+        "Authors": [
+          "Dimitrios Savva"
+        ],
+        "License": "CC0 1.0",
+        "ScanMeters": 2.51,
+        "Repeat": 1,
+        "Download": "4k"
+      }
     },
     "PaintLineWhite": {
       "TileMeters": 1.0,
@@ -279,24 +566,50 @@
       "ArchUVScale": 2.0
     },
     "PaintedSteel": {
-      "TileMeters": 1.0,
+      "TileMeters": 2.0,
       "BC": "Materials/PaintedSteel/T_PaintedSteel_BC.png",
       "N": "Materials/PaintedSteel/T_PaintedSteel_N.png",
       "ORM": "Materials/PaintedSteel/T_PaintedSteel_ORM.png",
       "H": null,
       "Opacity": null,
       "Resolution": 4096,
-      "ArchUVScale": 2.0
+      "ArchUVScale": 1.0,
+      "Source": {
+        "Site": "Poly Haven",
+        "Asset": "rusty_metal_sheet",
+        "Name": "Rusty Metal Sheet",
+        "Url": "https://polyhaven.com/a/rusty_metal_sheet",
+        "Authors": [
+          "Amal Kumar"
+        ],
+        "License": "CC0 1.0",
+        "ScanMeters": 2.0,
+        "Repeat": 1,
+        "Download": "4k"
+      }
     },
     "Plywood": {
-      "TileMeters": 2.0,
+      "TileMeters": 1.83,
       "BC": "Materials/Plywood/T_Plywood_BC.png",
       "N": "Materials/Plywood/T_Plywood_N.png",
       "ORM": "Materials/Plywood/T_Plywood_ORM.png",
       "H": null,
       "Opacity": null,
       "Resolution": 4096,
-      "ArchUVScale": 1.0
+      "ArchUVScale": 1.0929,
+      "Source": {
+        "Site": "Poly Haven",
+        "Asset": "oak_veneer_01",
+        "Name": "Oak Veneer 01",
+        "Url": "https://polyhaven.com/a/oak_veneer_01",
+        "Authors": [
+          "Jenelle van Heerden"
+        ],
+        "License": "CC0 1.0",
+        "ScanMeters": 1.83,
+        "Repeat": 1,
+        "Download": "4k"
+      }
     },
     "PlywoodPainted": {
       "TileMeters": 2.0,
@@ -329,34 +642,75 @@
       "ArchUVScale": 2.0
     },
     "Timber": {
-      "TileMeters": 2.0,
+      "TileMeters": 0.5,
       "BC": "Materials/Timber/T_Timber_BC.png",
       "N": "Materials/Timber/T_Timber_N.png",
       "ORM": "Materials/Timber/T_Timber_ORM.png",
       "H": null,
       "Opacity": null,
       "Resolution": 4096,
-      "ArchUVScale": 1.0
+      "ArchUVScale": 4.0,
+      "Source": {
+        "Site": "ambientCG",
+        "Asset": "Wood062",
+        "Name": "Wood 062",
+        "Url": "https://ambientcg.com/view?id=Wood062",
+        "Authors": [
+          "ambientCG (Lennart Demes)"
+        ],
+        "License": "CC0 1.0",
+        "ScanMeters": 0.5,
+        "Repeat": 1,
+        "Download": "4k",
+        "ScanMetersNote": "est. from grain/pores; API gives none"
+      }
     },
     "Velvet": {
-      "TileMeters": 1.0,
+      "TileMeters": 0.279,
       "BC": "Materials/Velvet/T_Velvet_BC.png",
       "N": "Materials/Velvet/T_Velvet_N.png",
       "ORM": "Materials/Velvet/T_Velvet_ORM.png",
       "H": null,
       "Opacity": null,
-      "Resolution": 4096,
-      "ArchUVScale": 2.0
+      "Resolution": 2048,
+      "ArchUVScale": 7.16846,
+      "Source": {
+        "Site": "Poly Haven",
+        "Asset": "velour_velvet",
+        "Name": "Velour Velvet",
+        "Url": "https://polyhaven.com/a/velour_velvet",
+        "Authors": [
+          "colormass",
+          "Rico Cilliers"
+        ],
+        "License": "CC0 1.0",
+        "ScanMeters": 0.279,
+        "Repeat": 1,
+        "Download": "2k"
+      }
     },
     "Walnut": {
-      "TileMeters": 1.2,
+      "TileMeters": 1.8,
       "BC": "Materials/Walnut/T_Walnut_BC.png",
       "N": "Materials/Walnut/T_Walnut_N.png",
       "ORM": "Materials/Walnut/T_Walnut_ORM.png",
       "H": null,
       "Opacity": null,
       "Resolution": 4096,
-      "ArchUVScale": 1.66667
+      "ArchUVScale": 1.11111,
+      "Source": {
+        "Site": "Poly Haven",
+        "Asset": "walnut_veneer",
+        "Name": "Walnut Veneer",
+        "Url": "https://polyhaven.com/a/walnut_veneer",
+        "Authors": [
+          "Jenelle van Heerden"
+        ],
+        "License": "CC0 1.0",
+        "ScanMeters": 1.8,
+        "Repeat": 1,
+        "Download": "4k"
+      }
     }
   },
   "Notes": "Paths relative to SourceAssets/. Tileable, seamless. N is DirectX. ORM = AO/Roughness/Metallic (linear). Wood grain/brushing runs along U. TileMeters = real-world size of one texture tile; architecture UVs are 1 UV = 2 m, so use UV tiling ArchUVScale = 2/TileMeters. H is 16-bit, 0..1 spans HeightRangeM metres."
