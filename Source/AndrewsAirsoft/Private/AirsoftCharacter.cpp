@@ -490,10 +490,6 @@ void AAirsoftCharacter::ApplyTeamLook()
 void AAirsoftCharacter::ApplyCampaignWardrobe()
 {
 	// Story missions: tailored suits, not airsoft kit. No helmets, plate carriers or armbands.
-	if (TeamGear)
-	{
-		TeamGear->Clear();
-	}
 	if (TeamBand)
 	{
 		TeamBand->SetVisibility(false);
@@ -502,6 +498,23 @@ void AAirsoftCharacter::ApplyCampaignWardrobe()
 	const bool bAndrew = GetTeam() == EAirsoftTeam::Blue;
 	const AAirsoftGameState* GS = GetWorld() ? GetWorld()->GetGameState<AAirsoftGameState>() : nullptr;
 	const bool bBoss = !bAndrew && PS && GS && !GS->BossName.IsEmpty() && PS->GetPlayerName() == GS->BossName;
+	// The suit kit (jacket, shirt and tie, trousers, shoes, hair) on the mannequin; the dark body tint below
+	// still covers the joints and hands. Falls back to the tint alone when the suit isn't imported.
+	const FName Colorway = bAndrew ? FName(TEXT("Charcoal")) : (bBoss ? FName(TEXT("Oxblood")) : FName(TEXT("MidnightNavy")));
+	if (TeamGear)
+	{
+		bool bSuited = false;
+		if (bHasMannequin)
+		{
+			USkinnedMeshComponent* SuitBody = bUsePoseMesh ? static_cast<USkinnedMeshComponent*>(PoseMesh.Get()) : GetMesh();
+			bSuited = TeamGear->ApplySuit(SuitBody, UAirsoftTeamGearComponent::SuitColor(Colorway), PS ? PS->GetPlayerId() : 0,
+				bAndrew ? FName(TEXT("Black")) : NAME_None);
+		}
+		if (!bSuited)
+		{
+			TeamGear->Clear();
+		}
+	}
 	// Andrew: charcoal. The Ledger's crews: midnight navy. Bosses: oxblood.
 	const FLinearColor Suit = bAndrew ? FLinearColor(0.011f, 0.011f, 0.013f)
 		: (bBoss ? FLinearColor(0.07f, 0.008f, 0.012f) : FLinearColor(0.012f, 0.016f, 0.03f));
