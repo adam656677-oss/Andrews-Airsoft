@@ -62,6 +62,7 @@ EMISSIVE_COLORS = {
     "Cool": (0.72, 0.84, 1.0), "White": (1.0, 1.0, 1.0), "Magenta": (1.0, 0.06, 0.55),
     "Cyan": (0.08, 0.75, 1.0), "Red": (1.0, 0.04, 0.04), "Amber": (1.0, 0.45, 0.08),
     "Violet": (0.45, 0.1, 1.0), "Green": (0.1, 1.0, 0.3), "Orange": (1.0, 0.3, 0.03),
+    "Pink": (1.0, 0.28, 0.6), "Teal": (0.05, 0.95, 0.7), "Yellow": (1.0, 0.8, 0.22),
 }
 
 # Paint variants created for tintable (role-mask) props; JSON "TintVariants" are merged on top.
@@ -73,10 +74,12 @@ TINT_VARIANTS = {
     "OilDrum": ["Blue", "Red", "Green"],
     "FlagPole_Objective": ["Blue", "Red"],
     "Dumpster": ["Green", "Blue", "Rust"],
+    "Street_Shutter": ["Grey", "Teal", "Green", "Rust", "Blue", "DeepRed"],
+    "Street_Awning": ["Burgundy", "DeepGreen", "Teal", "Black", "Red"],
 }
 # Default PrimaryTint baked into the base instance of masked props (guns stay white: the game tints them).
 DEFAULT_TINT = {"Container_20ft": "Blue", "Car_Sedan": "Gunmetal", "Car_Coupe": "Black", "BoxTruck": "White",
-                "OilDrum": "Blue", "Dumpster": "Green"}
+                "OilDrum": "Blue", "Dumpster": "Green", "Street_Shutter": "Grey", "Street_Awning": "Burgundy"}
 # Car paint is glossy: TintMetallic / TintRoughness for the masked areas.
 TINT_SURFACE = {"Car_Sedan": (0.55, 0.28), "Car_Coupe": (0.6, 0.25), "BoxTruck": (0.0, 0.45),
                 "Container_20ft": (0.0, 0.5), "OilDrum": (0.0, 0.45), "Dumpster": (0.0, 0.5)}
@@ -189,6 +192,32 @@ KNOWN_ASSETS = {
     "GunCase_Hard": _K("Props", (-33, -61, 0), (27, 61, 50), "box:Rubber", coll="Box", los=False),
     "AmmoCrate_Wood": _K("Props", (-22, -48, -1), (23, 48, 34), "box:Timber", coll="Box", los=False),
     "BankersLamp": _K("Props", (-14, -14, 0), (18, 14, 42), "desklamp:Brass", coll="Convex", los=False),
+    # --- neon street kit (Tools/Blender/club/neon_kit.py, PropsNeon.json): wall-mounted, origin on the wall plane ---
+    "Neon_BladeRamen": _K("Props", (0, -14, 0), (92, 14, 233), "blade:PaintedSteel", coll="Box", glow="Red"),
+    "Neon_BladeHotel": _K("Props", (0, -15, 0), (108, 15, 343), "blade:PaintedSteel", coll="Box", glow="Magenta"),
+    "Neon_BladeGames": _K("Props", (0, -14, 0), (96, 14, 293), "blade:PaintedSteel", coll="Box", glow="Cyan"),
+    "Neon_BladeIzakaya": _K("Props", (0, -13, 0), (88, 13, 273), "blade:PaintedSteel", coll="Box", glow="Pink"),
+    "Neon_BladeVelvet": _K("Props", (0, -15, 0), (110, 15, 393), "blade:PaintedSteel", coll="Box", glow="Magenta"),
+    "Neon_Karaoke": _K("Props", (0, -140, 0), (24, 140, 82), "neon:PaintedSteel", coll="Box", glow="Violet"),
+    "Neon_BoxPawn": _K("Props", (0, -130, 0), (27, 130, 100), "neon:PaintedSteel", coll="Box", glow="Green"),
+    "Neon_PharmacyCross": _K("Props", (0, -11, -1), (126, 11, 96), "blade:PaintedSteel", coll="Box", glow="Green"),
+    "Neon_Cocktails": _K("Props", (0, -98, 6), (15, 98, 126), "neon:PaintedSteel", coll="Box", glow="Pink"),
+    "Neon_ArrowBar": _K("Props", (0, -100, -10), (18, 90, 100), "neon:PaintedSteel", coll="Box", glow="Amber"),
+    "Neon_OpenSign": _K("Props", (0, -31, -2), (6, 31, 34), "neon:PaintedSteel", coll="None", solid=False, los=False,
+                        glow="Red"),
+    "Street_Shutter": _K("Props", (0, -197, 0), (38, 197, 345), "box:PaintedSteel", coll="Box", tintable=True),
+    "Street_Shopfront": _K("Props", (-120, -197, 0), (38, 197, 345), "shopfront:PaintedSteel", coll="Box"),
+    "Street_ACUnit": _K("Props", (0, -41, -60), (47, 41, 61), "box:PaintedSteel", coll="Box", los=False),
+    "Street_Awning": _K("Props", (0, -160, -90), (117, 160, 2), "flat:Canvas", coll="None", solid=False, los=False,
+                        tintable=True),
+    "Street_Vending": _K("Props", (-68, -50, 0), (7, 50, 186), "vending:PaintedSteel", coll="Box"),
+    "Street_Cables": _K("Props", (-75, -1013, -158), (117, 1013, 48), "flat:Rubber", coll="None", solid=False, los=False),
+    "Street_SteamVent": _K("Props", (-50, -35, -6), (50, 35, 3), "flat:DiamondPlate", coll="None", solid=False, los=False),
+    "Street_FireBarrel": _K("Props", (-30, -30, 0), (30, 30, 119), "firebarrel:CorrodedMetal", coll="Convex", los=False),
+    "Street_FacadeBay_A": _K("Props", (-25, -200, 0), (20, 200, 340), "facade:Concrete", coll="None", solid=False),
+    "Street_FacadeBay_B": _K("Props", (-25, -200, 0), (46, 200, 340), "facade:Concrete", coll="None", solid=False),
+    "Street_FacadeBay_C": _K("Props", (-25, -200, 0), (46, 200, 340), "facade:Concrete", coll="None", solid=False),
+    "Street_FacadeBay_D": _K("Props", (-25, -200, 0), (20, 200, 340), "facade:Concrete", coll="None", solid=False),
 }
 
 # Points used when the JSON has no layout yet (cm, asset space).
@@ -361,6 +390,25 @@ def fallback_parts(aid, bmin, bmax):
     elif kind == "neon":
         P += [_part("cube", (x0, y0, z0), (x0 + 3, y1, z1), mat), _part("cube", (x0 + 3, y0 + 6, 8), (x1, y1 - 6, z1 - 8),
                                                                       "Emissive:Magenta", coll=False)]
+    elif kind == "blade":      # neon kit blade / projecting sign: housing + lit faces on both sides
+        glow = "Emissive:" + KNOWN_ASSETS.get(aid, {}).get("glow", "Magenta")
+        P += [_part("cube", (x0 + 28, y0, z0), (x1, y1, z1), mat), _part("cube", (x0 + 32, y0 - 1, z0 + 4), (x1 - 4, y1 + 1, z1 - 4),
+                                                                          glow, coll=False),
+              _part("cube", (x0, -2, z0 + (z1 - z0) * 0.8), (x0 + 30, 2, z0 + (z1 - z0) * 0.8 + 4), mat)]
+    elif kind == "shopfront":
+        P += [_part("cube", (x0, y0, 0), (0, y1, 2), "Concrete"), _part("cube", (-118, y0, 0), (-116, y1, z1), "Emissive:Warm",
+                                                                      coll=False),
+              _part("cube", (0, y0, 300), (x1, y1, z1), mat), _part("cube", (0, y0, 0), (12, y1, 45), mat)]
+    elif kind == "vending":
+        P += [_part("cube", (x0, y0, z0), (x1 - 2, y1, z1), mat), _part("cube", (x1 - 2, y0 + 8, 70), (x1, y1 - 20, 175),
+                                                                      "Emissive:White", coll=False)]
+    elif kind == "firebarrel":
+        P += [_part("cyl", (x0, y0, 0), (x1, y1, 88), mat), _part("sphere", (x0 * 0.6, y0 * 0.6, 80), (x1 * 0.6, y1 * 0.6, z1),
+                                                               "Emissive:Orange", coll=False)]
+    elif kind == "facade":
+        P += [_part("cube", (-4, y0, z0), (0, y1, z1), mat, coll=False)]
+        for yc in (-100.0, 100.0):
+            P.append(_part("cube", (-3, yc - 57, 98), (1, yc + 57, 252), "Emissive:Warm", coll=False))
     elif kind == "sign":
         P += [_part("cube", (x0, y0, z0), (x1 - 1, y1, z1), mat), _part("cube", (x1 - 1, y0 + 8, 8), (x1, y1 - 8, z1 - 8),
                                                                      "Emissive:Gold", coll=False)]
@@ -782,6 +830,196 @@ def _ironwood():
 
 
 # =============================================================================================
+# Night streets: neon helpers shared by the night maps (Velvet Club street; Nightjar Garage can use them
+# through the module layout_garage.build() receives). Assets: Tools/Blender/club/neon_kit.py
+# (Content/Airsoft/Data/PropsNeon.json). Wall-mounted kit pieces have their origin on the wall plane,
+# front +X; blade signs project along +X and show their faces along the wall.
+# =============================================================================================
+FACADE_SKIN = 0.26      # Street_FacadeBay_* sit this far in front of a backdrop wall (their own skin + reveals)
+STOREY = 3.4            # Street_FacadeBay_* module height (4 m wide)
+NEON_LIGHT = {          # fixture colour / strength per sign (lighting.FIXTURES carries the defaults)
+    "Neon_BladeRamen": "Red", "Neon_BladeHotel": "Magenta", "Neon_BladeGames": "Cyan", "Neon_BladeIzakaya": "Pink",
+    "Neon_BladeVelvet": "Magenta", "Neon_Karaoke": "Violet", "Neon_BoxPawn": "Green", "Neon_PharmacyCross": "Green",
+    "Neon_Cocktails": "Pink", "Neon_ArrowBar": "Amber",
+}
+
+
+def wall_prop(aid, along, face, z, facing, axis="x", lit=True, **kw):
+    """Wall-mounted kit piece on a wall whose surface is at `face` (y for axis 'x' walls, x for 'y' walls),
+    `along` the wall, its front turned to `facing` (yaw)."""
+    x, y = (along, face) if axis == "x" else (face, along)
+    if lit and aid in NEON_LIGHT and "light" not in kw:
+        kw["light"] = True
+    return prop(aid, x, y, z, facing, **kw)
+
+
+def neon_strip(x0, x1, y, z, colour, facing, cd=5.0, out=0.42, glow=26.0, drop=True):
+    """Bare neon tube along an x-running facade (over a shutter / shop): emissive bar + a rect light just in front
+    aiming down so the tube washes the shutter below and throws a coloured pool on the wet pavement."""
+    s = 1.0 if math.sin(math.radians(facing)) > 0 else -1.0
+    yb = y + s * out
+    items = [slab(x0, min(yb, yb + s * 0.05), x1, max(yb, yb + s * 0.05), z, z + 0.05, "Emissive:" + colour, glow=glow,
+                  coll=False, cast=False, name="NeonStrip")]
+    if drop:
+        items.append(light("rect", (x0 + x1) / 2, yb + s * 0.08, z - 0.05, yaw=facing, pitch=-72.0, color=colour, cd=cd,
+                           radius=9.0, w=abs(x1 - x0), h=0.12, vol=2.0))
+    return items
+
+
+def facade_storeys(x0, x1, face, z0, n, facing, seed, kinds=("A", "B", "C", "D"), axis="x"):
+    """Rows of 4 m Street_FacadeBay modules from `along` x0 to x1, n storeys from z0, on a wall at `face`."""
+    rng = random.Random(seed)
+    s = 1.0 if (math.sin(math.radians(facing)) > 0 if axis == "x" else math.cos(math.radians(facing)) > 0) else -1.0
+    items = []
+    k = 0
+    a = x0 + 2.0
+    while a <= x1 - 2.0 + 1e-6:
+        for j in range(n):
+            kind = kinds[(k * 7 + j * 3 + rng.randrange(len(kinds))) % len(kinds)]
+            items.append(wall_prop("Street_FacadeBay_" + kind, a, face + s * FACADE_SKIN, z0 + j * STOREY, facing, axis=axis))
+        a += 4.0
+        k += 1
+    return items
+
+
+def _velvet_street():
+    """Neon canyon for the Velvet Club street (x along the street, north facade y = -30.2 facing +Y, club facade
+    y = -10.2 facing -Y). Everything new sits on the facades: ground-floor pieces are flush (<= 0.45 m deep), signs
+    and storeys start above 3.4 m, so cover, lanes and sight lines at eye height are unchanged."""
+    it = []
+    NF, SF = -30.2, -10.2          # north / club facade surfaces
+    NY, SY = 90.0, -90.0           # yaw: front to the street
+    # ---- wet ground: the road and pavements are one rain-soaked plane, puddles collect along the kerbs ----
+    it += [slab(-66, -26, -60, -14, -0.45, -0.15, "AsphaltWet", name="Road", tile=3.0),
+           slab(60, -26, 66, -14, -0.45, -0.15, "AsphaltWet", name="Road", tile=3.0),
+           slab(-66, -30, -60, -26, -0.3, 0.0, "ConcreteGarageWet", name="Sidewalk_N"),
+           slab(60, -30, 66, -26, -0.3, 0.0, "ConcreteGarageWet", name="Sidewalk_N"),
+           slab(-66, -14, -60, -10, -0.3, 0.0, "ConcreteGarageWet", name="Sidewalk_S"),
+           slab(60, -14, 66, -10, -0.3, 0.0, "ConcreteGarageWet", name="Sidewalk_S")]
+    for (x, y, sx, sy) in ((-24.5, -17.2, 5.5, 1.3), (-6.0, -25.1, 6.0, 1.2), (9.5, -21.0, 3.2, 2.4), (24.0, -15.2, 5.0, 1.2),
+                           (-15.0, -19.6, 2.2, 3.6), (36.0, -24.6, 7.0, 1.6), (44.0, -18.0, 4.0, 2.6), (-40.0, -21.0, 6.0, 3.0),
+                           (2.5, -14.7, 3.0, 0.9), (-31.0, -24.8, 4.0, 1.1), (14.0, -26.2, 3.0, 0.5), (54.0, -22.0, 6.0, 3.0)):
+        it.append(box(x, y, -0.144 - 0.004, sx, sy, 0.008, "Puddle", coll=False, cast=False, name="Puddle"))
+    for (x, y, sx, sy) in ((-17.5, -28.0, 2.0, 1.2), (18.0, -27.3, 2.6, 1.4), (-12.0, -12.2, 2.4, 1.0), (14.5, -11.6, 2.0, 1.1)):
+        it.append(box(x, y, 0.006 - 0.004, sx, sy, 0.008, "Puddle", coll=False, cast=False, name="Puddle"))
+
+    # ---- north block: 18 m backdrop with real shop openings on the ground floor ----
+    shops = {   # bay centre x -> (kind, extra): S = lit shopfront, U = shutter (tint), strip colour
+        -19.8: ("S", "Warm"), -15.8: ("U", "Teal", "Green"), -11.8: ("S", "Cool"), -7.8: ("U", "Grey", "Red"),
+        -3.8: ("U", "Rust", None), 0.2: ("S", "Warm"), 4.2: ("U", "DeepRed", "Amber"), 8.2: ("S", "Cool"),
+        12.2: ("U", "Green", None), 16.2: ("S", "Warm"), 20.2: ("U", "Teal", "Green"), 24.2: ("S", "Pink"),
+        28.2: ("U", "Grey", "Red"), 32.2: ("S", "Warm"), 36.2: ("U", "Blue", "Cyan"), 40.2: ("S", "Cool"),
+        44.2: ("U", "Rust", "Amber"), 48.2: ("S", "Warm"), 52.2: ("U", "Grey", "Magenta"), 56.2: ("S", "Cool"),
+        -41.8: ("U", "Teal", "Cyan"), -45.8: ("S", "Warm"), -49.8: ("U", "Grey", "Red"), -53.8: ("S", "Cool"),
+        -57.8: ("U", "Rust", None),
+    }
+    holes = sorted(x for x, v in shops.items() if v[0] == "S")
+    it += [slab(-21.8, -36, 60, -31.45, 0, 18, "BrickDark", name="ShopsN_Back"),
+           slab(-21.8, -31.45, 60, -30.2, 3.45, 18, "BrickDark", name="ShopsN_Upper"),
+           slab(-62, -36, -38, -31.45, 0, 18, "BrickDark", name="ShopsN_Back"),
+           slab(-62, -31.45, -38, -30.2, 3.45, 18, "BrickDark", name="ShopsN_Upper"),
+           slab(-21.8, -30.2, 60, -29.6, 17.2, 17.9, "ConcreteFloor", tint="Grey", name="Parapet"),
+           slab(-62, -30.2, -38, -29.6, 17.2, 17.9, "ConcreteFloor", tint="Grey", name="Parapet")]
+    for (a0, a1) in ((-21.8, 60.0), (-62.0, -38.0)):
+        cur = a0
+        for hx in [h for h in holes if a0 < h < a1]:
+            if hx - 1.95 > cur:
+                it.append(slab(cur, -31.45, hx - 1.95, -30.2, 0, 3.45, "BrickDark", name="ShopsN_Ground"))
+            cur = hx + 1.95
+        if cur < a1:
+            it.append(slab(cur, -31.45, a1, -30.2, 0, 3.45, "BrickDark", name="ShopsN_Ground"))
+    for x, v in sorted(shops.items()):
+        if v[0] == "S":
+            it.append(prop("Street_Shopfront", x, NF, 0.0, NY, light={"color": v[1]}))
+        else:
+            it.append(prop("Street_Shutter", x, NF, 0.0, NY, tint=v[1]))
+            if v[2]:
+                it += neon_strip(x - 1.8, x + 1.8, NF, 3.0, v[2], NY, cd=5.0, out=0.4)
+    it += facade_storeys(-21.8, 60.0, NF, 3.6, 4, NY, seed=21)
+    it += facade_storeys(-62.0, -38.0, NF, 3.6, 4, NY, seed=22)
+    # awnings over three of the shops, AC units and window signs
+    for (x, tint) in ((-19.8, "Burgundy"), (16.2, "DeepGreen"), (32.2, "Black"), (48.2, "Teal")):
+        it.append(prop("Street_Awning", x, NF, 3.62, NY, tint=tint))
+    for (x, z) in ((-13.8, 4.1), (6.2, 4.15), (26.2, 4.1), (42.2, 4.1)):
+        it.append(wall_prop("Street_ACUnit", x, NF + FACADE_SKIN, z, NY))
+    for x in (-11.8 + 1.15, 8.2 - 1.15, 40.2 + 1.15):
+        it.append(prop("Neon_OpenSign", x, NF - 0.05, 2.0, NY, light={"cd": 0.6}))
+    # signs: blade signs project into the street from the storey skin, box signs over the shops
+    NU = NF + FACADE_SKIN
+    it += [wall_prop("Neon_BladeRamen", -17.8, NU, 3.95, NY),
+           wall_prop("Neon_PharmacyCross", -9.8, NU, 4.4, NY),
+           wall_prop("Neon_BoxPawn", 0.2, NU, 3.72, NY),
+           wall_prop("Neon_BladeGames", 2.2, NU, 7.6, NY),
+           wall_prop("Neon_Karaoke", 8.2, NU, 3.66, NY),
+           wall_prop("Neon_BladeHotel", -9.8, NU, 8.0, NY),
+           wall_prop("Neon_BladeIzakaya", 14.2, NU, 3.95, NY),
+           wall_prop("Neon_Cocktails", 24.2, NU, 3.6, NY),
+           wall_prop("Neon_BladeHotel", 30.2, NU, 4.0, NY),
+           wall_prop("Neon_BladeGames", 22.2, NU, 8.1, NY),
+           wall_prop("Neon_BladeRamen", 38.2, NU, 4.0, NY),
+           wall_prop("Neon_BladeIzakaya", 46.2, NU, 7.4, NY),
+           wall_prop("Neon_PharmacyCross", 50.2, NU, 4.3, NY),
+           wall_prop("Neon_BladeHotel", 54.2, NU, 4.2, NY),
+           wall_prop("Neon_BladeGames", -42.0, NU, 4.0, NY),
+           wall_prop("Neon_BladeRamen", -50.0, NU, 7.6, NY),
+           wall_prop("Neon_Karaoke", -45.8, NU, 3.66, NY)]
+    it.append(prop("Street_Vending", 34.8, NF + 0.68, 0.0, NY))
+    # valet-lot wall (Blue spawn gate) between the north blocks: a lightbox over the gate, backdrop beyond
+    it += [wall_prop("Neon_Karaoke", -33.0, -30.2 + 0.0, 4.3, NY, lit=False),
+           wall_prop("Neon_ArrowBar", -23.4, -30.2, 3.9, NY, light={"color": "Amber", "cd": 3.0})]
+    it += facade_storeys(-38.0, -22.0, -40.2, 6.4, 3, NY, seed=23)
+
+    # ---- club facade: upper storeys (7.4 m of street wall above the canopy), shutters and signs ----
+    it += [slab(-26.2, -10.2, 26.2, -9.8, 8.0, 15.4, "BrickDark", name="ClubUpper"),
+           slab(-26.2, -10.8, 26.2, -10.2, 15.0, 15.6, "ConcreteFloor", tint="Grey", name="Parapet")]
+    it += facade_storeys(-26.2, 26.2, SF, 8.2, 2, SY, seed=31)
+    for x, tint, strip in ((-17.5, "Grey", "Green"), (-12.5, "Teal", "Red"), (12.5, "Rust", "Amber"), (17.5, "Grey", "Cyan")):
+        it.append(prop("Street_Shutter", x, SF, 0.0, SY, tint=tint))
+        it += neon_strip(x - 1.8, x + 1.8, SF, 3.0, strip, SY, cd=5.0, out=0.4)
+    SU = SF - 0.0
+    it += [wall_prop("Neon_BladeVelvet", -8.6, SU, 3.9, SY),
+           wall_prop("Neon_BladeIzakaya", -21.6, SU, 4.0, SY),
+           wall_prop("Neon_BladeRamen", 21.8, SU, 4.1, SY),
+           wall_prop("Neon_BladeHotel", 13.8, SF - FACADE_SKIN, 8.4, SY),
+           wall_prop("Neon_BladeGames", -18.2, SF - FACADE_SKIN, 8.6, SY),
+           wall_prop("Neon_Cocktails", -12.5, SU, 4.3, SY),
+           wall_prop("Neon_ArrowBar", 6.0, SU, 3.75, SY),
+           wall_prop("Neon_PharmacyCross", 10.0, SU, 4.6, SY),
+           wall_prop("Neon_Karaoke", 12.5, SU, 4.6, SY, lit=False)]
+    it.append(prop("Street_Vending", 9.3, SF - 0.68, 0.0, SY))
+    # blocks either side of the club (beyond the street ends of the playable area)
+    it += [slab(-62, -14, -37, -10, 0, 18, "BrickDark", name="BlockW"), slab(37, -14, 62, -10, 0, 18, "BrickDark", name="BlockE")]
+    for (a0, a1, sd) in ((-62.0, -38.0, 41), (38.0, 62.0, 42)):
+        it += facade_storeys(a0, a1, -14.0, 3.6, 4, SY, seed=sd)
+        for k in range(int((a1 - a0) // 4)):
+            x = a0 + 2.0 + 4.0 * k
+            it.append(prop("Street_Shutter", x, -14.0, 0.0, SY, tint=("Grey", "Teal", "Rust", "DeepRed")[k % 4]))
+            if k % 2 == 0:
+                it += neon_strip(x - 1.8, x + 1.8, -14.0, 3.0, ("Magenta", "Green", "Cyan")[k % 3], SY, cd=4.0, drop=k % 4 == 0)
+    it += [wall_prop("Neon_BladeHotel", -44.0, -14.0 - FACADE_SKIN, 4.2, SY), wall_prop("Neon_BladeRamen", 44.0, -14.0 - FACADE_SKIN, 4.0, SY),
+           wall_prop("Neon_BladeIzakaya", 52.0, -14.0 - FACADE_SKIN, 7.8, SY), wall_prop("Neon_BladeGames", -56.0, -14.0 - FACADE_SKIN, 7.5, SY)]
+    # far ends: buildings across the street close the canyon in the haze
+    for sx in (1.0, -1.0):
+        xf = sx * 62.0
+        it += [slab(min(xf, xf + sx * 6), -42, max(xf, xf + sx * 6), -4, 0, 22, "BrickDark", name="StreetEnd")]
+        it += facade_storeys(-38.0, -6.0, xf, 0.4, 6, 180.0 if sx > 0 else 0.0, seed=50 + int(sx), axis="y")
+        it += [prop("Neon_Karaoke", xf - sx * (FACADE_SKIN + 0.02), -20.0, 9.0, 180.0 if sx > 0 else 0.0, light=True),
+               prop("Neon_BladeHotel", xf - sx * FACADE_SKIN, -27.0, 5.0, 180.0 if sx > 0 else 0.0, light=True)]
+    # overhead cables across the street, a steam vent in the road and a fire barrel by the valet gate
+    for x in (-30.0, -13.5, 3.5, 19.0, 33.0, 48.0):
+        it.append(prop("Street_Cables", x, -20.2, 9.4 + 0.3 * math.sin(x), 0.0))
+    it += [prop("Street_SteamVent", -8.5, -21.8, -0.15, 0.0), prop("Street_SteamVent", 21.0, -18.4, -0.15, 90.0),
+           prop("Street_FireBarrel", -34.3, -28.7, 0.0, 0.0, light=True),
+           prop("Street_FireBarrel", 33.6, -7.8, 0.0, 0.0, light=True)]
+
+    # ---- haze: teal-blue street fog, denser toward the street ends so the canyon fades out ----
+    it += [fogvol(0, -20.2, 4.0, 40.0, 11.0, 6.0, density=0.22, color=(0.48, 0.78, 0.86)),
+           fogvol(54.0, -20.2, 5.0, 16.0, 12.0, 9.0, density=0.5, color=(0.42, 0.72, 0.85)),
+           fogvol(-54.0, -20.2, 5.0, 16.0, 12.0, 9.0, density=0.5, color=(0.42, 0.72, 0.85))]
+    return it
+
+
+# =============================================================================================
 # L_VelvetClub - night, rain-soaked city block with a two-level club.
 # Street (north, Blue) -> club -> back alley / loading dock (south-east, Red).
 # =============================================================================================
@@ -790,8 +1028,8 @@ def _velvet():
     X0, X1, Y0, Y1 = -36.0, 36.0, -40.0, 32.0
     # ---- ground ----
     it += [slab(-60, -26, 60, -14, -0.45, -0.15, "AsphaltWet", name="Road", tile=3.0),
-           slab(-60, -30, 60, -26, -0.3, 0.0, "ConcreteFloor", name="Sidewalk_N", tint="Grey"),
-           slab(-60, -14, 60, -10, -0.3, 0.0, "ConcreteFloor", name="Sidewalk_S", tint="Grey"),
+           slab(-60, -30, 60, -26, -0.3, 0.0, "ConcreteGarageWet", name="Sidewalk_N"),
+           slab(-60, -14, 60, -10, -0.3, 0.0, "ConcreteGarageWet", name="Sidewalk_S"),
            slab(-60, -45, -36.2, -30, -0.3, 0.0, "ConcreteFloor", name="Beyond_N"),
            slab(-21.8, -45, 60, -30, -0.3, 0.0, "ConcreteFloor", name="Beyond_N"),
            slab(-36.2, -40.2, -21.8, -30.0, -0.3, 0.0, "Asphalt", name="ValetLot"),
@@ -946,19 +1184,20 @@ def _velvet():
            prop("Dumpster", 28.5, -12.2, 0, 0, tint="Blue")]
     for x in (-1.6, 1.6):
         it.append(prop("Bollard", x, -13.5, 0, 0))
+    # sodium lamps: all eight stay as cover, only four are lit so the neon owns the colour of the street
+    lit = {(-18, -13.6): True, (6, -13.6): True, (-8, -29.4): True, (24, -29.4): True}
     for (x, y) in ((-18, -13.6), (-6, -13.6), (6, -13.6), (18, -13.6), (-24, -29.4), (-8, -29.4), (8, -29.4),
                    (24, -29.4)):
         it.append(prop("StreetLamp", x, y, 0, 90 if y > -20 else -90,
-                       light={"shadows": abs(x) < 10}))
+                       light={"shadows": abs(x) < 10, "cd": 15.0} if lit.get((x, y)) else None))
     # street ends: bollards + invisible walls
     for x in (X0 + 0.6, X1 - 0.6):
         for k in range(13):
             it.append(prop("Bollard", x, -29.0 + 1.5 * k, -0.15 if -26 < -29.0 + 1.5 * k < -14 else 0.0, 0))
-    # north buildings (backdrop) with lit shopfronts
-    it += [slab(-60, -36, -38, -30.2, 0, 12, "Brick", name="ShopsN"),
-           slab(-21.8, -36, 60, -30.2, 0, 12, "Brick", name="ShopsN")]
+    # north buildings, club upper storeys, shopfronts, signs, cables, haze: see _velvet_street()
+    it += _velvet_street()
     # Blue spawn: valet lot behind the north building line, gate with piers and a parked car as baffle
-    it += [slab(-38, -42, -20, -40.2, 0, 10, "Brick", name="LotBack"),
+    it += [slab(-38, -42, -20, -40.2, 0, 17, "BrickDark", name="LotBack"),
            slab(-38, -41, -36.2, -30.0, 0, 10, "Brick", name="LotWest"),
            slab(-22.2, -40.2, -21.8, -30.2, 0, 10, "Brick", name="LotEast")]
     it += wall_run("x", -30.4, -36.2, -21.8, 0, 6, 0.4, "Brick", openings=[(-29.2, -25.6, 4.0)], name="LotFront")
@@ -971,13 +1210,6 @@ def _velvet():
            slab(-36.0, -30.8, -35.6, -30.6, 0.6, 3.0, "Emissive:Warm", glow=6, coll=False, name="LotLamp"),
            light("point", -29, -35, 4.5, color="Sodium", cd=10, radius=12, shadows=True),
            blocker(-36.2, -40.2, -21.8, -30.2, 10.0, 14.0)]
-    for k, x in enumerate((-17, -6, 5, 16, 27, -44)):
-        c = ["Warm", "Cool", "Amber", "Warm", "Cyan", "Warm"][k]
-        it += [slab(x - 2.4, -30.24, x + 2.4, -30.2, 0.5, 2.9, "Emissive:" + c, glow=2.5, coll=False, name="Shopfront"),
-               slab(x - 2.8, -30.9, x + 2.8, -30.2, 3.0, 3.25, "Canvas", tint=["Burgundy", "DeepGreen", "Teal"][k % 3],
-                    name="Awning")]
-    it += [slab(-60, -14, -37, -10, 0, 9, "BrickDark", name="BlockW"), slab(37, -14, 60, -10, 0, 9, "BrickDark",
-                                                                              name="BlockE")]
     it += [slab(-38, -10, -36.2, 33, 0, 10, "Brick", name="BoundaryW"),
            slab(36.2, -10, 38, 33, 0, 10, "Brick", name="BoundaryE"),
            slab(-38, 32.2, 38, 34, 0, 6, "BrickDark", name="BoundaryS")]
