@@ -1036,7 +1036,7 @@ bool AAirsoftBotController::TryGrenade(AAirsoftCharacter* Me)
 	const FVector MyLoc = Me->GetActorLocation();
 	FVector Center = FVector::ZeroVector;
 	int32 BestCount = 0;
-	bool bHidden = false;
+	bool bBunchHidden = false;
 	for (const FBotMemory& A : Memory)
 	{
 		const AAirsoftCharacter* EnemyA = A.Enemy.Get();
@@ -1070,11 +1070,11 @@ bool AAirsoftBotController::TryGrenade(AAirsoftCharacter* Me)
 		{
 			BestCount = Count;
 			Center = Sum / static_cast<double>(Count);
-			bHidden = bAllHidden;
+			bBunchHidden = bAllHidden;
 		}
 	}
 	// Two or more bunched up - or, for the sharper bots, one dug in out of sight.
-	const bool bWorth = BestCount >= 2 || (BestCount == 1 && bHidden && Skill >= EAirsoftBotSkill::Hard);
+	const bool bWorth = BestCount >= 2 || (BestCount == 1 && bBunchHidden && Skill >= EAirsoftBotSkill::Hard);
 	if (!bWorth || Rng.FRand() > Tune.GrenadeChance)
 	{
 		return false;
@@ -1095,7 +1095,7 @@ bool AAirsoftBotController::TryGrenade(AAirsoftCharacter* Me)
 	const FVector Aim = Center - FVector(0.f, 0.f, 60.f); // around their feet
 	const double Gravity = -static_cast<double>(GetWorld()->GetGravityZ());
 	// Lob it over cover when we can't see them, throw it flat when we can.
-	for (const bool bHigh : { bHidden, !bHidden })
+	for (const bool bHigh : { bBunchHidden, !bBunchHidden })
 	{
 		FVector Dir = FVector::ForwardVector;
 		float Flight = 0.f;

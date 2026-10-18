@@ -2,15 +2,15 @@
 
 TArray<FAirsoftMapInfo> UAirsoftSettings::DefaultMatchMaps()
 {
-	auto Map = [](const TCHAR* Key, const TCHAR* Name, const TCHAR* Path, int32 MinPlayers, int32 MaxPlayers, bool bCloseQuarters)
+	auto Map = [](const TCHAR* Key, const TCHAR* Name, const TCHAR* Path, int32 InMinPlayers, int32 InMaxPlayers, bool bInCloseQuarters)
 	{
 		FAirsoftMapInfo Info;
 		Info.Key = FName(Key);
 		Info.DisplayName = Name;
 		Info.LevelPath = Path;
-		Info.MinPlayers = MinPlayers;
-		Info.MaxPlayers = MaxPlayers;
-		Info.bCloseQuarters = bCloseQuarters;
+		Info.MinPlayers = InMinPlayers;
+		Info.MaxPlayers = InMaxPlayers;
+		Info.bCloseQuarters = bInCloseQuarters;
 		// Modes left empty: every map runs every mode (each has team starts and objectives A/B/C).
 		return Info;
 	};
