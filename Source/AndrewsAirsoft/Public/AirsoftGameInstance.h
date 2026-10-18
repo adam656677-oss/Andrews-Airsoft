@@ -30,6 +30,11 @@ public:
 
 	void ReturnToMainMenu(const FString& Reason = FString());
 
+	/** Story campaign: open mission Number (1-based) on its map with the campaign referee. */
+	void StartMission(int32 Number);
+	/** The mission "Continue" resumes (the furthest unlocked). */
+	int32 GetContinueMission();
+
 	UAirsoftSaveGame* GetProfile();
 	void SaveProfile();
 

@@ -54,6 +54,19 @@ public:
 	/** Free-for-all winner's call sign once the match is over (empty = draw / team mode). */
 	UPROPERTY(Replicated, BlueprintReadOnly) FString WinnerName;
 
+	// --- Story campaign (AAirsoftCampaignGameMode) -------------------------------------
+	/** A single-player story mission: health and damage instead of one-hit tags, no lobby, no respawns. */
+	UPROPERTY(Replicated, BlueprintReadOnly) bool bCampaign = false;
+	/** 1-based mission number and its title, shown at the top of the HUD. */
+	UPROPERTY(Replicated, BlueprintReadOnly) int32 MissionNumber = 0;
+	UPROPERTY(Replicated, BlueprintReadOnly) FString MissionTitle;
+	/** The current objective line, e.g. "Clear the club". */
+	UPROPERTY(Replicated, BlueprintReadOnly) FString Objective;
+	UPROPERTY(Replicated, BlueprintReadOnly) int32 EnemiesLeft = 0;
+
+	/** True on a story mission map. */
+	static bool IsCampaign(const UObject* WorldContext);
+
 	float GetTimeRemaining() const;
 	int32 GetScore(EAirsoftTeam Team) const;
 	int32 GetAlive(EAirsoftTeam Team) const;

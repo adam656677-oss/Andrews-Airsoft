@@ -1,6 +1,7 @@
 // Andrew's Airsoft - title screen: host, join by IP, armory, settings, quit,
 // call sign and the player's service record.
 
+#include "AirsoftCampaign.h"
 #include "AirsoftGameInstance.h"
 #include "AirsoftPlayerController.h"
 #include "AirsoftSaveGame.h"
@@ -155,9 +156,6 @@ void SAirsoftMainMenu::Construct(const FArguments& InArgs, AAirsoftPlayerControl
 
 TSharedRef<SWidget> SAirsoftMainMenu::BuildLeftColumn()
 {
-	UAirsoftGameInstance* GI = AUI::GetGameInstance(WeakPC.Get());
-	const FString LastAddress = GI ? GI->GetUserSettings().LastJoinAddress : FString();
-
 	TSharedPtr<SAirsoftButton> HostButton;
 
 	TSharedRef<SWidget> Column = SNew(SBox)
@@ -168,7 +166,7 @@ TSharedRef<SWidget> SAirsoftMainMenu::BuildLeftColumn()
 			+ SVerticalBox::Slot()
 			.AutoHeight()
 			[
-				AirsoftUIWidgets::SectionLabel(FText::FromString(TEXT("PRIVATE MATCHES  \u00B7  FRIENDS ONLY")))
+				AirsoftUIWidgets::SectionLabel(FText::FromString(TEXT("A STORY CAMPAIGN  \u00B7  SINGLE PLAYER")))
 			]
 			+ SVerticalBox::Slot()
 			.AutoHeight()
@@ -181,7 +179,7 @@ TSharedRef<SWidget> SAirsoftMainMenu::BuildLeftColumn()
 				.HAlign(HAlign_Left)
 				[
 					SNew(STextBlock)
-					.Text(FText::FromString(TEXT("ANDREW'S")))
+					.Text(FText::FromString(TEXT("ANDREW")))
 					.Font(AUI::Font(AUI::EFontWeight::Light, 40, 900))
 					.ColorAndOpacity(AUI::TextColor())
 				]
@@ -196,7 +194,7 @@ TSharedRef<SWidget> SAirsoftMainMenu::BuildLeftColumn()
 				.HAlign(HAlign_Left)
 				[
 					SNew(STextBlock)
-					.Text(FText::FromString(TEXT("AIRSOFT")))
+					.Text(FText::FromString(TEXT("LAST CONTRACT")))
 					.Font(AUI::Font(AUI::EFontWeight::Bold, 78, 260))
 					.ColorAndOpacity(FLinearColor::White)
 					.ShadowOffset(FVector2D(0.f, 3.f))
@@ -214,7 +212,7 @@ TSharedRef<SWidget> SAirsoftMainMenu::BuildLeftColumn()
 			.Padding(FMargin(4.f, 14.f, 0.f, 0.f))
 			[
 				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("Every hit is called. Every call is honoured.")))
+				.Text(FText::FromString(TEXT("Five years out. One debt left to settle.")))
 				.Font(AUI::Font(AUI::EFontWeight::Light, 14, 40))
 				.ColorAndOpacity(AUI::TextDim())
 			]
@@ -243,69 +241,57 @@ TSharedRef<SWidget> SAirsoftMainMenu::BuildLeftColumn()
 					return G ? FText::FromString(G->PendingMenuMessage) : FText::GetEmpty();
 				})
 			]
-			// Buttons
+			// Story
 			+ SVerticalBox::Slot()
 			.AutoHeight()
 			.Padding(FMargin(0.f, 36.f, 0.f, 0.f))
 			[
 				SAssignNew(HostButton, SAirsoftButton)
-				.Text(FText::FromString(TEXT("HOST GAME")))
-				.SubText(FText::FromString(TEXT("YOU ARE THE SERVER")))
+				.Text_Lambda([this]()
+				{
+					UAirsoftGameInstance* G = AUI::GetGameInstance(WeakPC.Get());
+					const bool bResume = G && G->GetContinueMission() > 1;
+					return FText::FromString(bResume ? TEXT("CONTINUE") : TEXT("NEW GAME"));
+				})
+				.SubText_Lambda([this]()
+				{
+					UAirsoftGameInstance* G = AUI::GetGameInstance(WeakPC.Get());
+					const int32 Number = G ? G->GetContinueMission() : 1;
+					const AirsoftCampaign::FMission* Mission = AirsoftCampaign::FindMission(Number);
+					return FText::FromString(FString::Printf(TEXT("MISSION %d \u00B7 %s"), Number, Mission ? *Mission->Title.ToUpper() : TEXT("")));
+				})
 				.FontSize(14)
 				.OnClicked_Lambda([this]()
 				{
 					if (UAirsoftGameInstance* G = AUI::GetGameInstance(WeakPC.Get()))
 					{
-						G->PendingMenuMessage.Reset();
-						G->HostGame();
+						G->StartMission(G->GetContinueMission());
 					}
 					return FReply::Handled();
 				})
 			]
+			// Restart the story from the first mission (shown once there is progress to restart from).
 			+ SVerticalBox::Slot()
 			.AutoHeight()
 			.Padding(FMargin(0.f, 6.f, 0.f, 0.f))
 			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot()
-				.FillWidth(1.f)
-				.VAlign(VAlign_Fill)
-				.Padding(FMargin(0.f, 0.f, 6.f, 0.f))
-				[
-					SAssignNew(AddressBox, SEditableTextBox)
-					.Style(&AUI::TextBoxStyle())
-					.Font(AUI::Font(AUI::EFontWeight::Regular, 13, 40))
-					.ForegroundColor(AUI::TextColor())
-					.BackgroundColor(FLinearColor::White)
-					.Text(FText::FromString(LastAddress))
-					.HintText(FText::FromString(TEXT("Host IP, e.g. 100.101.102.103")))
-					.SelectAllTextWhenFocused(true)
-					.ClearKeyboardFocusOnCommit(false)
-					.OnTextCommitted_Lambda([this](const FText& NewText, ETextCommit::Type CommitType)
+				SNew(SAirsoftButton)
+				.Visibility_Lambda([this]() -> EVisibility
+				{
+					UAirsoftGameInstance* G = AUI::GetGameInstance(WeakPC.Get());
+					return (G && G->GetContinueMission() > 1) ? EVisibility::Visible : EVisibility::Collapsed;
+				})
+				.Text(FText::FromString(TEXT("NEW GAME")))
+				.SubText(FText::FromString(TEXT("FROM MISSION 1")))
+				.FontSize(14)
+				.OnClicked_Lambda([this]()
+				{
+					if (UAirsoftGameInstance* G = AUI::GetGameInstance(WeakPC.Get()))
 					{
-						if (CommitType == ETextCommit::OnEnter)
-						{
-							Join();
-						}
-					})
-				]
-				+ SHorizontalBox::Slot()
-				.AutoWidth()
-				[
-					SNew(SBox)
-					.WidthOverride(120.f)
-					[
-						SNew(SAirsoftButton)
-						.Text(FText::FromString(TEXT("JOIN")))
-						.FontSize(14)
-						.HAlign(HAlign_Center)
-						.OnClicked_Lambda([this]()
-						{
-							Join();
-							return FReply::Handled();
-						})
-					]
-				]
+						G->StartMission(1);
+					}
+					return FReply::Handled();
+				})
 			]
 			+ SVerticalBox::Slot()
 			.AutoHeight()
@@ -357,42 +343,16 @@ TSharedRef<SWidget> SAirsoftMainMenu::BuildLeftColumn()
 					return FReply::Handled();
 				})
 			]
-			// Help
+			// Story blurb
 			+ SVerticalBox::Slot()
 			.AutoHeight()
 			.Padding(FMargin(4.f, 30.f, 0.f, 0.f))
 			[
 				SNew(STextBlock)
 				.AutoWrapText(true)
-				.Text(FText::FromString(TEXT("Friends join over Tailscale: share your 100.x.y.z address")))
+				.Text(FText::FromString(TEXT("LAST CONTRACT \u00B7 A story in four missions. Difficulty: Settings > Bot skill.")))
 				.Font(AUI::Font(AUI::EFontWeight::Regular, 10, 20))
 				.ColorAndOpacity(AUI::TextDim())
-			]
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.Padding(FMargin(4.f, 6.f, 0.f, 0.f))
-			[
-				SNew(SHorizontalBox)
-				.Visibility(TailscaleIPs.IsEmpty() ? EVisibility::Collapsed : EVisibility::HitTestInvisible)
-				+ SHorizontalBox::Slot()
-				.AutoWidth()
-				.VAlign(VAlign_Center)
-				[
-					SNew(STextBlock)
-					.Text(FText::FromString(TEXT("YOUR TAILSCALE IP")))
-					.Font(AUI::Caption(8))
-					.ColorAndOpacity(AUI::TextDim())
-				]
-				+ SHorizontalBox::Slot()
-				.AutoWidth()
-				.VAlign(VAlign_Center)
-				.Padding(FMargin(12.f, 0.f, 0.f, 0.f))
-				[
-					SNew(STextBlock)
-					.Text(FText::FromString(TailscaleIPs))
-					.Font(AUI::Font(AUI::EFontWeight::Bold, 12, 60))
-					.ColorAndOpacity(AUI::Accent())
-				]
 			]
 		];
 

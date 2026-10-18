@@ -46,7 +46,12 @@ public:
 	virtual void GetSeamlessTravelActorList(bool bToTransition, TArray<AActor*>& ActorList) override;
 
 	/** Server: a validated BB (or grenade) hit. Returns true if it counted as a tag. */
-	bool HandleTag(AController* Shooter, AController* Victim, FName WeaponId);
+	virtual bool HandleTag(AController* Shooter, AController* Victim, FName WeaponId);
+	/**
+	 * Server: a validated shot hit Victim at HitLocation. Airsoft rules: one hit is a tag (HandleTag).
+	 * The story campaign overrides this with damage. Returns true to show the shooter a hit marker.
+	 */
+	virtual bool HandleHit(AController* Shooter, AController* Victim, FName WeaponId, const FVector& HitLocation) { return HandleTag(Shooter, Victim, WeaponId); }
 
 	/** Server: someone fired (validated shot). Bots use it as hearing. */
 	void NotifyShotFired(AAirsoftCharacter* Shooter, const FVector& Origin, const FVector& Direction, bool bQuiet);

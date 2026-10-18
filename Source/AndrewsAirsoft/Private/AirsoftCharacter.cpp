@@ -4,6 +4,7 @@
 #include "AirsoftCombatComponent.h"
 #include "AirsoftEffects.h"
 #include "AirsoftGameInstance.h"
+#include "AirsoftGameState.h"
 #include "AirsoftGunVisual.h"
 #include "AirsoftMovementComponent.h"
 #include "AirsoftPlayerState.h"
@@ -158,6 +159,7 @@ void AAirsoftCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	DOREPLIFETIME_CONDITION(AAirsoftCharacter, bSliding, COND_SkipOwner);
 	DOREPLIFETIME_CONDITION(AAirsoftCharacter, LeanAmount, COND_SkipOwner);
 	DOREPLIFETIME(AAirsoftCharacter, TaggedByName);
+	DOREPLIFETIME(AAirsoftCharacter, Health);
 }
 
 UAirsoftMovementComponent* AAirsoftCharacter::GetAirsoftMovement() const
@@ -609,6 +611,105 @@ void AAirsoftCharacter::ServerMarkOut(const FString& TaggedBy)
 	OnRep_Out();
 }
 
+// ---------------------------------------------------------------------------
+// Story campaign: health, damage, death
+// ---------------------------------------------------------------------------
+
+bool AAirsoftCharacter::ServerApplyDamage(float Amount, const FString& From, const FVector& FromLocation)
+{
+	if (!HasAuthority() || bIsOutReplicated || Amount <= 0.f)
+	{
+		return false;
+	}
+	const float Old = Health;
+	Health = FMath::Max(0.f, Health - Amount);
+	LastDamageTime = GetWorld()->GetTimeSeconds();
+	// OnRep doesn't fire on the server or in standalone: the local player's own feedback is played here.
+	if (IsLocalHuman())
+	{
+		PlayDamageFeedback(Old - Health);
+	}
+	if (Health <= 0.f)
+	{
+		ServerMarkOut(From);
+		return true;
+	}
+	return false;
+}
+
+float AAirsoftCharacter::GetHurtAlpha() const
+{
+	return MaxHealth > 0.f ? FMath::Clamp(1.f - Health / MaxHealth, 0.f, 1.f) : 0.f;
+}
+
+float AAirsoftCharacter::TimeSinceDamage() const
+{
+	return static_cast<float>(GetWorld()->GetTimeSeconds() - LastDamageTime);
+}
+
+void AAirsoftCharacter::OnRep_Health(float OldHealth)
+{
+	if (Health < OldHealth)
+	{
+		LastDamageTime = GetWorld()->GetTimeSeconds();
+		if (IsLocalHuman())
+		{
+			PlayDamageFeedback(OldHealth - Health);
+		}
+	}
+}
+
+void AAirsoftCharacter::PlayDamageFeedback(float Amount)
+{
+	const float Strength = FMath::Clamp(Amount / 40.f, 0.15f, 1.f);
+	HitPulse = FMath::Max(HitPulse, 0.4f + 0.6f * Strength);
+	AddViewShake(0.25f + 0.35f * Strength, 1.f + 2.f * Strength);
+	AirsoftAssets::Play2D(this, TEXT("Tagged"), 0.35f + 0.4f * Strength, FMath::FRandRange(0.85f, 1.f));
+}
+
+void AAirsoftCharacter::ApplyCampaignDeath()
+{
+	if (bRagdolled)
+	{
+		return;
+	}
+	bRagdolled = true;
+	DeadRag->SetVisibility(false);
+	HitCall->SetVisibility(false);
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	GetCharacterMovement()->DisableMovement();
+	GetCharacterMovement()->StopMovementImmediately();
+	TPGun->SetVisibility(false, true);
+	if (!bHasMannequin)
+	{
+		// Stand-in body: topple it over.
+		FallbackBody->SetRelativeLocationAndRotation(FVector(0.f, 0.f, -70.f), FRotator(90.f, 0.f, 0.f));
+		FallbackHead->SetRelativeLocation(FVector(70.f, 0.f, -80.f));
+		return;
+	}
+	USkeletalMeshComponent* Body = GetMesh();
+	if (bUsePoseMesh)
+	{
+		// The posed copy can't simulate: show the real mesh and move the team gear onto it.
+		PoseMesh->SetVisibility(false);
+		Body->SetVisibility(true);
+		Body->SetCastShadow(true);
+		if (TeamGear)
+		{
+			const AAirsoftPlayerState* GearPS = GetAirsoftPlayerState();
+			TeamGear->ApplyTo(Body, GetTeam(), GearPS ? GearPS->GetPlayerId() : 0);
+		}
+	}
+	Body->SetCollisionProfileName(TEXT("Ragdoll"));
+	Body->SetCollisionResponseToChannel(ECC_BB, ECR_Ignore);
+	Body->SetAllBodiesSimulatePhysics(true);
+	Body->SetSimulatePhysics(true);
+	Body->WakeAllRigidBodies();
+	Body->bBlendPhysics = true;
+	// A little shove away from the last shot so the fall reads.
+	Body->AddImpulse(GetActorForwardVector() * -2500.f + FVector(0.f, 0.f, 600.f), NAME_None, true);
+}
+
 void AAirsoftCharacter::ServerSetFrozen(bool bInFrozen)
 {
 	if (HasAuthority())
@@ -631,6 +732,15 @@ void AAirsoftCharacter::OnRep_Out()
 	ApplyOutVisuals();
 	if (!bIsOutReplicated)
 	{
+		return;
+	}
+	if (AAirsoftGameState::IsCampaign(this))
+	{
+		ApplyCampaignDeath();
+		if (IsLocallyControlled() && Combat)
+		{
+			Combat->CancelActions();
+		}
 		return;
 	}
 	AirsoftAssets::Play3D(this, TEXT("HitCall"), GetActorLocation() + FVector(0.f, 0.f, 70.f), 0.9f, FMath::FRandRange(0.92f, 1.08f));
@@ -667,8 +777,10 @@ void AAirsoftCharacter::OnRep_Out()
 void AAirsoftCharacter::ApplyOutVisuals()
 {
 	const bool bOut = bIsOutReplicated;
-	DeadRag->SetVisibility(bOut);
-	HitCall->SetVisibility(bOut);
+	// On a story mission "out" means dead (ragdoll, see ApplyCampaignDeath): no airsoft hit rag.
+	const bool bAirsoftOut = bOut && !AAirsoftGameState::IsCampaign(this);
+	DeadRag->SetVisibility(bAirsoftOut);
+	HitCall->SetVisibility(bAirsoftOut);
 	// Tagged players walk off through everyone and BBs pass through them.
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Pawn, bOut ? ECR_Ignore : ECR_Block);
 	const ECollisionResponse BB = bOut ? ECR_Ignore : ECR_Block;
@@ -751,6 +863,11 @@ void AAirsoftCharacter::Tick(float DeltaSeconds)
 	{
 		bSprinting = Move->IsSprintingNow();
 		bSliding = Move->IsSlidingNow();
+	}
+	// Campaign: health comes back once you've been out of fire for a few seconds.
+	if (HasAuthority() && !bIsOutReplicated && Health < MaxHealth && TimeSinceDamage() > RegenDelay && AAirsoftGameState::IsCampaign(this))
+	{
+		Health = FMath::Min(MaxHealth, Health + RegenRate * DeltaSeconds);
 	}
 
 	if (IsLocallyControlled())

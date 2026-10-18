@@ -29,6 +29,8 @@ public:
 
 	/** Server: hand out a loadout and fill the mags. */
 	void ServerInitLoadout(const FAirsoftLoadout& InLoadout);
+	/** Server: adds Mags magazines' worth of reserve ammo to both guns (story campaign: scavenged from the fallen). */
+	void ServerGiveAmmo(float Mags);
 
 	// --- Local input -------------------------------------------------------
 	void StartFire();

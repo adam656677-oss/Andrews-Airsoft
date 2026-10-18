@@ -137,6 +137,93 @@ void SAirsoftHUD::Construct(const FArguments& InArgs, AAirsoftPlayerController* 
 		[
 			AirsoftUIScreens::CreateChatBox(InPC)
 		]
+		// Story campaign: health, bottom left.
+		+ SOverlay::Slot()
+		.HAlign(HAlign_Left)
+		.VAlign(VAlign_Bottom)
+		.Padding(FMargin(36.f, 0.f, 0.f, 36.f))
+		[
+			SNew(SBox)
+			.WidthOverride(260.f)
+			.Visibility_Lambda([this]() -> EVisibility
+			{
+				return HudVis(!IsHidden() && !IsOut() && AAirsoftGameState::IsCampaign(WeakPC.Get()) && AUI::GetCharacter(WeakPC.Get()) != nullptr);
+			})
+			[
+				SNew(SBorder)
+				.BorderImage(AUI::PanelBrush())
+				.Padding(FMargin(16.f, 10.f, 16.f, 12.f))
+				[
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					[
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot()
+						.FillWidth(1.f)
+						[
+							SNew(STextBlock)
+							.Text(FText::FromString(TEXT("HEALTH")))
+							.Font(AUI::Caption(9))
+							.ColorAndOpacity(AUI::TextDim())
+						]
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						[
+							SNew(STextBlock)
+							.Font(AUI::Font(AUI::EFontWeight::Bold, 16))
+							.Text_Lambda([this]()
+							{
+								const AAirsoftCharacter* C = AUI::GetCharacter(WeakPC.Get());
+								return FText::AsNumber(C ? FMath::CeilToInt(C->GetHealth()) : 0);
+							})
+							.ColorAndOpacity_Lambda([this]() -> FSlateColor
+							{
+								const AAirsoftCharacter* C = AUI::GetCharacter(WeakPC.Get());
+								return (C && C->GetHurtAlpha() > 0.6f) ? AUI::Danger() : FLinearColor::White;
+							})
+						]
+					]
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(FMargin(0.f, 6.f, 0.f, 0.f))
+					[
+						SNew(SBox)
+						.HeightOverride(6.f)
+						[
+							SNew(SOverlay)
+							+ SOverlay::Slot()
+							[
+								SNew(SBorder)
+								.BorderImage(AUI::WhiteBrush())
+								.BorderBackgroundColor(FLinearColor(1.f, 1.f, 1.f, 0.08f))
+								.Padding(FMargin(0.f))
+							]
+							+ SOverlay::Slot()
+							.HAlign(HAlign_Left)
+							[
+								SNew(SBox)
+								.WidthOverride_Lambda([this]() -> FOptionalSize
+								{
+									const AAirsoftCharacter* C = AUI::GetCharacter(WeakPC.Get());
+									return FOptionalSize(228.f * (C ? 1.f - C->GetHurtAlpha() : 0.f));
+								})
+								[
+									SNew(SBorder)
+									.BorderImage(AUI::WhiteBrush())
+									.BorderBackgroundColor_Lambda([this]() -> FSlateColor
+									{
+										const AAirsoftCharacter* C = AUI::GetCharacter(WeakPC.Get());
+										return (C && C->GetHurtAlpha() > 0.6f) ? AUI::Danger() : AUI::TextColor();
+									})
+									.Padding(FMargin(0.f))
+								]
+							]
+						]
+					]
+				]
+			]
+		]
 		+ SOverlay::Slot()
 		.HAlign(HAlign_Center)
 		.VAlign(VAlign_Center)
@@ -204,7 +291,7 @@ TSharedRef<SWidget> SAirsoftHUD::BuildTeamScore(uint8 TeamValue)
 		.Visibility_Lambda([this]() -> EVisibility
 		{
 			const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
-			return HudVis(GS && GS->bIsMatchMap && !GS->IsFreeForAll());
+			return HudVis(GS && GS->bIsMatchMap && !GS->IsFreeForAll() && !GS->bCampaign);
 		})
 		[
 			SNew(SBorder)
@@ -341,6 +428,10 @@ FText SAirsoftHUD::PhaseCaption() const
 	{
 		return FText::FromString(TEXT("CONNECTING"));
 	}
+	if (GS->bCampaign)
+	{
+		return FText::FromString(FString::Printf(TEXT("MISSION %d · %s"), GS->MissionNumber, *GS->MissionTitle.ToUpper()));
+	}
 	switch (GS->Phase)
 	{
 	case EAirsoftPhase::Waiting: return FText::FromString(GS->bIsMatchMap ? TEXT("STANDBY") : TEXT("WAITING FOR PLAYERS"));
@@ -370,7 +461,7 @@ FString SAirsoftHUD::ModeLine() const
 	const AAirsoftPlayerController* PC = WeakPC.Get();
 	const AAirsoftGameState* GS = AUI::GetGameState(PC);
 	const AAirsoftPlayerState* PS = AUI::GetPlayerState(PC);
-	if (!GS || !GS->bIsMatchMap || GS->Phase == EAirsoftPhase::Waiting)
+	if (!GS || !GS->bIsMatchMap || GS->Phase == EAirsoftPhase::Waiting || GS->bCampaign)
 	{
 		return FString();
 	}
@@ -527,6 +618,10 @@ TSharedRef<SWidget> SAirsoftHUD::BuildTopCenter()
 				if (!GS || !GS->bIsMatchMap)
 				{
 					return FText::FromString(TEXT("STAGING AREA"));
+				}
+				if (GS->bCampaign)
+				{
+					return FText::FromString(TEXT("LAST CONTRACT"));
 				}
 				return FText::FromString(FString::Printf(TEXT("%s  \u00B7  %s"),
 					*AAirsoftGameState::ModeDisplayName(GS->Mode).ToUpper(), *AAirsoftGameState::MapDisplayName(GS->MapId).ToUpper()));
@@ -1058,7 +1153,7 @@ TSharedRef<SWidget> SAirsoftHUD::BuildTaggedOverlay()
 				const bool bAnnouncingHit = PC && AnnouncementAlpha() > 0.f && PC->GetAnnouncement().Title.Equals(TEXT("HIT"), ESearchCase::IgnoreCase);
 				return bAnnouncingHit ? EVisibility::Hidden : EVisibility::HitTestInvisible;
 			})
-			.Text(FText::FromString(TEXT("HIT")))
+			.Text_Lambda([this]() { return FText::FromString(AAirsoftGameState::IsCampaign(WeakPC.Get()) ? TEXT("DOWN") : TEXT("HIT")); })
 			.Font(AUI::Font(AUI::EFontWeight::Bold, 60, 700))
 			.ColorAndOpacity(AUI::Danger())
 			.ShadowOffset(FVector2D(2.f, 2.f))
@@ -1099,6 +1194,10 @@ TSharedRef<SWidget> SAirsoftHUD::BuildTaggedOverlay()
 					{
 						By = Character->TaggedByName;
 					}
+				}
+				if (AAirsoftGameState::IsCampaign(PC))
+				{
+					return FText::FromString(By.IsEmpty() ? FString(TEXT("Mission failed \u2014 restarting")) : FString::Printf(TEXT("Killed by %s \u2014 restarting"), *By));
 				}
 				return By.IsEmpty()
 					? FText::FromString(TEXT("You're out \u2014 walk off"))
@@ -1151,7 +1250,7 @@ TSharedRef<SWidget> SAirsoftHUD::BuildTaggedOverlay()
 			.Visibility_Lambda([this]() -> EVisibility
 			{
 				const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
-				return HudVis(GS && GS->bIsMatchMap && !AirsoftRules::HasRespawns(GS->Mode));
+				return HudVis(GS && GS->bIsMatchMap && !GS->bCampaign && !AirsoftRules::HasRespawns(GS->Mode));
 			})
 			.Text(FText::FromString(TEXT("OUT FOR THE ROUND \u00B7 WATCHING YOUR TEAM IN A MOMENT")))
 		];

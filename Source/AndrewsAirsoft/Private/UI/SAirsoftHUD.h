@@ -13,6 +13,7 @@
 #include "Widgets/SCompoundWidget.h"
 #include "Widgets/SLeafWidget.h"
 
+class AAirsoftCharacter;
 class AAirsoftPlayerController;
 class AAirsoftObjective;
 struct FAirsoftKillFeedEntry;
@@ -38,6 +39,8 @@ public:
 private:
 	void PaintScope(FSlateWindowElementList& Out, int32 Layer, const FGeometry& Geo, const FVector2f& Size) const;
 	void PaintTaggedShade(FSlateWindowElementList& Out, int32 Layer, const FGeometry& Geo, const FVector2f& Size) const;
+	/** Story campaign: red edges that close in as health drops (and flash on each hit). */
+	void PaintHurt(const AAirsoftCharacter* Character, FSlateWindowElementList& Out, int32 Layer, const FGeometry& Geo, const FVector2f& Size) const;
 	void PaintNameTags(AAirsoftPlayerController* PC, FSlateWindowElementList& Out, int32 Layer, const FGeometry& Geo, const FVector2f& Size) const;
 	void PaintCrosshair(AAirsoftPlayerController* PC, FSlateWindowElementList& Out, int32 Layer, const FGeometry& Geo, const FVector2f& Size) const;
 	void PaintHitMarker(AAirsoftPlayerController* PC, FSlateWindowElementList& Out, int32 Layer, const FGeometry& Geo, const FVector2f& Size) const;

@@ -1,5 +1,6 @@
 #include "AirsoftGameInstance.h"
 
+#include "AirsoftCampaign.h"
 #include "AirsoftSaveGame.h"
 #include "AirsoftSettings.h"
 #include "AirsoftWeaponData.h"
@@ -47,6 +48,29 @@ void UAirsoftGameInstance::JoinGame(const FString& Address)
 	SetUserSettings(Settings);
 	SaveProfile();
 	UGameplayStatics::OpenLevel(this, FName(*Clean), true);
+}
+
+void UAirsoftGameInstance::StartMission(int32 Number)
+{
+	const AirsoftCampaign::FMission* Mission = AirsoftCampaign::FindMission(Number);
+	if (!Mission)
+	{
+		Number = 1;
+		Mission = AirsoftCampaign::FindMission(1);
+	}
+	if (!Mission)
+	{
+		return;
+	}
+	PendingMenuMessage.Reset();
+	SaveProfile();
+	UGameplayStatics::OpenLevel(this, FName(*Mission->MapPath), true, AirsoftCampaign::MissionOptions(Number));
+}
+
+int32 UAirsoftGameInstance::GetContinueMission()
+{
+	const int32 Count = AirsoftCampaign::Missions().Num();
+	return FMath::Clamp(GetProfile()->CampaignReached, 1, FMath::Max(Count, 1));
 }
 
 void UAirsoftGameInstance::ReturnToMainMenu(const FString& Reason)

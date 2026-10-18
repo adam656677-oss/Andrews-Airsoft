@@ -34,6 +34,18 @@ void AAirsoftGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	DOREPLIFETIME(AAirsoftGameState, ExtractionPoint);
 	DOREPLIFETIME(AAirsoftGameState, ExtractProgress);
 	DOREPLIFETIME(AAirsoftGameState, WinnerName);
+	DOREPLIFETIME(AAirsoftGameState, bCampaign);
+	DOREPLIFETIME(AAirsoftGameState, MissionNumber);
+	DOREPLIFETIME(AAirsoftGameState, MissionTitle);
+	DOREPLIFETIME(AAirsoftGameState, Objective);
+	DOREPLIFETIME(AAirsoftGameState, EnemiesLeft);
+}
+
+bool AAirsoftGameState::IsCampaign(const UObject* WorldContext)
+{
+	const UWorld* World = WorldContext ? WorldContext->GetWorld() : nullptr;
+	const AAirsoftGameState* GS = World ? World->GetGameState<AAirsoftGameState>() : nullptr;
+	return GS && GS->bCampaign;
 }
 
 float AAirsoftGameState::GetTimeRemaining() const

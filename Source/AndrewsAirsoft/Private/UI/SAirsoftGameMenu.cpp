@@ -337,7 +337,7 @@ TSharedRef<SWidget> SAirsoftGameMenu::BuildLeftColumn()
 				.Visibility_Lambda([this]() -> EVisibility
 				{
 					const AAirsoftPlayerController* PC = WeakPC.Get();
-					return MenuVis(PC && PC->IsHost());
+					return MenuVis(PC && PC->IsHost() && !AAirsoftGameState::IsCampaign(PC));
 				})
 				.Text(FText::FromString(TEXT("BOTS")))
 				.SubText_Lambda([this]()
@@ -365,9 +365,9 @@ TSharedRef<SWidget> SAirsoftGameMenu::BuildLeftColumn()
 				.Visibility_Lambda([this]() -> EVisibility
 				{
 					const AAirsoftPlayerController* PC = WeakPC.Get();
-					return MenuVis(PC && PC->IsHost() && BotFill() > 0);
+					return MenuVis(PC && PC->IsHost() && (BotFill() > 0 || AAirsoftGameState::IsCampaign(PC)));
 				})
-				.Text(FText::FromString(TEXT("BOT SKILL")))
+				.Text_Lambda([this]() { return FText::FromString(AAirsoftGameState::IsCampaign(WeakPC.Get()) ? TEXT("DIFFICULTY") : TEXT("BOT SKILL")); })
 				.SubText_Lambda([this]()
 				{
 					UAirsoftGameInstance* GI = AUI::GetGameInstance(WeakPC.Get());
@@ -395,14 +395,14 @@ TSharedRef<SWidget> SAirsoftGameMenu::BuildLeftColumn()
 					const AAirsoftPlayerController* PC = WeakPC.Get();
 					if (IsLeaveArmed())
 					{
-						return FText::FromString((PC && PC->IsHost()) ? TEXT("CONFIRM \u2014 END SESSION") : TEXT("CONFIRM \u2014 LEAVE"));
+						return FText::FromString(AAirsoftGameState::IsCampaign(PC) ? TEXT("CONFIRM \u2014 QUIT MISSION") : ((PC && PC->IsHost()) ? TEXT("CONFIRM \u2014 END SESSION") : TEXT("CONFIRM \u2014 LEAVE")));
 					}
-					return FText::FromString(TEXT("LEAVE"));
+					return FText::FromString(AAirsoftGameState::IsCampaign(WeakPC.Get()) ? TEXT("QUIT MISSION") : TEXT("LEAVE"));
 				})
 				.SubText_Lambda([this]()
 				{
 					const AAirsoftPlayerController* PC = WeakPC.Get();
-					return FText::FromString((PC && PC->IsHost()) ? TEXT("ENDS IT FOR EVERYONE") : TEXT("BACK TO TITLE"));
+					return FText::FromString((PC && PC->IsHost() && !AAirsoftGameState::IsCampaign(PC)) ? TEXT("ENDS IT FOR EVERYONE") : TEXT("BACK TO TITLE"));
 				})
 				.IsSelected_Lambda([this]() { return IsLeaveArmed(); })
 				.FontSize(14)
@@ -432,7 +432,7 @@ TSharedRef<SWidget> SAirsoftGameMenu::BuildLeftColumn()
 				.SubText_Lambda([this]()
 				{
 					const AAirsoftPlayerController* PC = WeakPC.Get();
-					return FText::FromString((PC && PC->IsHost()) ? TEXT("ENDS IT FOR EVERYONE") : TEXT("CLOSES THE GAME"));
+					return FText::FromString((PC && PC->IsHost() && !AAirsoftGameState::IsCampaign(PC)) ? TEXT("ENDS IT FOR EVERYONE") : TEXT("CLOSES THE GAME"));
 				})
 				.IsSelected_Lambda([this]() { return IsQuitArmed(); })
 				.FontSize(14)

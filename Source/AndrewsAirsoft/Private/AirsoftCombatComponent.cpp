@@ -216,6 +216,21 @@ void UAirsoftCombatComponent::ServerInitLoadout(const FAirsoftLoadout& InLoadout
 	RefreshVisuals();
 }
 
+void UAirsoftCombatComponent::ServerGiveAmmo(float Mags)
+{
+	if (!GetOwner()->HasAuthority() || Mags <= 0.f)
+	{
+		return;
+	}
+	for (int32 i = 0; i < 2; ++i)
+	{
+		const int32 Add = FMath::Max(1, FMath::RoundToInt(Resolved[i].MagSize * Mags));
+		// Never more than the gun's full starting reserve.
+		ServerReserve[i] = FMath::Min(ServerReserve[i] + Add, FMath::Max(Resolved[i].Reserve, Resolved[i].MagSize));
+		ClientAmmo(i == 0 ? EAirsoftSlot::Primary : EAirsoftSlot::Secondary, ServerMag[i], ServerReserve[i]);
+	}
+}
+
 void UAirsoftCombatComponent::OnRep_Loadout()
 {
 	Resolved[0] = AirsoftWeapons::Resolve(Loadout.Primary);
@@ -797,7 +812,7 @@ void UAirsoftCombatComponent::ServerReportHit_Implementation(int32 ShotId, uint8
 	Shot->UsedPellets |= (1u << Pellet);
 	if (AAirsoftGameMode* GM = GetWorld()->GetAuthGameMode<AAirsoftGameMode>())
 	{
-		if (GM->HandleTag(Me->GetController(), Victim->GetController(), W.Id))
+		if (GM->HandleHit(Me->GetController(), Victim->GetController(), W.Id, FVector(HitLocation)))
 		{
 			ClientHitConfirm();
 		}

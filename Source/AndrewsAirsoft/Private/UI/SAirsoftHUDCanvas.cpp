@@ -102,6 +102,10 @@ int32 SAirsoftHUDCanvas::OnPaint(const FPaintArgs& Args, const FGeometry& Allott
 		{
 			PaintTaggedShade(OutDrawElements, LayerId, AllottedGeometry, Size);
 		}
+		if (Character && !bOut && AAirsoftGameState::IsCampaign(PC))
+		{
+			PaintHurt(Character, OutDrawElements, LayerId, AllottedGeometry, Size);
+		}
 		PaintNameTags(PC, OutDrawElements, LayerId, AllottedGeometry, Size);
 		PaintCaptureBar(PC, OutDrawElements, LayerId, AllottedGeometry, Size);
 		PaintVIP(PC, OutDrawElements, LayerId, AllottedGeometry, Size);
@@ -113,6 +117,32 @@ int32 SAirsoftHUDCanvas::OnPaint(const FPaintArgs& Args, const FGeometry& Allott
 
 	// Layers used: +0 shapes, +1 lines, +2 text.
 	return LayerId + 2;
+}
+
+void SAirsoftHUDCanvas::PaintHurt(const AAirsoftCharacter* Character, FSlateWindowElementList& Out, int32 Layer, const FGeometry& Geo, const FVector2f& Size) const
+{
+	// Low health holds the edges red; every fresh hit flashes them for half a second.
+	const float Hurt = Character->GetHurtAlpha();
+	const float Flash = FMath::Clamp(1.f - Character->TimeSinceDamage() / 0.5f, 0.f, 1.f) * 0.6f;
+	const float Strength = FMath::Clamp(FMath::Max(Hurt * Hurt * 1.2f, Flash), 0.f, 1.f);
+	if (Strength <= 0.01f)
+	{
+		return;
+	}
+	const FLinearColor Blood(0.55f, 0.f, 0.f);
+	const int32 Bands = 10;
+	const float Reach = FMath::Min(Size.X, Size.Y) * (0.12f + 0.16f * Strength);
+	const float Band = Reach / Bands;
+	for (int32 i = 0; i < Bands; ++i)
+	{
+		const float Inset = Band * i;
+		const float A = Strength * 0.55f * FMath::Square(1.f - static_cast<float>(i) / Bands);
+		const FLinearColor Col = AUI::WithAlpha(Blood, A);
+		AUI::PaintRect(Out, Layer, Geo, FVector2f(Inset, Inset), FVector2f(Size.X - 2.f * Inset, Band), Col);
+		AUI::PaintRect(Out, Layer, Geo, FVector2f(Inset, Size.Y - Inset - Band), FVector2f(Size.X - 2.f * Inset, Band), Col);
+		AUI::PaintRect(Out, Layer, Geo, FVector2f(Inset, Inset + Band), FVector2f(Band, Size.Y - 2.f * (Inset + Band)), Col);
+		AUI::PaintRect(Out, Layer, Geo, FVector2f(Size.X - Inset - Band, Inset + Band), FVector2f(Band, Size.Y - 2.f * (Inset + Band)), Col);
+	}
 }
 
 void SAirsoftHUDCanvas::PaintScope(FSlateWindowElementList& Out, int32 Layer, const FGeometry& Geo, const FVector2f& Size) const

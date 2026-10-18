@@ -55,6 +55,9 @@ public:
 	UPROPERTY() int32 Captures = 0;
 	UPROPERTY() int32 BestStreak = 0;
 	UPROPERTY() FAirsoftUserSettings Settings;
+	/** Story campaign: the furthest mission unlocked (1-based) and whether the last one has been beaten. */
+	UPROPERTY() int32 CampaignReached = 1;
+	UPROPERTY() bool bCampaignFinished = false;
 	UPROPERTY() FAirsoftLoadout Loadout;
 	/** Saved attachments/finish per weapon id, so swapping guns keeps each one's setup. */
 	UPROPERTY() TMap<FName, FAirsoftCustomization> Customizations;

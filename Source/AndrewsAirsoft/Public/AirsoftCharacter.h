@@ -71,6 +71,26 @@ public:
 	// --- Server ---------------------------------------------------------------
 	/** Called by the game mode when this player is tagged. */
 	void ServerMarkOut(const FString& TaggedBy);
+
+	// --- Story campaign: health --------------------------------------------------
+	/**
+	 * Server: takes damage (campaign only). FromLocation is where the shot came from (damage direction).
+	 * Returns true if this hit killed. A kill marks the character out, which on a campaign map
+	 * means dead: a ragdoll, not the airsoft hit rag.
+	 */
+	bool ServerApplyDamage(float Amount, const FString& From, const FVector& FromLocation);
+	float GetHealth() const { return Health; }
+	float GetMaxHealth() const { return MaxHealth; }
+	/** 0 (fine) .. 1 (nearly dead): drives the red damage overlay. */
+	float GetHurtAlpha() const;
+	/** Seconds since the last damage taken (regeneration starts after RegenDelay). */
+	float TimeSinceDamage() const;
+
+	UPROPERTY(ReplicatedUsing = OnRep_Health) float Health = 100.f;
+	UPROPERTY(EditAnywhere, Category = "Campaign") float MaxHealth = 100.f;
+	/** Call of Duty style: no damage for this long, then health climbs back at RegenRate per second. */
+	UPROPERTY(EditAnywhere, Category = "Campaign") float RegenDelay = 4.f;
+	UPROPERTY(EditAnywhere, Category = "Campaign") float RegenRate = 40.f;
 	void ServerSetFrozen(bool bInFrozen);
 
 	/** Recolours armband, body and guns for the current team. */
@@ -95,6 +115,13 @@ public:
 protected:
 	UFUNCTION() void OnRep_Out();
 	UFUNCTION() void OnRep_Frozen();
+	UFUNCTION() void OnRep_Health(float OldHealth);
+	/** Local feedback for losing health: flinch, shake, hurt sound. */
+	void PlayDamageFeedback(float Amount);
+	/** Campaign death: the body goes limp (mannequin ragdoll) and the gun is dropped from view. */
+	void ApplyCampaignDeath();
+	double LastDamageTime = -100.0;
+	bool bRagdolled = false;
 	void UpdateCamera(float DeltaSeconds);
 	void UpdateRemoteVisuals(float DeltaSeconds);
 	void ApplyOutVisuals();
