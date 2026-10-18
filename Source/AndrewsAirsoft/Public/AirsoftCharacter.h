@@ -9,6 +9,7 @@
 #include "AirsoftCharacter.generated.h"
 
 class UCameraComponent;
+class USpringArmComponent;
 class UAirsoftCombatComponent;
 class UAirsoftGunVisual;
 class UAirsoftMovementComponent;
@@ -18,6 +19,23 @@ class UMaterialInstanceDynamic;
 class UPoseableMeshComponent;
 class UAirsoftTeamGearComponent;
 class AAirsoftPlayerState;
+
+/**
+ * Third person: where a shot goes. The crosshair ray comes from the over-the-shoulder camera, but the BB
+ * leaves the gun, so a camera that sees round a corner can't shoot round it (the shoulder-peek exploit).
+ */
+struct FAirsoftShoulderAim
+{
+	/** Where the crosshair ray from the camera lands (or its end at the gun's range). */
+	FVector AimPoint = FVector::ZeroVector;
+	/** Where the BB starts: the third-person muzzle, or the eyes if the barrel is inside a wall. */
+	FVector Origin = FVector::ZeroVector;
+	FVector Direction = FVector::ForwardVector;
+	/** The muzzle can't see the aim point: the BB would stop here first. */
+	FVector BlockPoint = FVector::ZeroVector;
+	bool bBlocked = false;
+	bool bValid = false;
+};
 
 UCLASS()
 class ANDREWSAIRSOFT_API AAirsoftCharacter : public ACharacter
@@ -33,7 +51,10 @@ public:
 	virtual void PossessedBy(AController* NewController) override;
 	virtual void OnRep_PlayerState() override;
 	virtual void Landed(const FHitResult& Hit) override;
+	/** The view: the eye camera, blended toward the over-the-shoulder camera in third person. */
+	virtual void CalcCamera(float DeltaTime, FMinimalViewInfo& OutResult) override;
 
+	/** The eye camera. Shots, grenades and the server's origin check use it in both views (it never leaves the head). */
 	UCameraComponent* GetCamera() const { return Camera; }
 	UAirsoftCombatComponent* GetCombat() const { return Combat; }
 	UAirsoftGunVisual* GetFPGun() const { return FPGun; }
@@ -67,6 +88,27 @@ public:
 	void SetCrouchHeld(bool bHeld);
 	void SetLeanInput(float Direction);
 	void JumpInput();
+
+	// --- Camera: first / third person (local only; nothing here is replicated) ---------
+	/** F5: flips the saved camera setting for this kind of game (story or airsoft match). */
+	void ToggleCameraMode();
+	/** X: over the right or the left shoulder (saved). */
+	void SwapShoulder();
+	/** This machine's player wants the over-the-shoulder camera here (settings: matches / story). */
+	bool WantsThirdPerson() const;
+	/**
+	 * The owner is looking at their own body right now. False in first person and while aiming down
+	 * sights from third person (ADS goes to the real sights; see UpdateThirdPersonCamera).
+	 */
+	bool IsThirdPersonView() const { return bOwnerSeesBody; }
+	/** 0 = eye view, 1 = fully over the shoulder. */
+	float GetThirdPersonBlend() const { return TPBlend; }
+	/** Third person: aim point from the camera, BB origin and direction from the muzzle, muzzle line of sight. */
+	FAirsoftShoulderAim ComputeShoulderAim(float MaxRange) const;
+	/** Last frame's ComputeShoulderAim (for the HUD's blocked-shot marker); bValid false in first person. */
+	const FAirsoftShoulderAim& GetShoulderAim() const { return ShoulderAim; }
+	/** Where the over-the-shoulder camera sits right now (e.g. for a cinematic to end on). False if not in use. */
+	bool GetOverShoulderView(FVector& OutLocation, FRotator& OutRotation) const;
 
 	// --- Server ---------------------------------------------------------------
 	/** Called by the game mode when this player is tagged. */
@@ -130,6 +172,9 @@ protected:
 	void SetupThirdPersonBody();
 
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UCameraComponent> Camera;
+	/** Third person: over-the-shoulder boom (collision probe, lag) and its camera. Ticks only for the local player in third person. */
+	UPROPERTY(VisibleAnywhere) TObjectPtr<USpringArmComponent> CameraBoom;
+	UPROPERTY(VisibleAnywhere) TObjectPtr<UCameraComponent> ShoulderCamera;
 	/** Rolls with the camera when leaning so the first-person gun stays glued to the view. */
 	UPROPERTY(VisibleAnywhere) TObjectPtr<USceneComponent> ViewRoot;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UAirsoftCombatComponent> Combat;
@@ -175,4 +220,15 @@ protected:
 	float ViewShakeTime = 0.f;
 	float ViewKick = 0.f;
 	float HitPulse = 0.f;
+
+	// Third-person camera (local human only).
+	void UpdateThirdPersonCamera(float DeltaSeconds, const FRotator& ShakeRotation, const FVector& ShakeOffset);
+	/** Who sees what: body, gear, third-person gun and rag for the owner in third person; arms and viewmodel in first. */
+	void ApplyOwnerView(bool bSeeBody);
+	float TPBlend = 0.f;
+	/** +1 right shoulder, -1 left (smoothed). */
+	float ShoulderSide = 1.f;
+	bool bOwnerSeesBody = false;
+	bool bOwnerViewApplied = false;
+	FAirsoftShoulderAim ShoulderAim;
 };

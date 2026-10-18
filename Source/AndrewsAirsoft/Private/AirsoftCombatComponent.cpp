@@ -587,10 +587,23 @@ void UAirsoftCombatComponent::FireOnce()
 	--LocalMag[Idx];
 	const int32 ShotId = ++NextShotId;
 
-	const FVector Origin = C->GetCamera()->GetComponentLocation();
+	FVector Origin = C->GetCamera()->GetComponentLocation();
 	// A bot's camera is never anyone's view target, so it never picks up the control rotation:
 	// bots shoot along their control rotation directly (the same thing the camera shows a human).
-	const FVector Look = bHuman ? C->GetCamera()->GetForwardVector() : C->GetControlRotation().Vector();
+	FVector Look = bHuman ? C->GetCamera()->GetForwardVector() : C->GetControlRotation().Vector();
+	// Third person (hip fire; aiming goes to the eye): the crosshair point comes from the over-the-shoulder view,
+	// but the BB leaves the third-person muzzle toward it, so the camera can't shoot round a corner the gun can't see.
+	// The origin stays within the server's MaxOriginOffset of the eyes; ServerFire's checks are unchanged.
+	const bool bShoulder = bHuman && C->IsThirdPersonView();
+	if (bShoulder)
+	{
+		const FAirsoftShoulderAim Aim = C->ComputeShoulderAim(W.MaxRange);
+		if (Aim.bValid)
+		{
+			Origin = Aim.Origin;
+			Look = Aim.Direction;
+		}
+	}
 	TArray<FVector_NetQuantizeNormal> Dirs;
 	for (int32 i = 0; i < W.Pellets; ++i)
 	{
@@ -598,15 +611,16 @@ void UAirsoftCombatComponent::FireOnce()
 	}
 	ServerFire(ActiveSlot, ShotId, Origin, Dirs);
 
-	// Everyone else sees a bot's third-person gun, so its tracers start there.
-	const FVector Muzzle = bHuman ? C->GetFPGun()->GetMuzzleWorld() : C->GetTPGun()->GetMuzzleWorld();
-	// Effects: muzzle puff on the viewmodel (none while the scope overlay hides it) or a bot's third-person gun.
+	// Everyone else sees a bot's third-person gun, so its tracers start there (and so do yours in third person).
+	const bool bViewmodel = bHuman && !bShoulder;
+	const FVector Muzzle = bViewmodel ? C->GetFPGun()->GetMuzzleWorld() : C->GetTPGun()->GetMuzzleWorld();
+	// Effects: muzzle puff on the viewmodel (none while the scope overlay hides it) or the third-person gun.
 	if (UAirsoftEffectsSubsystem* FX = UAirsoftEffectsSubsystem::Get(this))
 	{
-		if (!bHuman || !IsScoped())
+		if (!bViewmodel || !IsScoped())
 		{
-			const UAirsoftGunVisual* Gun = bHuman ? C->GetFPGun() : C->GetTPGun();
-			FX->MuzzlePuff(Muzzle, Gun->GetForwardVector(), W, W.bQuiet, bHuman, AimAlpha);
+			const UAirsoftGunVisual* Gun = bViewmodel ? C->GetFPGun() : C->GetTPGun();
+			FX->MuzzlePuff(Muzzle, Gun->GetForwardVector(), W, W.bQuiet, bViewmodel, AimAlpha);
 		}
 	}
 	if (UAirsoftBBSubsystem* BBs = GetWorld()->GetSubsystem<UAirsoftBBSubsystem>())

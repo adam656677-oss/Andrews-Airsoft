@@ -79,6 +79,8 @@ namespace AirsoftPCLocal
 	const FName IA_VoteMap(TEXT("IA_VoteMap"));
 	const FName IA_Chat(TEXT("IA_Chat"));
 	const FName IA_TeamChat(TEXT("IA_TeamChat"));
+	const FName IA_CameraView(TEXT("IA_CameraView"));
+	const FName IA_Shoulder(TEXT("IA_Shoulder"));
 
 	float StickCurve(float V)
 	{
@@ -320,6 +322,9 @@ void AAirsoftPlayerController::BuildInput()
 	// Chat: Enter = everyone, Y = your team (T is the weapon light).
 	Button(IA_Chat, { EKeys::Enter });
 	Button(IA_TeamChat, { EKeys::Y });
+	// Camera: F5 first <-> third person (V is inspect), X / right stick click swaps the shoulder.
+	Button(IA_CameraView, { EKeys::F5 });
+	Button(IA_Shoulder, { EKeys::X, EKeys::Gamepad_RightThumbstick });
 }
 
 void AAirsoftPlayerController::AddMappingContext()
@@ -384,6 +389,8 @@ void AAirsoftPlayerController::SetupInputComponent()
 	EIC->BindAction(Get(IA_VoteMap), ETriggerEvent::Started, this, &AAirsoftPlayerController::OnVoteMapKey);
 	EIC->BindAction(Get(IA_Chat), ETriggerEvent::Started, this, &AAirsoftPlayerController::OnChatKey);
 	EIC->BindAction(Get(IA_TeamChat), ETriggerEvent::Started, this, &AAirsoftPlayerController::OnTeamChatKey);
+	EIC->BindAction(Get(IA_CameraView), ETriggerEvent::Started, this, &AAirsoftPlayerController::OnCameraView);
+	EIC->BindAction(Get(IA_Shoulder), ETriggerEvent::Started, this, &AAirsoftPlayerController::OnShoulder);
 }
 
 bool AAirsoftPlayerController::CanControlPawn() const
@@ -628,6 +635,22 @@ void AAirsoftPlayerController::OnInteract()
 	if (CanControlPawn() && InteractTarget.IsValid())
 	{
 		OpenArmory(InteractTarget->WeaponId);
+	}
+}
+
+void AAirsoftPlayerController::OnCameraView()
+{
+	if (CanControlPawn())
+	{
+		GetAirsoftCharacter()->ToggleCameraMode();
+	}
+}
+
+void AAirsoftPlayerController::OnShoulder()
+{
+	if (CanControlPawn())
+	{
+		GetAirsoftCharacter()->SwapShoulder();
 	}
 }
 

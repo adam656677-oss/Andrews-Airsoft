@@ -379,6 +379,14 @@ void AAirsoftCampaignGameMode::BeginCinematic()
 	CamTo = Eye - Flat.Vector() * 95.f + FVector(0.f, 0.f, 22.f) + FRotationMatrix(Flat).GetUnitAxis(EAxis::Y) * 28.f;
 	CamRotFrom = (Eye + Flat.Vector() * 900.f - CamFrom).Rotation();
 	CamRotTo = (Eye + View.Vector() * 900.f - CamTo).Rotation();
+	// In third person, land exactly on the shoulder camera so the intro hands over without a cut.
+	FVector ShoulderLoc;
+	FRotator ShoulderRot;
+	if (const AAirsoftCharacter* AndrewChar = Cast<AAirsoftCharacter>(Andrew); AndrewChar && AndrewChar->GetOverShoulderView(ShoulderLoc, ShoulderRot))
+	{
+		CamTo = ShoulderLoc;
+		CamRotTo = ShoulderRot;
+	}
 
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.ObjectFlags |= RF_Transient;

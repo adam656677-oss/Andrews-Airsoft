@@ -5,6 +5,7 @@
 
 #include "SAirsoftHUD.h"
 
+#include "AirsoftCampaign.h"
 #include "AirsoftCharacter.h"
 #include "AirsoftCombatComponent.h"
 #include "AirsoftGameState.h"
@@ -12,17 +13,21 @@
 #include "AirsoftObjective.h"
 #include "AirsoftPlayerController.h"
 #include "AirsoftPlayerState.h"
+#include "AirsoftSaveGame.h"
 #include "AirsoftUIScreens.h"
 #include "AirsoftUIStyle.h"
 #include "AirsoftUIWidgets.h"
 #include "AirsoftWeaponData.h"
+#include "SAirsoftNeon.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/SOverlay.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
+#include "Widgets/Layout/SSpacer.h"
 #include "Widgets/Text/STextBlock.h"
 
 namespace AUI = AirsoftUIStyle;
+namespace AN = AirsoftNeon;
 
 namespace AirsoftHUDLocal
 {
@@ -119,14 +124,22 @@ void SAirsoftHUD::Construct(const FArguments& InArgs, AAirsoftPlayerController* 
 		+ SOverlay::Slot()
 		.HAlign(HAlign_Right)
 		.VAlign(VAlign_Bottom)
-		.Padding(FMargin(0.f, 0.f, 36.f, 32.f))
+		.Padding(FMargin(0.f, 0.f, 28.f, 28.f))
 		[
 			BuildWeaponPanel()
+		]
+		// Call sign / story health, top left.
+		+ SOverlay::Slot()
+		.HAlign(HAlign_Left)
+		.VAlign(VAlign_Top)
+		.Padding(FMargin(28.f, 24.f, 0.f, 0.f))
+		[
+			BuildStatusPanel()
 		]
 		+ SOverlay::Slot()
 		.HAlign(HAlign_Left)
 		.VAlign(VAlign_Top)
-		.Padding(FMargin(32.f, 110.f, 0.f, 0.f))
+		.Padding(FMargin(28.f, 136.f, 0.f, 0.f))
 		[
 			BuildVotePanel()
 		]
@@ -137,92 +150,13 @@ void SAirsoftHUD::Construct(const FArguments& InArgs, AAirsoftPlayerController* 
 		[
 			AirsoftUIScreens::CreateChatBox(InPC)
 		]
-		// Story campaign: health, bottom left.
+		// Story campaign: the objective, bottom left.
 		+ SOverlay::Slot()
 		.HAlign(HAlign_Left)
 		.VAlign(VAlign_Bottom)
-		.Padding(FMargin(36.f, 0.f, 0.f, 36.f))
+		.Padding(FMargin(28.f, 0.f, 0.f, 30.f))
 		[
-			SNew(SBox)
-			.WidthOverride(260.f)
-			.Visibility_Lambda([this]() -> EVisibility
-			{
-				return HudVis(!IsHidden() && !IsOut() && AAirsoftGameState::IsCampaign(WeakPC.Get()) && AUI::GetCharacter(WeakPC.Get()) != nullptr);
-			})
-			[
-				SNew(SBorder)
-				.BorderImage(AUI::PanelBrush())
-				.Padding(FMargin(16.f, 10.f, 16.f, 12.f))
-				[
-					SNew(SVerticalBox)
-					+ SVerticalBox::Slot()
-					.AutoHeight()
-					[
-						SNew(SHorizontalBox)
-						+ SHorizontalBox::Slot()
-						.FillWidth(1.f)
-						[
-							SNew(STextBlock)
-							.Text(FText::FromString(TEXT("HEALTH")))
-							.Font(AUI::Caption(9))
-							.ColorAndOpacity(AUI::TextDim())
-						]
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
-						[
-							SNew(STextBlock)
-							.Font(AUI::Font(AUI::EFontWeight::Bold, 16))
-							.Text_Lambda([this]()
-							{
-								const AAirsoftCharacter* C = AUI::GetCharacter(WeakPC.Get());
-								return FText::AsNumber(C ? FMath::CeilToInt(C->GetHealth()) : 0);
-							})
-							.ColorAndOpacity_Lambda([this]() -> FSlateColor
-							{
-								const AAirsoftCharacter* C = AUI::GetCharacter(WeakPC.Get());
-								return (C && C->GetHurtAlpha() > 0.6f) ? AUI::Danger() : FLinearColor::White;
-							})
-						]
-					]
-					+ SVerticalBox::Slot()
-					.AutoHeight()
-					.Padding(FMargin(0.f, 6.f, 0.f, 0.f))
-					[
-						SNew(SBox)
-						.HeightOverride(6.f)
-						[
-							SNew(SOverlay)
-							+ SOverlay::Slot()
-							[
-								SNew(SBorder)
-								.BorderImage(AUI::WhiteBrush())
-								.BorderBackgroundColor(FLinearColor(1.f, 1.f, 1.f, 0.08f))
-								.Padding(FMargin(0.f))
-							]
-							+ SOverlay::Slot()
-							.HAlign(HAlign_Left)
-							[
-								SNew(SBox)
-								.WidthOverride_Lambda([this]() -> FOptionalSize
-								{
-									const AAirsoftCharacter* C = AUI::GetCharacter(WeakPC.Get());
-									return FOptionalSize(228.f * (C ? 1.f - C->GetHurtAlpha() : 0.f));
-								})
-								[
-									SNew(SBorder)
-									.BorderImage(AUI::WhiteBrush())
-									.BorderBackgroundColor_Lambda([this]() -> FSlateColor
-									{
-										const AAirsoftCharacter* C = AUI::GetCharacter(WeakPC.Get());
-										return (C && C->GetHurtAlpha() > 0.6f) ? AUI::Danger() : AUI::TextColor();
-									})
-									.Padding(FMargin(0.f))
-								]
-							]
-						]
-					]
-				]
-			]
+			BuildObjectivePanel()
 		]
 		+ SOverlay::Slot()
 		.HAlign(HAlign_Center)
@@ -277,6 +211,382 @@ bool SAirsoftHUD::IsOut() const
 }
 
 // ---------------------------------------------------------------------------
+// Top left: call-sign crest, story health + regen, match identity
+// ---------------------------------------------------------------------------
+
+TSharedRef<SWidget> SAirsoftHUD::BuildStatusPanel()
+{
+	auto IsStory = [this]() { return AAirsoftGameState::IsCampaign(WeakPC.Get()); };
+	auto StoryVis = [this, IsStory]() -> EVisibility { return HudVis(IsStory() && AUI::GetCharacter(WeakPC.Get()) != nullptr); };
+	auto MatchVis = [this, IsStory]() -> EVisibility { return HudVis(!IsStory()); };
+	auto TeamTint = [this]() -> FLinearColor
+	{
+		const AAirsoftPlayerState* PS = AUI::GetPlayerState(WeakPC.Get());
+		return (PS && PS->Team != EAirsoftTeam::None && !AAirsoftGameState::IsCampaign(WeakPC.Get())) ? AUI::TeamColor(PS->Team) : AN::Cyan();
+	};
+	auto HealthFraction = [this]() -> float
+	{
+		const AAirsoftCharacter* C = AUI::GetCharacter(WeakPC.Get());
+		return C ? 1.f - C->GetHurtAlpha() : 0.f;
+	};
+	auto IsLow = [this]() -> bool
+	{
+		const AAirsoftCharacter* C = AUI::GetCharacter(WeakPC.Get());
+		return C && C->GetHurtAlpha() > 0.6f;
+	};
+
+	return SNew(SBox)
+		.Visibility_Lambda([this]() -> EVisibility
+		{
+			return HudVis(!IsHidden() && AUI::GetPlayerState(WeakPC.Get()) != nullptr);
+		})
+		[
+			SNew(SAirsoftNeonPanel)
+			.Chamfer(14.f)
+			.Padding(FMargin(12.f, 10.f, 20.f, 12.f))
+			.AccentColor(AN::Orange())
+			.LineColor_Lambda([TeamTint, IsLow]() -> FLinearColor
+			{
+				// Low health: the frame itself pulses red.
+				return IsLow() ? FLinearColor::LerpUsingHSV(AN::Red(), AN::Orange(), AUI::Pulse(1.6f) * 0.5f) : TeamTint();
+			})
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.VAlign(VAlign_Center)
+				[
+					SNew(SAirsoftNeonEmblem)
+					.Size(58.f)
+					.Color_Lambda(TeamTint)
+					.Text_Lambda([this]()
+					{
+						const AAirsoftPlayerState* PS = AUI::GetPlayerState(WeakPC.Get());
+						return AN::Initials(PS ? PS->GetPlayerName() : FString());
+					})
+				]
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.VAlign(VAlign_Center)
+				.Padding(FMargin(14.f, 0.f, 0.f, 0.f))
+				[
+					SNew(SVerticalBox)
+					// --- Story: HEALTH ............ 87 / 100
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					[
+						SNew(SHorizontalBox)
+						.Visibility_Lambda(StoryVis)
+						+ SHorizontalBox::Slot()
+						.FillWidth(1.f)
+						.VAlign(VAlign_Bottom)
+						[
+							SNew(STextBlock)
+							.Text(FText::FromString(TEXT("HEALTH")))
+							.Font(AUI::Font(AUI::EFontWeight::Bold, 9, 300))
+							.ColorAndOpacity(AN::Cyan())
+						]
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.VAlign(VAlign_Bottom)
+						[
+							SNew(STextBlock)
+							.Font(AUI::Font(AUI::EFontWeight::Bold, 17, 20))
+							.Text_Lambda([this]()
+							{
+								const AAirsoftCharacter* C = AUI::GetCharacter(WeakPC.Get());
+								return FText::AsNumber(C ? FMath::CeilToInt(C->GetHealth()) : 0);
+							})
+							.ColorAndOpacity_Lambda([IsLow]() -> FSlateColor { return IsLow() ? AN::Red() : FLinearColor::White; })
+						]
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.VAlign(VAlign_Bottom)
+						.Padding(FMargin(3.f, 0.f, 0.f, 3.f))
+						[
+							SNew(STextBlock)
+							.Font(AUI::Font(AUI::EFontWeight::Regular, 9, 40))
+							.ColorAndOpacity(AUI::WithAlpha(AN::Cyan(), 0.6f))
+							.Text_Lambda([this]()
+							{
+								const AAirsoftCharacter* C = AUI::GetCharacter(WeakPC.Get());
+								return FText::FromString(FString::Printf(TEXT("/ %d"), C ? FMath::RoundToInt(C->GetMaxHealth()) : 100));
+							})
+						]
+					]
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(FMargin(0.f, 6.f, 0.f, 0.f))
+					[
+						SNew(SAirsoftNeonBar)
+						.Visibility_Lambda(StoryVis)
+						.Width(250.f)
+						.Height(14.f)
+						.Slant(8.f)
+						.Segments(10)
+						.Gap(3.f)
+						.Trail(true)
+						.FromColor(AN::Red())
+						.ToColor(AN::Amber())
+						.Fraction_Lambda(HealthFraction)
+					]
+					// Regen: fills while you stay out of fire; health starts coming back when it is full.
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(FMargin(0.f, 9.f, 0.f, 0.f))
+					[
+						SNew(SHorizontalBox)
+						.Visibility_Lambda(StoryVis)
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.VAlign(VAlign_Center)
+						[
+							SNew(SAirsoftNeonBar)
+							.Width(186.f)
+							.Height(5.f)
+							.Slant(4.f)
+							.Segments(1)
+							.Frame(false)
+							.FromColor(AN::CyanDeep())
+							.ToColor(AN::Cyan())
+							.Fraction_Lambda([this]() -> float
+							{
+								const AAirsoftCharacter* C = AUI::GetCharacter(WeakPC.Get());
+								if (!C || C->GetHealth() >= C->GetMaxHealth())
+								{
+									return C ? 1.f : 0.f;
+								}
+								return FMath::Clamp(C->TimeSinceDamage() / FMath::Max(C->RegenDelay, 0.1f), 0.f, 1.f);
+							})
+						]
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.VAlign(VAlign_Center)
+						.Padding(FMargin(10.f, 0.f, 0.f, 0.f))
+						[
+							SNew(STextBlock)
+							.Font(AUI::Font(AUI::EFontWeight::Bold, 7, 300))
+							.Text_Lambda([this]()
+							{
+								const AAirsoftCharacter* C = AUI::GetCharacter(WeakPC.Get());
+								const bool bRegen = C && C->GetHealth() < C->GetMaxHealth() && C->TimeSinceDamage() > C->RegenDelay;
+								return FText::FromString(bRegen ? TEXT("REGEN") : TEXT("STEADY"));
+							})
+							.ColorAndOpacity(AUI::WithAlpha(AN::Cyan(), 0.75f))
+						]
+					]
+					// --- Matches: call sign, team, rank (no health in one-hit airsoft)
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					[
+						SNew(SHorizontalBox)
+						.Visibility_Lambda(MatchVis)
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.VAlign(VAlign_Center)
+						[
+							SNew(STextBlock)
+							.Font(AUI::Font(AUI::EFontWeight::Bold, 14, 60))
+							.ColorAndOpacity(FLinearColor::White)
+							.Text_Lambda([this]()
+							{
+								const AAirsoftPlayerState* PS = AUI::GetPlayerState(WeakPC.Get());
+								return PS ? FText::FromString(PS->GetPlayerName().Left(18)) : FText::GetEmpty();
+							})
+						]
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.VAlign(VAlign_Center)
+						.Padding(FMargin(10.f, 0.f, 0.f, 0.f))
+						[
+							SNew(SAirsoftNeonPanel)
+							.Chamfer(4.f)
+							.Corners(AN::Diagonal)
+							.Glow(0.6f)
+							.Padding(FMargin(7.f, 1.f))
+							.LineColor_Lambda(TeamTint)
+							[
+								SNew(STextBlock)
+								.Font(AUI::Font(AUI::EFontWeight::Bold, 8, 240))
+								.ColorAndOpacity_Lambda([TeamTint]() -> FSlateColor { return TeamTint(); })
+								.Text_Lambda([this]()
+								{
+									const AAirsoftPlayerState* PS = AUI::GetPlayerState(WeakPC.Get());
+									const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
+									if (GS && GS->IsFreeForAll())
+									{
+										return FText::FromString(TEXT("SOLO"));
+									}
+									if (!PS || PS->Team == EAirsoftTeam::None)
+									{
+										return FText::FromString(TEXT("STAGING"));
+									}
+									return FText::FromString(PS->Team == EAirsoftTeam::Blue ? TEXT("BLUE") : TEXT("RED"));
+								})
+							]
+						]
+					]
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(FMargin(0.f, 6.f, 0.f, 0.f))
+					[
+						SNew(STextBlock)
+						.Visibility_Lambda(MatchVis)
+						.Font(AUI::Font(AUI::EFontWeight::Bold, 8, 260))
+						.ColorAndOpacity(AUI::WithAlpha(AN::Cyan(), 0.8f))
+						.Text_Lambda([this]()
+						{
+							const UAirsoftSaveGame* Profile = AUI::GetProfile(WeakPC.Get());
+							const int32 Rank = AirsoftWeapons::RankIndexForXP(Profile ? Profile->XP : 0);
+							return FText::FromString(FString::Printf(TEXT("RANK %d · %s"), Rank, *AUI::RankName(Rank).ToUpper()));
+						})
+					]
+					// Progress to the next rank (career XP from the profile).
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(FMargin(0.f, 6.f, 0.f, 0.f))
+					[
+						SNew(SAirsoftNeonBar)
+						.Visibility_Lambda(MatchVis)
+						.Width(210.f)
+						.Height(4.f)
+						.Slant(3.f)
+						.Frame(false)
+						.FromColor(AN::CyanDeep())
+						.ToColor(AN::Cyan())
+						.Fraction_Lambda([this]() -> float
+						{
+							const UAirsoftSaveGame* Profile = AUI::GetProfile(WeakPC.Get());
+							return AUI::RankProgress(Profile ? Profile->XP : 0);
+						})
+					]
+				]
+			]
+		];
+}
+
+// ---------------------------------------------------------------------------
+// Bottom left (story campaign): objective
+// ---------------------------------------------------------------------------
+
+TSharedRef<SWidget> SAirsoftHUD::BuildObjectivePanel()
+{
+	auto BossUp = [this]() -> bool
+	{
+		const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
+		return GS && !GS->BossName.IsEmpty() && GS->BossHealth > 0.f;
+	};
+	return SNew(SBox)
+		.Visibility_Lambda([this]() -> EVisibility
+		{
+			const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
+			return HudVis(!IsHidden() && !IsOut() && GS && GS->bCampaign && !GS->Objective.IsEmpty());
+		})
+		[
+			SNew(SAirsoftNeonPanel)
+			.Chamfer(12.f)
+			.Padding(FMargin(10.f, 10.f, 20.f, 12.f))
+			.AccentColor(AN::Orange())
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.VAlign(VAlign_Center)
+				[
+					SNew(SAirsoftNeonIcon)
+					.Kind(SAirsoftNeonIcon::EKind::Target)
+					.Size(46.f)
+					.Color_Lambda([BossUp]() -> FLinearColor { return BossUp() ? AN::Red() : AN::Cyan(); })
+				]
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.VAlign(VAlign_Center)
+				.Padding(FMargin(14.f, 0.f, 0.f, 0.f))
+				[
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					[
+						SNew(STextBlock)
+						.Font(AUI::Font(AUI::EFontWeight::Bold, 8, 300))
+						.ColorAndOpacity(AN::Cyan())
+						.Text_Lambda([this]()
+						{
+							const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
+							return FText::FromString(FString::Printf(TEXT("OBJECTIVE · M%d"), GS ? GS->MissionNumber : 0));
+						})
+					]
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(FMargin(0.f, 2.f, 0.f, 0.f))
+					[
+						SNew(SBox)
+						.MaxDesiredWidth(300.f)
+						[
+							SNew(STextBlock)
+							.Font(AUI::Font(AUI::EFontWeight::Bold, 12, 80))
+							.ColorAndOpacity(FLinearColor::White)
+							.Text_Lambda([this, BossUp]()
+							{
+								const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
+								if (!GS)
+								{
+									return FText::GetEmpty();
+								}
+								return BossUp() ? FText::FromString(FString::Printf(TEXT("TAKE DOWN %s"), *GS->BossName.ToUpper())) : AUI::Upper(GS->Objective);
+							})
+						]
+					]
+					// Crew down so far (the mission's head count, then the boss).
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(FMargin(0.f, 7.f, 0.f, 0.f))
+					[
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.VAlign(VAlign_Center)
+						[
+							SNew(SAirsoftNeonBar)
+							.Width(220.f)
+							.Height(6.f)
+							.Slant(4.f)
+							.Segments(1)
+							.FromColor(AN::CyanDeep())
+							.ToColor(AN::Cyan())
+							.Fraction_Lambda([this]() -> float
+							{
+								const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
+								const AirsoftCampaign::FMission* Mission = GS ? AirsoftCampaign::FindMission(GS->MissionNumber) : nullptr;
+								const int32 Total = Mission ? FMath::Max(Mission->Enemies, 1) : FMath::Max(GS ? GS->EnemiesLeft : 1, 1);
+								return GS ? 1.f - FMath::Clamp(static_cast<float>(GS->EnemiesLeft) / Total, 0.f, 1.f) : 0.f;
+							})
+						]
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.VAlign(VAlign_Center)
+						.Padding(FMargin(12.f, 0.f, 0.f, 0.f))
+						[
+							SNew(STextBlock)
+							.Font(AUI::Font(AUI::EFontWeight::Bold, 9, 200))
+							.ColorAndOpacity(AN::Orange())
+							.Text_Lambda([this, BossUp]()
+							{
+								const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
+								if (BossUp())
+								{
+									return FText::FromString(TEXT("BOSS"));
+								}
+								return FText::FromString(FString::Printf(TEXT("%d LEFT"), GS ? GS->EnemiesLeft : 0));
+							})
+						]
+					]
+				]
+			]
+		];
+}
+
+// ---------------------------------------------------------------------------
 // Top centre: scores, timer, mode/map, objectives, status
 // ---------------------------------------------------------------------------
 
@@ -294,16 +604,14 @@ TSharedRef<SWidget> SAirsoftHUD::BuildTeamScore(uint8 TeamValue)
 			return HudVis(GS && GS->bIsMatchMap && !GS->IsFreeForAll() && !GS->bCampaign);
 		})
 		[
-			SNew(SBorder)
-			.BorderImage(AUI::PanelBrush())
-			.Padding(FMargin(0.f))
+			// Angled on the outer side: blue points left, red points right.
+			SNew(SAirsoftNeonPanel)
+			.LineColor(Col)
+			.Chamfer(12.f)
+			.Corners(Team == EAirsoftTeam::Blue ? AN::LeftCorners : AN::RightCorners)
+			.Padding(FMargin(0.f, 2.f, 0.f, 0.f))
 			[
 				SNew(SVerticalBox)
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				[
-					AirsoftUIWidgets::Rule(Col, 2.f)
-				]
 				+ SVerticalBox::Slot()
 				.AutoHeight()
 				.HAlign(HAlign_Center)
@@ -373,16 +681,13 @@ TSharedRef<SWidget> SAirsoftHUD::BuildFreeForAllBox(bool bLeader)
 			return HudVis(GS && GS->IsFreeForAll());
 		})
 		[
-			SNew(SBorder)
-			.BorderImage(AUI::PanelBrush())
-			.Padding(FMargin(0.f))
+			SNew(SAirsoftNeonPanel)
+			.LineColor(bLeader ? AN::Orange() : AN::Cyan())
+			.Chamfer(12.f)
+			.Corners(bLeader ? AN::RightCorners : AN::LeftCorners)
+			.Padding(FMargin(0.f, 2.f, 0.f, 0.f))
 			[
 				SNew(SVerticalBox)
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				[
-					AirsoftUIWidgets::Rule(AUI::Accent(), 2.f)
-				]
 				+ SVerticalBox::Slot()
 				.AutoHeight()
 				.HAlign(HAlign_Center)
@@ -405,7 +710,7 @@ TSharedRef<SWidget> SAirsoftHUD::BuildFreeForAllBox(bool bLeader)
 				[
 					SNew(STextBlock)
 					.Font(AUI::Caption(8))
-					.ColorAndOpacity(AUI::Accent())
+					.ColorAndOpacity(bLeader ? AN::Orange() : AN::Cyan())
 					.Text_Lambda([this, bLeader]()
 					{
 						if (!bLeader)
@@ -538,11 +843,14 @@ TSharedRef<SWidget> SAirsoftHUD::BuildTopCenter()
 			.Padding(FMargin(4.f, 0.f))
 			[
 				SNew(SBox)
-				.MinDesiredWidth(150.f)
+				.MinDesiredWidth(170.f)
 				[
-					SNew(SBorder)
-					.BorderImage(AUI::PanelBrush())
-					.Padding(FMargin(18.f, 5.f, 18.f, 7.f))
+					// A tab hanging from the top edge, cut on both lower corners.
+					SNew(SAirsoftNeonPanel)
+					.Chamfer(14.f)
+					.Corners(AN::BottomCorners)
+					.AccentColor(AN::Orange())
+					.Padding(FMargin(22.f, 5.f, 22.f, 9.f))
 					[
 						SNew(SVerticalBox)
 						+ SVerticalBox::Slot()
@@ -585,7 +893,7 @@ TSharedRef<SWidget> SAirsoftHUD::BuildTopCenter()
 						[
 							SNew(STextBlock)
 							.Font(AUI::Caption(8))
-							.ColorAndOpacity(AUI::TextDim())
+							.ColorAndOpacity(AUI::WithAlpha(AN::Cyan(), 0.8f))
 							.Text_Lambda([this]() { return PhaseCaption(); })
 						]
 					]
@@ -664,13 +972,14 @@ TSharedRef<SWidget> SAirsoftHUD::BuildTopCenter()
 		[
 			SNew(STextBlock)
 			.Font(AUI::Font(AUI::EFontWeight::Regular, 12, 40))
-			.ColorAndOpacity(AUI::Accent())
+			.ColorAndOpacity(AN::Amber())
 			.ShadowOffset(FVector2D(1.f, 1.f))
 			.ShadowColorAndOpacity(FLinearColor(0.f, 0.f, 0.f, 0.8f))
 			.Visibility_Lambda([this]() -> EVisibility
 			{
+				// Story campaign: the objective panel (bottom left) carries this line.
 				const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
-				return HudVis(GS && !GS->StatusMessage.IsEmpty());
+				return HudVis(GS && !GS->StatusMessage.IsEmpty() && !GS->bCampaign);
 			})
 			.Text_Lambda([this]()
 			{
@@ -685,60 +994,65 @@ TSharedRef<SWidget> SAirsoftHUD::BuildTopCenter()
 		.Padding(FMargin(0.f, 14.f, 0.f, 0.f))
 		[
 			SNew(SBox)
-			.WidthOverride(420.f)
 			.Visibility_Lambda([this]() -> EVisibility
 			{
 				const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
 				return HudVis(!IsHidden() && GS && GS->bCampaign && !GS->BossName.IsEmpty() && GS->BossHealth > 0.f);
 			})
 			[
-				SNew(SVerticalBox)
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.HAlign(HAlign_Center)
+				SNew(SAirsoftNeonPanel)
+				.LineColor(AN::Red())
+				.AccentColor(AN::Orange())
+				.Chamfer(12.f)
+				.Padding(FMargin(20.f, 7.f, 20.f, 13.f))
 				[
-					SNew(STextBlock)
-					.Font(AUI::Font(AUI::EFontWeight::Bold, 12, 260))
-					.ColorAndOpacity(AUI::Danger())
-					.ShadowOffset(FVector2D(1.f, 1.f))
-					.ShadowColorAndOpacity(FLinearColor(0.f, 0.f, 0.f, 0.8f))
-					.Text_Lambda([this]()
-					{
-						const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
-						return GS ? AUI::Upper(GS->BossName) : FText::GetEmpty();
-					})
-				]
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.Padding(FMargin(0.f, 6.f, 0.f, 0.f))
-				[
-					SNew(SBox)
-					.HeightOverride(7.f)
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot()
+					.AutoHeight()
 					[
-						SNew(SOverlay)
-						+ SOverlay::Slot()
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot()
+						.FillWidth(1.f)
+						.VAlign(VAlign_Bottom)
 						[
-							SNew(SBorder)
-							.BorderImage(AUI::WhiteBrush())
-							.BorderBackgroundColor(FLinearColor(0.f, 0.f, 0.f, 0.55f))
-							.Padding(FMargin(0.f))
-						]
-						+ SOverlay::Slot()
-						.HAlign(HAlign_Left)
-						[
-							SNew(SBox)
-							.WidthOverride_Lambda([this]() -> FOptionalSize
+							SNew(STextBlock)
+							.Font(AUI::Font(AUI::EFontWeight::Bold, 12, 260))
+							.ColorAndOpacity(FLinearColor::White)
+							.Text_Lambda([this]()
 							{
 								const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
-								return FOptionalSize(420.f * (GS ? FMath::Clamp(GS->BossHealth, 0.f, 1.f) : 0.f));
+								return GS ? AUI::Upper(GS->BossName) : FText::GetEmpty();
 							})
-							[
-								SNew(SBorder)
-								.BorderImage(AUI::WhiteBrush())
-								.BorderBackgroundColor(AUI::Danger())
-								.Padding(FMargin(0.f))
-							]
 						]
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.VAlign(VAlign_Bottom)
+						.Padding(FMargin(16.f, 0.f, 0.f, 1.f))
+						[
+							SNew(STextBlock)
+							.Font(AUI::Font(AUI::EFontWeight::Bold, 8, 300))
+							.ColorAndOpacity(AN::Red())
+							.Text(FText::FromString(TEXT("TARGET")))
+						]
+					]
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(FMargin(0.f, 7.f, 0.f, 0.f))
+					[
+						SNew(SAirsoftNeonBar)
+						.Width(420.f)
+						.Height(10.f)
+						.Slant(7.f)
+						.Segments(20)
+						.Gap(2.f)
+						.Trail(true)
+						.FromColor(AN::Magenta())
+						.ToColor(AN::Red())
+						.Fraction_Lambda([this]() -> float
+						{
+							const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
+							return GS ? FMath::Clamp(GS->BossHealth, 0.f, 1.f) : 0.f;
+						})
 					]
 				]
 			]
@@ -781,15 +1095,23 @@ TSharedRef<SWidget> SAirsoftHUD::BuildKillFeedRow(int32 Row)
 	const FSlateFontInfo NameFont = AUI::Font(AUI::EFontWeight::Bold, 11, 40);
 	return AirsoftHUDLocal::Fader(
 		TAttribute<FLinearColor>::CreateLambda([this, Row]() { return FLinearColor(1.f, 1.f, 1.f, FeedAlpha(Row)); }),
-		SNew(SBorder)
+		SNew(SAirsoftNeonPanel)
 		.Visibility_Lambda([this, Row]() -> EVisibility { return HudVis(!IsHidden() && FeedAlpha(Row) > 0.f); })
-		.BorderImage(AUI::RoundedBrush())
-		.BorderBackgroundColor_Lambda([this, Row]() -> FSlateColor
+		.Chamfer(8.f)
+		.Corners(AN::DiagonalAlt)
+		.Glow(0.7f)
+		.Padding(FMargin(14.f, 5.f, 14.f, 5.f))
+		.LineColor_Lambda([this, Row]() -> FLinearColor
+		{
+			// Your own tags and outs in orange; everyone else's in a quiet cyan.
+			const FAirsoftKillFeedEntry* Entry = FeedEntry(Row);
+			return (Entry && Entry->bInvolvesMe) ? AN::Orange() : AUI::WithAlpha(AN::Cyan(), 0.45f);
+		})
+		.AccentColor_Lambda([this, Row]() -> FLinearColor
 		{
 			const FAirsoftKillFeedEntry* Entry = FeedEntry(Row);
-			return (Entry && Entry->bInvolvesMe) ? FLinearColor(1.f, 0.55f, 0.05f, 0.16f) : FLinearColor(0.f, 0.f, 0.f, 0.5f);
+			return (Entry && Entry->bInvolvesMe) ? AN::Amber() : FLinearColor(0.f, 0.f, 0.f, 0.f);
 		})
-		.Padding(FMargin(12.f, 5.f, 0.f, 5.f))
 		[
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot()
@@ -815,8 +1137,8 @@ TSharedRef<SWidget> SAirsoftHUD::BuildKillFeedRow(int32 Row)
 			.Padding(FMargin(10.f, 0.f))
 			[
 				SNew(STextBlock)
-				.Font(AUI::Caption(8))
-				.ColorAndOpacity(AUI::TextDim())
+				.Font(AUI::Font(AUI::EFontWeight::Bold, 7, 240))
+				.ColorAndOpacity(AUI::WithAlpha(AN::Cyan(), 0.75f))
 				.Text_Lambda([this, Row]()
 				{
 					const FAirsoftKillFeedEntry* Entry = FeedEntry(Row);
@@ -839,23 +1161,6 @@ TSharedRef<SWidget> SAirsoftHUD::BuildKillFeedRow(int32 Row)
 					const FAirsoftKillFeedEntry* Entry = FeedEntry(Row);
 					return Entry ? AUI::TeamColor(Entry->VictimTeam) : AUI::TextColor();
 				})
-			]
-			+ SHorizontalBox::Slot()
-			.AutoWidth()
-			.Padding(FMargin(12.f, 0.f, 0.f, 0.f))
-			[
-				SNew(SBox)
-				.WidthOverride(2.f)
-				[
-					SNew(SBorder)
-					.BorderImage(AUI::WhiteBrush())
-					.Padding(FMargin(0.f))
-					.BorderBackgroundColor_Lambda([this, Row]() -> FSlateColor
-					{
-						const FAirsoftKillFeedEntry* Entry = FeedEntry(Row);
-						return (Entry && Entry->bInvolvesMe) ? AUI::Accent() : FLinearColor(0.f, 0.f, 0.f, 0.f);
-					})
-				]
 			]
 		]);
 }
@@ -882,30 +1187,27 @@ TSharedRef<SWidget> SAirsoftHUD::BuildKillFeed()
 
 TSharedRef<SWidget> SAirsoftHUD::BuildWeaponPanel()
 {
-	TSharedRef<SHorizontalBox> Grenades = SNew(SHorizontalBox);
-	for (int32 i = 0; i < AirsoftHUDLocal::MaxGrenadeIcons; ++i)
+	auto Chip = [](const TAttribute<FText>& Text, const FLinearColor& Color, const TAttribute<EVisibility>& Vis) -> TSharedRef<SWidget>
 	{
-		Grenades->AddSlot()
-		.AutoWidth()
-		.VAlign(VAlign_Center)
-		.Padding(FMargin(0.f, 0.f, 4.f, 0.f))
-		[
-			SNew(SBox)
-			.WidthOverride(7.f)
-			.HeightOverride(12.f)
-			.Visibility_Lambda([this, i]() -> EVisibility
-			{
-				const UAirsoftCombatComponent* Combat = AUI::GetCombat(WeakPC.Get());
-				return HudVis(Combat && i < Combat->GetGrenades());
-			})
+		return SNew(SAirsoftNeonPanel)
+			.Visibility(Vis)
+			.LineColor(Color)
+			.Chamfer(4.f)
+			.Corners(AN::Diagonal)
+			.Glow(0.6f)
+			.Padding(FMargin(7.f, 1.f))
 			[
-				SNew(SBorder)
-				.BorderImage(AUI::RoundedBrush())
-				.BorderBackgroundColor(AUI::WithAlpha(AUI::TextColor(), 0.85f))
-				.Padding(FMargin(0.f))
-			]
-		];
-	}
+				SNew(STextBlock)
+				.Text(Text)
+				.Font(AUI::Font(AUI::EFontWeight::Bold, 8, 220))
+				.ColorAndOpacity(Color)
+			];
+	};
+	auto MagSizeNow = [this]() -> int32
+	{
+		const UAirsoftCombatComponent* Combat = AUI::GetCombat(WeakPC.Get());
+		return Combat ? FMath::Max(1, Combat->Current().MagSize) : 30;
+	};
 
 	return SNew(SBox)
 		.Visibility_Lambda([this]() -> EVisibility
@@ -913,189 +1215,223 @@ TSharedRef<SWidget> SAirsoftHUD::BuildWeaponPanel()
 			return HudVis(!IsHidden() && !IsOut() && AUI::GetCombat(WeakPC.Get()) != nullptr);
 		})
 		[
-			SNew(SBorder)
-			.BorderImage(AUI::PanelBrush())
-			.Padding(FMargin(20.f, 12.f, 0.f, 14.f))
+			SNew(SVerticalBox)
+			// Above the frame: light, fire mode, grenades ("x1" with a grenade glyph).
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.HAlign(HAlign_Right)
+			.Padding(FMargin(0.f, 0.f, 10.f, 6.f))
 			[
 				SNew(SHorizontalBox)
 				+ SHorizontalBox::Slot()
 				.AutoWidth()
+				.VAlign(VAlign_Center)
+				.Padding(FMargin(0.f, 0.f, 8.f, 0.f))
 				[
-					SNew(SVerticalBox)
-					// Weapon name
-					+ SVerticalBox::Slot()
-					.AutoHeight()
-					.HAlign(HAlign_Right)
+					Chip(FText::FromString(TEXT("LIGHT")), AN::Amber(), TAttribute<EVisibility>::CreateLambda([this]() -> EVisibility
+					{
+						const UAirsoftCombatComponent* Combat = AUI::GetCombat(WeakPC.Get());
+						return HudVis(Combat && Combat->IsLightOn());
+					}))
+				]
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.VAlign(VAlign_Center)
+				.Padding(FMargin(0.f, 0.f, 12.f, 0.f))
+				[
+					Chip(TAttribute<FText>::CreateLambda([this]()
+					{
+						const UAirsoftCombatComponent* Combat = AUI::GetCombat(WeakPC.Get());
+						return Combat ? FText::FromString(AirsoftWeapons::FireModeName(Combat->GetFireMode())) : FText::GetEmpty();
+					}), AN::Cyan(), EVisibility::HitTestInvisible)
+				]
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.VAlign(VAlign_Center)
+				[
+					SNew(SAirsoftWeaponGlyph)
+					.WeaponClass(FString(TEXT("Grenade")))
+					.Width(16.f)
+					.Height(20.f)
+					.Color_Lambda([this]() -> FLinearColor
+					{
+						const UAirsoftCombatComponent* Combat = AUI::GetCombat(WeakPC.Get());
+						return (Combat && Combat->GetGrenades() > 0) ? AN::Cyan() : AUI::WithAlpha(AN::Cyan(), 0.3f);
+					})
+				]
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.VAlign(VAlign_Center)
+				.Padding(FMargin(2.f, 0.f, 0.f, 0.f))
+				[
+					SNew(STextBlock)
+					.Font(AUI::Font(AUI::EFontWeight::Bold, 11, 40))
+					.ColorAndOpacity(AN::Cyan())
+					.Text_Lambda([this]()
+					{
+						const UAirsoftCombatComponent* Combat = AUI::GetCombat(WeakPC.Get());
+						return FText::FromString(FString::Printf(TEXT("x%d"), Combat ? Combat->GetGrenades() : 0));
+					})
+				]
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			[
+				SNew(SBox)
+				.WidthOverride(340.f)
+				[
+					SNew(SAirsoftNeonPanel)
+					.Chamfer(16.f)
+					.AccentColor(AN::Orange())
+					.Padding(FMargin(20.f, 8.f, 18.f, 13.f))
 					[
-						SNew(STextBlock)
-						.Font(AUI::Caption(10))
-						.ColorAndOpacity(AUI::TextColor())
-						.Text_Lambda([this]()
-						{
-							const UAirsoftCombatComponent* Combat = AUI::GetCombat(WeakPC.Get());
-							if (!Combat)
-							{
-								return FText::GetEmpty();
-							}
-							const FAirsoftWeaponDef* Def = AirsoftWeapons::Find(Combat->Current().Id);
-							return AUI::Upper(Def ? Def->Name : Combat->Current().Name);
-						})
-					]
-					// Mag / reserve
-					+ SVerticalBox::Slot()
-					.AutoHeight()
-					.HAlign(HAlign_Right)
-					[
-						SNew(SHorizontalBox)
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
-						.VAlign(VAlign_Bottom)
+						SNew(SVerticalBox)
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						[
+							SNew(SHorizontalBox)
+							// Mag / reserve: "30 / 180", tabular digits.
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							.VAlign(VAlign_Bottom)
+							[
+								SNew(STextBlock)
+								.Font(AUI::Font(AUI::EFontWeight::Bold, 38))
+								.Text_Lambda([this]()
+								{
+									const UAirsoftCombatComponent* Combat = AUI::GetCombat(WeakPC.Get());
+									return FText::AsNumber(Combat ? Combat->GetLocalMag() : 0);
+								})
+								.ColorAndOpacity_Lambda([this]() -> FSlateColor
+								{
+									const UAirsoftCombatComponent* Combat = AUI::GetCombat(WeakPC.Get());
+									if (!Combat)
+									{
+										return AN::Orange();
+									}
+									const int32 Mag = Combat->GetLocalMag();
+									const int32 MagSize = FMath::Max(1, Combat->Current().MagSize);
+									if (Mag <= 0)
+									{
+										return AUI::WithAlpha(AN::Red(), 0.55f + 0.45f * AUI::Pulse(2.5f));
+									}
+									return Mag * 4 <= MagSize ? AN::Red() : AN::Orange();
+								})
+							]
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							.VAlign(VAlign_Bottom)
+							.Padding(FMargin(6.f, 0.f, 0.f, 7.f))
+							[
+								SNew(STextBlock)
+								.Font(AUI::Font(AUI::EFontWeight::Regular, 16, 40))
+								.ColorAndOpacity(AUI::WithAlpha(AN::Amber(), 0.85f))
+								.Text_Lambda([this]()
+								{
+									const UAirsoftCombatComponent* Combat = AUI::GetCombat(WeakPC.Get());
+									return FText::FromString(FString::Printf(TEXT("/%d"), Combat ? Combat->GetLocalReserve() : 0));
+								})
+							]
+							+ SHorizontalBox::Slot()
+							.FillWidth(1.f)
+							[
+								SNew(SSpacer)
+							]
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							.VAlign(VAlign_Center)
+							.Padding(FMargin(12.f, 4.f, 0.f, 0.f))
+							[
+								SNew(SAirsoftWeaponGlyph)
+								.Width(140.f)
+								.Height(44.f)
+								.Color(AN::Cyan())
+								.WeaponClass_Lambda([this]()
+								{
+									const UAirsoftCombatComponent* Combat = AUI::GetCombat(WeakPC.Get());
+									return Combat ? Combat->Current().Class : FString();
+								})
+							]
+						]
+						// Weapon name.
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.Padding(FMargin(0.f, 0.f, 0.f, 0.f))
 						[
 							SNew(STextBlock)
-							.Font(AUI::Font(AUI::EFontWeight::Bold, 40))
+							.Font(AUI::Font(AUI::EFontWeight::Bold, 8, 260))
+							.ColorAndOpacity(AUI::WithAlpha(AN::Cyan(), 0.8f))
 							.Text_Lambda([this]()
-							{
-								const UAirsoftCombatComponent* Combat = AUI::GetCombat(WeakPC.Get());
-								return FText::AsNumber(Combat ? Combat->GetLocalMag() : 0);
-							})
-							.ColorAndOpacity_Lambda([this]() -> FSlateColor
 							{
 								const UAirsoftCombatComponent* Combat = AUI::GetCombat(WeakPC.Get());
 								if (!Combat)
 								{
-									return FLinearColor::White;
+									return FText::GetEmpty();
 								}
-								const int32 Mag = Combat->GetLocalMag();
-								const int32 MagSize = FMath::Max(1, Combat->Current().MagSize);
-								if (Mag <= 0)
-								{
-									return AUI::WithAlpha(AUI::Danger(), 0.55f + 0.45f * AUI::Pulse(2.5f));
-								}
-								if (Mag * 4 <= MagSize)
-								{
-									return AUI::Accent();
-								}
-								return FLinearColor::White;
+								const FAirsoftWeaponDef* Def = AirsoftWeapons::Find(Combat->Current().Id);
+								return AUI::Upper(Def ? Def->Name : Combat->Current().Name);
 							})
 						]
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
-						.VAlign(VAlign_Bottom)
-						.Padding(FMargin(8.f, 0.f, 0.f, 8.f))
+						// Magazine pips, or the reload bar while reloading.
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.Padding(FMargin(0.f, 8.f, 0.f, 0.f))
 						[
-							SNew(STextBlock)
-							.Font(AUI::Font(AUI::EFontWeight::Regular, 15, 40))
-							.ColorAndOpacity(AUI::TextDim())
-							.Text_Lambda([this]()
-							{
-								const UAirsoftCombatComponent* Combat = AUI::GetCombat(WeakPC.Get());
-								return FText::FromString(FString::Printf(TEXT("/ %d"), Combat ? Combat->GetLocalReserve() : 0));
-							})
-						]
-					]
-					// Grenades, light, fire mode
-					+ SVerticalBox::Slot()
-					.AutoHeight()
-					.HAlign(HAlign_Right)
-					.Padding(FMargin(0.f, 2.f, 0.f, 0.f))
-					[
-						SNew(SHorizontalBox)
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
-						.VAlign(VAlign_Center)
-						.Padding(FMargin(0.f, 0.f, 8.f, 0.f))
-						[
-							Grenades
-						]
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
-						.VAlign(VAlign_Center)
-						.Padding(FMargin(0.f, 0.f, 8.f, 0.f))
-						[
-							SNew(SBorder)
-							.Visibility_Lambda([this]() -> EVisibility
-							{
-								const UAirsoftCombatComponent* Combat = AUI::GetCombat(WeakPC.Get());
-								return HudVis(Combat && Combat->IsLightOn());
-							})
-							.BorderImage(AUI::RoundedBrush())
-							.BorderBackgroundColor(AUI::Accent())
-							.Padding(FMargin(6.f, 1.f))
+							SNew(SOverlay)
+							+ SOverlay::Slot()
 							[
-								SNew(STextBlock)
-								.Text(FText::FromString(TEXT("LIGHT")))
-								.Font(AUI::Font(AUI::EFontWeight::Bold, 8, 200))
-								.ColorAndOpacity(FLinearColor(0.02f, 0.02f, 0.02f))
-							]
-						]
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
-						.VAlign(VAlign_Center)
-						[
-							SNew(SBorder)
-							.BorderImage(AUI::OutlineBrush())
-							.BorderBackgroundColor(FLinearColor(1.f, 1.f, 1.f, 0.35f))
-							.Padding(FMargin(6.f, 1.f))
-							[
-								SNew(STextBlock)
-								.Font(AUI::Font(AUI::EFontWeight::Bold, 8, 200))
-								.ColorAndOpacity(AUI::TextColor())
-								.Text_Lambda([this]()
+								SNew(SAirsoftMagPips)
+								.Visibility_Lambda([this]() -> EVisibility
 								{
 									const UAirsoftCombatComponent* Combat = AUI::GetCombat(WeakPC.Get());
-									return Combat ? FText::FromString(AirsoftWeapons::FireModeName(Combat->GetFireMode())) : FText::GetEmpty();
+									return HudVis(!(Combat && Combat->IsReloading()));
+								})
+								.Width(300.f)
+								.Height(6.f)
+								.MagSize_Lambda(MagSizeNow)
+								.Mag_Lambda([this]() -> int32
+								{
+									const UAirsoftCombatComponent* Combat = AUI::GetCombat(WeakPC.Get());
+									return Combat ? Combat->GetLocalMag() : 0;
 								})
 							]
+							+ SOverlay::Slot()
+							[
+								SNew(SHorizontalBox)
+								.Visibility_Lambda([this]() -> EVisibility
+								{
+									const UAirsoftCombatComponent* Combat = AUI::GetCombat(WeakPC.Get());
+									return HudVis(Combat && Combat->IsReloading());
+								})
+								+ SHorizontalBox::Slot()
+								.AutoWidth()
+								.VAlign(VAlign_Center)
+								[
+									SNew(STextBlock)
+									.Text(FText::FromString(TEXT("RELOADING")))
+									.Font(AUI::Font(AUI::EFontWeight::Bold, 7, 300))
+									.ColorAndOpacity(AN::Orange())
+								]
+								+ SHorizontalBox::Slot()
+								.FillWidth(1.f)
+								.VAlign(VAlign_Center)
+								.Padding(FMargin(10.f, 0.f, 0.f, 0.f))
+								[
+									SNew(SAirsoftNeonBar)
+									.Width(220.f)
+									.Height(6.f)
+									.Slant(4.f)
+									.Frame(false)
+									.FromColor(AN::Orange())
+									.ToColor(AN::Amber())
+									.Fraction_Lambda([this]()
+									{
+										const UAirsoftCombatComponent* Combat = AUI::GetCombat(WeakPC.Get());
+										return Combat ? Combat->GetReloadProgress() : 0.f;
+									})
+								]
+							]
 						]
-					]
-					// Reload progress
-					+ SVerticalBox::Slot()
-					.AutoHeight()
-					.HAlign(HAlign_Right)
-					.Padding(FMargin(0.f, 8.f, 0.f, 0.f))
-					[
-						SNew(SVerticalBox)
-						.Visibility_Lambda([this]() -> EVisibility
-						{
-							const UAirsoftCombatComponent* Combat = AUI::GetCombat(WeakPC.Get());
-							return HudVis(Combat && Combat->IsReloading());
-						})
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.HAlign(HAlign_Right)
-						[
-							SNew(STextBlock)
-							.Text(FText::FromString(TEXT("RELOADING")))
-							.Font(AUI::Caption(8))
-							.ColorAndOpacity(AUI::Accent())
-						]
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.Padding(FMargin(0.f, 4.f, 0.f, 0.f))
-						[
-							SNew(SAirsoftBar)
-							.Width(170.f)
-							.Height(3.f)
-							.Fraction_Lambda([this]()
-							{
-								const UAirsoftCombatComponent* Combat = AUI::GetCombat(WeakPC.Get());
-								return Combat ? Combat->GetReloadProgress() : 0.f;
-							})
-						]
-					]
-				]
-				// Amber edge on the right.
-				+ SHorizontalBox::Slot()
-				.AutoWidth()
-				.Padding(FMargin(16.f, 0.f, 0.f, 0.f))
-				[
-					SNew(SBox)
-					.WidthOverride(2.f)
-					[
-						SNew(SBorder)
-						.BorderImage(AUI::WhiteBrush())
-						.BorderBackgroundColor(AUI::Accent())
-						.Padding(FMargin(0.f))
 					]
 				]
 			]
@@ -1334,14 +1670,13 @@ TSharedRef<SWidget> SAirsoftHUD::BuildBottomCenter()
 		.HAlign(HAlign_Center)
 		.Padding(FMargin(0.f, 0.f, 0.f, 10.f))
 		[
-			SNew(SBorder)
+			SNew(SAirsoftNeonPanel)
 			.Visibility_Lambda([this]() -> EVisibility
 			{
 				const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
 				const AAirsoftCharacter* Character = AUI::GetCharacter(WeakPC.Get());
 				return HudVis(GS && GS->Phase == EAirsoftPhase::Briefing && Character && Character->IsFrozen());
 			})
-			.BorderImage(AUI::PanelBrush())
 			.Padding(FMargin(18.f, 8.f))
 			[
 				SNew(STextBlock)
@@ -1368,13 +1703,12 @@ TSharedRef<SWidget> SAirsoftHUD::BuildBottomCenter()
 		.HAlign(HAlign_Center)
 		.Padding(FMargin(0.f, 0.f, 0.f, 10.f))
 		[
-			SNew(SBorder)
+			SNew(SAirsoftNeonPanel)
 			.Visibility_Lambda([this]() -> EVisibility
 			{
 				const AAirsoftPlayerController* PC = WeakPC.Get();
 				return HudVis(PC && PC->IsTeamCamActive());
 			})
-			.BorderImage(AUI::PanelBrush())
 			.Padding(FMargin(16.f, 8.f))
 			[
 				SNew(SHorizontalBox)
@@ -1408,13 +1742,12 @@ TSharedRef<SWidget> SAirsoftHUD::BuildBottomCenter()
 		.AutoHeight()
 		.HAlign(HAlign_Center)
 		[
-			SNew(SBorder)
+			SNew(SAirsoftNeonPanel)
 			.Visibility_Lambda([this]() -> EVisibility
 			{
 				const AAirsoftPlayerController* PC = WeakPC.Get();
 				return HudVis(PC && !IsOut() && !PC->GetInteractPrompt().IsEmpty());
 			})
-			.BorderImage(AUI::PanelBrush())
 			.Padding(FMargin(12.f, 7.f, 16.f, 7.f))
 			[
 				SNew(SHorizontalBox)
@@ -1423,7 +1756,7 @@ TSharedRef<SWidget> SAirsoftHUD::BuildBottomCenter()
 				.VAlign(VAlign_Center)
 				.Padding(FMargin(0.f, 0.f, 10.f, 0.f))
 				[
-					SNew(SBorder)
+					SNew(SAirsoftNeonPanel)
 					.Visibility_Lambda([this]() -> EVisibility
 					{
 						const AAirsoftPlayerController* PC = WeakPC.Get();
@@ -1431,8 +1764,9 @@ TSharedRef<SWidget> SAirsoftHUD::BuildBottomCenter()
 						AirsoftHUDLocal::SplitPrompt(PC ? PC->GetInteractPrompt() : FString(), Key, Text);
 						return HudVis(!Key.IsEmpty());
 					})
-					.BorderImage(AUI::OutlineBrush())
-					.BorderBackgroundColor(AUI::Accent())
+					.Chamfer(4.f)
+					.Glow(0.7f)
+					.LineColor(AN::Orange())
 					.Padding(FMargin(7.f, 1.f))
 					[
 						SNew(STextBlock)
@@ -1667,8 +2001,7 @@ TSharedRef<SWidget> SAirsoftHUD::BuildVotePanel()
 				&& (GS->Phase == EAirsoftPhase::Intermission || GS->Phase == EAirsoftPhase::Waiting));
 		})
 		[
-			SNew(SBorder)
-			.BorderImage(AUI::PanelBrush())
+			SNew(SAirsoftNeonPanel)
 			.Padding(FMargin(16.f, 14.f))
 			[
 				SNew(SVerticalBox)

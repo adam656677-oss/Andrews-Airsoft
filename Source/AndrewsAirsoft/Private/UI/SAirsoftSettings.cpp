@@ -74,6 +74,9 @@ void SAirsoftSettings::Apply()
 	Settings.FieldOfView = Working.FieldOfView;
 	Settings.bToggleAim = Working.bToggleAim;
 	Settings.bInvertY = Working.bInvertY;
+	Settings.bThirdPersonMatches = Working.bThirdPersonMatches;
+	Settings.bThirdPersonStory = Working.bThirdPersonStory;
+	Settings.bLeftShoulder = Working.bLeftShoulder;
 	Settings.Quality = Working.Quality;
 	Settings.RenderScale = Working.RenderScale;
 	Settings.WindowMode = Working.WindowMode;
@@ -288,6 +291,29 @@ void SAirsoftSettings::Construct(const FArguments& InArgs, AAirsoftPlayerControl
 		ChoiceRow(TEXT("Invert Y"), FString(), { TEXT("OFF"), TEXT("ON") },
 			[this]() { return Working.bInvertY ? 1 : 0; },
 			[this](int32 Index) { Working.bInvertY = Index == 1; })
+	];
+
+	Rows->AddSlot().AutoHeight()[Section(TEXT("CAMERA"))];
+	Rows->AddSlot().AutoHeight().Padding(FMargin(0.f, 0.f, 0.f, 4.f))
+	[
+		ChoiceRow(TEXT("Camera · matches"), TEXT("Airsoft matches. First person is the airsoft view; F5 switches in game."),
+			{ TEXT("FIRST PERSON"), TEXT("THIRD PERSON") },
+			[this]() { return Working.bThirdPersonMatches ? 1 : 0; },
+			[this](int32 Index) { Working.bThirdPersonMatches = Index == 1; })
+	];
+	Rows->AddSlot().AutoHeight().Padding(FMargin(0.f, 0.f, 0.f, 4.f))
+	[
+		ChoiceRow(TEXT("Camera · story"), TEXT("Last Contract. Aiming always goes to the sights; F5 switches in game."),
+			{ TEXT("FIRST PERSON"), TEXT("THIRD PERSON") },
+			[this]() { return Working.bThirdPersonStory ? 1 : 0; },
+			[this](int32 Index) { Working.bThirdPersonStory = Index == 1; })
+	];
+	Rows->AddSlot().AutoHeight().Padding(FMargin(0.f, 0.f, 0.f, 4.f))
+	[
+		ChoiceRow(TEXT("Shoulder"), TEXT("Third person: which shoulder the camera looks over. X swaps in game."),
+			{ TEXT("RIGHT"), TEXT("LEFT") },
+			[this]() { return Working.bLeftShoulder ? 1 : 0; },
+			[this](int32 Index) { Working.bLeftShoulder = Index == 1; })
 	];
 
 	Rows->AddSlot().AutoHeight()[Section(TEXT("VIDEO"))];

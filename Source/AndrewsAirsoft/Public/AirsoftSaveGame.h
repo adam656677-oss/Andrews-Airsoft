@@ -30,6 +30,12 @@ struct FAirsoftUserSettings
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) bool bCinematicEffects = true;
 	/** Camera shake from nearby grenades and when you are tagged. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) bool bScreenShake = true;
+	/** Over-the-shoulder camera in airsoft matches. Off by default: first person is the airsoft view (no corner peeking). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) bool bThirdPersonMatches = false;
+	/** Over-the-shoulder camera in the story campaign. On by default: the suit, the rain, the noir framing. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) bool bThirdPersonStory = true;
+	/** Third person: camera over the left shoulder instead of the right. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) bool bLeftShoulder = false;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) FString LastJoinAddress;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) FString PlayerName;
 	/** When hosting: fill both teams with bots on match maps (AirsoftBots::TeamSize: 0 off, 1 4v4, 2 6v6, 3 8v8, 4 10v10). */

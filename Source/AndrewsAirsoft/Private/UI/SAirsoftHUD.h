@@ -48,6 +48,8 @@ private:
 	void PaintCaptureBar(AAirsoftPlayerController* PC, FSlateWindowElementList& Out, int32 Layer, const FGeometry& Geo, const FVector2f& Size) const;
 	/** VIP: the marker over the VIP (teammates always, enemies when in sight), the extraction marker and its progress bar. */
 	void PaintVIP(AAirsoftPlayerController* PC, FSlateWindowElementList& Out, int32 Layer, const FGeometry& Geo, const FVector2f& Size) const;
+	/** Third person: where the BB would really stop when the muzzle can't see the crosshair point. */
+	void PaintShoulderBlock(AAirsoftPlayerController* PC, FSlateWindowElementList& Out, int32 Layer, const FGeometry& Geo, const FVector2f& Size) const;
 	void PaintReplay(AAirsoftPlayerController* PC, FSlateWindowElementList& Out, int32 Layer, const FGeometry& Geo, const FVector2f& Size) const;
 
 	TWeakObjectPtr<AAirsoftPlayerController> WeakPC;
@@ -86,6 +88,10 @@ public:
 	void Construct(const FArguments& InArgs, AAirsoftPlayerController* InPC);
 
 private:
+	/** Top left: call-sign crest; story campaign: health (with a fading "just lost" trail) and the regen countdown bar. */
+	TSharedRef<SWidget> BuildStatusPanel();
+	/** Bottom left, story campaign: the objective and how much of the crew is down. */
+	TSharedRef<SWidget> BuildObjectivePanel();
 	TSharedRef<SWidget> BuildTopCenter();
 	TSharedRef<SWidget> BuildTeamScore(uint8 TeamValue);
 	/** Gun Game: "YOU" (level) or "LEADER" (name, level) box in place of a team score. */

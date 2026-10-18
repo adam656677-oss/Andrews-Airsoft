@@ -240,6 +240,9 @@ protected:
 	void OnLight();
 	void OnInspect();
 	void OnInteract();
+	/** F5: first <-> third person. X: swap shoulder. */
+	void OnCameraView();
+	void OnShoulder();
 	void OnLeanLeftPressed();
 	void OnLeanLeftReleased();
 	void OnLeanRightPressed();

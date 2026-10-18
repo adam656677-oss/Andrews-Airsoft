@@ -23,6 +23,7 @@
 #include "Engine/SkeletalMesh.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
+#include "GameFramework/SpringArmComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Net/UnrealNetwork.h"
 
@@ -35,6 +36,14 @@ namespace
 	constexpr float SlideEye = 84.f;
 	constexpr float LeanOffset = 32.f;
 	constexpr float LeanRoll = 11.f;
+	// Third person: boom pivot a little below the eyes, camera 2 m back and over the shoulder,
+	// so the character stands left (or right) of the crosshair, rifle low in frame.
+	constexpr float TPPivotDrop = 12.f;
+	constexpr float TPArmLength = 200.f;
+	constexpr float TPShoulderOffset = 60.f;
+	constexpr float TPRise = 14.f;
+	/** The owner's body shows once the camera is this far out from the eyes (0..1). */
+	constexpr float TPBodyFrom = 0.3f;
 
 	void MakeBBTarget(UPrimitiveComponent* Comp)
 	{
@@ -72,6 +81,30 @@ AAirsoftCharacter::AAirsoftCharacter(const FObjectInitializer& ObjectInitializer
 	Camera->SetRelativeLocation(FVector(0.f, 0.f, StandEye - CapsuleHalfHeight));
 	Camera->bUsePawnControlRotation = true;
 	Camera->SetFieldOfView(90.f);
+
+	// Third person: a boom from the shoulders with a collision probe and a little lag. Its camera only
+	// drives the view through CalcCamera; the eye camera above stays the gameplay camera.
+	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
+	CameraBoom->SetupAttachment(Capsule);
+	CameraBoom->SetRelativeLocation(FVector(0.f, 0.f, StandEye - CapsuleHalfHeight - TPPivotDrop));
+	CameraBoom->TargetArmLength = TPArmLength;
+	CameraBoom->SocketOffset = FVector(0.f, TPShoulderOffset, TPRise);
+	CameraBoom->bUsePawnControlRotation = true;
+	CameraBoom->bInheritRoll = false;
+	CameraBoom->bDoCollisionTest = true;
+	CameraBoom->ProbeSize = 14.f;
+	CameraBoom->ProbeChannel = ECC_Camera;
+	CameraBoom->bEnableCameraLag = true;
+	CameraBoom->CameraLagSpeed = 14.f;
+	CameraBoom->CameraLagMaxDistance = 45.f;
+	CameraBoom->bEnableCameraRotationLag = false;
+	CameraBoom->PrimaryComponentTick.bStartWithTickEnabled = false;
+
+	ShoulderCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("ShoulderCamera"));
+	ShoulderCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
+	ShoulderCamera->bUsePawnControlRotation = false;
+	ShoulderCamera->SetFieldOfView(86.f);
+	ShoulderCamera->SetAutoActivate(false);
 
 	ViewRoot = CreateDefaultSubobject<USceneComponent>(TEXT("ViewRoot"));
 	ViewRoot->SetupAttachment(Camera);
@@ -317,8 +350,8 @@ void AAirsoftCharacter::UpdateThirdPersonPose()
 		return;
 	}
 	PoseMesh->CopyPoseFromSkeletalComponent(GetMesh());
-	// The owner never sees their own body, only its shadow (bots on the host are seen by everyone).
-	if (IsLocalHuman() || !TPGun->IsVisible())
+	// In first person the owner never sees their own body, only its shadow (bots on the host are seen by everyone).
+	if ((IsLocalHuman() && !bOwnerSeesBody) || !TPGun->IsVisible())
 	{
 		return;
 	}
@@ -1013,6 +1046,8 @@ void AAirsoftCharacter::UpdateCamera(float DeltaSeconds)
 	const float TargetFOV = (Combat ? Combat->GetTargetFOV(BaseFOV) : BaseFOV) + Extra;
 	Camera->SetFieldOfView(FMath::FInterpTo(Camera->FieldOfView, TargetFOV, DeltaSeconds, 14.f));
 
+	UpdateThirdPersonCamera(DeltaSeconds, ShakeRotation, ShakeOffset);
+
 	// Tagged: the world drains of colour until respawn. The moment of the hit lands as a short,
 	// sharp pulse on top: deeper desaturation, a vignette punch, a warm tint and (cinematic) fringing.
 	OutFade = FMath::FInterpTo(OutFade, IsOut() ? 1.f : 0.f, DeltaSeconds, 3.f);
@@ -1078,4 +1113,259 @@ void AAirsoftCharacter::UpdateRemoteVisuals(float DeltaSeconds)
 			}
 		}
 	}
+}
+
+// ---------------------------------------------------------------------------
+// Third-person camera (local only)
+//
+// The eye camera (Camera) never moves off the head: it is what the shots, grenades and the server's
+// origin check use in both views. Third person is purely a different view: CalcCamera blends from the
+// eye view to the boom camera, and the owner is shown their own body, gear and third-person gun.
+// Aiming down sights from third person goes to the eye (real sights and scopes), see below.
+// ---------------------------------------------------------------------------
+
+void AAirsoftCharacter::CalcCamera(float DeltaTime, FMinimalViewInfo& OutResult)
+{
+	if (!Camera)
+	{
+		Super::CalcCamera(DeltaTime, OutResult);
+		return;
+	}
+	// Always the eye camera first: GetCameraView also keeps it on the control rotation, which the shots use.
+	Camera->GetCameraView(DeltaTime, OutResult);
+	if (TPBlend <= 0.001f || !ShoulderCamera)
+	{
+		return;
+	}
+	FMinimalViewInfo Shoulder;
+	ShoulderCamera->GetCameraView(DeltaTime, Shoulder);
+	// Eased, so the move spends little time close to the head.
+	const float A = TPBlend * TPBlend * (3.f - 2.f * TPBlend);
+	OutResult.Location = FMath::Lerp(OutResult.Location, Shoulder.Location, A);
+	OutResult.Rotation = OutResult.Rotation + (Shoulder.Rotation - OutResult.Rotation).GetNormalized() * A;
+	OutResult.FOV = FMath::Lerp(OutResult.FOV, Shoulder.FOV, A);
+	// Post-process (tagged fade, hit pulse) stays the eye camera's.
+}
+
+bool AAirsoftCharacter::WantsThirdPerson() const
+{
+	if (!IsLocalHuman())
+	{
+		return false;
+	}
+	UAirsoftGameInstance* GI = GetGameInstance<UAirsoftGameInstance>();
+	if (!GI)
+	{
+		return false;
+	}
+	const FAirsoftUserSettings& S = GI->GetUserSettings();
+	return AAirsoftGameState::IsCampaign(this) ? S.bThirdPersonStory : S.bThirdPersonMatches;
+}
+
+void AAirsoftCharacter::ToggleCameraMode()
+{
+	UAirsoftGameInstance* GI = GetGameInstance<UAirsoftGameInstance>();
+	UAirsoftSaveGame* Profile = GI ? GI->GetProfile() : nullptr;
+	if (!Profile || !IsLocalHuman())
+	{
+		return;
+	}
+	// Straight into the profile: SetUserSettings would re-apply the video settings (a hitch mid-fight).
+	bool& bThird = AAirsoftGameState::IsCampaign(this) ? Profile->Settings.bThirdPersonStory : Profile->Settings.bThirdPersonMatches;
+	bThird = !bThird;
+	GI->SaveProfile();
+	AirsoftAssets::Play2D(this, TEXT("UIClick"), 0.35f, bThird ? 1.1f : 0.9f);
+}
+
+void AAirsoftCharacter::SwapShoulder()
+{
+	UAirsoftGameInstance* GI = GetGameInstance<UAirsoftGameInstance>();
+	UAirsoftSaveGame* Profile = GI ? GI->GetProfile() : nullptr;
+	if (!Profile || !IsLocalHuman())
+	{
+		return;
+	}
+	Profile->Settings.bLeftShoulder = !Profile->Settings.bLeftShoulder;
+	GI->SaveProfile();
+	if (bOwnerSeesBody)
+	{
+		AirsoftAssets::Play2D(this, TEXT("UIClick"), 0.25f, 1.3f);
+	}
+}
+
+bool AAirsoftCharacter::GetOverShoulderView(FVector& OutLocation, FRotator& OutRotation) const
+{
+	if (!ShoulderCamera || !WantsThirdPerson())
+	{
+		return false;
+	}
+	OutLocation = ShoulderCamera->GetComponentLocation();
+	OutRotation = GetControlRotation();
+	return true;
+}
+
+void AAirsoftCharacter::UpdateThirdPersonCamera(float DeltaSeconds, const FRotator& ShakeRotation, const FVector& ShakeOffset)
+{
+	const bool bHuman = IsLocalHuman();
+	const bool bWant = bHuman && WantsThirdPerson();
+	// ADS from third person goes to the real sights (first person). With BB ballistics the arc, the hop and
+	// the scope picture only read from the eye, and a precise shot never comes from a camera that sees
+	// round corners. Hip fire stays over the shoulder; the move is tied to the aim so it takes the gun's aim time.
+	const float Aim = Combat ? Combat->GetAimAlpha() : 0.f;
+	const float Target = bWant ? 1.f - FMath::Clamp(Aim * 1.6f, 0.f, 1.f) : 0.f;
+	TPBlend = FMath::FInterpTo(TPBlend, Target, DeltaSeconds, 16.f);
+	if (FMath::Abs(TPBlend - Target) < 0.002f)
+	{
+		TPBlend = Target;
+	}
+
+	const bool bBoomActive = bHuman && (bWant || TPBlend > 0.f);
+	if (CameraBoom->IsComponentTickEnabled() != bBoomActive)
+	{
+		CameraBoom->SetComponentTickEnabled(bBoomActive);
+	}
+	if (bBoomActive)
+	{
+		bool bLeft = false;
+		if (UAirsoftGameInstance* GI = GetGameInstance<UAirsoftGameInstance>())
+		{
+			bLeft = GI->GetUserSettings().bLeftShoulder;
+		}
+		ShoulderSide = FMath::FInterpTo(ShoulderSide, bLeft ? -1.f : 1.f, DeltaSeconds, 9.f);
+		const float HalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+		// Follows the eye height (crouch, slide, landing dip); the boom's lag smooths the steps.
+		CameraBoom->SetRelativeLocation(FVector(0.f, 0.f, EyeHeight - HalfHeight - TPPivotDrop - LandDip));
+		const float ArmTarget = TPArmLength + (IsSprinting() ? 30.f : 0.f) - (bIsCrouched ? 30.f : 0.f);
+		CameraBoom->TargetArmLength = FMath::FInterpTo(CameraBoom->TargetArmLength, ArmTarget, DeltaSeconds, 6.f);
+		// Leaning slides the camera out with the body.
+		CameraBoom->SocketOffset = FVector(0.f, ShoulderSide * TPShoulderOffset + LeanAmount * 38.f, TPRise);
+		ShoulderCamera->SetFieldOfView(FMath::Max(60.f, Camera->FieldOfView - 4.f));
+		// Same shake and flinch as the eye view, without the lean roll.
+		ShoulderCamera->ClearAdditiveOffset();
+		ShoulderCamera->AddAdditiveOffset(FTransform(FRotator(ShakeRotation.Pitch, ShakeRotation.Yaw, ShakeRotation.Roll * 0.5f), ShakeOffset), 0.f);
+	}
+
+	// The body appears once the camera is well clear of the head; the arms and viewmodel go at the same moment.
+	bOwnerSeesBody = bHuman && TPBlend > TPBodyFrom;
+	if (bHuman)
+	{
+		ApplyOwnerView(bOwnerSeesBody);
+	}
+	ShoulderAim = (bOwnerSeesBody && Combat) ? ComputeShoulderAim(Combat->Current().MaxRange) : FAirsoftShoulderAim();
+}
+
+void AAirsoftCharacter::ApplyOwnerView(bool bSeeBody)
+{
+	const bool bTransition = bSeeBody != bOwnerViewApplied;
+	// First person is the constructor's state: only the switch back needs work. In third person the guns
+	// and gear are rebuilt now and then (weapon swap, team look), so their new parts are caught every frame.
+	if (!bTransition && !bSeeBody)
+	{
+		return;
+	}
+	bOwnerViewApplied = bSeeBody;
+	const bool bNoSee = !bSeeBody;
+
+	if (bTransition)
+	{
+		PoseMesh->SetOwnerNoSee(bNoSee);
+		GetMesh()->SetOwnerNoSee(bNoSee);
+		FallbackBody->SetOwnerNoSee(bNoSee);
+		FallbackHead->SetOwnerNoSee(bNoSee);
+		TeamBand->SetOwnerNoSee(bNoSee);
+		DeadRag->SetOwnerNoSee(bNoSee);
+	}
+
+	// Third-person gun: OwnerNoSee on every part. First-person gun, gloves and its light: hidden.
+	TArray<USceneComponent*> Parts;
+	TPGun->GetChildrenComponents(true, Parts);
+	for (USceneComponent* Part : Parts)
+	{
+		if (UPrimitiveComponent* Prim = Cast<UPrimitiveComponent>(Part))
+		{
+			Prim->SetOwnerNoSee(bNoSee);
+		}
+	}
+	Parts.Reset();
+	FPGun->GetChildrenComponents(true, Parts);
+	for (USceneComponent* Part : Parts)
+	{
+		if (Part)
+		{
+			Part->SetHiddenInGame(bSeeBody); // no-op when unchanged
+		}
+	}
+
+	// Team gear pieces (UAirsoftTeamGearComponent names them TeamGear_*). That component also hides them
+	// while their owner views through this pawn; in third person they have to show.
+	TInlineComponentArray<UStaticMeshComponent*> Meshes(this);
+	for (UStaticMeshComponent* Mesh : Meshes)
+	{
+		if (Mesh && Mesh->GetName().StartsWith(TEXT("TeamGear_")))
+		{
+			Mesh->SetOwnerNoSee(bNoSee);
+			if (bSeeBody && !Mesh->IsVisible())
+			{
+				Mesh->SetVisibility(true);
+			}
+		}
+	}
+	if (bTransition && !bSeeBody && TeamGear)
+	{
+		TeamGear->RefreshVisibility();
+	}
+}
+
+FAirsoftShoulderAim AAirsoftCharacter::ComputeShoulderAim(float MaxRange) const
+{
+	FAirsoftShoulderAim Aim;
+	UWorld* World = GetWorld();
+	if (!World || !Camera)
+	{
+		return Aim;
+	}
+	const FVector Eye = Camera->GetComponentLocation();
+	FVector ViewLoc = ShoulderCamera ? ShoulderCamera->GetComponentLocation() : Eye;
+	FRotator ViewRot = GetControlRotation();
+	// The real view (blend, lag, shake included): its centre is exactly where the crosshair is drawn.
+	if (const APlayerController* PC = Cast<APlayerController>(GetController()))
+	{
+		if (PC->PlayerCameraManager)
+		{
+			ViewLoc = PC->PlayerCameraManager->GetCameraLocation();
+			ViewRot = PC->PlayerCameraManager->GetCameraRotation();
+		}
+	}
+	const FVector Forward = ViewRot.Vector();
+	FCollisionQueryParams Query(SCENE_QUERY_STAT(AirsoftShoulderAim), false, this);
+
+	// 1) The crosshair ray, started level with the shooter: whatever is between the camera and the body can't be aimed at.
+	const double Behind = FMath::Max(0.0, FVector::DotProduct(Eye - ViewLoc, Forward));
+	const FVector Start = ViewLoc + Forward * Behind;
+	const FVector End = Start + Forward * FMath::Max(MaxRange, 1000.f);
+	FHitResult Hit;
+	Aim.AimPoint = World->LineTraceSingleByChannel(Hit, Start, End, ECC_BB, Query) ? FVector(Hit.ImpactPoint) : End;
+
+	// 2) The BB leaves the third-person muzzle, unless the barrel pokes through a wall: then the eyes.
+	FVector Origin = TPGun ? TPGun->GetMuzzleWorld() : Eye;
+	FHitResult Wall;
+	if (FVector::DistSquared(Origin, Eye) > FMath::Square(150.0) || World->LineTraceSingleByChannel(Wall, Eye, Origin, ECC_BB, Query))
+	{
+		Origin = Eye;
+	}
+	Aim.Origin = Origin;
+	const FVector ToAim = Aim.AimPoint - Origin;
+	// A point right beside the gun gives no usable direction: shoot along the view.
+	Aim.Direction = ToAim.SizeSquared() > FMath::Square(60.0) ? ToAim.GetSafeNormal() : Forward;
+
+	// 3) Shoulder-peek guard: can the muzzle see the aim point? If not the BB stops on the way (the HUD marks where).
+	const double Reach = FMath::Max(0.0, ToAim.Size() - 25.0);
+	FHitResult Block;
+	if (Reach > 1.0 && World->LineTraceSingleByChannel(Block, Origin, Origin + Aim.Direction * Reach, ECC_BB, Query))
+	{
+		Aim.bBlocked = true;
+		Aim.BlockPoint = Block.ImpactPoint;
+	}
+	Aim.bValid = true;
+	return Aim;
 }

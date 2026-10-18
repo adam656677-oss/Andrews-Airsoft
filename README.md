@@ -147,6 +147,8 @@ Your profile (rank, XP, stats, loadout, settings) is saved on your own PC: `%LOC
 | Fire mode | B | D-pad ↓ |
 | Weapon light / laser | T | D-pad ↑ |
 | Inspect weapon | V | D-pad ← |
+| Camera: first / third person | F5 (saved separately for matches and the story; default: first person in matches, third in the story) | — |
+| Third person: swap shoulder | X | R3 |
 | Interact (armory racks) | F | D-pad → |
 | Loadout | L | — |
 | Scoreboard | Tab (hold) | View |
@@ -154,6 +156,8 @@ Your profile (rank, XP, stats, loadout, settings) is saved on your own PC: `%LOC
 | Vote (staging): next mode / next map | F1 / F2 (or click in the menu) | — |
 | Chat: everyone / team | Enter / Y (Tab switches, Esc cancels) | — |
 | Next teammate (out for the round) | LMB or Space | RT or A |
+
+**Settings → Camera:** *Camera · matches* and *Camera · story* (first or third person), *Shoulder* (right or left). In third person aiming (RMB) goes to the gun's sights; hip-fire BBs leave the gun toward the crosshair, so a wall at your shoulder stops them (the HUD marks **BLOCKED** where).
 
 ## 5. Packaging a build for friends
 

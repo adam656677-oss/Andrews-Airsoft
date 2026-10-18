@@ -12,6 +12,7 @@
 #include "AirsoftPlayerState.h"
 #include "AirsoftUIStyle.h"
 #include "AirsoftWeaponData.h"
+#include "SAirsoftNeon.h"
 #include "Brushes/SlateRoundedBoxBrush.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Components/CapsuleComponent.h"
@@ -21,6 +22,7 @@
 #include "Rendering/DrawElements.h"
 
 namespace AUI = AirsoftUIStyle;
+namespace AN = AirsoftNeon;
 
 namespace AirsoftHUDCanvasLocal
 {
@@ -116,6 +118,7 @@ int32 SAirsoftHUDCanvas::OnPaint(const FPaintArgs& Args, const FGeometry& Allott
 		PaintCaptureBar(PC, OutDrawElements, LayerId, AllottedGeometry, Size);
 		PaintVIP(PC, OutDrawElements, LayerId, AllottedGeometry, Size);
 		PaintCrosshair(PC, OutDrawElements, LayerId, AllottedGeometry, Size);
+		PaintShoulderBlock(PC, OutDrawElements, LayerId, AllottedGeometry, Size);
 		PaintHitMarker(PC, OutDrawElements, LayerId, AllottedGeometry, Size);
 		PaintXPPopups(PC, OutDrawElements, LayerId, AllottedGeometry, Size);
 	}
@@ -324,6 +327,52 @@ void SAirsoftHUDCanvas::PaintCrosshair(AAirsoftPlayerController* PC, FSlateWindo
 	Bar(C - FVector2f(1.f, 1.f), FVector2f(2.f, 2.f));
 }
 
+void SAirsoftHUDCanvas::PaintShoulderBlock(AAirsoftPlayerController* PC, FSlateWindowElementList& Out, int32 Layer, const FGeometry& Geo, const FVector2f& Size) const
+{
+	// Third person: the crosshair comes from the camera, the BB from the gun. When something the camera
+	// sees past (a door frame, a wall at the shoulder) is in the gun's way, mark where the BB will stop.
+	const AAirsoftCharacter* Character = AUI::GetCharacter(PC);
+	if (!Character || Character->IsOut() || Character->IsSprinting() || !Character->IsThirdPersonView())
+	{
+		return;
+	}
+	const FAirsoftShoulderAim& Aim = Character->GetShoulderAim();
+	if (!Aim.bValid || !Aim.bBlocked)
+	{
+		return;
+	}
+	FVector2D Screen;
+	if (!PC->ProjectWorldLocationToScreen(Aim.BlockPoint, Screen, true))
+	{
+		return;
+	}
+	const float Scale = Geo.Scale > 0.f ? Geo.Scale : 1.f;
+	const FVector2f P(static_cast<float>(Screen.X) / Scale, static_cast<float>(Screen.Y) / Scale);
+	const FLinearColor Col = AUI::WithAlpha(AN::Orange(), 0.95f);
+	const int32 L = Layer + 1;
+	const float R = 7.f;
+	TArray<FVector2f> Line;
+	Line.Add(P + FVector2f(-R, -R));
+	Line.Add(P + FVector2f(R, R));
+	AN::PaintGlowPolyline(Out, L, Geo, Line, Col, 2.f, 0.8f, false);
+	Line[0] = P + FVector2f(R, -R);
+	Line[1] = P + FVector2f(-R, R);
+	AN::PaintGlowPolyline(Out, L, Geo, Line, Col, 2.f, 0.8f, false);
+	// Dotted link back to the crosshair when the stop point sits visibly off it.
+	const FVector2f C = Size * 0.5f;
+	const FVector2f D = P - C;
+	const float Dist = D.Size();
+	if (Dist > 24.f)
+	{
+		const FVector2f Dir = D / Dist;
+		for (float T = 10.f; T < Dist - 12.f; T += 9.f)
+		{
+			AUI::PaintRect(Out, L, Geo, C + Dir * T - FVector2f(1.f, 1.f), FVector2f(2.f, 2.f), AUI::WithAlpha(Col, 0.55f));
+		}
+	}
+	AUI::PaintTextCentered(Out, Layer + 2, Geo, TEXT("BLOCKED"), AUI::Font(AUI::EFontWeight::Bold, 7, 300), P + FVector2f(0.f, R + 10.f), Col);
+}
+
 void SAirsoftHUDCanvas::PaintHitMarker(AAirsoftPlayerController* PC, FSlateWindowElementList& Out, int32 Layer, const FGeometry& Geo, const FVector2f& Size) const
 {
 	const float A = FMath::Clamp(PC->GetHitMarkerAlpha(), 0.f, 1.f);
@@ -374,17 +423,23 @@ void SAirsoftHUDCanvas::PaintXPPopups(AAirsoftPlayerController* PC, FSlateWindow
 		}
 		const float Alpha = AUI::Ease(Age / 0.12f) * (1.f - AUI::Ease((Age - 1.f) / 0.5f));
 		const float Rise = 20.f * AUI::Ease(Age / 1.5f);
-		const float Y = C.Y + 64.f + Slot * 22.f - Rise;
+		const float Y = C.Y + 64.f + Slot * 28.f - Rise;
 		const FString Amount = FString::Printf(TEXT("+%d"), Pop.Amount);
 		const FString Reason = Pop.Reason.ToUpper();
 		const FVector2f AmountSize = AUI::MeasureText(Amount, AmountFont);
 		const FVector2f ReasonSize = AUI::MeasureText(Reason, ReasonFont);
 		const float Gap = Reason.IsEmpty() ? 0.f : 8.f;
-		const float X = C.X - (AmountSize.X + Gap + ReasonSize.X) * 0.5f;
-		AUI::PaintText(Out, Layer + 2, Geo, Amount, AmountFont, FVector2f(X, Y - AmountSize.Y * 0.5f), AUI::WithAlpha(AUI::Accent(), Alpha));
+		const float TotalW = AmountSize.X + Gap + ReasonSize.X;
+		const float X = C.X - TotalW * 0.5f;
+		// A small angled neon tag behind each award.
+		const FVector2f TagPos(X - 12.f, Y - 11.f);
+		const FVector2f TagSize(TotalW + 24.f, 22.f);
+		AN::PaintPanel(Out, Layer, Geo, TagPos, TagSize, 7.f, AN::Diagonal, AUI::WithAlpha(AN::Orange(), Alpha * 0.9f),
+			AUI::WithAlpha(AN::Glass(), Alpha), 0.7f * Alpha, FLinearColor(0.f, 0.f, 0.f, 0.f));
+		AUI::PaintText(Out, Layer + 2, Geo, Amount, AmountFont, FVector2f(X, Y - AmountSize.Y * 0.5f), AUI::WithAlpha(AN::Orange(), Alpha));
 		if (!Reason.IsEmpty())
 		{
-			AUI::PaintText(Out, Layer + 2, Geo, Reason, ReasonFont, FVector2f(X + AmountSize.X + Gap, Y - ReasonSize.Y * 0.5f), AUI::WithAlpha(AUI::TextColor(), Alpha));
+			AUI::PaintText(Out, Layer + 2, Geo, Reason, ReasonFont, FVector2f(X + AmountSize.X + Gap, Y - ReasonSize.Y * 0.5f), AUI::WithAlpha(AN::Cyan(), Alpha));
 		}
 		++Slot;
 	}
@@ -438,7 +493,8 @@ void SAirsoftHUDCanvas::PaintCaptureBar(AAirsoftPlayerController* PC, FSlateWind
 	const float W = 340.f;
 	const float H = 6.f;
 	const FVector2f C(Size.X * 0.5f, Size.Y * 0.5f + 160.f);
-	AUI::PaintBrush(Out, Layer, Geo, AUI::PanelBrush(), FVector2f(C.X - W * 0.5f - 18.f, C.Y - 34.f), FVector2f(W + 36.f, 56.f), FLinearColor::White);
+	AN::PaintPanel(Out, Layer, Geo, FVector2f(C.X - W * 0.5f - 18.f, C.Y - 34.f), FVector2f(W + 36.f, 56.f), 12.f, AN::Diagonal,
+		Inside->bContested ? AN::Orange() : AN::Cyan(), AN::Glass(), 1.f, AN::Orange());
 	AUI::PaintTextCentered(Out, Layer + 2, Geo, Label, AUI::Font(AUI::EFontWeight::Bold, 11, 260), FVector2f(C.X, C.Y - 15.f), LabelColor);
 
 	const int32 L = Layer + 1;
@@ -562,11 +618,10 @@ void SAirsoftHUDCanvas::PaintVIP(AAirsoftPlayerController* PC, FSlateWindowEleme
 		const float H = 6.f;
 		const FVector2f C(Size.X * 0.5f, Size.Y * 0.5f + 160.f);
 		const FLinearColor Col = AUI::TeamColor(GS->AttackingTeam);
-		AUI::PaintBrush(Out, Layer, Geo, AUI::PanelBrush(), FVector2f(C.X - W * 0.5f - 18.f, C.Y - 34.f), FVector2f(W + 36.f, 56.f), FLinearColor::White);
+		AN::PaintPanel(Out, Layer, Geo, FVector2f(C.X - W * 0.5f - 18.f, C.Y - 34.f), FVector2f(W + 36.f, 56.f), 12.f, AN::Diagonal, Col, AN::Glass(), 1.f, AN::Orange());
 		AUI::PaintTextCentered(Out, Layer + 2, Geo, TEXT("VIP EXTRACTING"), AUI::Font(AUI::EFontWeight::Bold, 11, 260), FVector2f(C.X, C.Y - 15.f),
 			FLinearColor::LerpUsingHSV(Col, FLinearColor::White, AUI::Pulse(2.f) * 0.4f));
-		AUI::PaintRect(Out, Layer + 1, Geo, FVector2f(C.X - W * 0.5f, C.Y + 4.f), FVector2f(W, H), FLinearColor(1.f, 1.f, 1.f, 0.1f));
-		AUI::PaintRect(Out, Layer + 1, Geo, FVector2f(C.X - W * 0.5f, C.Y + 4.f), FVector2f(W * Progress, H), Col);
+		AN::PaintSlantBar(Out, Layer + 1, Geo, FVector2f(C.X - W * 0.5f, C.Y + 4.f), FVector2f(W, H), 4.f, Progress, AN::Amber(), Col, 1, 0.f, AN::Track());
 	}
 }
 
@@ -667,7 +722,7 @@ int32 SAirsoftObjectiveBadge::OnPaint(const FPaintArgs& Args, const FGeometry& A
 	const FLinearColor OwnerCol = Obj->OwnerTeam != EAirsoftTeam::None ? AUI::TeamColor(Obj->OwnerTeam) : FLinearColor(1.f, 1.f, 1.f, 0.3f);
 	const float P = FMath::Clamp(Obj->Progress, -1.f, 1.f);
 
-	AUI::PaintBrush(OutDrawElements, LayerId, AllottedGeometry, AUI::RoundedBrush(), Pos, FVector2f(Box, Box), FLinearColor(0.f, 0.f, 0.f, 0.6f) * Tint);
+	AN::PaintChamferFill(OutDrawElements, LayerId, AllottedGeometry, Pos, FVector2f(Box, Box), 7.f, AN::Diagonal, AN::Glass() * Tint);
 	// Capture fill rising from the bottom in the colour of whoever the progress favours.
 	if (FMath::Abs(P) > 0.01f && Obj->OwnerTeam == EAirsoftTeam::None)
 	{
@@ -686,7 +741,9 @@ int32 SAirsoftObjectiveBadge::OnPaint(const FPaintArgs& Args, const FGeometry& A
 	{
 		FrameCol = AUI::WithAlpha(AUI::Accent(), 0.35f + 0.65f * AUI::Pulse(2.f));
 	}
-	AUI::PaintFrame(OutDrawElements, L, AllottedGeometry, Pos, FVector2f(Box, Box), FrameCol * Tint, Obj->bContested ? 2.f : 1.5f);
+	TArray<FVector2f> Frame;
+	AN::ChamferPoints(Pos + FVector2f(0.5f, 0.5f), FVector2f(Box - 1.f, Box - 1.f), 7.f, AN::Diagonal, Frame);
+	AN::PaintGlowPolyline(OutDrawElements, L, AllottedGeometry, Frame, FrameCol * Tint, Obj->bContested ? 2.f : 1.4f, Obj->OwnerTeam != EAirsoftTeam::None ? 1.f : 0.4f, true);
 
 	const FLinearColor LetterCol = Obj->OwnerTeam != EAirsoftTeam::None ? OwnerCol : AUI::TextColor();
 	AUI::PaintTextCentered(OutDrawElements, LayerId + 2, AllottedGeometry, Obj->Letter.ToUpper(), AUI::Font(AUI::EFontWeight::Bold, 14), Pos + FVector2f(Box * 0.5f, Box * 0.5f), LetterCol * Tint, false);
