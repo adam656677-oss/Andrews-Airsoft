@@ -103,7 +103,7 @@ footer { color: var(--muted); font-size: 13px; padding-top: 28px; max-width: 62c
   <header>
     <div class="eyebrow">Andrew's Airsoft · UE 5.7 · build tracker</div>
     <h1>Road to 1.0</h1>
-    <p class="lede">Every step from an empty project to a finished game you can hand to 10–20 friends. Items already built are ticked. Tick the rest as they get done, and the marks are saved for anyone who opens this page.</p>
+    <p class="lede">Every step from an empty project to a finished single-player game. Items already built are ticked. Tick the rest as they get done, and the marks are saved for anyone who opens this page.</p>
   </header>
 
   <div class="strip" aria-live="polite">
@@ -160,21 +160,18 @@ const PHASES = [
     ["g9", "Team rules so teammates can't tag each other", "", "d", "Claude"],
     ["g10", "Proper reload, aim and melee animation sets", "Characters currently use the stock mannequin animations.", "p", "Claude"],
     ["g11", "Hit registration check at long range", "Shoot targets at 50 m+ and confirm every visible hit counts.", "v", "You"],
-    ["g12", "Weapon balance pass after playtests", "Damage, range, fire rate and recoil per gun.", "t", "Both"],
+    ["g12", "Weapon balance pass after playtests", "Damage, range, fire rate and recoil per gun, against story enemies.", "t", "Both"],
   ]},
-  { n: "03", name: "Multiplayer", goal: "Ten to twenty friends can join one match over Tailscale and play a full round.", items: [
-    ["m1", "Host and join over Tailscale", "", "d", "Claude"],
-    ["m2", "Replicated movement, shots and hits", "", "d", "Claude"],
-    ["m3", "Main menu, team select and armory loadout", "", "d", "Claude"],
-    ["m4", "Text chat", "", "d", "Claude"],
-    ["m5", "Scoreboard and end-of-match summary", "", "d", "Claude"],
-    ["m6", "Five game modes", "", "d", "Claude"],
-    ["m7", "Bots to fill empty slots", "", "d", "Claude"],
-    ["m8", "First real session with 4 or more friends", "Note anything that lags, desyncs or crashes.", "t", "You"],
-    ["m9", "Full 10–20 player stress test", "", "t", "You"],
-    ["m10", "Lag compensation tuned from test results", "", "t", "Claude"],
-    ["m11", "Rejoin a match after a disconnect", "", "t", "Claude"],
-    ["m12", "Voice chat in game, or agree to use Discord", "", "t", "Both"],
+  { n: "03", name: "Single-player structure", goal: "One player can start the game, pick up the story where they left off, or play a quick match against bots.", items: [
+    ["s4", "Bots and five match modes for offline skirmish", "Team Deathmatch, Domination, Elimination, Gun Game and VIP Escort.", "d", "Claude"],
+    ["s9", "Armory loadout, scoreboard and after-action report", "", "d", "Claude"],
+    ["s1", "Main menu leads with the story", "Continue, New Game, Mission Select, Skirmish, Practice Range.", "t", "Claude"],
+    ["s2", "Difficulty levels", "Easy to Hard: enemy aim, reaction speed and how many hits you can take.", "t", "Claude"],
+    ["s3", "Pause stops the game", "", "t", "Claude"],
+    ["s5", "Online screens hidden", "Host, join, chat and lobby votes stay in the code but off the menus.", "t", "Claude"],
+    ["s6", "Mission unlocks and story progress saved", "", "t", "Claude"],
+    ["s7", "Guns unlock as the story goes on", "", "t", "Claude"],
+    ["s8", "Decide the final campaign length", "Four missions now. Pick a target, for example 8 missions.", "t", "You"],
   ]},
   { n: "04", name: "Maps and world", goal: "Every map is dressed, lit, walkable and fair on both sides.", items: [
     ["w1", "Ironwood outdoor field", "", "d", "Claude"],
@@ -230,13 +227,13 @@ const PHASES = [
     ["q3", "Bug list gathered from playtests", "Send crash logs from Saved/Crashes.", "t", "You"],
     ["q4", "Every bug on the list fixed", "", "t", "Claude"],
   ]},
-  { n: "10", name: "Release", goal: "Friends download one file, install, and play.", items: [
+  { n: "10", name: "Release", goal: "A player downloads one file, installs, and plays.", items: [
     ["r1", "Packaged Windows build", "Airsoft.bat → package.", "v", "You"],
-    ["r2", "One-page setup guide for friends", "Tailscale, install and join. The README covers it for developers only.", "p", "Claude"],
+    ["r2", "One-page install guide for players", "Docs/Friends_Setup.md.", "p", "Claude"],
     ["r3", "Credits and licenses file", "Docs/CREDITS.md started.", "p", "Claude"],
     ["r4", "Trailer and screenshot set", "The gallery page has the stills.", "p", "Both"],
-    ["r5", "Zip and share the build with friends", "", "t", "You"],
-    ["r6", "A simple way to send updates to friends", "", "t", "Both"],
+    ["r5", "Zip and share the build", "", "t", "You"],
+    ["r6", "A simple way to send updates to players", "", "t", "Both"],
     ["r7", "Merge the pull request and tag version 1.0", "", "t", "Both"],
   ]},
 ];

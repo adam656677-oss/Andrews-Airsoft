@@ -162,7 +162,7 @@ Your profile (rank, XP, stats, loadout, settings) is saved on your own PC: `%LOC
 
 ## 5. Packaging a build for friends
 
-Easiest: `Airsoft.bat` → **5**. Or in the editor: *Platforms → Windows → Package Project* (Development or Shipping). Zip the output folder and share it (e.g. Google Drive). Friends unzip it and run `AndrewsAirsoft.exe`; they don't need Unreal installed. Every player must run the **same build**. Send them [`Docs/Friends_Setup.md`](Docs/Friends_Setup.md) along with the zip: a one-page guide covering Tailscale, installing, joining and fixing common problems.
+Easiest: `Airsoft.bat` → **5**. Or in the editor: *Platforms → Windows → Package Project* (Development or Shipping). Zip the output folder and share it (e.g. Google Drive). Friends unzip it and run `AndrewsAirsoft.exe`; they don't need Unreal installed. Every player must run the **same build**. Send them [`Docs/Friends_Setup.md`](Docs/Friends_Setup.md) along with the zip: a one-page guide covering installing, playing and fixing common problems.
 
 ## 6. Graphics on an RTX 2070 at 4K
 
