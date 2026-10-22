@@ -1448,10 +1448,10 @@ void AAirsoftBotController::ThinkTDM(AAirsoftCharacter* Me)
 	}
 	if (!bMoving && bHasMoveGoal)
 	{
-		// Arrived (or the move ended): hold here a moment, watching.
+		// Arrived (or the move ended): hold here a moment, watching (the bold move on sooner).
 		bHasMoveGoal = false;
 		State = EAirsoftBotState::Hold;
-		HoldUntil = T + Rng.FRandRange(2.f, 5.f);
+		HoldUntil = T + Rng.FRandRange(2.f, 5.f) * FMath::Lerp(1.4f, 0.6f, Aggression);
 		NextScanAt = 0.0;
 		bHoldCrouch = Rng.FRand() < Tune.CrouchChance;
 		if (bHoldCrouch)
