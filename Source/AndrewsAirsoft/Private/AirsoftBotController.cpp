@@ -256,7 +256,8 @@ void AAirsoftBotController::SetTactical(bool bInTactical)
 
 bool AAirsoftBotController::HasCoverPoint(FVector& OutPoint) const
 {
-	if (!bTactical || !bHasCover)
+	const AAirsoftCharacter* Me = GetBotCharacter();
+	if (!bTactical || !bHasCover || !Me || Me->IsOut())
 	{
 		return false;
 	}
@@ -444,6 +445,7 @@ void AAirsoftBotController::TickWalkOff(AAirsoftCharacter* Me)
 		// Tagged, like a person: stop fighting, rag up (the character shows it), walk back toward our spawn.
 		bWalkingOff = true;
 		State = EAirsoftBotState::WalkOff;
+		ClearTactics();
 		ReleaseTrigger();
 		Me->GetCombat()->BotSetAim(false);
 		Target.Reset();

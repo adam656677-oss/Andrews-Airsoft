@@ -27,6 +27,54 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Net/UnrealNetwork.h"
 
+// Named (not anonymous): unity builds merge .cpp files.
+namespace AirsoftCharacterLocal
+{
+	/** True once a step sound (or its _01.._06 variations) is imported; checked once per key. */
+	bool HasStepSound(FName Key)
+	{
+		static TMap<FName, bool> Known;
+		if (const bool* Found = Known.Find(Key))
+		{
+			return *Found;
+		}
+		const bool bHas = AirsoftAssets::Sound(FName(*(Key.ToString() + TEXT("_01")))) != nullptr || AirsoftAssets::Sound(Key) != nullptr;
+		Known.Add(Key, bHas);
+		return bHas;
+	}
+
+	/**
+	 * The step sound for the ground under the foot (Tools/Audio foley.py: Footstep* keys), and how it sits next to
+	 * the gravel default. Falls back to gravel when a surface set has not been imported yet.
+	 */
+	FName FootstepFor(EAirsoftSurface Surface, float& OutVolume, float& OutPitch)
+	{
+		static const FName Gravel(TEXT("Footstep")), Grass(TEXT("FootstepGrass")), Concrete(TEXT("FootstepConcrete")),
+			Metal(TEXT("FootstepMetal")), Wet(TEXT("FootstepWet"));
+		OutVolume = 1.f;
+		OutPitch = 1.f;
+		FName Key = Gravel;
+		switch (Surface)
+		{
+		case EAirsoftSurface::Foliage: Key = Grass; OutVolume = 0.8f; break;
+		case EAirsoftSurface::Stone: Key = Concrete; break;
+		case EAirsoftSurface::Wood: Key = Concrete; OutPitch = 0.82f; OutVolume = 0.85f; break;  // boards: a duller knock
+		case EAirsoftSurface::Soft: Key = Concrete; OutPitch = 0.75f; OutVolume = 0.35f; break;  // carpet, velvet: muffled
+		case EAirsoftSurface::Metal:
+		case EAirsoftSurface::Steel: Key = Metal; OutVolume = 0.6f; break;                      // the plate ring carries
+		case EAirsoftSurface::Water: Key = Wet; break;
+		default: break;                                                                          // dirt, gravel, unknown
+		}
+		if (Key != Gravel && !HasStepSound(Key))
+		{
+			OutVolume = 1.f;
+			OutPitch = 1.f;
+			return Gravel;
+		}
+		return Key;
+	}
+}
+
 namespace
 {
 	constexpr float CapsuleRadius = 36.f;
@@ -991,14 +1039,26 @@ void AAirsoftCharacter::Tick(float DeltaSeconds)
 				StepAccum = 0.f;
 				const float Volume = (bIsCrouched ? 0.12f : bSprint ? 0.55f : 0.32f) * (IsLocalHuman() ? 0.6f : 1.f);
 				const FVector Foot = GetActorLocation() - FVector(0.f, 0.f, GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
-				AirsoftAssets::Play3D(this, TEXT("Footstep"), Foot, Volume, FMath::FRandRange(0.85f, 1.15f));
-				// Effects: dust kicked up on dusty ground (others only: your own feet are out of view).
-				if (!bIsCrouched && !IsLocalHuman())
+				UAirsoftEffectsSubsystem* FX = UAirsoftEffectsSubsystem::Get(this);
+				// The step sounds like what's underfoot: grass, concrete, steel, wet street (else gravel).
+				EAirsoftSurface Surface = EAirsoftSurface::Default;
+				if (FX)
 				{
-					if (UAirsoftEffectsSubsystem* FX = UAirsoftEffectsSubsystem::Get(this))
+					FHitResult Ground;
+					FCollisionQueryParams Query(SCENE_QUERY_STAT(AirsoftFootstep), false, this);
+					if (GetWorld()->LineTraceSingleByChannel(Ground, Foot + FVector(0.f, 0.f, 10.f), Foot - FVector(0.f, 0.f, 40.f), ECC_Visibility, Query))
 					{
-						FX->FootDust(this, Foot, bSprint ? 1.f : 0.4f);
+						Surface = FX->SurfaceOf(Ground);
 					}
+				}
+				float SurfaceVolume = 1.f;
+				float SurfacePitch = 1.f;
+				const FName StepKey = AirsoftCharacterLocal::FootstepFor(Surface, SurfaceVolume, SurfacePitch);
+				AirsoftAssets::Play3D(this, StepKey, Foot, Volume * SurfaceVolume, SurfacePitch * FMath::FRandRange(0.85f, 1.15f));
+				// Effects: dust kicked up on dusty ground (others only: your own feet are out of view).
+				if (FX && !bIsCrouched && !IsLocalHuman())
+				{
+					FX->FootDust(this, Foot, bSprint ? 1.f : 0.4f);
 				}
 			}
 		}

@@ -4,6 +4,7 @@
 // The loading card is painted by the movie player from its own thread while the
 // old world is torn down, so it holds only strings and Slate: no UObjects.
 
+#include "AirsoftAssets.h"
 #include "AirsoftCharacter.h"
 #include "AirsoftCombatComponent.h"
 #include "AirsoftGameInstance.h"
@@ -285,8 +286,8 @@ namespace AirsoftWalkthroughLocal
 SAirsoftWalkthrough::FStepText SAirsoftWalkthrough::TextFor(EStep InStep) const
 {
 	using AirsoftLoadingLocal::Key;
-	const UAirsoftGameInstance* GI = WeakGI.Get();
-	const FAirsoftUserSettings* S = GI ? &const_cast<UAirsoftGameInstance*>(GI)->GetUserSettings() : nullptr;
+	UAirsoftGameInstance* GI = WeakGI.Get();
+	const FAirsoftUserSettings* S = GI ? &GI->GetUserSettings() : nullptr;
 	switch (InStep)
 	{
 	case EStep::Move:

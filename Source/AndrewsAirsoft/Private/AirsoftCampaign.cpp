@@ -341,7 +341,7 @@ namespace AirsoftCampaign
 		{
 			return FString();
 		}
-		const FString Stage = P->bCheckpointBoss ? FString::Printf(TEXT("%s"), *Mission->Boss.Name.ToUpper())
+		const FString Stage = P->bCheckpointBoss ? Mission->Boss.Name.ToUpper()
 			: FString::Printf(TEXT("%d OF %d DOWN"), P->CheckpointKills, Mission->Enemies);
 		return FString::Printf(TEXT("MISSION %d · %s · %s"), Number, *Mission->Title.ToUpper(), *Stage);
 	}
@@ -396,6 +396,17 @@ namespace AirsoftCampaignLocal
 
 	const FLinearColor StoryColor(0.9f, 0.88f, 0.85f);
 	const FLinearColor BossColor(1.f, 0.16f, 0.1f);
+	// Subtitle name colours.
+	const FLinearColor AndrewColor(0.35f, 0.8f, 1.f);
+	const FLinearColor CrewColor(0.95f, 0.45f, 0.35f);
+
+	const FString AndrewName(TEXT("Andrew"));
+
+	/** Best guess at a line's length when its sound isn't imported (subtitle timing). */
+	float EstimateSpeech(const FString& Text)
+	{
+		return 0.8f + Text.Len() * 0.06f;
+	}
 
 	float Ease(float T)
 	{
@@ -422,6 +433,9 @@ void AAirsoftCampaignGameMode::InitGame(const FString& MapName, const FString& O
 	{
 		MissionNumber = 1;
 	}
+	// Continue: pick up at the saved checkpoint when it belongs to this mission.
+	bResumeFromSave = UGameplayStatics::GetIntOption(Options, TEXT("Checkpoint"), 0) != 0
+		&& AirsoftCampaign::CheckpointMission(this) == MissionNumber;
 	// Every story map is fought like a match map (team-vs-team rules), whatever the airsoft map list says.
 	bPendingMatchMap = true;
 	PendingMode = EAirsoftMode::TDM;
@@ -461,6 +475,28 @@ void AAirsoftCampaignGameMode::StartPlay()
 	GS->PhaseEndsAt = 0.f;
 	UpdateObjectiveText();
 	ApplyNoirGrade();
+	AirsoftSubtitles::Clear();
+
+	if (bResumeFromSave)
+	{
+		// Continue: straight back to the saved checkpoint, no opening cinematic.
+		UAirsoftGameInstance* GI = Cast<UAirsoftGameInstance>(GetGameInstance());
+		const UAirsoftSaveGame* Profile = GI ? GI->GetProfile() : nullptr;
+		const AirsoftCampaign::FMission* Mission = AirsoftCampaign::FindMission(MissionNumber);
+		if (Profile && Mission)
+		{
+			bHasCheckpoint = true;
+			CheckpointKills = FMath::Clamp(Profile->CheckpointKills, 0, Mission->Enemies);
+			bCheckpointBoss = Profile->bCheckpointBoss && !Mission->Boss.Name.IsEmpty();
+			CheckpointLocation = Profile->CheckpointLocation;
+			CheckpointYaw = Profile->CheckpointYaw;
+			CheckpointsReached = FMath::Max(1, Profile->CheckpointIndex);
+			FTimerHandle Resume;
+			GetWorldTimerManager().SetTimer(Resume, FTimerDelegate::CreateWeakLambda(this, [this]() { RestoreCheckpoint(true); }), 0.1f, false);
+			return;
+		}
+		bResumeFromSave = false;
+	}
 
 	// The player pawn is spawned during login; give it a frame before taking over the camera.
 	FTimerHandle Begin;
@@ -485,6 +521,11 @@ void AAirsoftCampaignGameMode::Tick(float DeltaSeconds)
 	{
 		UpdateCinematicCamera(DeltaSeconds);
 	}
+	if (bInEnding)
+	{
+		UpdateEndingCamera(DeltaSeconds);
+	}
+	UpdateBarks();
 	if (AAirsoftGameState* GS = GetAirsoftGameState())
 	{
 		const AAirsoftCharacter* Boss = BossController ? Cast<AAirsoftCharacter>(BossController->GetPawn()) : nullptr;
@@ -537,7 +578,31 @@ float AAirsoftCampaignGameMode::PlayVoice(const FString& Line)
 		return 0.f;
 	}
 	UGameplayStatics::PlaySound2D(this, Sound);
-	return Sound->GetDuration();
+	const float Length = Sound->GetDuration();
+	// Story lines own the air: barks wait until they're done.
+	VoiceBusyUntil = FMath::Max(VoiceBusyUntil, static_cast<double>(GetWorld()->GetTimeSeconds() + Length + 0.3f));
+	return Length;
+}
+
+float AAirsoftCampaignGameMode::SpeakLine(FName File, const FString& Speaker, const FString& Text, const FLinearColor& Color, const FVector* At)
+{
+	float Length = 0.f;
+	if (USoundBase* Sound = AirsoftAssets::Sound(File))
+	{
+		if (At)
+		{
+			AirsoftAssets::Play3D(this, File, *At);
+		}
+		else
+		{
+			UGameplayStatics::PlaySound2D(this, Sound);
+		}
+		Length = Sound->GetDuration();
+	}
+	const float Hold = Length > 0.f ? Length : AirsoftCampaignLocal::EstimateSpeech(Text);
+	AirsoftSubtitles::Show(Speaker, Text, Color, Hold + 0.6f);
+	VoiceBusyUntil = FMath::Max(VoiceBusyUntil, static_cast<double>(GetWorld()->GetTimeSeconds() + Hold + 0.25f));
+	return Hold;
 }
 
 // ---------------------------------------------------------------------------
@@ -647,6 +712,16 @@ void AAirsoftCampaignGameMode::UpdateCinematicCamera(float DeltaSeconds)
 
 void AAirsoftCampaignGameMode::SkipCinematic()
 {
+	if (CreditsWidget.IsValid())
+	{
+		StaticCastSharedPtr<SAirsoftCredits>(CreditsWidget)->Finish();
+		return;
+	}
+	if (bInEnding)
+	{
+		RollCredits();
+		return;
+	}
 	if (bInCinematic)
 	{
 		GetWorldTimerManager().ClearTimer(IntroTimer);
@@ -687,6 +762,24 @@ void AAirsoftCampaignGameMode::EndCinematic()
 	if (Mission)
 	{
 		AnnounceAll(Mission->Objective.ToUpper(), FString::Printf(TEXT("%d hostiles · they're coming"), Mission->Enemies), AirsoftColors::Accent(), 3.5f);
+		// Andrew, under his breath.
+		if (!Mission->AndrewStart.IsEmpty())
+		{
+			const FString Line = Mission->AndrewStart;
+			GetWorldTimerManager().SetTimer(VoiceTimer, FTimerDelegate::CreateWeakLambda(this, [this, Line]()
+			{
+				SpeakLine(AirsoftCampaign::VoiceKey(MissionNumber, TEXT("Andrew_Start")), AirsoftCampaignLocal::AndrewName, Line, AirsoftCampaignLocal::AndrewColor);
+			}), 0.6f, false);
+		}
+	}
+	// The mission start is the first checkpoint (kept in the level only; the profile's starts mid-mission).
+	if (const APawn* Andrew = FindPlayerPawn())
+	{
+		bHasCheckpoint = true;
+		CheckpointKills = 0;
+		bCheckpointBoss = false;
+		CheckpointLocation = Andrew->GetActorLocation();
+		CheckpointYaw = Andrew->GetActorRotation().Yaw;
 	}
 	// A breath to get into cover, then the first wave.
 	FTimerHandle Start;
@@ -935,6 +1028,19 @@ void AAirsoftCampaignGameMode::SpawnBoss()
 	GS->BossHealth = 1.f;
 	const float Voice = PlayVoice(TEXT("Boss"));
 	AnnounceAll(Mission->Boss.Name.ToUpper(), FString::Printf(TEXT("“%s”"), *Mission->Boss.Taunt), AirsoftCampaignLocal::BossColor, FMath::Max(4.f, Voice + 1.f));
+	// Andrew answers once the taunt is done.
+	if (!Mission->Boss.AndrewReply.IsEmpty())
+	{
+		const FString Reply = Mission->Boss.AndrewReply;
+		GetWorldTimerManager().SetTimer(VoiceTimer, FTimerDelegate::CreateWeakLambda(this, [this, Reply]()
+		{
+			if (!bMissionOver)
+			{
+				SpeakLine(AirsoftCampaign::VoiceKey(MissionNumber, TEXT("Andrew_Boss")), AirsoftCampaignLocal::AndrewName, Reply, AirsoftCampaignLocal::AndrewColor);
+			}
+		}), FMath::Max(1.5f, (Voice > 0.f ? Voice : AirsoftCampaignLocal::EstimateSpeech(Mission->Boss.Taunt)) + 0.5f), false);
+	}
+	bBossMidSaid = false;
 	UpdateObjectiveText();
 }
 
@@ -1000,6 +1106,10 @@ bool AAirsoftCampaignGameMode::ApplyCampaignDamage(AController* Shooter, AContro
 	const bool bVictimIsPlayer = Victim->IsPlayerController();
 	if (bVictimIsPlayer)
 	{
+		if (bBossDown)
+		{
+			return false; // the fight is won; a stray grenade doesn't undo it
+		}
 		Damage *= AirsoftCampaign::EnemyDamageScale(Difficulty());
 	}
 	const APawn* ShooterPawn = Shooter ? Shooter->GetPawn() : nullptr;
@@ -1014,6 +1124,23 @@ bool AAirsoftCampaignGameMode::ApplyCampaignDamage(AController* Shooter, AContro
 		else
 		{
 			OnEnemyKilled(Shooter, Victim, WeaponId, bHeadshot);
+		}
+	}
+	else if (!bVictimIsPlayer)
+	{
+		if (Victim == BossController)
+		{
+			// Half health: the boss's mask slips.
+			const AirsoftCampaign::FMission* Mission = AirsoftCampaign::FindMission(MissionNumber);
+			if (Mission && !bBossMidSaid && !Mission->Boss.Mid.IsEmpty() && VictimChar->GetHealth() < VictimChar->GetMaxHealth() * 0.5f)
+			{
+				bBossMidSaid = true;
+				SpeakLine(AirsoftCampaign::VoiceKey(MissionNumber, TEXT("Boss_Mid")), Mission->Boss.Name, Mission->Boss.Mid, AirsoftCampaignLocal::BossColor);
+			}
+		}
+		else
+		{
+			Bark(TEXT("CrewHit"), Victim, 0.3f);
 		}
 	}
 	return true;
@@ -1057,12 +1184,14 @@ void AAirsoftCampaignGameMode::OnEnemyKilled(AController* Shooter, AController* 
 		}
 	}
 	// The body stays where it fell (for a while); a crew controller is free to come back as reinforcements.
+	const FVector BodyLocation = Victim->GetPawn() ? Victim->GetPawn()->GetActorLocation() : FVector::ZeroVector;
 	if (APawn* Body = Victim->GetPawn())
 	{
 		Victim->UnPossess();
 		Body->SetLifeSpan(60.f);
 	}
 	UpdateObjectiveText();
+	const AirsoftCampaign::FMission* Mission = AirsoftCampaign::FindMission(MissionNumber);
 
 	if (bBoss)
 	{
@@ -1070,11 +1199,61 @@ void AAirsoftCampaignGameMode::OnEnemyKilled(AController* Shooter, AController* 
 		{
 			GS->BossHealth = 0.f;
 		}
-		CompleteMission();
+		// The boss's last words, then the mission ends.
+		bBossDown = true;
+		float Hold = 0.f;
+		if (Mission && !Mission->Boss.Death.IsEmpty())
+		{
+			Hold = SpeakLine(AirsoftCampaign::VoiceKey(MissionNumber, TEXT("Boss_Death")), Mission->Boss.Name, Mission->Boss.Death, AirsoftCampaignLocal::BossColor);
+		}
+		GetWorldTimerManager().ClearTimer(VoiceTimer);
+		GetWorldTimerManager().SetTimer(EndTimer, FTimerDelegate::CreateWeakLambda(this, [this]() { CompleteMission(); }), FMath::Max(1.2f, Hold + 0.8f), false);
 		return;
 	}
-	const AirsoftCampaign::FMission* Mission = AirsoftCampaign::FindMission(MissionNumber);
-	if (Mission && EnemiesKilled >= Mission->Enemies)
+
+	const bool bByAndrew = Shooter && Shooter->IsPlayerController();
+	const bool bCrewCleared = Mission && EnemiesKilled >= Mission->Enemies;
+	if (bByAndrew && bCrewCleared && Mission && !Mission->Boss.Name.IsEmpty() && !bLastKillSaid)
+	{
+		// The last of the crew: Andrew calls for the boss.
+		bLastKillSaid = true;
+		if (const TArray<AirsoftCampaign::FLine>* Lines = AirsoftCampaign::FindBarks(TEXT("AndrewLastKill")))
+		{
+			const AirsoftCampaign::FLine& Line = (*Lines)[FMath::RandRange(0, Lines->Num() - 1)];
+			SpeakLine(Line.File, AirsoftCampaignLocal::AndrewName, Line.Text, AirsoftCampaignLocal::AndrewColor);
+		}
+	}
+	else if (!bCrewCleared)
+	{
+		// A crewmate nearby reacts; otherwise, now and then, Andrew does.
+		AController* Witness = nullptr;
+		float Nearest = 1800.f;
+		for (AAirsoftBotController* Bot : Enemies)
+		{
+			const APawn* P = Bot ? Bot->GetPawn() : nullptr;
+			const AAirsoftCharacter* C = Cast<AAirsoftCharacter>(P);
+			if (C && !C->IsOut() && Bot != Victim)
+			{
+				const float D = static_cast<float>(FVector::Dist(P->GetActorLocation(), BodyLocation));
+				if (D < Nearest)
+				{
+					Nearest = D;
+					Witness = Bot;
+				}
+			}
+		}
+		const int32 Left = Mission ? Mission->Enemies - EnemiesKilled : 0;
+		if (!bFearSaid && Left > 0 && Left <= 2 && Witness && Bark(TEXT("CrewFear"), Witness))
+		{
+			bFearSaid = true;
+		}
+		else if (!(Witness && Bark(TEXT("CrewManDown"), Witness, 0.45f)) && bByAndrew)
+		{
+			Bark(TEXT("AndrewKill"), nullptr, 0.3f);
+		}
+	}
+
+	if (bCrewCleared)
 	{
 		if (Mission->Boss.Name.IsEmpty())
 		{
@@ -1082,15 +1261,15 @@ void AAirsoftCampaignGameMode::OnEnemyKilled(AController* Shooter, AController* 
 		}
 		else
 		{
-			// The crew is down: a beat of quiet, then the boss.
-			FTimerHandle BossTimer;
+			// The crew is down: the boss fight is a checkpoint; a beat of quiet, then the boss.
+			SaveCheckpoint(true);
 			GetWorldTimerManager().SetTimer(BossTimer, FTimerDelegate::CreateWeakLambda(this, [this]() { SpawnBoss(); }), 3.f, false);
 		}
 		return;
 	}
+	CheckCrewCheckpoint();
 	// Reinforcements after a short pause, so there's a breath between waves.
-	FTimerHandle Refill;
-	GetWorldTimerManager().SetTimer(Refill, FTimerDelegate::CreateWeakLambda(this, [this]() { TopUpEnemies(); }), 2.5f, false);
+	GetWorldTimerManager().SetTimer(RefillTimer, FTimerDelegate::CreateWeakLambda(this, [this]() { TopUpEnemies(); }), 2.5f, false);
 }
 
 void AAirsoftCampaignGameMode::OnPlayerKilled(AController* Victim, const FString& KilledBy)
@@ -1106,6 +1285,16 @@ void AAirsoftCampaignGameMode::OnPlayerKilled(AController* Victim, const FString
 	}
 	// The HUD's "DOWN · Killed by ..." overlay says it; no second banner on top.
 	UpdateObjectiveText();
+	GetWorldTimerManager().ClearTimer(BossTimer);
+	GetWorldTimerManager().ClearTimer(RefillTimer);
+	GetWorldTimerManager().ClearTimer(VoiceTimer);
+	if (bHasCheckpoint)
+	{
+		// Back to the last checkpoint after a moment.
+		bRespawning = true;
+		GetWorldTimerManager().SetTimer(EndTimer, FTimerDelegate::CreateWeakLambda(this, [this]() { RestoreCheckpoint(true); }), 4.f, false);
+		return;
+	}
 	const int32 Number = MissionNumber;
 	const AirsoftCampaign::FMission* Mission = AirsoftCampaign::FindMission(Number);
 	const FString Map = Mission ? Mission->MapPath : FString();
@@ -1131,8 +1320,20 @@ void AAirsoftCampaignGameMode::CompleteMission()
 		{
 			Profile->CampaignReached = FMath::Max(Profile->CampaignReached, bLast ? MissionNumber : Next);
 			Profile->bCampaignFinished = Profile->bCampaignFinished || bLast;
+			// The mission is done: its checkpoint is no longer something to continue from.
+			if (Profile->CheckpointMission == MissionNumber)
+			{
+				Profile->CheckpointMission = 0;
+			}
 		}
 		GI->SaveProfile();
+	}
+	GetWorldTimerManager().ClearTimer(BossTimer);
+	GetWorldTimerManager().ClearTimer(RefillTimer);
+	if (bLast)
+	{
+		BeginEnding();
+		return;
 	}
 	const float Voice = PlayVoice(TEXT("Outro"));
 	const float Hold = FMath::Max(7.f, Voice + 2.5f);

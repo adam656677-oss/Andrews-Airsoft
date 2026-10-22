@@ -262,6 +262,75 @@ def footstep(r, v):
     return room(m.out(), r, 0.3, 0.06, "outdoor", fade_s=0.08, t60=0.35, lo_cut=200)
 
 
+# Surface variants, picked by the character from the ground under the foot
+# (AirsoftEffects surface: Foliage -> grass, Stone -> concrete, Metal/Steel -> metal,
+# Water -> wet). Dirt, gravel and anything unknown keep the gravel "Footstep" above.
+
+def footstep_grass(r, v):
+    """Boot on grass and soft earth: muffled heel thud, blades swishing round the sole, a soft toe roll."""
+    k = _k(r, v, 0.05)
+    heavy = v % 2 == 0
+    m = Mix(0.34)
+    m.add(thump(0.07, 120 * k, 60 * k, 0.016 if heavy else 0.011), 0.0, 0.85 if heavy else 0.6)
+    m.add(lp(bp(burst(r, 0.05, 0.01, attack=0.001), 520 * k, 0.9), 1400), 0.0, 0.5)          # damp earth
+    m.add(friction(r, 0.09, 3800 * k, 2400 * k, q=0.7, grit=0.85, attack=0.006, decay=0.04), 0.004, 0.32)  # blades
+    toe = 0.06 + r.uniform(0, 0.035)
+    m.add(friction(r, 0.08, 3200 * k, 4600 * k, q=0.7, grit=0.9, attack=0.01, decay=0.035), toe, 0.22)
+    m.add(thump(0.04, 160 * k, 90 * k, 0.008), toe, 0.25)
+    return room(m.out(), r, 0.32, 0.05, "outdoor", fade_s=0.08, t60=0.3, lo_cut=180)
+
+
+def footstep_concrete(r, v):
+    """Boot on bare concrete or asphalt: hard heel 'tok', rubber sole slap, a little grit scuff."""
+    k = _k(r, v, 0.05)
+    heavy = v % 2 == 0
+    n = ns(0.3)
+    m = Mix(0.3)
+    m.add(thump(0.05, 170 * k, 85 * k, 0.008 if heavy else 0.006), 0.0, 0.7 if heavy else 0.5)
+    m.add(bp(burst(r, 0.03, 0.0035, attack=0.0002), 1350 * k, 1.6), 0.0, 0.95)               # heel tok
+    m.add(bp(burst(r, 0.02, 0.002, attack=0.0001), 3200 * k, 1.4), 0.0, 0.3)
+    m.add(_grains(r, n, 0.003, int(r.integers(6, 16)), 0.012, lo=2500, hi=8000), 0.0, 0.35)  # grit
+    toe = 0.045 + r.uniform(0, 0.03)
+    m.add(bp(burst(r, 0.025, 0.003, attack=0.0003), 1650 * k, 1.5), toe, 0.45)              # sole slap
+    if v in (1, 4):
+        m.add(friction(r, 0.06, 2800, 4200, q=1.1, grit=0.5, attack=0.006, decay=0.025), toe + 0.008, 0.16)
+    return room(m.out(), r, 0.3, 0.08, "outdoor", fade_s=0.08, t60=0.45, lo_cut=200)
+
+
+def footstep_metal(r, v):
+    """Boot on steel deck plate / catwalk grating: heel strike with a hollow plate ring and a tinny toe tap."""
+    k = _k(r, v, 0.05)
+    heavy = v % 2 == 0
+    m = Mix(0.42)
+    m.add(thump(0.06, 150 * k, 80 * k, 0.01), 0.0, 0.7 if heavy else 0.5)
+    f = r.uniform(260, 340) * k
+    ring = struck(r, [f, f * 2.37, f * 3.9, f * 6.1], [0.09, 0.05, 0.03, 0.018], [1, 0.55, 0.35, 0.2],
+                  seconds=0.3, noise_mix=0.35, lo=1800)
+    m.add(ring, 0.0, 0.55 if heavy else 0.42)
+    m.add(bp(burst(r, 0.025, 0.0025, attack=0.0001), 2200 * k, 1.3), 0.0, 0.5)              # sole on steel
+    toe = 0.05 + r.uniform(0, 0.03)
+    g = r.uniform(900, 1300) * k
+    m.add(struck(r, [g, g * 2.2, g * 3.3], [0.03, 0.02, 0.012], [1, 0.6, 0.35], seconds=0.12, noise_mix=0.5), toe, 0.3)
+    return room(m.out(), r, 0.42, 0.1, "small", fade_s=0.1)
+
+
+def footstep_wet(r, v):
+    """Boot on wet street: concrete tok under a slap of water, droplets flicked off the sole."""
+    k = _k(r, v, 0.05)
+    heavy = v % 2 == 0
+    n = ns(0.36)
+    m = Mix(0.36)
+    m.add(thump(0.05, 160 * k, 80 * k, 0.008), 0.0, 0.6 if heavy else 0.45)
+    m.add(bp(burst(r, 0.03, 0.0035, attack=0.0002), 1250 * k, 1.5), 0.0, 0.55)
+    m.add(bp(burst(r, 0.06, 0.012, attack=0.0008), 2600 * k, 0.7), 0.002, 0.7)               # water slap
+    m.add(hp(burst(r, 0.05, 0.008, attack=0.0005), 4000), 0.004, 0.35)
+    m.add(_grains(r, n, 0.012, int(r.integers(14, 30)), 0.03, lo=2500, hi=9000), 0.0, 0.55)  # droplets
+    toe = 0.055 + r.uniform(0, 0.03)
+    m.add(bp(burst(r, 0.05, 0.01, attack=0.001), 1900 * k, 0.8), toe, 0.4)                   # sole peels off
+    m.add(_grains(r, n, toe + 0.01, int(r.integers(8, 18)), 0.025, lo=3000, hi=9000), 0.0, 0.35)
+    return room(m.out(), r, 0.36, 0.08, "outdoor", fade_s=0.08, t60=0.45, lo_cut=200)
+
+
 def land(r, v):
     """Jump landing: two boots, big gravel crunch, plate-carrier and pouch rattle."""
     n = ns(0.66)
@@ -291,5 +360,9 @@ RECIPES = {
     "GrenadeBounce": (grenade_bounce, 3, "Small polymer BB-grenade canister bouncing on hard ground, BBs rattling inside"),
     "GrenadeBurst": (grenade_burst, 1, "BB grenade: gas pop + shell split + ~1.2 s shower of BBs pattering on surfaces"),
     "Footstep": (footstep, 6, "Boots on gravel over concrete (alternating heavier heel / lighter roll)"),
+    "FootstepGrass": (footstep_grass, 6, "Boots on grass and soft earth: muffled thud, blade swish"),
+    "FootstepConcrete": (footstep_concrete, 6, "Boots on bare concrete / asphalt: hard heel tok, sole slap"),
+    "FootstepMetal": (footstep_metal, 6, "Boots on steel deck plate / catwalk: hollow plate ring, tinny toe"),
+    "FootstepWet": (footstep_wet, 6, "Boots on wet street: tok under a water slap, flicked droplets"),
     "Land": (land, 1, "Jump landing: double boot thud, gravel crunch, gear and pouch rattle"),
 }

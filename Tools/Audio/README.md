@@ -207,6 +207,10 @@ All mono, 3 variations (`<Key>_Airsoft.wav` + `_Airsoft_01`..`_03`).
 | `GrenadeBounce` | `GrenadeBounce.wav` + `_01`..`_03` | mono | 0.46-0.47 s | Small polymer BB-grenade canister bouncing on hard ground, BBs rattling inside (unchanged) |
 | `GrenadeBurst` | `GrenadeBurst.wav` | mono | 1.35 s | BB grenade: gas pop + shell split + ~1.2 s shower of BBs pattering on surfaces (unchanged) |
 | `Footstep` | `Footstep.wav` + `_01`..`_06` | mono | 0.27-0.28 s | Boots on gravel over concrete (unchanged) |
+| `FootstepGrass` | `_01`..`_06` | mono | 0.32-0.34 s | Boots on grass and soft earth (Foliage surfaces) |
+| `FootstepConcrete` | `_01`..`_06` | mono | 0.26-0.30 s | Bare concrete / asphalt; also wood and carpet, pitched down and quieter |
+| `FootstepMetal` | `_01`..`_06` | mono | 0.34-0.37 s | Steel deck plate and catwalks, played at 0.6 volume |
+| `FootstepWet` | `_01`..`_06` | mono | 0.32-0.34 s | Wet street and puddles (`Wet`/`Puddle` materials) |
 | `Land` | `Land.wav` | mono | 0.49 s | Jump landing: double boot thud, gravel crunch, gear and pouch rattle (unchanged) |
 
 ### Player feedback, replay & UI
