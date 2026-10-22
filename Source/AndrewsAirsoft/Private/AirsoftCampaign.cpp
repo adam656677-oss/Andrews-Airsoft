@@ -12,6 +12,7 @@
 #include "AirsoftSaveGame.h"
 #include "AirsoftSettings.h"
 #include "AirsoftTeamStart.h"
+#include "AirsoftUnlocks.h"
 #include "AirsoftWeaponData.h"
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
@@ -1321,6 +1322,8 @@ void AAirsoftCampaignGameMode::CompleteMission()
 		{
 			Profile->CampaignReached = FMath::Max(Profile->CampaignReached, bLast ? MissionNumber : Next);
 			Profile->bCampaignFinished = Profile->bCampaignFinished || bLast;
+			// Story gun unlocks for finishing this mission (first time only).
+			UnlockedGunsText = AirsoftUnlocks::NamesText(AirsoftUnlocks::GrantForMission(Profile, MissionNumber));
 			// The mission is done: its checkpoint is no longer something to continue from.
 			if (Profile->CheckpointMission == MissionNumber)
 			{
@@ -1338,7 +1341,12 @@ void AAirsoftCampaignGameMode::CompleteMission()
 	}
 	const float Voice = PlayVoice(TEXT("Outro"));
 	const float Hold = FMath::Max(7.f, Voice + 2.5f);
-	AnnounceAll(bLast ? TEXT("CONTRACT CLOSED") : TEXT("MISSION COMPLETE"), Mission ? Mission->Outro : FString(), AirsoftColors::Accent(), Hold);
+	FString Sub = Mission ? Mission->Outro : FString();
+	if (!UnlockedGunsText.IsEmpty())
+	{
+		Sub += FString::Printf(TEXT("%sNEW GUNS UNLOCKED: %s. Equip them in the Armory."), Sub.IsEmpty() ? TEXT("") : TEXT("\n"), *UnlockedGunsText.ToUpper());
+	}
+	AnnounceAll(bLast ? TEXT("CONTRACT CLOSED") : TEXT("MISSION COMPLETE"), Sub, AirsoftColors::Accent(), Hold);
 	UpdateObjectiveText();
 	GetWorldTimerManager().SetTimer(EndTimer, FTimerDelegate::CreateWeakLambda(this, [this, Next, bLast]()
 	{
@@ -1347,12 +1355,19 @@ void AAirsoftCampaignGameMode::CompleteMission()
 		{
 			if (GI)
 			{
-				GI->ReturnToMainMenu(FString::Printf(TEXT("%s complete. Thanks for playing."), *AirsoftCampaign::GameTitle()));
+				GI->ReturnToMainMenu(CompletionMessage());
 			}
 			return;
 		}
 		GI->StartMission(Next);
 	}), Hold + 1.f, false);
+}
+
+FString AAirsoftCampaignGameMode::CompletionMessage() const
+{
+	return UnlockedGunsText.IsEmpty()
+		? FString::Printf(TEXT("%s complete. Thanks for playing."), *AirsoftCampaign::GameTitle())
+		: FString::Printf(TEXT("%s complete. New guns unlocked: %s."), *AirsoftCampaign::GameTitle(), *UnlockedGunsText);
 }
 
 void AAirsoftCampaignGameMode::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -1838,7 +1853,7 @@ void AAirsoftCampaignGameMode::FinishCredits()
 	}
 	if (UAirsoftGameInstance* GI = Cast<UAirsoftGameInstance>(GetGameInstance()))
 	{
-		GI->ReturnToMainMenu(FString::Printf(TEXT("%s complete. Thanks for playing."), *AirsoftCampaign::GameTitle()));
+		GI->ReturnToMainMenu(CompletionMessage());
 	}
 }
 

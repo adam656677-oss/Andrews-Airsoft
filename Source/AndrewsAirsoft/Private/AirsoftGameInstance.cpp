@@ -6,6 +6,7 @@
 #include "AirsoftModeRules.h"
 #include "AirsoftSaveGame.h"
 #include "AirsoftSettings.h"
+#include "AirsoftUnlocks.h"
 #include "AirsoftWeaponData.h"
 #include "AudioDevice.h"
 #include "Engine/Engine.h"
@@ -264,6 +265,9 @@ UAirsoftSaveGame* UAirsoftGameInstance::GetProfile()
 		{
 			Profile->Loadout = AirsoftWeapons::DefaultLoadout();
 		}
+		// Story gun unlocks: grant what finished missions earned (older saves), then keep locked guns out of the loadout.
+		AirsoftUnlocks::Sync(Profile);
+		AirsoftUnlocks::SanitizeLoadout(Profile);
 	}
 	return Profile;
 }

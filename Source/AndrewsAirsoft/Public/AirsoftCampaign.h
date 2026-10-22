@@ -204,6 +204,10 @@ protected:
 	int32 EnemiesKilled = 0;
 	bool bEnemiesStarted = false;
 	bool bMissionOver = false;
+	/** Guns this mission's completion unlocked ("MP7 GBB and G34 Competition"), shown with MISSION COMPLETE / after the credits. */
+	FString UnlockedGunsText;
+	/** The main menu's line after the last mission (names any guns it unlocked). */
+	FString CompletionMessage() const;
 	FTimerHandle IntroTimer;
 	FTimerHandle EndTimer;
 	FTimerHandle BossTimer;

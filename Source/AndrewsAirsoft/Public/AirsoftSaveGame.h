@@ -84,6 +84,8 @@ public:
 	UPROPERTY() FVector CheckpointLocation = FVector::ZeroVector;
 	UPROPERTY() float CheckpointYaw = 0.f;
 	UPROPERTY() FAirsoftLoadout Loadout;
+	/** Story gun unlocks: guns granted by finished missions (AirsoftUnlocks). Guns open from the start aren't listed. */
+	UPROPERTY() TArray<FName> UnlockedGuns;
 	/** Saved attachments/finish per weapon id, so swapping guns keeps each one's setup. */
 	UPROPERTY() TMap<FName, FAirsoftCustomization> Customizations;
 };

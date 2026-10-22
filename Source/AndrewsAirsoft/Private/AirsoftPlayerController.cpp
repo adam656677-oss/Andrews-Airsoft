@@ -16,6 +16,7 @@
 #include "AirsoftPlayerState.h"
 #include "AirsoftSaveGame.h"
 #include "AirsoftSettings.h"
+#include "AirsoftUnlocks.h"
 #include "AirsoftWeaponData.h"
 #include "Algo/Sort.h"
 #include "Camera/CameraActor.h"
@@ -1516,6 +1517,15 @@ void AAirsoftPlayerController::ApplyLoadout(const FAirsoftLoadout& InLoadout)
 	if (!Secondary || !Secondary->IsSecondary())
 	{
 		Clean.Secondary = Defaults.Secondary;
+	}
+	// Story gun unlocks: outside the practice range a locked gun falls back to the best unlocked one of its slot.
+	// (Single-player: the local player's own profile holds the unlocks; remote players aren't checked.)
+	if (IsLocalController() && !AirsoftUnlocks::CanTryLockedGuns(GetWorld()))
+	{
+		if (UAirsoftGameInstance* GI = GetGameInstance<UAirsoftGameInstance>())
+		{
+			AirsoftUnlocks::SanitizeLoadout(GI->GetProfile(), Clean);
+		}
 	}
 	// Finishes are earned: fall back to the default finish if the rank isn't there yet.
 	const int32 Rank = PS->RankIndex();

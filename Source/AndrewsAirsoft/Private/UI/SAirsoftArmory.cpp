@@ -1,7 +1,10 @@
 // Andrew's Airsoft - armory: pick primary/secondary, fit attachments per slot,
 // choose a finish (rank-locked), and read the resulting stats. Every edit goes
 // through AirsoftWeapons::Clean, is saved to the profile and pushed to the host.
+// Guns the story hasn't unlocked yet (AirsoftUnlocks) show a padlock and can't be
+// equipped; on the practice range they can be tried without being saved.
 
+#include "AirsoftCampaign.h"
 #include "AirsoftGameInstance.h"
 #include "AirsoftGameState.h"
 #include "AirsoftPlayerController.h"
@@ -9,12 +12,14 @@
 #include "AirsoftUIScreens.h"
 #include "AirsoftUIStyle.h"
 #include "AirsoftUIWidgets.h"
+#include "AirsoftUnlocks.h"
 #include "AirsoftWeaponData.h"
 #include "CoreGlobals.h"
 #include "HAL/PlatformTime.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/SNullWidget.h"
 #include "Widgets/SOverlay.h"
+#include "Widgets/Images/SImage.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Layout/SScrollBox.h"
@@ -70,6 +75,38 @@ namespace AirsoftArmoryLocal
 	{
 		return bVisible ? EVisibility::Visible : EVisibility::Collapsed;
 	}
+
+	/** A small drawn padlock (shackle outline over a solid body) for locked guns. */
+	TSharedRef<SWidget> Padlock(const FLinearColor& Color)
+	{
+		return SNew(SVerticalBox)
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.HAlign(HAlign_Center)
+			[
+				SNew(SBox)
+				.WidthOverride(8.f)
+				.HeightOverride(6.f)
+				[
+					SNew(SBorder)
+					.BorderImage(AUI::OutlineBrush())
+					.BorderBackgroundColor(Color)
+				]
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.HAlign(HAlign_Center)
+			[
+				SNew(SBox)
+				.WidthOverride(12.f)
+				.HeightOverride(9.f)
+				[
+					SNew(SImage)
+					.Image(AUI::WhiteBrush())
+					.ColorAndOpacity(Color)
+				]
+			];
+	}
 }
 
 class SAirsoftArmory : public SAirsoftMenuBase
@@ -103,7 +140,18 @@ private:
 	void SetSkin(FName SkinId);
 	void Flash(const FString& Text);
 
+	/** Not yet unlocked by the story. */
+	bool IsLocked(FName Id) const;
+	/** The practice range: locked guns can be tried (never saved to the loadout). */
+	bool CanTry() const;
+	/** "Locked: finish Mission 2, Velvet, to unlock it." */
+	FString UnlockHint(FName Id) const;
+	/** Range only: hand the player a locked gun for now, leaving the saved loadout alone. */
+	void TryOut(FName Id, bool bAnnounce = true);
+
 	FName ViewId;
+	/** The locked gun being tried on the range (None = the saved loadout is in hand). */
+	FName TriedId;
 	TSharedPtr<SBox> DetailBox;
 	TMap<FName, TSharedPtr<SAirsoftButton>> CardButtons;
 	FString Message;
@@ -156,6 +204,55 @@ bool SAirsoftArmory::IsEquipped(FName Id) const
 	return P && (P->Loadout.Primary.WeaponId == Id || P->Loadout.Secondary.WeaponId == Id);
 }
 
+bool SAirsoftArmory::IsLocked(FName Id) const
+{
+	return !AirsoftUnlocks::IsUnlocked(Profile(), Id);
+}
+
+bool SAirsoftArmory::CanTry() const
+{
+	const AAirsoftPlayerController* PC = WeakPC.Get();
+	return PC && !PC->IsMainMenu() && AirsoftUnlocks::CanTryLockedGuns(PC->GetWorld());
+}
+
+FString SAirsoftArmory::UnlockHint(FName Id) const
+{
+	const int32 Number = AirsoftUnlocks::UnlockMission(Id);
+	const AirsoftCampaign::FMission* Mission = AirsoftCampaign::FindMission(Number);
+	const FString Where = Mission
+		? FString::Printf(TEXT("Mission %d, %s,"), Number, *Mission->Title)
+		: FString::Printf(TEXT("Mission %d"), Number);
+	return CanTry()
+		? FString::Printf(TEXT("Locked: finish %s to take it on missions. You can try it here on the range."), *Where)
+		: FString::Printf(TEXT("Locked: finish %s to unlock it."), *Where);
+}
+
+void SAirsoftArmory::TryOut(FName Id, bool bAnnounce)
+{
+	AAirsoftPlayerController* PC = WeakPC.Get();
+	const UAirsoftSaveGame* P = Profile();
+	const FAirsoftWeaponDef* Def = AirsoftWeapons::Find(Id);
+	if (!PC || !P || !Def || !CanTry())
+	{
+		return;
+	}
+	FAirsoftLoadout Trial = P->Loadout;
+	if (Def->IsSecondary())
+	{
+		Trial.Secondary = CustomFor(Id);
+	}
+	else
+	{
+		Trial.Primary = CustomFor(Id);
+	}
+	TriedId = Id;
+	PC->ServerSetLoadout(Trial);
+	if (bAnnounce)
+	{
+		Flash(FString::Printf(TEXT("Trying the %s on the range. Your saved loadout is unchanged."), *Def->Name));
+	}
+}
+
 AirsoftArmoryLocal::FStats SAirsoftArmory::ComputeStats() const
 {
 	if (StatsFrame == GFrameCounter)
@@ -192,7 +289,8 @@ void SAirsoftArmory::Store(const FAirsoftCustomization& In, bool bEquip)
 		return;
 	}
 	P->Customizations.Add(C.WeaponId, C);
-	if (bEquip || IsEquipped(C.WeaponId))
+	const bool bLocked = IsLocked(C.WeaponId);
+	if (!bLocked && (bEquip || IsEquipped(C.WeaponId)))
 	{
 		if (Def->IsSecondary())
 		{
@@ -207,8 +305,19 @@ void SAirsoftArmory::Store(const FAirsoftCustomization& In, bool bEquip)
 	{
 		GI->SaveProfile();
 	}
+	if (bLocked)
+	{
+		// A locked gun's attachments and finish are remembered for later; on the range the trial picks them up.
+		if (TriedId == C.WeaponId)
+		{
+			TryOut(C.WeaponId, false);
+		}
+		return;
+	}
 	if (AAirsoftPlayerController* PC = WeakPC.Get())
 	{
+		// Any trial ends when the saved loadout is pushed again.
+		TriedId = NAME_None;
 		PC->PushLoadoutToServer();
 	}
 }
@@ -221,8 +330,20 @@ void SAirsoftArmory::Select(FName Id)
 	}
 	const bool bChanged = ViewId != Id;
 	ViewId = Id;
-	if (!IsEquipped(Id))
+	if (IsLocked(Id))
 	{
+		if (CanTry())
+		{
+			TryOut(Id);
+		}
+		else
+		{
+			Flash(UnlockHint(Id));
+		}
+	}
+	else if (!IsEquipped(Id) || !TriedId.IsNone())
+	{
+		// Equipping (or going back to) a saved gun also ends a range trial.
 		Store(CustomFor(Id), true);
 	}
 	if (bChanged && DetailBox.IsValid())
@@ -533,12 +654,19 @@ TSharedRef<SWidget> SAirsoftArmory::BuildWeaponCard(FName Id)
 	TSharedRef<SWidget> Card = SAssignNew(Button, SAirsoftButton)
 		.ContentPadding(FMargin(14.f, 10.f, 12.f, 11.f))
 		.IsSelected_Lambda([this, Id]() { return ViewId == Id; })
+		.IsDimmed_Lambda([this, Id]() { return IsLocked(Id); })
 		.OnClicked_Lambda([this, Id]()
 		{
 			Select(Id);
 			return FReply::Handled();
 		})
 		[
+			SNew(SBorder)
+			.BorderImage(AUI::NoBrush())
+			.Padding(0.f)
+			// Locked guns read as greyed out until the story unlocks them.
+			.ColorAndOpacity_Lambda([this, Id]() { return FLinearColor(1.f, 1.f, 1.f, IsLocked(Id) && TriedId != Id ? 0.45f : 1.f); })
+			[
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot()
 			.AutoHeight()
@@ -575,6 +703,34 @@ TSharedRef<SWidget> SAirsoftArmory::BuildWeaponCard(FName Id)
 						.ColorAndOpacity(AUI::Accent())
 					]
 				]
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.VAlign(VAlign_Center)
+				[
+					// Padlock + the mission that unlocks it ("ON TEST" while tried on the range).
+					SNew(SHorizontalBox)
+					.Visibility_Lambda([this, Id]() -> EVisibility { return IsLocked(Id) ? EVisibility::HitTestInvisible : EVisibility::Collapsed; })
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					.VAlign(VAlign_Center)
+					.Padding(FMargin(0.f, 0.f, 5.f, 0.f))
+					[
+						AirsoftArmoryLocal::Padlock(AUI::TextDim())
+					]
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					.VAlign(VAlign_Center)
+					[
+						SNew(STextBlock)
+						.Text_Lambda([this, Id]()
+						{
+							return FText::FromString(TriedId == Id ? FString(TEXT("ON TEST"))
+								: FString::Printf(TEXT("MISSION %d"), AirsoftUnlocks::UnlockMission(Id)));
+						})
+						.Font(AUI::Font(AUI::EFontWeight::Bold, 7, 160))
+						.ColorAndOpacity_Lambda([this, Id]() -> FSlateColor { return TriedId == Id ? AUI::Accent() : AUI::TextDim(); })
+					]
+				]
 			]
 			+ SVerticalBox::Slot()
 			.AutoHeight()
@@ -594,6 +750,7 @@ TSharedRef<SWidget> SAirsoftArmory::BuildWeaponCard(FName Id)
 				.AutoWrapText(true)
 				.Font(AUI::Font(AUI::EFontWeight::Regular, 9))
 				.ColorAndOpacity(AUI::TextDim())
+			]
 			]
 		];
 	CardButtons.Add(Id, Button);
@@ -723,6 +880,31 @@ TSharedRef<SWidget> SAirsoftArmory::BuildDetail()
 					.Font(AUI::Font(AUI::EFontWeight::Regular, 12, 10))
 					.ColorAndOpacity(AUI::TextDim())
 				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(FMargin(0.f, 8.f, 0.f, 0.f))
+				[
+					// Story lock: which mission opens it (and that the range lets you try it).
+					SNew(SHorizontalBox)
+					.Visibility_Lambda([this, Id]() -> EVisibility { return IsLocked(Id) ? EVisibility::HitTestInvisible : EVisibility::Collapsed; })
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					.VAlign(VAlign_Center)
+					.Padding(FMargin(0.f, 0.f, 8.f, 0.f))
+					[
+						AirsoftArmoryLocal::Padlock(AUI::Accent())
+					]
+					+ SHorizontalBox::Slot()
+					.FillWidth(1.f)
+					.VAlign(VAlign_Center)
+					[
+						SNew(STextBlock)
+						.Text_Lambda([this, Id]() { return FText::FromString(UnlockHint(Id)); })
+						.AutoWrapText(true)
+						.Font(AUI::Caption(9))
+						.ColorAndOpacity(AUI::Accent())
+					]
+				]
 			]
 			+ SHorizontalBox::Slot()
 			.AutoWidth()
@@ -748,12 +930,35 @@ TSharedRef<SWidget> SAirsoftArmory::BuildDetail()
 					[
 						SNew(SAirsoftButton)
 						.Visibility_Lambda([this, Id]() -> EVisibility { return ArmoryVis(!IsEquipped(Id)); })
-						.Text(FText::FromString(Def->IsSecondary() ? TEXT("EQUIP SIDEARM") : TEXT("EQUIP PRIMARY")))
+						.Text_Lambda([this, Id, bSecondary = Def->IsSecondary()]()
+						{
+							if (IsLocked(Id))
+							{
+								if (CanTry())
+								{
+									return FText::FromString(TriedId == Id ? TEXT("ON TEST") : TEXT("TRY ON THE RANGE"));
+								}
+								return FText::FromString(FString::Printf(TEXT("FINISH MISSION %d"), AirsoftUnlocks::UnlockMission(Id)));
+							}
+							return FText::FromString(bSecondary ? TEXT("EQUIP SIDEARM") : TEXT("EQUIP PRIMARY"));
+						})
+						.IsDimmed_Lambda([this, Id]() { return IsLocked(Id) && !CanTry(); })
 						.FontSize(12)
 						.HAlign(HAlign_Center)
 						.OnClicked_Lambda([this, Id]()
 						{
-							Store(CustomFor(Id), true);
+							if (!IsLocked(Id))
+							{
+								Store(CustomFor(Id), true);
+							}
+							else if (CanTry())
+							{
+								TryOut(Id);
+							}
+							else
+							{
+								Flash(UnlockHint(Id));
+							}
 							return FReply::Handled();
 						})
 					]

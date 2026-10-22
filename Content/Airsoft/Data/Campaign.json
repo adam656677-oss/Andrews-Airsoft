@@ -267,6 +267,16 @@
       }
     ]
   },
+  "GunUnlocks": {
+    "Note": "Guns open from a new profile (Start), and the guns each finished mission adds. A gun not listed here is always open. Every primary and sidearm id in AirsoftWeaponData must appear once.",
+    "Start": ["M4", "MP5", "G17", "M1911"],
+    "Missions": [
+      { "Mission": 1, "Guns": ["MP7", "VECTOR", "M870", "G34"] },
+      { "Mission": 2, "Guns": ["AK74", "TR1", "P90", "SG4", "G18"] },
+      { "Mission": 3, "Guns": ["SR25", "VSR", "C1911"] },
+      { "Mission": 4, "Guns": ["M249", "DEAGLE"] }
+    ]
+  },
   "Credits": [
     {
       "Heading": "",
