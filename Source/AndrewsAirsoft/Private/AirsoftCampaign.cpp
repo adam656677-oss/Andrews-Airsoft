@@ -108,12 +108,13 @@ namespace AirsoftCampaign
 			{
 				return;
 			}
+			AirsoftSubtitles::Clear();
 			if (UAirsoftGameInstance* GI = Cast<UAirsoftGameInstance>(UGameplayStatics::GetGameInstance(WorldContext)))
 			{
-				GI->PendingMenuMessage.Reset();
-				GI->SaveProfile();
+				// Through the game instance so the loading screen shows the mission title.
+				GI->StartMission(Number, bFromCheckpoint);
+				return;
 			}
-			AirsoftSubtitles::Clear();
 			UGameplayStatics::OpenLevel(WorldContext, FName(*Mission->MapPath), true, MissionOptions(Number, bFromCheckpoint));
 		}
 	}

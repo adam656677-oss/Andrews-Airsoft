@@ -207,8 +207,7 @@ void SAirsoftMainMenu::Construct(const FArguments& InArgs, AAirsoftPlayerControl
 bool SAirsoftMainMenu::HasProgress() const
 {
 	UAirsoftGameInstance* G = GI();
-	const UAirsoftSaveGame* P = Profile();
-	return (G && G->GetContinueMission() > 1) || (P && P->CheckpointMission > 0);
+	return G && AirsoftCampaign::CanContinue(G);
 }
 
 void SAirsoftMainMenu::HandleBack()
@@ -436,9 +435,8 @@ TSharedRef<SWidget> SAirsoftMainMenu::BuildHomePage()
 				TAttribute<FText>::CreateLambda([this]()
 				{
 					UAirsoftGameInstance* G = GI();
-					const UAirsoftSaveGame* P = Profile();
-					const bool bCheckpoint = P && P->CheckpointMission > 0;
-					const int32 Number = bCheckpoint ? P->CheckpointMission : (G ? G->GetContinueMission() : 1);
+					const bool bCheckpoint = G && AirsoftCampaign::CheckpointMission(G) > 0;
+					const int32 Number = G ? AirsoftCampaign::ContinueMission(G) : 1;
 					const AirsoftCampaign::FMission* Mission = AirsoftCampaign::FindMission(Number);
 					return FText::FromString(FString::Printf(TEXT("MISSION %d · %s%s"), Number, Mission ? *Mission->Title.ToUpper() : TEXT(""),
 						bCheckpoint ? TEXT(" · CHECKPOINT") : TEXT("")));
@@ -447,8 +445,8 @@ TSharedRef<SWidget> SAirsoftMainMenu::BuildHomePage()
 				{
 					if (UAirsoftGameInstance* G = GI())
 					{
-						const UAirsoftSaveGame* P = Profile();
-						G->StartMission((P && P->CheckpointMission > 0) ? P->CheckpointMission : G->GetContinueMission());
+						// Resumes at the checkpoint (skipping the intro) when there is one.
+						AirsoftCampaign::Continue(G);
 					}
 				}, &ContinueButton)
 		]
@@ -466,7 +464,7 @@ TSharedRef<SWidget> SAirsoftMainMenu::BuildHomePage()
 			{
 				UAirsoftGameInstance* G = GI();
 				const int32 Count = AirsoftCampaign::Missions().Num();
-				const int32 Open = G ? FMath::Min(G->GetContinueMission(), Count) : 1;
+				const int32 Open = G ? FMath::Min(AirsoftCampaign::HighestUnlocked(G), Count) : 1;
 				return FText::FromString(FString::Printf(TEXT("%d OF %d UNLOCKED"), Open, Count));
 			}),
 			[this]() { ShowPage(EPage::Missions); })
@@ -685,23 +683,21 @@ TSharedRef<SWidget> SAirsoftMainMenu::BuildMissionsPage()
 			.IsDimmed_Lambda([this, Number]()
 			{
 				UAirsoftGameInstance* G = GI();
-				return !G || Number > G->GetContinueMission();
+				return !G || !AirsoftCampaign::IsUnlocked(G, Number);
 			})
 			.SubText_Lambda([this, Number]()
 			{
 				UAirsoftGameInstance* G = GI();
-				const bool bLocked = !G || Number > G->GetContinueMission();
+				const bool bLocked = !G || !AirsoftCampaign::IsUnlocked(G, Number);
 				return FText::FromString(bLocked ? TEXT("LOCKED") : TEXT("PLAY"));
 			})
 			.OnClicked_Lambda([this, Number]()
 			{
 				UAirsoftGameInstance* G = GI();
-				if (!G || Number > G->GetContinueMission())
+				if (!G || !AirsoftCampaign::StartMission(G, Number))
 				{
 					LocalMessage = TEXT("Finish the mission before it to unlock this one.");
-					return FReply::Handled();
 				}
-				G->StartMission(Number);
 				return FReply::Handled();
 			})
 		];

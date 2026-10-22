@@ -99,7 +99,7 @@ void UAirsoftGameInstance::JoinGame(const FString& Address)
 	UGameplayStatics::OpenLevel(this, FName(*Clean), true);
 }
 
-void UAirsoftGameInstance::StartMission(int32 Number)
+void UAirsoftGameInstance::StartMission(int32 Number, bool bFromCheckpoint)
 {
 	const AirsoftCampaign::FMission* Mission = AirsoftCampaign::FindMission(Number);
 	if (!Mission)
@@ -113,7 +113,7 @@ void UAirsoftGameInstance::StartMission(int32 Number)
 	}
 	PendingMenuMessage.Reset();
 	SaveProfile();
-	OpenMap(Mission->MapPath, AirsoftCampaign::MissionOptions(Number), Mission->Title,
+	OpenMap(Mission->MapPath, AirsoftCampaign::MissionOptions(Number, bFromCheckpoint), Mission->Title,
 		FString::Printf(TEXT("Mission %d  \u00B7  %s"), Number, *AirsoftDifficulty::Label(AirsoftDifficulty::FromIndex(GetUserSettings().Difficulty))));
 }
 
@@ -234,8 +234,7 @@ void UAirsoftGameInstance::HandlePostLoadMap(UWorld* World)
 
 int32 UAirsoftGameInstance::GetContinueMission()
 {
-	const int32 Count = AirsoftCampaign::Missions().Num();
-	return FMath::Clamp(GetProfile()->CampaignReached, 1, FMath::Max(Count, 1));
+	return AirsoftCampaign::HighestUnlocked(this);
 }
 
 void UAirsoftGameInstance::ReturnToMainMenu(const FString& Reason)

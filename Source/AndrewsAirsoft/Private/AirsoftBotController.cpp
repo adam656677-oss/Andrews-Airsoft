@@ -152,7 +152,8 @@ namespace AirsoftDifficulty
 
 	FString Label(EAirsoftBotSkill Skill)
 	{
-		return AirsoftBots::SkillLabel(static_cast<int32>(Skill));
+		// One set of names everywhere: the menus' Recruit / Operator / Professional / Legend.
+		return Label(static_cast<EAirsoftDifficulty>(static_cast<uint8>(Skill)));
 	}
 
 	FString Blurb(EAirsoftBotSkill Skill)

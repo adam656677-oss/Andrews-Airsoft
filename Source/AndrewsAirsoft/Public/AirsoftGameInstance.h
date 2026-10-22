@@ -32,9 +32,10 @@ public:
 
 	void ReturnToMainMenu(const FString& Reason = FString());
 
-	/** Story campaign: open mission Number (1-based) on its map with the campaign referee. */
-	void StartMission(int32 Number);
-	/** The mission "Continue" resumes (the furthest unlocked). */
+	/** Story campaign: open mission Number (1-based) on its map with the campaign referee, behind the loading screen.
+	 *  bFromCheckpoint skips the intro and resumes at the saved checkpoint. Menus go through AirsoftCampaign::Continue / StartMission. */
+	void StartMission(int32 Number, bool bFromCheckpoint = false);
+	/** The furthest unlocked mission (AirsoftCampaign::HighestUnlocked). */
 	int32 GetContinueMission();
 	/** Main menu > New Game: save the difficulty, then mission 1. */
 	void StartNewGame(EAirsoftDifficulty Difficulty);
