@@ -44,6 +44,8 @@ public:
 	void ThrowGrenade();
 	void ToggleLight();
 	void Inspect();
+	/** Rifle butt / pistol whip: a quick strike that tags (story: damages) whoever is within arm's reach in front. */
+	void Melee();
 	void CancelActions();
 
 	// --- Bot input (server only) --------------------------------------------
@@ -85,6 +87,11 @@ public:
 	int32 GetLocalReserveFor(EAirsoftSlot Slot) const { return LocalReserve[SlotIndex(Slot)]; }
 	/** World time of the last shot this machine fired. */
 	double GetLastShotTime() const { return LastShotTime; }
+	bool IsMeleeing() const;
+	/** Third-person gun motion this frame (reload, recoil, melee, inspect, bolt), relative to where it rests. */
+	const FTransform& GetThirdPersonGunOffset() const { return TPGunOffset; }
+	/** Third person: where the support hand goes this frame, added to the gun's LeftHandLocal (gun space). */
+	const FVector& GetThirdPersonHandOffset() const { return TPHandOffset; }
 
 	UPROPERTY(ReplicatedUsing = OnRep_Loadout) FAirsoftLoadout Loadout;
 	UPROPERTY(ReplicatedUsing = OnRep_ActiveSlot) EAirsoftSlot ActiveSlot = EAirsoftSlot::Primary;
@@ -113,6 +120,10 @@ public:
 
 	UFUNCTION(Server, Unreliable)
 	void ServerSetAiming(bool bNewAiming);
+
+	/** The strike connected with Target on this machine; the server checks reach, facing and line of sight. */
+	UFUNCTION(Server, Reliable)
+	void ServerMelee(AActor* Target);
 
 	UFUNCTION(Server, Reliable)
 	void ServerSetLight(bool bOn);
@@ -147,7 +158,11 @@ private:
 	void FireOnce();
 	void UpdateLocal(float DeltaTime);
 	void UpdateViewmodel(float DeltaTime);
+	/** Third-person gun: the same reload / recoil / melee motion, for every character this machine simulates. */
+	void UpdateThirdPersonAnim(float DeltaTime);
 	void ApplyRecoil(float DeltaTime);
+	/** The moment the melee strike lands: sweep in front of the eyes and report a hit. */
+	void MeleeStrike();
 	void OnLocalBBHit(int32 ShotId, int32 Pellet, const FHitResult& Hit);
 	void PlayAnim(FName Kind, float Duration, bool bEmpty = false);
 	int32 SlotIndex(EAirsoftSlot Slot) const { return Slot == EAirsoftSlot::Secondary ? 1 : 0; }
@@ -212,6 +227,24 @@ private:
 	FVector2D Sway = FVector2D::ZeroVector;
 	FRotator LastControlRotation = FRotator::ZeroRotator;
 	TSet<FName> FiredCues;
+	// Springs: recoil (Kick is its position), aim settle, plus breathing / air / strafe.
+	float KickVel = 0.f;
+	float KickRollSide = 1.f;
+	float AimSettle = 0.f;
+	float AimSettleVel = 0.f;
+	float PrevAimAlpha = 0.f;
+	float BreathTime = 0.f;
+	float AirAlpha = 0.f;
+	float StrafeRoll = 0.f;
+	// Third-person gun.
+	float TPKick = 0.f;
+	float TPKickVel = 0.f;
+	FTransform TPGunOffset = FTransform::Identity;
+	FVector TPHandOffset = FVector::ZeroVector;
+	// Melee.
+	double LastMeleeTime = -100.0;
+	double ServerLastMeleeTime = -100.0;
+	FTimerHandle MeleeTimer;
 
 	// Effects: where this player's last BB struck an opponent, for the hit-confirm pop.
 	FVector LastVictimHit = FVector::ZeroVector;

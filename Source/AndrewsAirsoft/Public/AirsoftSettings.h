@@ -65,6 +65,88 @@ namespace AirsoftDifficulty
 	}
 }
 
+/**
+ * Procedural gun motion: aim settle, breathing, recoil spring, landing, lean and the melee strike
+ * (Project Settings > Game > Airsoft > Viewmodel). First person and the third-person gun share it.
+ */
+USTRUCT(BlueprintType)
+struct FAirsoftViewmodelTuning
+{
+	GENERATED_BODY()
+
+	/** How far past the sights the gun swings when it arrives at aim, as a share of the hip-to-sights distance. 0 = no settle. */
+	UPROPERTY(EditAnywhere, Category = "Aim", meta = (ClampMin = "0", ClampMax = "0.3"))
+	float AimOvershoot = 0.06f;
+
+	/** Spring stiffness of the aim settle (higher = quicker settle). */
+	UPROPERTY(EditAnywhere, Category = "Aim", meta = (ClampMin = "20"))
+	float AimSpringStiffness = 260.f;
+
+	/** Damping ratio of the aim settle: 1 = no bounce, lower bounces more. */
+	UPROPERTY(EditAnywhere, Category = "Aim", meta = (ClampMin = "0.05", ClampMax = "1"))
+	float AimSpringDamping = 0.5f;
+
+	/** Breathing: degrees the gun drifts at the hip. */
+	UPROPERTY(EditAnywhere, Category = "Breathing", meta = (ClampMin = "0"))
+	float BreathDegrees = 0.45f;
+
+	/** Share of the breathing drift left while aiming. */
+	UPROPERTY(EditAnywhere, Category = "Breathing", meta = (ClampMin = "0", ClampMax = "1"))
+	float BreathAimScale = 0.3f;
+
+	/** Breaths per second. */
+	UPROPERTY(EditAnywhere, Category = "Breathing", meta = (ClampMin = "0.05"))
+	float BreathRate = 0.22f;
+
+	/** Recoil: cm the gun jumps back per unit of the gun's RecoilUp. */
+	UPROPERTY(EditAnywhere, Category = "Recoil", meta = (ClampMin = "0"))
+	float RecoilKickBack = 3.4f;
+
+	/** Recoil: degrees the muzzle climbs per unit of RecoilUp. */
+	UPROPERTY(EditAnywhere, Category = "Recoil", meta = (ClampMin = "0"))
+	float RecoilKickPitch = 5.f;
+
+	/** Recoil: degrees of random roll per unit of RecoilUp. */
+	UPROPERTY(EditAnywhere, Category = "Recoil", meta = (ClampMin = "0"))
+	float RecoilKickRoll = 2.5f;
+
+	/** Recoil spring stiffness (higher = snappier return). */
+	UPROPERTY(EditAnywhere, Category = "Recoil", meta = (ClampMin = "20"))
+	float RecoilSpringStiffness = 340.f;
+
+	/** Recoil damping ratio: 1 = no bounce, lower overshoots forward a little on the way back. */
+	UPROPERTY(EditAnywhere, Category = "Recoil", meta = (ClampMin = "0.05", ClampMax = "1"))
+	float RecoilSpringDamping = 0.45f;
+
+	/** Landing: cm the gun dips for each cm the camera dips. */
+	UPROPERTY(EditAnywhere, Category = "Movement", meta = (ClampMin = "0"))
+	float LandDipScale = 0.6f;
+
+	/** Leaning: extra roll of the gun at a full lean, in degrees. */
+	UPROPERTY(EditAnywhere, Category = "Movement", meta = (ClampMin = "0"))
+	float LeanRollDegrees = 5.f;
+
+	/** Strafing: degrees the gun rolls into the direction you strafe at full run. */
+	UPROPERTY(EditAnywhere, Category = "Movement", meta = (ClampMin = "0"))
+	float StrafeRollDegrees = 3.f;
+
+	/** Melee (rifle butt / pistol whip): whole strike, wind-up to recovery, in seconds. */
+	UPROPERTY(EditAnywhere, Category = "Melee", meta = (ClampMin = "0.15"))
+	float MeleeDuration = 0.35f;
+
+	/** Melee reach from the eyes, in cm. */
+	UPROPERTY(EditAnywhere, Category = "Melee", meta = (ClampMin = "50"))
+	float MeleeRange = 170.f;
+
+	/** Seconds between strikes. */
+	UPROPERTY(EditAnywhere, Category = "Melee", meta = (ClampMin = "0.2"))
+	float MeleeCooldown = 0.6f;
+
+	/** Story missions: damage of one strike (enemies have 100 health). Airsoft matches: a strike is a tag. */
+	UPROPERTY(EditAnywhere, Category = "Melee", meta = (ClampMin = "0"))
+	float MeleeDamage = 80.f;
+};
+
 UCLASS(Config = Game, DefaultConfig, meta = (DisplayName = "Airsoft"))
 class ANDREWSAIRSOFT_API UAirsoftSettings : public UDeveloperSettings
 {
@@ -227,6 +309,10 @@ public:
 	/** How far bots hear a quiet shot (suppressor, MP5 SD, spring sniper). */
 	UPROPERTY(Config, EditAnywhere, Category = "Bots")
 	float BotQuietHearingRange = 1500.f;
+
+	/** Procedural gun motion and the melee strike. */
+	UPROPERTY(Config, EditAnywhere, Category = "Viewmodel", meta = (ShowOnlyInnerProperties))
+	FAirsoftViewmodelTuning Viewmodel;
 
 	const FAirsoftBotTuning& GetBotTuning(EAirsoftBotSkill Skill) const
 	{

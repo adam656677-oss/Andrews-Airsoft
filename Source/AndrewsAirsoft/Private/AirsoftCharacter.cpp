@@ -409,7 +409,9 @@ void AAirsoftCharacter::UpdateThirdPersonPose()
 	const FVector Forward = GetActorForwardVector();
 	// Wrists sit a little behind/below the grip and the support-hand point.
 	const FVector RightWrist = Gun.TransformPosition(FVector(-3.f, 3.f, -5.f));
-	const FVector LeftWrist = Gun.TransformPosition(TPGun->LeftHandLocal + FVector(-2.f, -4.f, -6.f));
+	// The support hand follows the reload / pump choreography (zero when idle).
+	const FVector HandMotion = Combat ? Combat->GetThirdPersonHandOffset() : FVector::ZeroVector;
+	const FVector LeftWrist = Gun.TransformPosition(TPGun->LeftHandLocal + HandMotion + FVector(-2.f, -4.f, -6.f));
 	const FVector RightShoulder = PoseMesh->GetBoneTransformByName(TEXT("upperarm_r"), EBoneSpaces::WorldSpace).GetLocation();
 	const FVector LeftShoulder = PoseMesh->GetBoneTransformByName(TEXT("upperarm_l"), EBoneSpaces::WorldSpace).GetLocation();
 	SolveArm(TEXT("upperarm_r"), TEXT("lowerarm_r"), TEXT("hand_r"), RightWrist, RightShoulder + Right * 25.f - Up * 45.f - Forward * 10.f);
@@ -1141,7 +1143,8 @@ void AAirsoftCharacter::UpdateCamera(float DeltaSeconds)
 
 void AAirsoftCharacter::UpdateRemoteVisuals(float DeltaSeconds)
 {
-	// Third-person gun follows where the player is looking.
+	// Third-person gun follows where the player is looking, plus the reload / recoil / melee motion (identity when idle).
+	const FTransform GunMotion = Combat ? Combat->GetThirdPersonGunOffset() : FTransform::Identity;
 	if (TPGun->GetAttachParent() == TPAimRoot)
 	{
 		const float Pitch = IsOut() ? -55.f : static_cast<float>(FRotator::NormalizeAxis(GetBaseAimRotation().Pitch));
@@ -1149,7 +1152,13 @@ void AAirsoftCharacter::UpdateRemoteVisuals(float DeltaSeconds)
 		TPAimRoot->SetRelativeLocationAndRotation(FVector(0.f, LeanVisual * 22.f, 46.f + CrouchDrop), FRotator(Pitch, 0.f, LeanVisual * 12.f));
 		// Rifles tucked into the shoulder, pistols pushed out at arm's length.
 		const bool bPistol = Combat && Combat->Current().Class == TEXT("Pistol");
-		TPGun->SetRelativeLocation(bPistol ? FVector(38.f, 6.f, -2.f) : FVector(16.f, 17.f, -9.f));
+		const FVector Rest = bPistol ? FVector(38.f, 6.f, -2.f) : FVector(16.f, 17.f, -9.f);
+		TPGun->SetRelativeLocationAndRotation(Rest + GunMotion.GetLocation(), GunMotion.Rotator());
+	}
+	else if (TPGun->GetAttachParent() == GetMesh())
+	{
+		// Held by a hand socket of the animation set: the motion rides on top of the configured grip offset.
+		TPGun->SetRelativeTransform(GunMotion * UAirsoftSettings::Get()->ThirdPersonGunOffset);
 	}
 
 	if (!IsLocallyControlled())

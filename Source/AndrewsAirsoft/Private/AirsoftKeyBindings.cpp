@@ -76,6 +76,7 @@ namespace AirsoftKeyBindings
 			Make(TEXT("FireMode"), TEXT("IA_FireMode"), TEXT("Fire mode"), TEXT("COMBAT"), EKeys::B),
 			Make(TEXT("Light"), TEXT("IA_Light"), TEXT("Weapon light"), TEXT("COMBAT"), EKeys::T),
 			Make(TEXT("Inspect"), TEXT("IA_Inspect"), TEXT("Inspect weapon"), TEXT("COMBAT"), EKeys::V),
+			Make(TEXT("Melee"), TEXT("IA_Melee"), TEXT("Melee strike"), TEXT("COMBAT"), EKeys::Z),
 			Make(TEXT("Interact"), TEXT("IA_Interact"), TEXT("Interact"), TEXT("OTHER"), EKeys::F),
 			Make(TEXT("CameraView"), TEXT("IA_CameraView"), TEXT("First / third person"), TEXT("OTHER"), EKeys::F5),
 			Make(TEXT("Shoulder"), TEXT("IA_Shoulder"), TEXT("Swap shoulder"), TEXT("OTHER"), EKeys::X),

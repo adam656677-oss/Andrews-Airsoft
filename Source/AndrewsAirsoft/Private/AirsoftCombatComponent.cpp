@@ -39,6 +39,123 @@ namespace
 	const FName KindReload(TEXT("Reload"));
 	const FName KindInspect(TEXT("Inspect"));
 	const FName KindCycle(TEXT("Cycle"));
+	const FName KindMelee(TEXT("Melee"));
+
+	/** Semi-implicit spring toward Target, sub-stepped so a long frame can't blow it up. DampingRatio 1 = no overshoot. */
+	void SpringStep(float& Value, float& Velocity, float Target, float Stiffness, float DampingRatio, float DeltaTime)
+	{
+		const float Omega = FMath::Sqrt(FMath::Max(Stiffness, 1.f));
+		const int32 Steps = FMath::Clamp(FMath::CeilToInt(DeltaTime * 240.f), 1, 16);
+		const float Dt = DeltaTime / Steps;
+		for (int32 i = 0; i < Steps; ++i)
+		{
+			Velocity += (Stiffness * (Target - Value) - 2.f * DampingRatio * Omega * Velocity) * Dt;
+			Value += Velocity * Dt;
+		}
+	}
+
+	/** Reload choreography at time T (0..1), shared by the viewmodel and the third-person gun. */
+	struct FReloadPose
+	{
+		/** 0..1: the gun tilts and dips toward the support hand, then comes back up. */
+		float Tilt = 0.f;
+		/** 0..1..0: the fresh mag slapped home (or a shell thumbed in) jolts the gun. */
+		float Seat = 0.f;
+		FTransform Mag = FTransform::Identity;
+		FTransform Bolt = FTransform::Identity;
+		/** Support hand travel in gun space, added to the gun's LeftHandLocal. */
+		FVector Hand = FVector::ZeroVector;
+		/** Pistols on an empty reload: slide position (1 = locked back); -1 leaves the slide alone. */
+		float SlideBack = -1.f;
+		/** 0..1..0: the slide slamming home after the slide stop is dropped. */
+		float Release = 0.f;
+	};
+
+	FReloadPose ReloadPose(float T, bool bEmpty, bool bPistol, bool bTubeFed, const UAirsoftGunVisual* Gun)
+	{
+		FReloadPose P;
+		P.Tilt = Window(T, 0.f, 0.18f) - Window(T, 0.82f, 1.f);
+		if (bTubeFed)
+		{
+			// Shells (or the VSR's mag) thumbed in one at a time: the gun rocks with each push.
+			P.Seat = (Window(T, 0.27f, 0.31f) - Window(T, 0.31f, 0.4f)) + (Window(T, 0.52f, 0.56f) - Window(T, 0.56f, 0.65f));
+			return P;
+		}
+		// Mag drops out, fresh mag comes up and seats.
+		const float Drop = Window(T, 0.18f, 0.4f);
+		const float Insert = Window(T, 0.45f, 0.7f);
+		if (T < 0.42f)
+		{
+			P.Mag = FTransform(FRotator(-10.f * Drop, 0.f, 25.f * Drop), FVector(-3.f * Drop, 0.f, -40.f * Drop * Drop));
+		}
+		else
+		{
+			const FTransform From(FRotator(0.f, 0.f, 20.f), FVector(-10.f, -6.f, -32.f));
+			P.Mag.Blend(From, FTransform::Identity, Insert);
+		}
+		// Support hand leaves the handguard, strips the mag, fetches a fresh one and returns.
+		const float Reach = Window(T, 0.08f, 0.2f) - Window(T, 0.72f, 0.86f);
+		const FVector ToWell = Gun ? Gun->MagWellLocal - Gun->LeftHandLocal + FVector(0.f, -2.f, -10.f) : FVector(-16.f, -2.f, -12.f);
+		P.Hand = ToWell * Reach + P.Mag.GetTranslation() * Reach;
+		P.Seat = Window(T, 0.66f, 0.7f) - Window(T, 0.7f, 0.8f);
+		if (bEmpty)
+		{
+			if (bPistol)
+			{
+				// Slide stop: the slide stays back until the thumb drops it, then slams home.
+				P.SlideBack = 1.f - Window(T, 0.8f, 0.83f);
+				P.Release = Window(T, 0.8f, 0.83f) - Window(T, 0.83f, 0.93f);
+			}
+			else
+			{
+				const float Charge = Window(T, 0.74f, 0.82f) - Window(T, 0.82f, 0.9f);
+				P.Bolt.SetTranslation(FVector(-6.f * Charge, 0.f, 0.f));
+			}
+		}
+		return P;
+	}
+
+	/** Sound cues of a reload, fired once each as T passes them. */
+	template <typename FCueFn>
+	void ReloadCues(float T, bool bTubeFed, bool bEmpty, bool bPistol, FCueFn&& Cue)
+	{
+		if (bTubeFed)
+		{
+			Cue(TEXT("Click1"), 0.3f, TEXT("MagIn"), 1.4f);
+			Cue(TEXT("Click2"), 0.55f, TEXT("MagIn"), 1.3f);
+			return;
+		}
+		Cue(TEXT("Out"), 0.2f, TEXT("MagOut"), 1.f);
+		Cue(TEXT("In"), 0.68f, TEXT("MagIn"), 1.f);
+		if (bEmpty)
+		{
+			Cue(TEXT("Charge"), 0.8f, TEXT("BoltCycle"), bPistol ? 1.35f : 1.1f);
+		}
+	}
+
+	/** Melee at time T: wind-up, then the blow (contact at ~40%), then recovery. Camera / aim space: X forward, Y right, Z up. */
+	void MeleePose(float T, bool bPistol, FVector& Loc, FRotator& Rot)
+	{
+		const float Wind = Window(T, 0.f, 0.3f) - Window(T, 0.3f, 0.45f);
+		const float Strike = Window(T, 0.3f, 0.45f) - Window(T, 0.6f, 1.f);
+		if (bPistol)
+		{
+			// Pistol whip: cock the gun up and out, then chop down and across with the frame.
+			Loc += FVector(-3.f, 5.f, 7.f) * Wind + FVector(12.f, -8.f, -5.f) * Strike;
+			Rot += FRotator(28.f, 12.f, -55.f) * Wind + FRotator(-30.f, -25.f, -85.f) * Strike;
+		}
+		else
+		{
+			// Rifle butt-stroke: the muzzle swings right as the stock comes round, then drives forward-left.
+			Loc += FVector(-5.f, 7.f, -1.f) * Wind + FVector(15.f, -13.f, 4.f) * Strike;
+			Rot += FRotator(-8.f, 30.f, 18.f) * Wind + FRotator(-12.f, 78.f, -30.f) * Strike;
+		}
+	}
+
+	bool IsTubeFed(const FAirsoftWeaponDef& W)
+	{
+		return W.Id == TEXT("M870") || W.Id == TEXT("VSR");
+	}
 
 	constexpr float MaxOriginOffset = 250.f;   // cm between eyes and reported shot origin
 	constexpr float HitTolerance = 160.f;      // cm between reported hit and victim
@@ -359,9 +476,115 @@ void UAirsoftCombatComponent::Inspect()
 	}
 }
 
+bool UAirsoftCombatComponent::IsMeleeing() const
+{
+	return AnimKind == KindMelee;
+}
+
+void UAirsoftCombatComponent::Melee()
+{
+	AAirsoftCharacter* C = GetCharacter();
+	if (!C || !CanAct() || bLocalReloading || bThrowing || AnimKind == KindMelee || AnimKind == KindCycle || ActiveSlot == EAirsoftSlot::Grenade)
+	{
+		return;
+	}
+	const AAirsoftGameState* GS = GetWorld()->GetGameState<AAirsoftGameState>();
+	if (GS && (GS->Phase == EAirsoftPhase::Briefing || GS->Phase == EAirsoftPhase::PostRound))
+	{
+		return;
+	}
+	const FAirsoftViewmodelTuning& VM = UAirsoftSettings::Get()->Viewmodel;
+	const double Now = GetWorld()->GetTimeSeconds();
+	if (Now - LastMeleeTime < VM.MeleeCooldown)
+	{
+		return;
+	}
+	LastMeleeTime = Now;
+	bTriggerHeld = false;
+	BurstLeft = 0;
+	C->CancelSprint();
+	PlayAnim(KindMelee, VM.MeleeDuration);
+	if (IsLocalHuman())
+	{
+		AirsoftAssets::Play2D(this, TEXT("ReplayWhoosh"), 0.35f, Rng.FRandRange(1.5f, 1.7f));
+	}
+	// The blow lands at the end of the wind-up.
+	GetWorld()->GetTimerManager().SetTimer(MeleeTimer, FTimerDelegate::CreateWeakLambda(this, [this]()
+	{
+		MeleeStrike();
+	}), VM.MeleeDuration * 0.4f, false);
+}
+
+void UAirsoftCombatComponent::MeleeStrike()
+{
+	AAirsoftCharacter* C = GetCharacter();
+	if (!C || C->IsOut() || !C->GetCamera())
+	{
+		return;
+	}
+	const FAirsoftViewmodelTuning& VM = UAirsoftSettings::Get()->Viewmodel;
+	const FVector Eye = C->GetCamera()->GetComponentLocation();
+	const FVector End = Eye + C->GetControlRotation().Vector() * VM.MeleeRange;
+	FCollisionQueryParams Query(SCENE_QUERY_STAT(AirsoftMelee), false);
+	Query.AddIgnoredActor(C);
+
+	// A fat sweep against bodies (forgiving aim at arm's length), nearest first.
+	TArray<FHitResult> Hits;
+	GetWorld()->SweepMultiByObjectType(Hits, Eye, End, FQuat::Identity, FCollisionObjectQueryParams(ECC_Pawn), FCollisionShape::MakeSphere(22.f), Query);
+	AAirsoftCharacter* Victim = nullptr;
+	FVector ImpactPoint = End;
+	for (const FHitResult& Hit : Hits)
+	{
+		AAirsoftCharacter* Other = Cast<AAirsoftCharacter>(Hit.GetActor());
+		if (Other && Other != C && !Other->IsOut() && AAirsoftGameState::CanTag(this, C->GetTeam(), Other->GetTeam()))
+		{
+			Victim = Other;
+			ImpactPoint = Hit.ImpactPoint;
+			break;
+		}
+	}
+	if (Victim)
+	{
+		// The sweep can reach round a thin wall edge; if something solid is in the way, the wall takes the blow.
+		FCollisionQueryParams WallQuery(SCENE_QUERY_STAT(AirsoftMeleeWall), false);
+		WallQuery.AddIgnoredActor(C);
+		WallQuery.AddIgnoredActor(Victim);
+		FHitResult Block;
+		if (GetWorld()->LineTraceSingleByChannel(Block, Eye, ImpactPoint, ECC_Visibility, WallQuery) && !Cast<APawn>(Block.GetActor()))
+		{
+			Victim = nullptr;
+		}
+	}
+	const bool bHuman = IsLocalHuman();
+	if (Victim)
+	{
+		ServerMelee(Victim);
+		if (bHuman)
+		{
+			AirsoftAssets::Play2D(this, TEXT("Impact"), 0.85f, 0.7f);
+			C->AddViewShake(0.35f, 0.6f);
+		}
+		else
+		{
+			AirsoftAssets::Play3D(this, TEXT("Impact"), ImpactPoint, 0.85f, 0.7f);
+		}
+		return;
+	}
+	// Nothing to hit: a thud if the gun meets a wall, otherwise just the swing.
+	FHitResult Wall;
+	if (GetWorld()->LineTraceSingleByChannel(Wall, Eye, End, ECC_Visibility, Query))
+	{
+		AirsoftAssets::Play3D(this, TEXT("Impact"), Wall.ImpactPoint, 0.5f, 0.55f);
+		if (bHuman)
+		{
+			C->AddViewShake(0.2f);
+		}
+	}
+}
+
 void UAirsoftCombatComponent::Reload()
 {
-	if (!CanAct() || bLocalReloading || bThrowing)
+	if (!CanAct() || bLocalReloading || bThrowing || AnimKind == KindMelee)
 	{
 		return;
 	}
@@ -529,7 +752,7 @@ void UAirsoftCombatComponent::TryFire()
 	{
 		return;
 	}
-	if (AnimKind == KindCycle)
+	if (AnimKind == KindCycle || AnimKind == KindMelee)
 	{
 		return;
 	}
@@ -661,7 +884,17 @@ void UAirsoftCombatComponent::FireOnce()
 		// A bot on the host: the host hears it like any other player's gun (the multicast skips this machine).
 		PlayShotSound(Muzzle, W.Sound, W.bQuiet);
 	}
-	Kick = FMath::Min(Kick + W.RecoilUp * 0.35f, 1.5f);
+	{
+		// Recoil springs (viewmodel and third-person gun): an impulse per shot, so bursts stack and each shot settles back.
+		const FAirsoftViewmodelTuning& VM = UAirsoftSettings::Get()->Viewmodel;
+		const float Impulse = W.RecoilUp * 0.35f * FMath::Sqrt(FMath::Max(VM.RecoilSpringStiffness, 1.f)) * 2.f;
+		if (bHuman)
+		{
+			KickVel += Impulse;
+		}
+		TPKickVel += Impulse;
+		KickRollSide = Rng.FRand() < 0.5f ? -1.f : 1.f;
+	}
 	SlideKick = 1.f;
 	if (AnimKind == KindInspect)
 	{
@@ -901,6 +1134,54 @@ void UAirsoftCombatComponent::ServerSetAiming_Implementation(bool bNewAiming)
 	bAiming = bNewAiming;
 }
 
+void UAirsoftCombatComponent::ServerMelee_Implementation(AActor* Target)
+{
+	AAirsoftCharacter* Me = GetCharacter();
+	AAirsoftCharacter* Victim = Cast<AAirsoftCharacter>(Target);
+	if (!Me || !Victim || Victim == Me || Me->IsOut() || Me->IsFrozen() || Victim->IsOut())
+	{
+		return;
+	}
+	const FAirsoftViewmodelTuning& VM = UAirsoftSettings::Get()->Viewmodel;
+	const double Now = GetWorld()->GetTimeSeconds();
+	if (Now - ServerLastMeleeTime < VM.MeleeCooldown * 0.8f || !AAirsoftGameState::CanTag(this, Me->GetTeam(), Victim->GetTeam()))
+	{
+		return;
+	}
+	// Reach: the eyes to the nearest point of the victim's body line, with room for their capsule and latency.
+	const FVector Eye = Me->GetPawnViewLocation();
+	const FVector Body = Victim->GetActorLocation();
+	const float HalfHeight = Victim->GetSimpleCollisionHalfHeight();
+	const FVector Closest(Body.X, Body.Y, FMath::Clamp(Eye.Z, Body.Z - HalfHeight, Body.Z + HalfHeight));
+	const FVector ToVictim = Closest - Eye;
+	if (ToVictim.Size() > VM.MeleeRange + Victim->GetSimpleCollisionRadius() + 60.f)
+	{
+		return;
+	}
+	// Roughly in front: a wide cone, because up close the angle swings fast.
+	if (FVector::DotProduct(Me->GetBaseAimRotation().Vector(), ToVictim.GetSafeNormal()) < 0.35f)
+	{
+		return;
+	}
+	FCollisionQueryParams Query(SCENE_QUERY_STAT(AirsoftMeleeCheck), false);
+	Query.AddIgnoredActor(Me);
+	Query.AddIgnoredActor(Victim);
+	FHitResult Block;
+	if (GetWorld()->LineTraceSingleByChannel(Block, Eye, Closest, ECC_Visibility, Query) && !Cast<APawn>(Block.GetActor()))
+	{
+		return;
+	}
+	ServerLastMeleeTime = Now;
+	if (AAirsoftGameMode* GM = GetWorld()->GetAuthGameMode<AAirsoftGameMode>())
+	{
+		// The body's centre as the hit point: a strike is never a headshot.
+		if (GM->HandleHit(Me->GetController(), Victim->GetController(), TEXT("Melee"), Body))
+		{
+			ClientHitConfirm();
+		}
+	}
+}
+
 void UAirsoftCombatComponent::ServerSetLight_Implementation(bool bOn)
 {
 	bLightOn = bOn;
@@ -1022,7 +1303,7 @@ void UAirsoftCombatComponent::UpdateLocal(float DeltaTime)
 
 	const FAirsoftWeaponDef& W = Current();
 	const bool bAlive = !C->IsOut();
-	const bool bWantsAim = bAlive && bAimHeld && !C->IsSprinting() && !bLocalReloading && !bThrowing && CanAct();
+	const bool bWantsAim = bAlive && bAimHeld && !C->IsSprinting() && !bLocalReloading && !bThrowing && AnimKind != KindMelee && CanAct();
 	const float Step = DeltaTime / FMath::Max(W.AimTime, 0.05f);
 	AimAlpha = FMath::Clamp(AimAlpha + (bWantsAim ? Step : -Step), 0.f, 1.f);
 	const bool bNowAiming = AimAlpha > 0.5f;
@@ -1049,6 +1330,7 @@ void UAirsoftCombatComponent::UpdateLocal(float DeltaTime)
 	Bloom = FMath::Max(Bloom - DeltaTime * 3.f, 0.f);
 
 	ApplyRecoil(DeltaTime);
+	UpdateThirdPersonAnim(DeltaTime);
 	if (IsLocalHuman())
 	{
 		UpdateViewmodel(DeltaTime);
@@ -1099,7 +1381,9 @@ void UAirsoftCombatComponent::UpdateViewmodel(float DeltaTime)
 		return;
 	}
 	const FAirsoftWeaponDef& W = Current();
+	const FAirsoftViewmodelTuning& VM = UAirsoftSettings::Get()->Viewmodel;
 	const bool bPistol = W.Class == TEXT("Pistol");
+	const bool bTubeFed = IsTubeFed(W);
 
 	// Sway lags behind look input.
 	const FRotator ControlRot = C->GetControlRotation();
@@ -1118,8 +1402,34 @@ void UAirsoftCombatComponent::UpdateViewmodel(float DeltaTime)
 
 	SprintAlpha = FMath::FInterpTo(SprintAlpha, C->IsSprinting() ? 1.f : 0.f, DeltaTime, 8.f);
 	SlideAlpha = FMath::FInterpTo(SlideAlpha, C->IsSliding() ? 1.f : 0.f, DeltaTime, 10.f);
-	Kick = FMath::Max(Kick - DeltaTime * 9.f, 0.f);
+	const bool bFalling = C->GetCharacterMovement() && C->GetCharacterMovement()->IsFalling();
+	AirAlpha = FMath::FInterpTo(AirAlpha, bFalling ? 1.f : 0.f, DeltaTime, 6.f);
 	SlideKick = FMath::Max(SlideKick - DeltaTime / 0.07f, 0.f);
+
+	// Recoil spring: Kick is its position, each shot adds velocity (FireOnce).
+	SpringStep(Kick, KickVel, 0.f, VM.RecoilSpringStiffness, VM.RecoilSpringDamping, DeltaTime);
+	Kick = FMath::Clamp(Kick, -0.6f, 1.6f);
+
+	// Aim settle: arriving at the sights (or leaving them) the gun swings a touch past and springs back.
+	const float AimOmega = FMath::Sqrt(FMath::Max(VM.AimSpringStiffness, 1.f));
+	if (AimAlpha >= 1.f && PrevAimAlpha < 1.f)
+	{
+		AimSettleVel += VM.AimOvershoot * AimOmega * 1.8f;
+	}
+	else if (AimAlpha <= 0.f && PrevAimAlpha > 0.f)
+	{
+		AimSettleVel -= VM.AimOvershoot * AimOmega * 1.2f;
+	}
+	PrevAimAlpha = AimAlpha;
+	SpringStep(AimSettle, AimSettleVel, 0.f, VM.AimSpringStiffness, VM.AimSpringDamping, DeltaTime);
+
+	// Breathing: a slow figure-eight drift, mostly gone while aiming and while sprinting.
+	BreathTime = FMath::Fmod(BreathTime + DeltaTime * VM.BreathRate * UE_TWO_PI, UE_TWO_PI * 4.f);
+	const float Breath = VM.BreathDegrees * FMath::Lerp(1.f, VM.BreathAimScale, AimAlpha) * (1.f - SprintAlpha);
+
+	// Strafing rolls the gun into the move.
+	const float Strafe = static_cast<float>(FVector::DotProduct(C->GetVelocity(), C->GetActorRightVector())) / 400.f;
+	StrafeRoll = FMath::FInterpTo(StrafeRoll, FMath::Clamp(Strafe, -1.2f, 1.2f), DeltaTime, 6.f);
 
 	// Hip and aimed placements (camera space: X forward, Y right, Z up).
 	// Shooter-style hip carry: the gun sits low in the right third of the screen, not filling it.
@@ -1128,6 +1438,8 @@ void UAirsoftCombatComponent::UpdateViewmodel(float DeltaTime)
 	const float Eased = 1.f - FMath::Square(1.f - AimAlpha);
 	FVector Loc = FMath::Lerp(Hip, Aimed, Eased);
 	FRotator Rot = FRotator::ZeroRotator;
+	Loc += (Aimed - Hip) * AimSettle;
+	Rot += FRotator(-AimSettle * 12.f, 0.f, 0.f);
 
 	// Sprint and slide poses.
 	Loc += FVector(-2.f, 3.f, -5.f) * SprintAlpha;
@@ -1135,13 +1447,26 @@ void UAirsoftCombatComponent::UpdateViewmodel(float DeltaTime)
 	Loc += FVector(0.f, -2.f, 1.f) * SlideAlpha;
 	Rot += FRotator(0.f, 0.f, -22.f) * SlideAlpha;
 
-	// Recoil kick.
-	Loc += FVector(-Kick * 3.5f, 0.f, 0.f);
-	Rot += FRotator(Kick * 5.f, 0.f, 0.f);
+	// In the air the gun tips up a little; landing dips it (the camera dips too, this adds weight).
+	const float AirScale = 1.f - AimAlpha * 0.7f;
+	Loc += FVector(0.f, 0.f, -1.5f) * AirAlpha * AirScale;
+	Rot += FRotator(4.f, 0.f, 0.f) * AirAlpha * AirScale;
+	const float Land = C->GetLandDip() * VM.LandDipScale * (1.f - AimAlpha * 0.6f);
+	Loc.Z -= Land;
+	Rot.Pitch -= Land * 0.8f;
 
-	// Sway and bob.
+	// Leaning and strafing roll the gun.
+	Rot.Roll += C->GetLean() * VM.LeanRollDegrees * (1.f - AimAlpha * 0.5f) + StrafeRoll * VM.StrafeRollDegrees * (1.f - AimAlpha * 0.8f);
+
+	// Recoil kick: back, up and a random roll; aimed shots stay tighter.
+	const float KickScale = 1.f - AimAlpha * 0.4f;
+	Loc += FVector(-Kick * VM.RecoilKickBack, 0.f, Kick * 0.3f) * KickScale;
+	Rot += FRotator(Kick * VM.RecoilKickPitch, 0.f, Kick * VM.RecoilKickRoll * KickRollSide) * KickScale;
+
+	// Sway, breathing and bob.
 	const float SwayScale = 1.f - AimAlpha * 0.7f;
 	Rot += FRotator(Sway.Y * SwayScale, Sway.X * SwayScale, 0.f);
+	Rot += FRotator(FMath::Sin(BreathTime) * Breath * 0.6f, FMath::Sin(BreathTime * 0.5f + 1.3f) * Breath, 0.f);
 	Loc += Bob;
 
 	// Procedural animations.
@@ -1150,11 +1475,7 @@ void UAirsoftCombatComponent::UpdateViewmodel(float DeltaTime)
 	FTransform BoltOffset = FTransform::Identity;
 	FTransform PumpOffset = FTransform::Identity;
 	FTransform HandOffset = FTransform::Identity;
-	const float SlideBack = bSlideLocked ? 1.f : SlideKick;
-	if (SlideBack > 0.f)
-	{
-		SlideOffset.SetTranslation(FVector(-3.5f * SlideBack, 0.f, 0.f));
-	}
+	float SlideBack = bSlideLocked ? 1.f : SlideKick;
 
 	if (!AnimKind.IsNone())
 	{
@@ -1169,6 +1490,12 @@ void UAirsoftCombatComponent::UpdateViewmodel(float DeltaTime)
 		};
 		if (T >= 1.f)
 		{
+			if (AnimKind == KindReload && bAnimEmpty && bPistol)
+			{
+				// The slide already went home at the slide-stop drop; don't let it flick back for a frame.
+				bSlideLocked = false;
+				SlideBack = SlideKick;
+			}
 			AnimKind = NAME_None;
 		}
 		else if (AnimKind == KindDraw)
@@ -1179,43 +1506,28 @@ void UAirsoftCombatComponent::UpdateViewmodel(float DeltaTime)
 		}
 		else if (AnimKind == KindReload)
 		{
-			const float Tilt = Window(T, 0.f, 0.18f) - Window(T, 0.82f, 1.f);
-			Loc += FVector(1.f, -1.f, -2.5f) * Tilt;
-			Rot += FRotator(14.f, -8.f, -32.f) * Tilt;
-			if (W.Id == TEXT("M870") || W.Id == TEXT("VSR"))
+			const FReloadPose P = ReloadPose(T, bAnimEmpty, bPistol, bTubeFed, Gun);
+			Loc += FVector(1.f, -1.f, -2.5f) * P.Tilt;
+			Rot += FRotator(14.f, -8.f, -32.f) * P.Tilt;
+			if (bTubeFed)
 			{
-				Cue(TEXT("Click1"), 0.3f, TEXT("MagIn"), 1.4f);
-				Cue(TEXT("Click2"), 0.55f, TEXT("MagIn"), 1.3f);
+				Rot += FRotator(-3.f, 0.f, 4.f) * P.Seat;
 			}
 			else
 			{
-				// Mag drops out, fresh mag comes up and seats.
-				const float Drop = Window(T, 0.18f, 0.4f);
-				const float Insert = Window(T, 0.45f, 0.7f);
-				// Support hand leaves the handguard, strips the mag, fetches a fresh one and returns.
-				const float Reach = Window(T, 0.08f, 0.2f) - Window(T, 0.72f, 0.86f);
-				const FVector ToWell = Gun->MagWellLocal - Gun->LeftHandLocal + FVector(0.f, -2.f, -10.f);
-				if (T < 0.42f)
+				// The fresh mag slapped home bumps the gun up.
+				Loc += FVector(0.f, 0.f, 0.9f) * P.Seat;
+				Rot += FRotator(-3.f, 0.f, 2.f) * P.Seat;
+				MagOffset = P.Mag;
+				BoltOffset = P.Bolt;
+				HandOffset.SetTranslation(P.Hand);
+				if (P.SlideBack >= 0.f)
 				{
-					MagOffset = FTransform(FRotator(-10.f * Drop, 0.f, 25.f * Drop), FVector(-3.f * Drop, 0.f, -40.f * Drop * Drop));
-				}
-				else
-				{
-					const FTransform From(FRotator(0.f, 0.f, 20.f), FVector(-10.f, -6.f, -32.f));
-					FTransform Blend;
-					Blend.Blend(From, FTransform::Identity, Insert);
-					MagOffset = Blend;
-				}
-				HandOffset.SetTranslation(ToWell * Reach + MagOffset.GetTranslation() * Reach);
-				Cue(TEXT("Out"), 0.2f, TEXT("MagOut"), 1.f);
-				Cue(TEXT("In"), 0.68f, TEXT("MagIn"), 1.f);
-				if (bAnimEmpty)
-				{
-					const float Charge = Window(T, 0.74f, 0.82f) - Window(T, 0.82f, 0.9f);
-					BoltOffset.SetTranslation(FVector(-6.f * Charge, 0.f, 0.f));
-					Cue(TEXT("Charge"), 0.8f, TEXT("BoltCycle"), 1.1f);
+					SlideBack = P.SlideBack;
+					Rot += FRotator(3.f, 0.f, 0.f) * P.Release;
 				}
 			}
+			ReloadCues(T, bTubeFed, bAnimEmpty, bPistol, Cue);
 		}
 		else if (AnimKind == KindInspect)
 		{
@@ -1223,6 +1535,14 @@ void UAirsoftCombatComponent::UpdateViewmodel(float DeltaTime)
 			const float Flip = Window(T, 0.5f, 0.65f) - Window(T, 0.85f, 1.f);
 			Loc += FVector(8.f, -8.f, 4.f) * (Side + Flip);
 			Rot += FRotator(10.f * Side, 60.f * Side - 50.f * Flip, 25.f * Side - 70.f * Flip);
+			if (!bTubeFed)
+			{
+				// Mag check while the gun is rolled over: pull it a little way, look, push it home.
+				const float Check = Window(T, 0.6f, 0.68f) - Window(T, 0.76f, 0.84f);
+				MagOffset.SetTranslation(FVector(0.f, 0.f, -6.f * Check));
+				Cue(TEXT("CheckOut"), 0.64f, TEXT("MagOut"), 1.25f);
+				Cue(TEXT("CheckIn"), 0.8f, TEXT("MagIn"), 1.2f);
+			}
 		}
 		else if (AnimKind == KindCycle)
 		{
@@ -1241,10 +1561,131 @@ void UAirsoftCombatComponent::UpdateViewmodel(float DeltaTime)
 			}
 			Rot += FRotator(4.f * Back, 0.f, -8.f * Back);
 		}
+		else if (AnimKind == KindMelee)
+		{
+			MeleePose(T, bPistol, Loc, Rot);
+		}
+	}
+	if (SlideBack > 0.f)
+	{
+		SlideOffset.SetTranslation(FVector(-3.5f * SlideBack, 0.f, 0.f));
 	}
 
 	Gun->SetRelativeLocationAndRotation(Loc, Rot);
 	Gun->SetPartOffsets(MagOffset, SlideOffset, BoltOffset, PumpOffset, HandOffset);
 	Gun->SetOpticFade(AimAlpha);
 	Gun->SetVisibility(!IsScoped() && !C->IsOut(), true);
+}
+
+void UAirsoftCombatComponent::UpdateThirdPersonAnim(float DeltaTime)
+{
+	AAirsoftCharacter* C = GetCharacter();
+	UAirsoftGunVisual* Gun = C ? C->GetTPGun() : nullptr;
+	if (!Gun)
+	{
+		return;
+	}
+	const FAirsoftViewmodelTuning& VM = UAirsoftSettings::Get()->Viewmodel;
+	SpringStep(TPKick, TPKickVel, 0.f, VM.RecoilSpringStiffness, VM.RecoilSpringDamping, DeltaTime);
+	TPKick = FMath::Clamp(TPKick, -0.6f, 1.6f);
+
+	const FAirsoftWeaponDef& W = Current();
+	const bool bPistol = W.Class == TEXT("Pistol");
+	const bool bTubeFed = IsTubeFed(W);
+	FVector Loc = FVector::ZeroVector;
+	FRotator Rot = FRotator::ZeroRotator;
+	FTransform MagOffset = FTransform::Identity;
+	FTransform SlideOffset = FTransform::Identity;
+	FTransform BoltOffset = FTransform::Identity;
+	FTransform PumpOffset = FTransform::Identity;
+	FVector Hand = FVector::ZeroVector;
+	// Pistols: the slide cycles with each shot and locks back on empty.
+	float SlideBack = bSlideLocked ? 1.f : (bPistol ? FMath::Clamp(TPKick, 0.f, 1.f) : 0.f);
+
+	if (!C->IsOut() && !AnimKind.IsNone() && AnimDuration > 0.f)
+	{
+		const float T = static_cast<float>((GetWorld()->GetTimeSeconds() - AnimStart) / AnimDuration);
+		if (T < 1.f)
+		{
+			if (AnimKind == KindReload)
+			{
+				// The gun comes down and rolls toward the chest so the mag well faces the support hand.
+				const FReloadPose P = ReloadPose(T, bAnimEmpty, bPistol, bTubeFed, Gun);
+				Loc += FVector(-6.f, -5.f, -9.f) * P.Tilt;
+				Rot += FRotator(22.f, -18.f, -38.f) * P.Tilt;
+				if (bTubeFed)
+				{
+					Rot += FRotator(-3.f, 0.f, 4.f) * P.Seat;
+					Hand = FVector(-8.f, 0.f, -6.f) * P.Tilt; // to the loading port
+				}
+				else
+				{
+					Loc.Z += P.Seat;
+					MagOffset = P.Mag;
+					BoltOffset = P.Bolt;
+					Hand = P.Hand;
+					if (P.SlideBack >= 0.f)
+					{
+						SlideBack = P.SlideBack;
+					}
+				}
+				if (!IsLocalHuman())
+				{
+					// Hear an enemy reloading from where they stand (the player's own cues are 2D, in UpdateViewmodel).
+					const FVector At = Gun->GetComponentLocation();
+					ReloadCues(T, bTubeFed, bAnimEmpty, bPistol, [this, T, At](FName Name, float When, FName Sound, float Pitch)
+					{
+						if (T >= When && !FiredCues.Contains(Name))
+						{
+							FiredCues.Add(Name);
+							AirsoftAssets::Play3D(this, Sound, At, 0.6f, Pitch);
+						}
+					});
+				}
+			}
+			else if (AnimKind == KindInspect)
+			{
+				const float Side = Window(T, 0.05f, 0.25f) - Window(T, 0.42f, 0.55f);
+				const float Flip = Window(T, 0.5f, 0.65f) - Window(T, 0.85f, 1.f);
+				Loc += FVector(6.f, -6.f, 6.f) * (Side + Flip);
+				Rot += FRotator(10.f * Side, 45.f * Side - 35.f * Flip, 30.f * Side - 60.f * Flip);
+			}
+			else if (AnimKind == KindCycle)
+			{
+				const float Back = Window(T, 0.1f, 0.45f) - Window(T, 0.55f, 0.9f);
+				if (W.Id == TEXT("M870"))
+				{
+					PumpOffset.SetTranslation(FVector(-9.f * Back, 0.f, 0.f));
+					Hand = FVector(-9.f * Back, 0.f, 0.f);
+				}
+				else
+				{
+					const float Lift = Window(T, 0.05f, 0.2f) - Window(T, 0.8f, 0.95f);
+					BoltOffset = FTransform(FRotator(0.f, 0.f, 60.f * Lift), FVector(-7.f * Back, 0.f, 1.f * Lift));
+				}
+				Rot += FRotator(4.f * Back, 0.f, 0.f);
+			}
+			else if (AnimKind == KindMelee)
+			{
+				MeleePose(T, bPistol, Loc, Rot);
+			}
+			else if (AnimKind == KindDraw)
+			{
+				const float K = 1.f - Ease(T);
+				Loc += FVector(-4.f, 0.f, -14.f) * K;
+				Rot += FRotator(-40.f, 15.f, -20.f) * K;
+			}
+		}
+	}
+
+	// Recoil: the gun jumps back into the shoulder and the muzzle climbs, then springs back.
+	Loc += FVector(-TPKick * VM.RecoilKickBack * 0.8f, 0.f, 0.f);
+	Rot += FRotator(TPKick * VM.RecoilKickPitch * 1.2f, 0.f, TPKick * VM.RecoilKickRoll * KickRollSide);
+	if (SlideBack > 0.f)
+	{
+		SlideOffset.SetTranslation(FVector(-3.5f * SlideBack, 0.f, 0.f));
+	}
+	TPGunOffset = FTransform(Rot, Loc);
+	TPHandOffset = Hand;
+	Gun->SetPartOffsets(MagOffset, SlideOffset, BoltOffset, PumpOffset);
 }

@@ -71,6 +71,7 @@ namespace AirsoftPCLocal
 	const FName IA_FireMode(TEXT("IA_FireMode"));
 	const FName IA_Light(TEXT("IA_Light"));
 	const FName IA_Inspect(TEXT("IA_Inspect"));
+	const FName IA_Melee(TEXT("IA_Melee"));
 	const FName IA_Interact(TEXT("IA_Interact"));
 	const FName IA_LeanLeft(TEXT("IA_LeanLeft"));
 	const FName IA_LeanRight(TEXT("IA_LeanRight"));
@@ -317,6 +318,7 @@ void AAirsoftPlayerController::BuildInput()
 	Button(IA_FireMode, { EKeys::B, EKeys::Gamepad_DPad_Down });
 	Button(IA_Light, { EKeys::T, EKeys::Gamepad_DPad_Up });
 	Button(IA_Inspect, { EKeys::V, EKeys::Gamepad_DPad_Left });
+	Button(IA_Melee, { EKeys::Z, EKeys::ThumbMouseButton, EKeys::Gamepad_LeftShoulder });
 	Button(IA_Interact, { EKeys::F, EKeys::Gamepad_DPad_Right });
 	Button(IA_LeanLeft, { EKeys::Q });
 	Button(IA_LeanRight, { EKeys::E });
@@ -386,6 +388,7 @@ void AAirsoftPlayerController::SetupInputComponent()
 	EIC->BindAction(Get(IA_FireMode), ETriggerEvent::Started, this, &AAirsoftPlayerController::OnFireMode);
 	EIC->BindAction(Get(IA_Light), ETriggerEvent::Started, this, &AAirsoftPlayerController::OnLight);
 	EIC->BindAction(Get(IA_Inspect), ETriggerEvent::Started, this, &AAirsoftPlayerController::OnInspect);
+	EIC->BindAction(Get(IA_Melee), ETriggerEvent::Started, this, &AAirsoftPlayerController::OnMelee);
 	EIC->BindAction(Get(IA_Interact), ETriggerEvent::Started, this, &AAirsoftPlayerController::OnInteract);
 	EIC->BindAction(Get(IA_LeanLeft), ETriggerEvent::Started, this, &AAirsoftPlayerController::OnLeanLeftPressed);
 	EIC->BindAction(Get(IA_LeanLeft), ETriggerEvent::Completed, this, &AAirsoftPlayerController::OnLeanLeftReleased);
@@ -641,6 +644,14 @@ void AAirsoftPlayerController::OnInspect()
 	if (CanControlPawn())
 	{
 		GetAirsoftCharacter()->GetCombat()->Inspect();
+	}
+}
+
+void AAirsoftPlayerController::OnMelee()
+{
+	if (CanControlPawn())
+	{
+		GetAirsoftCharacter()->GetCombat()->Melee();
 	}
 }
 

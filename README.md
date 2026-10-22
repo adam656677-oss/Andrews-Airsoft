@@ -145,6 +145,7 @@ Your profile (rank, XP, stats, loadout, settings) is saved on your own PC: `%LOC
 | Reload | R | X |
 | Swap weapon / primary / secondary | Mouse wheel / 1 / 2 | Y |
 | Grenade | G | RB |
+| Melee: rifle butt / pistol whip (story: heavy damage; matches: a tag) | Z or Mouse 4 | LB |
 | Fire mode | B | D-pad ↓ |
 | Weapon light / laser | T | D-pad ↑ |
 | Inspect weapon | V | D-pad ← |
@@ -189,6 +190,7 @@ In **Settings**, *Quality: High* with *Render scale: 60%* is the recommended 207
 | Effects (muzzle, tracers, impacts, tag pulse) | `AirsoftEffects` (Project Settings → Game → Airsoft Effects) |
 | Player, movement, lean, hit state | `AirsoftCharacter`, `AirsoftMovementComponent` |
 | Guns, ballistics, server hit validation | `AirsoftCombatComponent`, `AirsoftBallistics`, `AirsoftWeaponData`, `AirsoftGunVisual` |
+| Gun motion (reload, aim settle, breathing, recoil spring, melee), first and third person | `AirsoftCombatComponent` (`UpdateViewmodel`, `UpdateThirdPersonAnim`; tuning in Project Settings → Game → Airsoft → Viewmodel) |
 | Input, menus, HUD feed, replay camera | `AirsoftPlayerController`, `UI/*` (Slate) |
 | World actors | `AirsoftObjective`, `AirsoftTeamStart`, `AirsoftPracticeTarget`, `AirsoftArmoryDisplay`, `AirsoftGrenade` |
 | Profile, hosting/joining, settings | `AirsoftGameInstance`, `AirsoftSaveGame`, `AirsoftSettings` (Project Settings → Game → Airsoft) |

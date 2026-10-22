@@ -246,6 +246,7 @@ protected:
 	void OnFireMode();
 	void OnLight();
 	void OnInspect();
+	void OnMelee();
 	void OnInteract();
 	/** F5: first <-> third person. X: swap shoulder. */
 	void OnCameraView();

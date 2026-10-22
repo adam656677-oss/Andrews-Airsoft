@@ -204,6 +204,10 @@ namespace AirsoftCampaign
 		{
 			return 110.f;
 		}
+		if (WeaponId == TEXT("Melee"))
+		{
+			return UAirsoftSettings::Get()->Viewmodel.MeleeDamage; // rifle butt / pistol whip, never a headshot
+		}
 		if (const FAirsoftWeaponDef* W = AirsoftWeapons::Find(WeaponId))
 		{
 			if (W->Class == TEXT("Sniper")) Damage = 140.f;

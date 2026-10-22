@@ -31,6 +31,7 @@ When a new build comes out, delete the old folder and extract the new zip. Your 
 | Fire / aim | Left / right mouse |
 | Sprint / crouch / slide | Shift / C (C while sprinting slides) |
 | Reload / grenade | R / G |
+| Melee strike | Z or Mouse 4 |
 | Lean | Q / E |
 | Loadout | L |
 | First or third person | F5 |

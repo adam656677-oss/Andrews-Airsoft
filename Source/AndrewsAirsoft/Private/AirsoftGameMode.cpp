@@ -1840,7 +1840,8 @@ bool AAirsoftGameMode::HandleTag(AController* Shooter, AController* Victim, FNam
 		ShooterPS->Round.Tags++;
 		ShooterPS->Round.Streak++;
 		const bool bGrenade = WeaponId == TEXT("Grenade");
-		GiveXP(Shooter, bGrenade ? 125 : 100, bGrenade ? TEXT("GRENADE TAG") : TEXT("TAG"));
+		const bool bMelee = WeaponId == TEXT("Melee");
+		GiveXP(Shooter, bGrenade ? 125 : (bMelee ? 150 : 100), bGrenade ? TEXT("GRENADE TAG") : (bMelee ? TEXT("MELEE TAG") : TEXT("TAG")));
 		if (ShooterPawn && FVector::Dist(ShooterPawn->GetActorLocation(), VictimChar->GetActorLocation()) > 4000.f)
 		{
 			GiveXP(Shooter, 50, TEXT("LONG SHOT"));

@@ -69,6 +69,8 @@ public:
 	bool IsSprinting() const;
 	bool IsSliding() const;
 	float GetLean() const { return LeanAmount; }
+	/** cm the eye camera is dipped by the last landing (springs back to 0). */
+	float GetLandDip() const { return LandDip; }
 	/**
 	 * Controlled by a person on this machine. Bots are "locally controlled" on the host too
 	 * (their AIController lives there), so first-person-only work - 2D sounds, the viewmodel,
