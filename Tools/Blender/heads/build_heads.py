@@ -1,6 +1,7 @@
 """
-Original character heads for the story cast (Andrew, Kade, Dorian Sloane, Mara Voss, Silas Varga)
-and four Ledger crew variants.  Every face is a generic procedural sculpt (headlib.py): no likeness
+Original character heads for the story cast (Andrew and the eight bosses of Last Contract: Kade, Dorian
+Sloane, Mara Voss, Silas Varga, Ezra Kell, Petra Lind, Teodor Brask, Augustin Crane) and four Ledger crew
+variants.  Every face is a generic procedural sculpt (headlib.py): no likeness
 of any real person, actor or film character.
 
     python Tools/Blender/heads/build_heads.py                    # build, bake, export, JSON, renders
@@ -47,6 +48,8 @@ RENDER_DIR = os.path.join(ROOT, "Docs", "Renders", "Heads")
 SCRATCH = os.environ.get("HEADS_SCRATCH", os.path.join(ROOT, "Saved", "HeadsScratch"))
 MESH_H = 0.00135  # surface-nets cell (m)
 HAIR_H = 0.0011
+HEAD_KEEP = 0.55  # decimation ratios after meshing (the surface-nets mesh is uniform and dense)
+HAIR_KEEP = 0.35
 
 
 def log(*a):
@@ -76,19 +79,26 @@ class Fn:
             g[:, i] = (self.eval(p + e) - self.eval(p - e)) / (2 * h)
         return g
 
-    def project(self, p, iters=3):
+    def project(self, p, iters=3, max_step=0.0012):
         for _ in range(iters):
             d = self.eval(p)
             g = self.gradient(p)
-            g2 = np.maximum(np.einsum("ij,ij->i", g, g), 1e-8)
-            p = p - (d / g2)[:, None] * g
+            g2 = np.einsum("ij,ij->i", g, g)
+            step = (d / np.maximum(g2, 1e-8))[:, None] * g
+            n = np.linalg.norm(step, axis=1)
+            # flat spots of the field (where smooth unions meet) would throw a vertex far away: clamp, or skip
+            step *= np.where(g2 < 0.05, 0.0, np.minimum(1.0, max_step / np.maximum(n, 1e-12)))[:, None]
+            p = p - step
         return p
 
 
 def mesh_sdf(F, h):
     lo, hi = F.bounds(3 * h)
     v, q = hk.mesh_field(F, h, lo, hi)
-    v = F.project(v, 3)
+    v = F.project(v, 3, max_step=h * 0.75)
+    # drop any face that still got stretched (an edge over 4 cells)
+    e = np.max(np.stack([np.linalg.norm(v[q[:, i]] - v[q[:, (i + 1) % 4]], axis=1) for i in range(4)], 1), axis=1)
+    q = q[e < 4.0 * h]
     vq = v[q]
     n = np.cross(vq[:, 1] - vq[:, 0], vq[:, 2] - vq[:, 0]) + np.cross(vq[:, 2] - vq[:, 0], vq[:, 3] - vq[:, 0])
     g = F.gradient(vq.mean(axis=1), 3e-4)
@@ -149,6 +159,12 @@ def set_attr(ob, name, values):
     a.data.foreach_set("value", np.asarray(values, np.float32))
 
 
+def mesh_verts(ob):
+    v = np.empty(len(ob.data.vertices) * 3, np.float32)
+    ob.data.vertices.foreach_get("co", v)
+    return v.reshape(-1, 3).astype(np.float64)
+
+
 def vertex_normals(ob):
     me = ob.data
     n = np.empty(len(me.vertices) * 3, np.float32)
@@ -163,6 +179,9 @@ def build_head_mesh(head, coll, h=MESH_H):
     v, q = mesh_sdf(F, h)
     v, q = keep_largest(v, q)
     ob = mesh_object(f"SM_{hl.ASSET_IDS[head.name]}_Head", v, q, coll)
+    if h <= MESH_H:
+        decimate(ob, HEAD_KEEP)  # adaptive (curvature-aware) density; masks are computed on the result
+        v = mesh_verts(ob)
     attrs = head.attributes(v, vertex_normals(ob))
     for k, a in attrs.items():
         set_attr(ob, k, a)
@@ -174,7 +193,7 @@ def build_hair_mesh(head, coll, h=HAIR_H):
     style = hl.CAST[head.name]["hair"]
     if not hl.style_has_mesh(style["style"]) and not style.get("beard"):
         return None
-    hair = hl.Hair(head, style["style"])
+    hair = hl.Hair(head, style["style"], style.get("thin", 1.0))
     parts_v, parts_q = [], []
     t0 = time.time()
     if hl.style_has_mesh(style["style"]):
@@ -193,6 +212,9 @@ def build_hair_mesh(head, coll, h=HAIR_H):
     v = np.concatenate(parts_v)
     q = np.concatenate(parts_q)
     ob = mesh_object(f"SM_{hl.ASSET_IDS[head.name]}_Hair", v, q, coll)
+    if h <= HAIR_H:
+        decimate(ob, HAIR_KEEP)
+        v = mesh_verts(ob)
     # strand flow: lines of constant 'psi' run from the hairline back (combed) or across (short)
     c = head.skull_c
     psi = np.arctan2(v[:, 2] - c[2], v[:, 1] - c[1])
@@ -470,7 +492,7 @@ def export_fbx(ob, path):
 
 
 def ue(p):
-    return [round(p[0] * 100, 1) + 0.0, round(-p[1] * 100, 1) + 0.0, round(p[2] * 100, 1) + 0.0]
+    return [round(float(p[0]) * 100, 1) + 0.0, round(-float(p[1]) * 100, 1) + 0.0, round(float(p[2]) * 100, 1) + 0.0]
 
 
 def bounds_ue(ob):
@@ -546,6 +568,14 @@ def build_character(name, res, do_bake, coll):
 
 
 def write_json(entries):
+    import fcntl  # several builds may finish together (one per core group): serialise the read-modify-write
+    os.makedirs(os.path.dirname(DATA_PATH), exist_ok=True)
+    with open(DATA_PATH + ".lock", "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        _write_json_locked(entries)
+
+
+def _write_json_locked(entries):
     data = {"Version": 1, "Assets": {}}
     if os.path.exists(DATA_PATH):
         with open(DATA_PATH) as f:
@@ -756,6 +786,8 @@ def import_head(name, coll, offset=(0, 0, 0), rot_z=0.0):
 SUITS = {  # colourway, shirt, tie per character (Gear.json Suit colourways)
     "Andrew": ("Charcoal", "Black", "Black"), "Kade": ("MidnightNavy", "White", "Black"), "Dorian Sloane": ("Oxblood", "Black", "Wine"),
     "Mara Voss": ("Black", "Black", "Black"), "Silas Varga": ("Oxblood", "White", "Graphite"),
+    "Ezra Kell": ("Black", "Black", "Black"), "Petra Lind": ("Charcoal", "White", "Graphite"), "Teodor Brask": ("MidnightNavy", "Black", "Black"),
+    "Augustin Crane": ("Oxblood", "White", "Wine"),
     "Ledger A": ("MidnightNavy", "Black", "Black"), "Ledger B": ("MidnightNavy", "White", "Black"), "Ledger C": ("MidnightNavy", "Black", "Graphite"),
     "Ledger D": ("MidnightNavy", "White", "Black"),
 }

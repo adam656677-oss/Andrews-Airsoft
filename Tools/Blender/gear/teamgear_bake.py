@@ -133,7 +133,6 @@ SCAN_DIR = os.path.join(ROOT, "SourceAssets", "Materials")
 SCAN_JSON = os.path.join(ROOT, "Content", "Airsoft", "Data", "Materials.json")
 SCAN_FLATTEN_M = 0.02  # the scan's own blotches larger than this are divided out (they would repeat per tile)
 _scan_tiles = {}
-_scan_images = {}
 
 
 def scans_enabled():
@@ -190,9 +189,9 @@ def scan_detail(mid, tex_m):
     f = 1
     while tile / n0 * f < 0.8 * tex_m and n0 // (f * 2) >= 128:
         f *= 2
-    key = (mid, f)
-    if key in _scan_images and _scan_images[key].name in bpy.data.images:
-        return _scan_images[key], tile
+    name = f"__scan_{mid}_{f}"
+    if name in bpy.data.images:  # by name: a scene reset (read_factory_settings) frees the images
+        return bpy.data.images[name], tile
     hgt = _box_down(_read_map(pre + "H.png", "r"), f)
     lum = _box_down(_read_map(pre + "BC.png", "lum"), f)
     rgh = _box_down(_read_map(pre + "ORM.png", "g"), f)
@@ -203,11 +202,10 @@ def scan_detail(mid, tex_m):
     lr = (np.clip(lr, 0.4, 1.6) - 0.4) / 1.2
     rd = np.clip(rgh - _blur_wrap(rgh, sigma), -0.25, 0.25) * 2.0 + 0.5
     h, w = hd.shape
-    img = bpy.data.images.new(f"__scan_{mid}_{f}", w, h, alpha=False, float_buffer=True)
+    img = bpy.data.images.new(name, w, h, alpha=False, float_buffer=True)
     img.colorspace_settings.name = "Non-Color"
     px = np.stack([hd, lr, rd, np.ones_like(hd)], axis=-1).astype(np.float32)
     img.pixels.foreach_set(px.ravel())
-    _scan_images[key] = img
     return img, tile
 
 

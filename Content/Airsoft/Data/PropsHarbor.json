@@ -605,6 +605,77 @@
         "Los": false,
         "Cover": false
       }
+    },
+    "Harbor_STSCrane": {
+      "Group": "Harbor",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Harbor_STSCrane_Body"
+          ]
+        },
+        {
+          "Name": "Glass",
+          "Kind": "Glass",
+          "Slots": [
+            "M_Harbor_STSCrane_Glass"
+          ]
+        },
+        {
+          "Name": "Emissive",
+          "Kind": "Emissive",
+          "Slots": [
+            "M_Harbor_STSCrane_Emissive"
+          ]
+        }
+      ],
+      "Points": {
+        "FloodA": [
+          400.0,
+          0.0,
+          2980.0
+        ],
+        "FloodB": [
+          2200.0,
+          0.0,
+          2980.0
+        ],
+        "Light": [
+          1000.0,
+          0.0,
+          2980.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -2200.0,
+          -870.0,
+          0.0
+        ],
+        "Max": [
+          4400.0,
+          870.0,
+          4782.0
+        ]
+      },
+      "Collision": "Complex",
+      "Triangles": {
+        "Body": 15780,
+        "Glass": 24,
+        "Emissive": 1576
+      },
+      "TextureSize": {
+        "Body": 4096,
+        "Glass": 256,
+        "Emissive": 256
+      },
+      "Layout": {
+        "Solid": false,
+        "Los": false,
+        "Cover": false
+      }
     }
   }
 }

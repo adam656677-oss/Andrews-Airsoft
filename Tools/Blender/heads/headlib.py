@@ -96,7 +96,7 @@ CAST = {
         brow_col=(0.028, 0.022, 0.019), brow_thick=1.05, iris=(0.10, 0.075, 0.045),
         hair=dict(style="crop", col=(0.026, 0.022, 0.020), grey=0.28)),
     "Kade": dict(
-        title="Kade", role="The Ledger's runner", seed=23,
+        title="Kade", role="The Collector", seed=23,
         shape=dict(skull=(0.98, 0.98, 1.0), jaw_w=0.93, chin=-0.002, cheek=0.94, brow=0.88, nose_len=0.94, nose_tip=1.08, nose_w=0.96,
                    lip_full=1.05, face_len=0.97, age=0.05, face_w=1.0),
         skin=(0.66, 0.48, 0.36), redness=0.25, stubble=0.0, stubble_col=(0.03, 0.025, 0.02),
@@ -123,6 +123,34 @@ CAST = {
         skin=(0.74, 0.57, 0.48), redness=0.55, stubble=0.0, stubble_col=(0.2, 0.2, 0.2),
         brow_col=(0.19, 0.185, 0.18), brow_thick=1.2, iris=(0.09, 0.10, 0.10),
         hair=dict(style="horseshoe", col=(0.30, 0.29, 0.28), grey=0.0, beard="boxed")),
+    "Ezra Kell": dict(
+        title="Ezra Kell", role="The Cleaner", seed=83,
+        shape=dict(skull=(1.0, 0.96, 1.03), face_len=1.06, face_w=0.92, jaw_w=0.95, chin=0.003, chin_w=0.88, cheek=1.18, brow=1.1,
+                   nose_len=1.02, nose_w=0.9, nose_bridge=0.002, lip_full=0.72, lip_w=0.95, age=0.5, eye_open=0.9, neck=0.95),
+        skin=(0.76, 0.62, 0.55), redness=0.2, stubble=0.35, stubble_col=(0.06, 0.05, 0.045),
+        brow_col=(0.07, 0.06, 0.05), brow_thick=0.8, iris=(0.13, 0.15, 0.15),
+        hair=dict(style="buzz", col=(0.05, 0.045, 0.04), grey=0.0)),
+    "Petra Lind": dict(
+        title="Petra Lind", role="The Auditor", seed=89,
+        shape=dict(skull=(0.96, 0.93, 0.98), face_len=1.0, face_w=0.9, jaw_w=0.86, chin=0.003, chin_w=0.8, cheek=1.2, brow=0.75,
+                   nose_len=1.0, nose_w=0.82, nose_bridge=0.0015, lip_w=0.92, lip_full=0.95, ear=0.88, neck=0.84, age=0.3, female=1.0),
+        skin=(0.80, 0.66, 0.58), redness=0.25, stubble=0.0, stubble_col=(0.02, 0.02, 0.02),
+        brow_col=(0.10, 0.08, 0.06), brow_thick=0.65, iris=(0.10, 0.14, 0.17), lip_tint=(0.30, 0.10, 0.10),
+        hair=dict(style="slick", col=(0.21, 0.17, 0.11), grey=0.0, thin=0.6)),
+    "Teodor Brask": dict(
+        title="Teodor Brask", role="The Keeper's Hand", seed=97,
+        shape=dict(skull=(1.03, 1.06, 0.99), face_len=1.02, face_w=1.1, jaw_w=1.16, chin=0.002, cheek=1.02, brow=1.22, nose_len=1.0,
+                   nose_w=1.12, nose_flat=0.35, lip_full=0.9, ear=1.05, neck=1.2, age=0.45),
+        skin=(0.70, 0.53, 0.42), redness=0.35, stubble=0.0, stubble_col=(0.03, 0.025, 0.02),
+        brow_col=(0.022, 0.018, 0.015), brow_thick=1.2, iris=(0.05, 0.035, 0.02),
+        hair=dict(style="crop", col=(0.022, 0.018, 0.015), grey=0.08, beard="boxed")),
+    "Augustin Crane": dict(
+        title="Augustin Crane", role="The Keeper", seed=101,
+        shape=dict(skull=(1.0, 0.95, 1.05), face_len=1.08, face_w=0.92, jaw_w=0.9, chin=0.005, chin_w=0.85, cheek=1.12, brow=1.05,
+                   nose_len=1.12, nose_w=0.88, nose_bridge=0.004, lip_full=0.7, lip_w=0.94, ear=1.1, neck=0.92, age=1.0, eye_open=0.85),
+        skin=(0.78, 0.64, 0.57), redness=0.4, stubble=0.0, stubble_col=(0.2, 0.2, 0.2),
+        brow_col=(0.30, 0.29, 0.28), brow_thick=0.95, iris=(0.12, 0.13, 0.13),
+        hair=dict(style="slick", col=(0.36, 0.35, 0.34), grey=0.0, thin=0.8)),
     "Ledger A": dict(
         title="Ledger crew A", role="Henchman", seed=61, crew=True,
         shape=dict(jaw_w=1.08, chin=0.003, cheek=1.0, brow=1.05, nose_len=0.97, nose_w=1.12, lip_full=1.15, face_w=1.03, neck=1.1, age=0.3),
@@ -154,6 +182,7 @@ CAST = {
 
 ASSET_IDS = {
     "Andrew": "Head_Andrew", "Kade": "Head_Kade", "Dorian Sloane": "Head_Dorian", "Mara Voss": "Head_Mara", "Silas Varga": "Head_Silas",
+    "Ezra Kell": "Head_Ezra", "Petra Lind": "Head_Petra", "Teodor Brask": "Head_Teodor", "Augustin Crane": "Head_Augustin",
     "Ledger A": "Head_LedgerA", "Ledger B": "Head_LedgerB", "Ledger C": "Head_LedgerC", "Ledger D": "Head_LedgerD",
 }
 
@@ -467,9 +496,10 @@ HAIRLINES = {
 
 
 class Hair:
-    def __init__(self, head, style):
+    def __init__(self, head, style, thin=1.0):
         self.h = head
         self.style = style
+        self.thin = thin
         self.c = head.skull_c
         self.r = head.skull_r
 
@@ -514,7 +544,7 @@ class Hair:
         tbl_az, tbl_el = HAIRLINES[self.style]
         el_min = np.interp(az, tbl_az, tbl_el)
         e = np.radians(el - el_min)
-        tau = self.thickness(p, az, el)
+        tau = self.thickness(p, az, el) * self.thin
         if self.style == "horseshoe":
             # the hairline is a lower bound on the sides and back; the top is bald
             top = np.radians(28.0 + 10.0 * smoothstep(120.0, 180.0, az) - el)
@@ -543,14 +573,18 @@ class Hair:
         x, y, z = v[:, 0], v[:, 1], v[:, 2]
         ay = np.abs(y)
         upper = 0.034 - 0.25 * np.maximum(ay - 0.032, 0.0) - 0.10 * np.maximum(0.05 - x, 0.0)
-        region = smoothstep(upper + 0.003, upper - 0.003, z) * smoothstep(-0.072, -0.055, z) * smoothstep(-0.005, 0.015, x + 0.02)
+        # the lower edge follows the jaw line (low under the chin, high at the jaw angle) instead of a level cut
+        lower = -0.044 - 0.36 * np.clip(x - 0.0, 0.0, 0.10)
+        region = smoothstep(upper + 0.003, upper - 0.003, z) * smoothstep(lower - 0.002, lower + 0.006, z) * smoothstep(-0.005, 0.015, x + 0.02)
         lips = h.lips(v)
-        region *= smoothstep(-0.0005, 0.0030, lips)  # keep the lips clear
-        # moustache band over the upper lip
         mz = h.mouth_z
-        mo = smoothstep(0.004, 0.000, np.abs(z - (mz + 0.014)) - 0.004) * smoothstep(0.045, 0.030, ay) * smoothstep(0.098, 0.108, x)
-        region = np.maximum(region, mo * smoothstep(-0.0005, 0.0025, lips))
-        tau = 0.0045 * region + 0.0025 * smoothstep(0.0, 0.02, -z) * region
+        # the mouth stays clear: lips plus a margin, wider at the corners
+        mouth = smoothstep(0.0055, 0.0020, lips) + smoothstep(0.006, 0.0, np.abs(z - mz)) * smoothstep(0.034, 0.026, ay) * smoothstep(0.100, 0.110, x)
+        region *= 1.0 - np.clip(mouth, 0, 1)
+        # moustache band over the upper lip
+        mo = smoothstep(0.0035, 0.000, np.abs(z - (mz + 0.0145)) - 0.0035) * smoothstep(0.034, 0.024, ay) * smoothstep(0.100, 0.110, x)
+        region = np.maximum(region, mo * smoothstep(0.001, 0.0035, lips))
+        tau = 0.0028 * region + 0.0018 * smoothstep(0.0, 0.03, -z) * region
         d = base - tau
         d = hk.smax(d, 0.0015 - region * 0.004, 0.001)
         d = hk.smax(d, -(base + 0.0004), 0.0005)

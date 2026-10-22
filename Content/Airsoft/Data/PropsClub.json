@@ -637,12 +637,12 @@
       ],
       "Points": {
         "HeadlightL": [
-          241.0,
+          240.0,
           -68.5,
           60.5
         ],
         "HeadlightR": [
-          241.0,
+          240.0,
           68.5,
           60.5
         ],
@@ -666,12 +666,12 @@
         "Max": [
           243.0,
           95.5,
-          173.3
+          141.3
         ]
       },
       "Collision": "Convex",
       "Triangles": {
-        "Body": 54284,
+        "Body": 54292,
         "Interior": 10119,
         "Glass": 2080,
         "Emissive": 4016,

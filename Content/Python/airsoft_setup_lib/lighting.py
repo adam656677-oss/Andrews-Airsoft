@@ -103,8 +103,9 @@ FIXTURES = {
                         "shadows": False},
     "Garage_TicketBooth": {"kind": "point", "point": "Light", "color": "Warm", "cd": 1.6, "radius": 5.0, "src": 15.0,
                            "shadows": False},
-    # Saltmarsh Terminal kit (Tools/Blender/harbor). High-mast sodium floods: one shadowed spot each (4 on the map).
-    "Harbor_FloodMast": {"kind": "spot", "point": "Light", "color": "Sodium", "cd": 160.0, "radius": 48.0,
+    # Saltmarsh Terminal kit (Tools/Blender/harbor). High-mast sodium floods: one shadowed spot each (4 on the map);
+    # 24 m up, so ~(24/4)^2 the candela of a 4 m street lamp for a similar pool on the ground.
+    "Harbor_FloodMast": {"kind": "spot", "point": "Light", "color": "Sodium", "cd": 700.0, "radius": 52.0,
                          "cone": (40, 62), "pitch": -55.0, "src": 40.0, "shadows": True, "vol": 1.2},
     "Harbor_Gatehouse": {"kind": "point", "point": "Light", "color": "Warm", "cd": 2.5, "radius": 7.0, "src": 30.0,
                          "shadows": False, "vol": 1.0},

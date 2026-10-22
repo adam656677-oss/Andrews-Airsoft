@@ -44,8 +44,8 @@ def hero_spec():
         plan_rf=0.10, plan_rr=0.10,
         width=[(-2.38, 0.86), (-2.2, 0.895), (-1.6, 0.905), (-1.29, 0.905), (-0.8, 0.89), (-0.2, 0.876), (0.5, 0.873),
                (1.45, 0.882), (2.1, 0.878), (2.38, 0.86)],
-        zbot=[(-2.38, 0.34), (-2.2, 0.22), (-1.9, 0.16), (1.95, 0.16), (2.2, 0.21), (2.38, 0.29)],
-        zsill=[(-2.38, 0.40), (-2.0, 0.27), (1.95, 0.27), (2.38, 0.34)],
+        zbot=[(-2.38, 0.34), (-2.2, 0.22), (-1.9, 0.16), (1.95, 0.16), (2.2, 0.19), (2.38, 0.235)],
+        zsill=[(-2.38, 0.40), (-2.0, 0.27), (1.95, 0.27), (2.38, 0.30)],
         zsh=[(-2.38, 0.76), (-1.6, 0.80), (-1.05, 0.765), (-0.6, 0.705), (0.5, 0.69), (1.5, 0.705), (2.38, 0.72)],
         belt_t=[(-2.38, 0.93), (-2.2, 0.955), (-1.86, 0.945), (-1.3, 0.905), (-0.8, 0.872), (0.0, 0.852), (0.8, 0.848),
                 (1.6, 0.846), (2.2, 0.838), (2.38, 0.80)],
@@ -155,7 +155,7 @@ def period_steering_wheel(A, at, r, P):
         parts.append(A.box((r * 0.9, 0.03, 0.006), at=(r * 0.45 * math.cos(aa), r * 0.45 * math.sin(aa), -0.01), rot=(0, 0, a - 90),
                            mat="lx_satin", bevel=0.002, piece=P))
     parts.append(A.cyl(0.055, 0.035, at=(0, 0, -0.03), mat="lx_black", n=28, bevel=0.008, piece=P))       # plain hub pad
-    parts.append(A.cyl(0.028, 0.32, at=(0, 0, -0.2), mat="lx_satin_black", n=14, piece=P))
+    parts.append(A.cyl(0.028, 0.32, at=(0, 0, -0.35), mat="lx_satin_black", n=14, piece=P))
     M = Matrix.Translation(at) @ Matrix.Rotation(math.radians(-90 + 28), 4, "Y") @ Matrix.Rotation(math.radians(-90), 4, "Z")
     for p in parts:
         p.matrix_world = M @ p.matrix_world
@@ -203,7 +203,7 @@ def period_cabin(A, cs, vinyl, insert, dash):
     A.box((xs1 - xs0, 0.22, 0.2), at=((xs0 + xs1) / 2, 0, zf + 0.12), mat=vinyl, bevel=0.035, segs=3, piece=P)
     A.box((xs1 - xs0 - 0.08, 0.15, 0.012), at=((xs0 + xs1) / 2, 0, zf + 0.225), mat="lx_satin_black", bevel=0.004, piece=P)
     gx = (xs0 + xs1) / 2 + 0.08
-    A.cyl(0.008, 0.2, at=(gx, 0, zf + 0.32), mat="lx_chrome", n=10, piece=P)
+    A.cyl(0.008, 0.2, at=(gx, 0, zf + 0.225), mat="lx_chrome", n=10, piece=P)
     A.box((0.03, 0.09, 0.03), at=(gx, 0, zf + 0.43), mat="lx_black", bevel=0.01, segs=2, piece=P)
     period_steering_wheel(A, (xd - 0.58, 0.37, dz - 0.03), 0.19, P)
     zs = zf + 0.04
@@ -230,17 +230,19 @@ def round_lamp(A, surf, u, v, r, front=True, point=None):
 
     def at(d):
         return tuple(p + n * d)
-    A.cyl(r + 0.016, 0.03, at=at(0.006), axis="X", rot=rot, mat="lx_chrome", n=40, bevel=0.006, segs=2)
-    A.cyl(r, 0.012, at=at(0.016), axis="X", rot=rot, mat="lx_lens", n=40, bevel=0.004, segs=2)
-    A.cyl(r * 0.9, 0.006, at=at(0.022), axis="X", rot=rot, mat="lx_emit_white", n=36, bevel=0.002, piece="Emissive")
+    # cylinders grow from their base along the lamp axis (outward): bezel -10..+12 mm, lens dome 4..16 mm,
+    # emissive face just proud of the lens (16.5..18.5 mm)
+    A.cyl(r + 0.016, 0.022, at=at(-0.010), axis="X", rot=rot, mat="lx_chrome", n=40, bevel=0.005, segs=2)
+    A.cyl(r, 0.012, at=at(0.004), axis="X", rot=rot, mat="lx_lens", n=40, bevel=0.004, segs=2)
+    A.cyl(r * 0.88, 0.002, at=at(0.0165), axis="X", rot=rot, mat="lx_emit_white", n=36, bevel=0.0005, piece="Emissive")
     if point:
-        A.point(point, at(0.03))
+        A.point(point, at(0.02))
 
 
 def hood_pin(A, T, x, y):
     p, n = T(x, y)
-    A.cyl(0.013, 0.012, at=tuple(p + V(n) * 0.006), mat="lx_chrome", n=16, bevel=0.003)
-    A.cyl(0.004, 0.02, at=tuple(p + V(n) * 0.016), mat="lx_chrome", n=8, bevel=0.001)
+    A.cyl(0.013, 0.008, at=tuple(p - V(n) * 0.002), mat="lx_chrome", n=16, bevel=0.003)
+    A.cyl(0.004, 0.016, at=tuple(p + V(n) * 0.005), mat="lx_chrome", n=8, bevel=0.001)
     # lanyard loop to a clip a little further back
     q, m = T(x - 0.07, y)
     path = [tuple(p + V(n) * 0.012), tuple((p + q) / 2 + V(n) * 0.022), tuple(q + V(m) * 0.006)]
@@ -356,7 +358,7 @@ def car_hero(A):
     plain_mirror(A, cs, 0.14, 0.0, 1, P1)
     plain_mirror(A, cs, 0.14, 0.0, -1, P1)
     pa, na = surf_side(cs, -1)(1.30, 0.80)
-    A.cyl(0.0035, 0.62, at=tuple(pa + V(na) * 0.01 + V((0, 0, 0.31))), mat="lx_chrome", n=8, bevel=0.0)        # antenna
+    A.cyl(0.0035, 0.62, at=tuple(pa + V(na) * 0.012 - V((0, 0, 0.01))), mat="lx_chrome", n=8, bevel=0.0)        # antenna
     # ---- hood: matte black centre panel, scoop, pins, wipers ----------------------------------
     T = surf_top(cs)
     hp = round_poly([(0.56, 0.36), (2.16, 0.40), (2.16, -0.40), (0.56, -0.36)], 0.04)
@@ -389,7 +391,7 @@ def car_hero(A):
         fan_patch(A, ts, F, 0.004, "lx_smoke", rings=2)
         fan_patch(A, ts, F, 0.006, "lx_emit_amber", rings=1, piece="Emissive", smooth=180)
     bar_across(A, F, -0.84, 0.84, 0.425, 0.07, 0.03, "lx_chrome", off=0.035, n=36)
-    number_plate(A, cs, "lx_plate_hero", 0.30, True, w=0.305, h=0.152)
+    number_plate(A, cs, "lx_plate_hero", 0.318, True, w=0.305, h=0.152)
     # ---- rear: black tail panel, triple-lens lamps, plain gas cap, blade bumper, twin tips ----
     R = surf_rear(cs)
     tp = round_poly([(0.79, 0.585), (0.79, 0.81), (-0.79, 0.81), (-0.79, 0.585)], 0.02)
@@ -410,8 +412,8 @@ def car_hero(A):
     bar_across(A, R, -0.84, 0.84, 0.50, 0.07, 0.03, "lx_chrome", off=0.035, n=36)
     number_plate(A, cs, "lx_plate_hero", 0.385, False, w=0.305, h=0.152)
     for s in (1, -1):
-        A.cyl(0.032, 0.14, at=(cs.x0 + 0.1, s * 0.52, 0.27), axis="X", mat="lx_chrome", n=24, bevel=0.003)
-        A.cyl(0.025, 0.142, at=(cs.x0 + 0.1, s * 0.52, 0.27), axis="X", mat="lx_black", n=20, bevel=0.002)
+        A.cyl(0.032, 0.16, at=(cs.x0 + 0.01, s * 0.52, 0.27), axis="X", mat="lx_chrome", n=24, bevel=0.003)
+        A.cyl(0.025, 0.162, at=(cs.x0 + 0.008, s * 0.52, 0.27), axis="X", mat="lx_black", n=20, bevel=0.002)
     # plain stripe across the ducktail
     dk = round_poly([(-2.08, 0.66), (-2.26, 0.66), (-2.26, -0.66), (-2.08, -0.66)], 0.02)
     fan_patch(A, dk, T, 0.003, "lx_matte_black", rings=2, smooth=30)

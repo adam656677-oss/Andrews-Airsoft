@@ -114,6 +114,11 @@ namespace AirsoftTeamGear
 		TArray<FGearSlot> Slots;
 		/** Cranium centre relative to the head pivot (cm): the stand-in sphere head stands for it. */
 		FVector FallbackHeadCenter = FVector(0.8f, 0.f, 8.8f);
+		/** GearHeads.json "Heads": story character -> head asset, the Ledger crew heads (picked by seed), and the
+		 *  suit assets a head replaces (the suit's own haircut). */
+		TMap<FName, FName> HeadCast;
+		TArray<FName> CrewHeads;
+		TArray<FName> HideHair;
 	};
 
 	/** Live tuning (airsoft.gear.tune): Offset / Rotation / Scale per anchor key. */
@@ -232,6 +237,116 @@ namespace AirsoftTeamGear
 		}
 	}
 
+	static TSharedPtr<FJsonObject> LoadJson(const FString& Path)
+	{
+		FString Text;
+		TSharedPtr<FJsonObject> Root;
+		if (FFileHelper::LoadFileToString(Text, *Path))
+		{
+			TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(Text);
+			FJsonSerializer::Deserialize(Reader, Root);
+		}
+		return Root;
+	}
+
+	/** Reads every "Assets" entry (team gear or an outfit such as the suit or a character head) into Db. */
+	static void ParseAssets(const TSharedPtr<FJsonObject>& Root, FGearDatabase& Db)
+	{
+		const TSharedPtr<FJsonObject>* Assets = nullptr;
+		if (Root->TryGetObjectField(TEXT("Assets"), Assets))
+		{
+			for (const auto& Pair : (*Assets)->Values)
+			{
+				const TSharedPtr<FJsonObject>* AssetObj = nullptr;
+				const TSharedPtr<FJsonObject>* TeamGear = nullptr;
+				const TSharedPtr<FJsonObject>* OutfitObj = nullptr;
+				if (!Pair.Value.IsValid() || !Pair.Value->TryGetObject(AssetObj))
+				{
+					continue;
+				}
+				const bool bOutfit = !(*AssetObj)->TryGetObjectField(TEXT("TeamGear"), TeamGear) && (*AssetObj)->TryGetObjectField(TEXT("Outfit"), OutfitObj);
+				if (bOutfit)
+				{
+					TeamGear = OutfitObj; // same tint fields
+				}
+				else if (!TeamGear)
+				{
+					continue; // neither team gear nor an outfit (e.g. the first-person gloves)
+				}
+				FGearAssetDef Def;
+				Def.Id = FName(*Pair.Key);
+				if (bOutfit)
+				{
+					Def.Outfit = ReadName(*OutfitObj, TEXT("Outfit"));
+					Def.SuitTint = ReadName(*OutfitObj, TEXT("Tint"));
+					if (Def.Outfit.IsNone())
+					{
+						Def.Outfit = FName(TEXT("Suit"));
+					}
+				}
+				const TSharedPtr<FJsonObject>* AnchorObj = nullptr;
+				if ((*AssetObj)->TryGetObjectField(TEXT("Anchor"), AnchorObj))
+				{
+					Def.Anchor = ReadAnchor(*AnchorObj);
+				}
+				Def.Colorway = ReadName(*TeamGear, TEXT("Colorway"));
+				Def.TintRoughness = ReadFloat(*TeamGear, TEXT("TintRoughness"), 0.5f);
+				Def.RoughnessDetail = ReadFloat(*TeamGear, TEXT("RoughnessDetail"), 1.f);
+				Def.TintMetallic = ReadFloat(*TeamGear, TEXT("TintMetallic"), 0.f);
+				const TSharedPtr<FJsonObject>* Glass = nullptr;
+				if ((*TeamGear)->TryGetObjectField(TEXT("Glass"), Glass))
+				{
+					Def.bHasGlass = true;
+					Def.GlassTint = ReadColor(*Glass, TEXT("Tint"), Def.GlassTint);
+					Def.GlassOpacity = ReadFloat(*Glass, TEXT("Opacity"), Def.GlassOpacity);
+					Def.GlassRoughness = ReadFloat(*Glass, TEXT("Roughness"), Def.GlassRoughness);
+				}
+				const TArray<TSharedPtr<FJsonValue>>* Pieces = nullptr;
+				if ((*AssetObj)->TryGetArrayField(TEXT("Pieces"), Pieces))
+				{
+					for (const TSharedPtr<FJsonValue>& PieceValue : *Pieces)
+					{
+						const TSharedPtr<FJsonObject>* PieceObj = nullptr;
+						if (!PieceValue.IsValid() || !PieceValue->TryGetObject(PieceObj))
+						{
+							continue;
+						}
+						FGearPieceDef Piece;
+						Piece.Name = ReadName(*PieceObj, TEXT("Name"));
+						Piece.Kind = ReadName(*PieceObj, TEXT("Kind"));
+						const TSharedPtr<FJsonObject>* PieceAnchor = nullptr;
+						if ((*PieceObj)->TryGetObjectField(TEXT("Anchor"), PieceAnchor))
+						{
+							Piece.Anchor = ReadAnchor(*PieceAnchor);
+							Piece.bOwnAnchor = Piece.Anchor.bValid;
+						}
+						if (!Piece.Name.IsNone())
+						{
+							Def.Pieces.Add(Piece);
+						}
+					}
+				}
+				Db.Assets.Add(Def.Id, Def);
+			}
+		}
+	}
+
+	static void ReadNameArray(const TSharedPtr<FJsonObject>& Obj, const TCHAR* Field, TArray<FName>& Out)
+	{
+		const TArray<TSharedPtr<FJsonValue>>* List = nullptr;
+		if (Obj.IsValid() && Obj->TryGetArrayField(Field, List))
+		{
+			for (const TSharedPtr<FJsonValue>& V : *List)
+			{
+				FString Name;
+				if (V.IsValid() && V->TryGetString(Name) && !Name.IsEmpty())
+				{
+					Out.AddUnique(FName(*Name));
+				}
+			}
+		}
+	}
+
 	static FGearDatabase& GearDatabase(bool bReload = false)
 	{
 		static FGearDatabase Db;
@@ -243,93 +358,11 @@ namespace AirsoftTeamGear
 		bLoaded = true;
 		Db = FGearDatabase();
 
-		FString Text;
-		TSharedPtr<FJsonObject> Root;
 		const FString Path = FPaths::ProjectContentDir() / TEXT("Airsoft/Data/Gear.json");
-		if (FFileHelper::LoadFileToString(Text, *Path))
-		{
-			TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(Text);
-			FJsonSerializer::Deserialize(Reader, Root);
-		}
+		const TSharedPtr<FJsonObject> Root = LoadJson(Path);
 		if (Root.IsValid())
 		{
-			const TSharedPtr<FJsonObject>* Assets = nullptr;
-			if (Root->TryGetObjectField(TEXT("Assets"), Assets))
-			{
-				for (const auto& Pair : (*Assets)->Values)
-				{
-					const TSharedPtr<FJsonObject>* AssetObj = nullptr;
-					const TSharedPtr<FJsonObject>* TeamGear = nullptr;
-					const TSharedPtr<FJsonObject>* OutfitObj = nullptr;
-					if (!Pair.Value.IsValid() || !Pair.Value->TryGetObject(AssetObj))
-					{
-						continue;
-					}
-					const bool bOutfit = !(*AssetObj)->TryGetObjectField(TEXT("TeamGear"), TeamGear) && (*AssetObj)->TryGetObjectField(TEXT("Outfit"), OutfitObj);
-					if (bOutfit)
-					{
-						TeamGear = OutfitObj; // same tint fields
-					}
-					else if (!TeamGear)
-					{
-						continue; // neither team gear nor an outfit (e.g. the first-person gloves)
-					}
-					FGearAssetDef Def;
-					Def.Id = FName(*Pair.Key);
-					if (bOutfit)
-					{
-						Def.Outfit = ReadName(*OutfitObj, TEXT("Outfit"));
-						Def.SuitTint = ReadName(*OutfitObj, TEXT("Tint"));
-						if (Def.Outfit.IsNone())
-						{
-							Def.Outfit = FName(TEXT("Suit"));
-						}
-					}
-					const TSharedPtr<FJsonObject>* AnchorObj = nullptr;
-					if ((*AssetObj)->TryGetObjectField(TEXT("Anchor"), AnchorObj))
-					{
-						Def.Anchor = ReadAnchor(*AnchorObj);
-					}
-					Def.Colorway = ReadName(*TeamGear, TEXT("Colorway"));
-					Def.TintRoughness = ReadFloat(*TeamGear, TEXT("TintRoughness"), 0.5f);
-					Def.RoughnessDetail = ReadFloat(*TeamGear, TEXT("RoughnessDetail"), 1.f);
-					Def.TintMetallic = ReadFloat(*TeamGear, TEXT("TintMetallic"), 0.f);
-					const TSharedPtr<FJsonObject>* Glass = nullptr;
-					if ((*TeamGear)->TryGetObjectField(TEXT("Glass"), Glass))
-					{
-						Def.bHasGlass = true;
-						Def.GlassTint = ReadColor(*Glass, TEXT("Tint"), Def.GlassTint);
-						Def.GlassOpacity = ReadFloat(*Glass, TEXT("Opacity"), Def.GlassOpacity);
-						Def.GlassRoughness = ReadFloat(*Glass, TEXT("Roughness"), Def.GlassRoughness);
-					}
-					const TArray<TSharedPtr<FJsonValue>>* Pieces = nullptr;
-					if ((*AssetObj)->TryGetArrayField(TEXT("Pieces"), Pieces))
-					{
-						for (const TSharedPtr<FJsonValue>& PieceValue : *Pieces)
-						{
-							const TSharedPtr<FJsonObject>* PieceObj = nullptr;
-							if (!PieceValue.IsValid() || !PieceValue->TryGetObject(PieceObj))
-							{
-								continue;
-							}
-							FGearPieceDef Piece;
-							Piece.Name = ReadName(*PieceObj, TEXT("Name"));
-							Piece.Kind = ReadName(*PieceObj, TEXT("Kind"));
-							const TSharedPtr<FJsonObject>* PieceAnchor = nullptr;
-							if ((*PieceObj)->TryGetObjectField(TEXT("Anchor"), PieceAnchor))
-							{
-								Piece.Anchor = ReadAnchor(*PieceAnchor);
-								Piece.bOwnAnchor = Piece.Anchor.bValid;
-							}
-							if (!Piece.Name.IsNone())
-							{
-								Def.Pieces.Add(Piece);
-							}
-						}
-					}
-					Db.Assets.Add(Def.Id, Def);
-				}
-			}
+			ParseAssets(Root, Db);
 
 			const TSharedPtr<FJsonObject>* TeamGear = nullptr;
 			if (Root->TryGetObjectField(TEXT("TeamGear"), TeamGear))
@@ -451,8 +484,33 @@ namespace AirsoftTeamGear
 				}
 			}
 		}
+		// Character heads (Tools/Blender/heads/build_heads.py): their own file, same asset format.
+		const TSharedPtr<FJsonObject> HeadsRoot = LoadJson(FPaths::ProjectContentDir() / TEXT("Airsoft/Data/GearHeads.json"));
+		if (HeadsRoot.IsValid())
+		{
+			ParseAssets(HeadsRoot, Db);
+			const TSharedPtr<FJsonObject>* HeadsObj = nullptr;
+			if (HeadsRoot->TryGetObjectField(TEXT("Heads"), HeadsObj))
+			{
+				const TSharedPtr<FJsonObject>* CastObj = nullptr;
+				if ((*HeadsObj)->TryGetObjectField(TEXT("Cast"), CastObj))
+				{
+					for (const auto& Pair : (*CastObj)->Values)
+					{
+						FString Asset;
+						if (Pair.Value.IsValid() && Pair.Value->TryGetString(Asset) && !Asset.IsEmpty())
+						{
+							Db.HeadCast.Add(FName(*Pair.Key), FName(*Asset));
+						}
+					}
+				}
+				ReadNameArray(*HeadsObj, TEXT("Crew"), Db.CrewHeads);
+				ReadNameArray(*HeadsObj, TEXT("HideHair"), Db.HideHair);
+			}
+		}
 		AddDefaults(Db);
-		UE_LOG(LogAirsoftGear, Log, TEXT("Team gear: %d assets, %d slots, %d suit assets from %s"), Db.Assets.Num(), Db.Slots.Num(), Db.SuitAssets.Num(), *Path);
+		UE_LOG(LogAirsoftGear, Log, TEXT("Team gear: %d assets, %d slots, %d suit assets, %d character heads from %s"), Db.Assets.Num(), Db.Slots.Num(),
+			Db.SuitAssets.Num(), Db.HeadCast.Num() + Db.CrewHeads.Num(), *Path);
 		return Db;
 	}
 
@@ -730,6 +788,8 @@ void UAirsoftTeamGearComponent::Clear()
 	ParentAsset.Reset();
 	bApplied = false;
 	bSuit = false;
+	bHeadOnly = false;
+	AppliedHead = NAME_None;
 }
 
 bool UAirsoftTeamGearComponent::Build(USceneComponent* InParent, bool bInFallback, EAirsoftTeam Team, int32 VariantSeed)
@@ -866,6 +926,130 @@ bool UAirsoftTeamGearComponent::ApplySuit(USkinnedMeshComponent* Body, FLinearCo
 		return HasGear();
 	}
 	return BuildSuit(Body, InSuitColor, VariantSeed, Shirt, false, AppliedTeam);
+}
+
+FName UAirsoftTeamGearComponent::HeadFor(FName Character, int32 VariantSeed)
+{
+	using namespace AirsoftTeamGear;
+	const FGearDatabase& Db = GearDatabase();
+	if (!Character.IsNone())
+	{
+		if (const FName* Found = Db.HeadCast.Find(Character))
+		{
+			return *Found;
+		}
+		// Bosses go by "Name, the Title" in Campaign.json; the head list uses the name.
+		FString Name = Character.ToString();
+		int32 Comma = INDEX_NONE;
+		if (Name.FindChar(TEXT(','), Comma))
+		{
+			Name.LeftInline(Comma);
+			Name.TrimStartAndEndInline();
+			if (const FName* Found = Db.HeadCast.Find(FName(*Name)))
+			{
+				return *Found;
+			}
+		}
+		return NAME_None;
+	}
+	if (Db.CrewHeads.Num() == 0)
+	{
+		return NAME_None;
+	}
+	return Db.CrewHeads[static_cast<int32>(GearHash(VariantSeed + GSeedOffset, TEXT("Head/Crew")) % static_cast<uint32>(Db.CrewHeads.Num()))];
+}
+
+bool UAirsoftTeamGearComponent::ApplyHead(USkinnedMeshComponent* Body, FName Character, int32 VariantSeed)
+{
+	using namespace AirsoftTeamGear;
+	static const FName SlotHead(TEXT("Head"));
+	if (!Body || !Body->GetSkinnedAsset() || !GetOwner() || !UAirsoftGearSettings::Get()->bEnableSuit || GetNetMode() == NM_DedicatedServer)
+	{
+		return false;
+	}
+	const FName AssetId = HeadFor(Character, VariantSeed);
+	const FGearDatabase& Db = GearDatabase();
+	const FGearAssetDef* Def = AssetId.IsNone() ? nullptr : Db.Assets.Find(AssetId);
+	if (!Def)
+	{
+		return false;
+	}
+	if (bApplied && Parent.Get() == Body && ParentAsset.Get() == Body->GetSkinnedAsset() && AppliedHead == AssetId && HasHead())
+	{
+		return true; // already wearing it
+	}
+	// Meshes first: when the head isn't imported nothing changes (the suit keeps its own haircut).
+	TArray<TPair<const FGearPieceDef*, UStaticMesh*>> Meshes;
+	for (const FGearPieceDef& PieceDef : Def->Pieces)
+	{
+		if (UStaticMesh* Mesh = AirsoftAssets::FindMesh(TEXT("Gear"), AssetId, PieceDef.Name.ToString()))
+		{
+			Meshes.Emplace(&PieceDef, Mesh);
+		}
+	}
+	if (Meshes.Num() == 0)
+	{
+		WarnOnce(TEXT("head/") + AssetId.ToString(), FString::Printf(TEXT("Character head %s is not imported - the suit's haircut stays"), *AssetId.ToString()));
+		return false;
+	}
+	if (!bApplied || Parent.Get() != Body || ParentAsset.Get() != Body->GetSkinnedAsset())
+	{
+		Clear();
+		Parent = Body;
+		ParentAsset = Body->GetSkinnedAsset();
+		bFallback = false;
+		bSuit = false;
+		bApplied = true;
+		bHeadOnly = true;
+		AppliedSeed = VariantSeed;
+		bOwnerViewHidden = IsOwnerViewing();
+	}
+	// Drop the previous head and the suit's haircut (the head brings its own hair).
+	for (int32 i = Components.Num() - 1; i >= 0; --i)
+	{
+		const bool bDrop = Parts.IsValidIndex(i) && (Parts[i].Slot == SlotHead || Db.HideHair.Contains(Parts[i].AssetId));
+		if (bDrop)
+		{
+			if (Components[i])
+			{
+				Components[i]->DestroyComponent();
+			}
+			Components.RemoveAt(i);
+			Parts.RemoveAt(i);
+		}
+	}
+	for (const TPair<const FGearPieceDef*, UStaticMesh*>& Pair : Meshes)
+	{
+		const FGearPieceDef& PieceDef = *Pair.Key;
+		FPart Part;
+		Part.AssetId = AssetId;
+		Part.Piece = PieceDef.Name;
+		Part.Kind = PieceDef.Kind;
+		Part.Slot = SlotHead;
+		Part.AnchorKey = PieceDef.bOwnAnchor ? FName(*FString::Printf(TEXT("%s/%s"), *AssetId.ToString(), *PieceDef.Name.ToString())) : AssetId;
+		Part.Bone = PieceDef.bOwnAnchor ? PieceDef.Anchor.Bone : Def->Anchor.Bone;
+		Part.Primary = FLinearColor::White; // colours are baked (empty role mask)
+		Part.Secondary = FLinearColor::White;
+		Part.Accent = FLinearColor::White;
+		Part.bTeamAccent = false;
+		AddPart(Part, Pair.Value, Body, false, AppliedTeam);
+	}
+	AppliedHead = AssetId;
+	AppliedHeadCharacter = Character;
+	AppliedHeadSeed = VariantSeed;
+	return HasHead();
+}
+
+bool UAirsoftTeamGearComponent::HasHead() const
+{
+	for (int32 i = 0; i < Parts.Num(); ++i)
+	{
+		if (Parts[i].Slot == TEXT("Head") && Components.IsValidIndex(i) && Components[i])
+		{
+			return true;
+		}
+	}
+	return false;
 }
 
 bool UAirsoftTeamGearComponent::ApplyOutfit(USkinnedMeshComponent* Body, EAirsoftOutfit Outfit, EAirsoftTeam Team, int32 VariantSeed)
@@ -1144,12 +1328,25 @@ void UAirsoftTeamGearComponent::Rebuild()
 		const bool bWasFallback = bFallback;
 		const int32 Seed = AppliedSeed;
 		const EAirsoftTeam Team = AppliedTeam;
-		if (bSuit)
+		const bool bHadHead = !AppliedHead.IsNone();
+		const FName HeadCharacter = AppliedHeadCharacter;
+		const int32 HeadSeed = AppliedHeadSeed;
+		if (bHeadOnly)
+		{
+			Clear();
+		}
+		else if (bSuit)
 		{
 			BuildSuit(Cast<USkinnedMeshComponent>(P), AppliedSuitColor, Seed, AppliedShirt, bSuitTeamTie, Team);
-			return;
 		}
-		Build(P, bWasFallback, Team, Seed);
+		else
+		{
+			Build(P, bWasFallback, Team, Seed);
+		}
+		if (bHadHead)
+		{
+			ApplyHead(Cast<USkinnedMeshComponent>(P), HeadCharacter, HeadSeed);
+		}
 	}
 }
 

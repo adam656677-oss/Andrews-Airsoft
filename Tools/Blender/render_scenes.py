@@ -167,7 +167,12 @@ def load_registry():
         cat = next((c for c in CATEGORIES if name.startswith(c)), None)
         if not cat:
             continue
-        for aid, a in (json.load(open(path)).get("Assets") or {}).items():
+        try:
+            data = json.load(open(path))
+        except ValueError as e:  # file may be mid-write by a generator (same rule as check_layouts.py)
+            print("  [warn] cannot read %s: %s" % (name, e))
+            continue
+        for aid, a in (data.get("Assets") or {}).items():
             e = dict(a)
             e["Category"] = cat
             e["Pieces"] = [dict(p) for p in a.get("Pieces", [])]
@@ -1598,35 +1603,35 @@ shot("garage_objective", file="13_NightjarGarage_ObjectiveC", map="NightjarGarag
 # Saltmarsh Terminal (container port, night rain): cold teal haze like lighting.PRESETS saltmarsh_rain, sodium high-mast
 # pools; "split" stands in for its teal-shadow / warm-highlight grade. Shed 7 gets its own denser, backlit haze.
 HARBOR_HAZE = {"rect": (-60, -40, 70, 40), "top": 16.0, "density": 0.0016, "color": (0.42, 0.8, 0.9), "g": 0.65}
-SHED_HAZE = {"rect": (22, -22, 46, 6), "top": 10.7, "density": 0.006, "color": (0.62, 0.8, 0.9), "g": 0.75}
+SHED_HAZE = {"rect": (22, -22, 46, 6), "top": 10.7, "density": 0.012, "color": (0.5, 0.78, 0.92), "g": 0.8}
 HARBOR_SPLIT = {"shadows": (0.78, 1.0, 1.15), "highlights": (1.05, 1.0, 0.94), "saturation": 1.12, "gamma": 1.16}
 HARBOR_SKY = (0.6, 1.3, 1.5)
 
 shot("harbor_lane", file="30_Saltmarsh_CentralLane", map="SaltmarshTerminal",
      caption="Saltmarsh Terminal - the central lane in the rain: a box held high by the reach stacker, sodium masts, the crane beyond",
-     cam=(-35.0, -2.4, 2.0), target=(0.0, 1.2, 4.6), lens=22, fstop=0,
-     exposure=1.35, sun_mult=0.5, haze=HARBOR_HAZE, fog_scale=0.04, bloom=0.55, bloom_size=0.9, split=HARBOR_SPLIT,
+     cam=(-32.2, -2.6, 2.0), target=(0.0, 1.2, 4.6), lens=22, fstop=0,
+     exposure=1.75, sun_mult=0.5, haze=HARBOR_HAZE, fog_scale=0.04, bloom=0.55, bloom_size=0.9, split=HARBOR_SPLIT,
      sky_tint=HARBOR_SKY, samples=48, noise=0.02,
      rain={"box": (-33.0, -9.0, 0.0, 0.0, 9.0, 12.0), "count": 9000, "len": 0.6, "width": 0.005, "alpha": 0.22,
            "near": 2.5, "tilt": (0.05, 0.02)})
 shot("harbor_canyon", file="31_Saltmarsh_ContainerCanyon", map="SaltmarshTerminal",
      caption="Saltmarsh Terminal - the north lane between container stacks, a sodium pool on the wet asphalt",
      cam=(-36.4, -19.6, 1.6), target=(-4.0, -18.6, 3.0), lens=24, fstop=2.8, focus=(-24.0, -19.0, 1.4),
-     exposure=1.35, sun_mult=0.5, haze=HARBOR_HAZE, fog_scale=0.04, bloom=0.55, bloom_size=0.9, split=HARBOR_SPLIT,
+     exposure=1.75, sun_mult=0.5, haze=HARBOR_HAZE, fog_scale=0.04, bloom=0.55, bloom_size=0.9, split=HARBOR_SPLIT,
      sky_tint=HARBOR_SKY, samples=48, noise=0.02,
      rain={"box": (-35.0, -23.0, 0.0, -6.0, -15.5, 10.0), "count": 8000, "len": 0.55, "width": 0.004, "alpha": 0.22,
            "near": 2.5, "tilt": (0.05, 0.02)})
 shot("harbor_crane", file="32_Saltmarsh_Crane", map="SaltmarshTerminal",
      caption="Saltmarsh Terminal - under the ship-to-shore crane on the south apron, red beacons over the moored ship",
      cam=(21.5, 31.0, 1.3), target=(46.0, 13.0, 15.0), lens=20, fstop=0,
-     exposure=1.3, sun_mult=0.5, haze=HARBOR_HAZE, fog_scale=0.04, bloom=0.6, bloom_size=0.9, split=HARBOR_SPLIT,
+     exposure=1.7, sun_mult=0.5, haze=HARBOR_HAZE, fog_scale=0.04, bloom=0.6, bloom_size=0.9, split=HARBOR_SPLIT,
      sky_tint=HARBOR_SKY, samples=48, noise=0.02,
      rain={"box": (21.0, 8.0, 0.0, 50.0, 32.0, 16.0), "count": 9000, "len": 0.6, "width": 0.006, "alpha": 0.22,
            "near": 3.0, "tilt": (0.05, 0.02)})
 shot("harbor_shed", file="33_Saltmarsh_Shed7", map="SaltmarshTerminal",
      caption="Saltmarsh Terminal - Shed 7, the boss arena: rain through the broken roof, a hard key light in the haze",
-     cam=(23.4, -13.2, 1.65), target=(40.0, -3.0, 3.4), lens=22, fstop=2.8, focus=(31.0, -2.0, 1.2),
-     exposure=1.5, sun_mult=0.4, haze=SHED_HAZE, fog_scale=0.05, bloom=0.65, bloom_size=1.0, split=HARBOR_SPLIT,
+     cam=(24.2, 1.0, 1.65), target=(40.0, -14.0, 3.6), lens=22, fstop=2.8, focus=(31.0, -2.0, 1.2),
+     exposure=2.2, sun_mult=0.4, haze=SHED_HAZE, fog_scale=0.05, bloom=0.65, bloom_size=1.0, split=HARBOR_SPLIT,
      sky_tint=HARBOR_SKY, samples=48, noise=0.02,
      rain=[{"box": (28.0, -9.0, 0.0, 32.0, -6.0, 10.7), "count": 2200, "len": 0.6, "width": 0.005, "alpha": 0.35,
             "near": 1.0, "tilt": (0.04, 0.02), "seed": 7},

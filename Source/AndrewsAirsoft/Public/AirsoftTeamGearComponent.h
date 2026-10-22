@@ -60,6 +60,20 @@ public:
 	/** TeamGear: ApplyTo. Suit: a multiplayer suit (colourway from Gear.json Suit.MultiplayerSuits by seed), tie in the team colour. */
 	bool ApplyOutfit(USkinnedMeshComponent* Body, EAirsoftOutfit Outfit, EAirsoftTeam Team, int32 VariantSeed);
 
+	/**
+	 * Puts an original character head (GearHeads.json, Tools/Blender/heads) on Body's head bone, on top of the suit or team gear
+	 * already applied. Character: a story name ("Andrew", or a boss by its Campaign.json name, "Name, the Title" works);
+	 * NAME_None picks one of the Ledger crew heads from VariantSeed. Removes the suit's own haircut. Changes nothing and
+	 * returns false when that head is not in the data or not imported.
+	 */
+	bool ApplyHead(USkinnedMeshComponent* Body, FName Character, int32 VariantSeed);
+
+	/** The head asset ApplyHead would use (NAME_None when the character has none). */
+	static FName HeadFor(FName Character, int32 VariantSeed);
+
+	/** True while a character head is worn. */
+	bool HasHead() const;
+
 	/** A suit colourway from Gear.json Suit.Colorways.Suit: "Charcoal", "MidnightNavy", "Oxblood", "Black". Unknown names give Charcoal. */
 	static FLinearColor SuitColor(FName Colorway);
 
@@ -140,6 +154,11 @@ private:
 	bool bSuitTeamTie = false;
 	FLinearColor AppliedSuitColor = FLinearColor::Black;
 	FName AppliedShirt;
+	/** ApplyHead: the worn head asset and its inputs (for Rebuild); bHeadOnly when no suit / team gear is under it. */
+	FName AppliedHead;
+	FName AppliedHeadCharacter;
+	int32 AppliedHeadSeed = 0;
+	bool bHeadOnly = false;
 	bool bWantVisible = true;
 	bool bOwnerViewHidden = false;
 };

@@ -313,7 +313,8 @@ def load_registry():
                     known.add(piece)
     # resolve files
     for aid, e in reg.items():
-        d = os.path.join(source_dir(), e["Category"], aid)
+        # an entry may live outside SourceAssets/<Category>/ (character heads: "SourceDir": "Characters/Heads")
+        d = os.path.join(source_dir(), *(e.get("SourceDir") or e["Category"]).split("/"), aid)
         e["Fbx"] = {}
         e["Textures"] = {}
         for p in e["Pieces"]:

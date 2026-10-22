@@ -564,6 +564,13 @@ void AAirsoftCharacter::ApplyCampaignWardrobe()
 		{
 			TeamGear->Clear();
 		}
+		// Original character heads (Tools/Blender/heads): Andrew, each boss by name, the Ledger crews by seed.
+		if (bHasMannequin)
+		{
+			USkinnedMeshComponent* HeadBody = bUsePoseMesh ? static_cast<USkinnedMeshComponent*>(PoseMesh.Get()) : GetMesh();
+			const FName Who = bAndrew ? FName(TEXT("Andrew")) : (bBoss ? FName(*GS->BossName) : NAME_None);
+			TeamGear->ApplyHead(HeadBody, Who, PS ? PS->GetPlayerId() : 0);
+		}
 	}
 	// Andrew: charcoal. The Ledger's crews: midnight navy. Bosses: oxblood.
 	const FLinearColor Suit = bAndrew ? FLinearColor(0.011f, 0.011f, 0.013f)

@@ -270,8 +270,8 @@ def build(L=None):
     # ---------------------------------------------------------------- lights (shadowed: 4 masts, crane, shed key)
     for (x, y, yaw) in ((-27.0, -18.6, 0.0), (-3.5, 3.4, 180.0), (12.7, 17.2, 200.0), (21.6, -28.2, 30.0)):
         it.append(prop("Harbor_FloodMast", x, y, 0.0, yaw, light=True))
-    it.append(L.light("spot", CRANE_X + 2.0, CRANE_Y, 29.6, pitch=-90.0, yaw=0.0, color=(0.82, 0.88, 1.0), cd=90.0,
-                      radius=40.0, cone=(30, 55), shadows=True, vol=0.8, src=30.0))
+    it.append(L.light("spot", CRANE_X + 2.0, CRANE_Y, 29.6, pitch=-90.0, yaw=0.0, color=(0.82, 0.88, 1.0), cd=800.0,
+                      radius=42.0, cone=(30, 55), shadows=True, vol=0.8, src=30.0))
     # sodium wallpacks on the shed facades (unshadowed pools of orange on the wet asphalt)
     for (x, y, yaw) in ((WH_X0 - 0.15, -18.0, 180.0), (WH_X0 - 0.15, -6.0, 180.0), (WH_X0 - 0.15, 3.0, 180.0),
                         (30.0, WH_Y1 + 0.15, 90.0), (40.0, WH_Y1 + 0.15, 90.0), (30.0, WH_Y0 - 0.15, -90.0)):
@@ -305,8 +305,9 @@ def _lane_cover(L, rng):
     # central lane (y -4..4): the reach stacker holding a box high over the lane, a box truck, barriers, pallets
     rs_x, rs_y = -10.0, 0.6
     it.append(prop("Harbor_ReachStacker", rs_x, rs_y, 0.0, 180.0))
-    # spreader of the stacker (local +X 7.9 m, z ~5.8 m under the boom tip); the box hangs across the lane
-    it.append(prop("Harbor_Container40", rs_x - 8.0, rs_y, 5.6, 90.0, tint="Rust", nocoll=True))
+    # the box hangs under the spreader (SpreaderBottom: local +X 7.8 m, z 5.82 m; yaw 180 puts it at -X), across
+    # the lane with 3.2 m of headroom under it
+    it.append(prop("Harbor_Container40", rs_x - 7.8, rs_y, 5.82 - C40_H, 90.0, tint="Rust"))
     # a 20 ft box parked across the lane mouth inside the gate: screens the gate apron from the length of the lane
     it.append(prop("Container_20ft", -35.8, 0.0, 0.0, 90.0, tint="Sand"))
     it += [prop("BoxTruck", -29.5, 1.6, 0.0, 4.0, tint="Grey", pieces=PARKED),
@@ -456,12 +457,12 @@ def _warehouse(L, rng):
     it += [prop("Crate_Wood", 36.0, -16.0, MEZ_Z, 0.0), prop("PalletStack", 38.6, -16.0, MEZ_Z, 0.0)]
 
     # --- lighting inside: the hard key through the east roof gap, four hanging work lamps (unshadowed), neon
-    it.append(L.light("spot", 39.5, -0.6, roof_z + 1.6, pitch=-72.0, yaw=200.0, color=(0.72, 0.86, 1.0), cd=60.0,
-                      radius=24.0, cone=(10, 18), shadows=True, vol=4.0, src=4.0))
+    it.append(L.light("spot", 37.6, -1.6, roof_z + 2.6, pitch=-70.0, yaw=200.0, color=(0.6, 0.82, 1.0), cd=900.0,
+                      radius=26.0, cone=(10, 18), shadows=True, vol=4.0, src=4.0))
     for (x, y) in ((27.0, -15.0), (27.0, 1.0), (33.0, -6.0), (35.0, 2.0)):
         it += [L.box(x, y, 6.2, 0.5, 0.5, 0.25, "PaintedSteel", tint="Black", coll=False, name="WorkLamp"),
                L.box(x, y, 6.06, 0.42, 0.42, 0.02, "Emissive:Sodium", glow=18.0, coll=False, cast=False, name="WorkLampLens"),
-               L.light("point", x, y, 5.9, color="Sodium", cd=2.4, radius=8.0, shadows=False, src=20.0)]
+               L.light("point", x, y, 5.9, color="Sodium", cd=8.0, radius=9.0, shadows=False, src=20.0)]
     it += [L.text(x0 - 0.12, -14.0, 6.6, 180.0, "SHED  7", size=70.0, color="Cyan", glow=5.0),
            L.box(x0 - 0.1, -8.0, WH_H - 0.25, 0.06, 27.6, 0.06, "Emissive:Teal", glow=10.0, coll=False, cast=False,
                  name="NeonEaves"),
