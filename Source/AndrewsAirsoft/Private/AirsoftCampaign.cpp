@@ -16,15 +16,19 @@
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
 #include "Dom/JsonObject.h"
+#include "Engine/GameViewportClient.h"
 #include "Engine/PostProcessVolume.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerStart.h"
 #include "HAL/IConsoleManager.h"
 #include "Kismet/GameplayStatics.h"
 #include "Misc/PackageName.h"
 #include "Sound/SoundBase.h"
 #include "TimerManager.h"
+#include "UI/SAirsoftCredits.h"
+#include "UI/SAirsoftSubtitles.h"
 
 // ---------------------------------------------------------------------------
 // The story (Content/Airsoft/Data/Campaign.json)
@@ -71,6 +75,47 @@ namespace AirsoftCampaign
 			}
 			return Out;
 		}
+
+		TArray<float> GetFloats(const TSharedPtr<FJsonObject>& Obj, const TCHAR* Field)
+		{
+			TArray<float> Out;
+			const TArray<TSharedPtr<FJsonValue>>* Values = nullptr;
+			if (Obj.IsValid() && Obj->TryGetArrayField(Field, Values))
+			{
+				for (const TSharedPtr<FJsonValue>& V : *Values)
+				{
+					double D = 0.0;
+					if (V.IsValid() && V->TryGetNumber(D))
+					{
+						Out.Add(static_cast<float>(D));
+					}
+				}
+			}
+			return Out;
+		}
+
+		UAirsoftSaveGame* Profile(const UObject* WorldContext)
+		{
+			UAirsoftGameInstance* GI = Cast<UAirsoftGameInstance>(UGameplayStatics::GetGameInstance(WorldContext));
+			return GI ? GI->GetProfile() : nullptr;
+		}
+
+		/** Opens a mission's map with the campaign referee. */
+		void OpenMission(const UObject* WorldContext, int32 Number, bool bFromCheckpoint)
+		{
+			const FMission* Mission = FindMission(Number);
+			if (!Mission)
+			{
+				return;
+			}
+			if (UAirsoftGameInstance* GI = Cast<UAirsoftGameInstance>(UGameplayStatics::GetGameInstance(WorldContext)))
+			{
+				GI->PendingMenuMessage.Reset();
+				GI->SaveProfile();
+			}
+			AirsoftSubtitles::Clear();
+			UGameplayStatics::OpenLevel(WorldContext, FName(*Mission->MapPath), true, MissionOptions(Number, bFromCheckpoint));
+		}
 	}
 
 	FString GameTitle()
@@ -104,6 +149,7 @@ namespace AirsoftCampaign
 				Mission.MapPath = GetString(M, TEXT("Map"));
 				Mission.Intro = GetStrings(M, TEXT("Intro"));
 				Mission.Objective = GetString(M, TEXT("Objective"));
+				Mission.AndrewStart = GetString(M, TEXT("AndrewStart"));
 				Mission.Enemies = FMath::Max(1, GetInt(M, TEXT("Enemies"), 8));
 				Mission.MaxAlive = FMath::Max(1, GetInt(M, TEXT("MaxAlive"), 5));
 				for (const FString& W : GetStrings(M, TEXT("EnemyWeapons")))
@@ -120,8 +166,19 @@ namespace AirsoftCampaign
 					Mission.Boss.Weapon = FName(*GetString(*BossObj, TEXT("Weapon")));
 					Mission.Boss.Health = static_cast<float>(FMath::Max(100, GetInt(*BossObj, TEXT("Health"), 300)));
 					Mission.Boss.Taunt = GetString(*BossObj, TEXT("Taunt"));
+					Mission.Boss.Mid = GetString(*BossObj, TEXT("Mid"));
+					Mission.Boss.Death = GetString(*BossObj, TEXT("Death"));
+					Mission.Boss.AndrewReply = GetString(*BossObj, TEXT("AndrewReply"));
 				}
 				Mission.Outro = GetString(M, TEXT("Outro"));
+				for (const float Fraction : GetFloats(M, TEXT("Checkpoints")))
+				{
+					if (Fraction > 0.f && Fraction < 1.f)
+					{
+						Mission.Checkpoints.Add(Fraction);
+					}
+				}
+				Mission.Checkpoints.Sort();
 				if (!Mission.MapPath.IsEmpty())
 				{
 					Out.Add(MoveTemp(Mission));
@@ -169,14 +226,160 @@ namespace AirsoftCampaign
 		}
 	}
 
-	FString MissionOptions(int32 Number)
+	const TArray<FLine>* FindBarks(FName Event)
 	{
-		return FString::Printf(TEXT("game=/Script/AndrewsAirsoft.AirsoftCampaignGameMode?Mission=%d"), Number);
+		static const TMap<FName, TArray<FLine>> Barks = []()
+		{
+			TMap<FName, TArray<FLine>> Out;
+			const TSharedPtr<FJsonObject> Root = AirsoftAssets::LoadData(TEXT("Campaign.json"));
+			const TSharedPtr<FJsonObject>* BarksObj = nullptr;
+			if (!Root.IsValid() || !Root->TryGetObjectField(TEXT("Barks"), BarksObj) || !BarksObj)
+			{
+				return Out;
+			}
+			for (const TPair<FString, TSharedPtr<FJsonValue>>& Pair : (*BarksObj)->Values)
+			{
+				const TArray<TSharedPtr<FJsonValue>>* Entries = nullptr;
+				if (!Pair.Value.IsValid() || !Pair.Value->TryGetArray(Entries))
+				{
+					continue;
+				}
+				TArray<FLine>& Lines = Out.Add(FName(*Pair.Key));
+				for (const TSharedPtr<FJsonValue>& Entry : *Entries)
+				{
+					const TSharedPtr<FJsonObject> B = Entry.IsValid() ? Entry->AsObject() : nullptr;
+					const FString File = GetString(B, TEXT("File"));
+					if (!File.IsEmpty())
+					{
+						Lines.Add({ FName(*File), GetString(B, TEXT("Text")) });
+					}
+				}
+			}
+			return Out;
+		}();
+		const TArray<FLine>* Found = Barks.Find(Event);
+		return (Found && Found->Num() > 0) ? Found : nullptr;
+	}
+
+	const TArray<FCreditsBlock>& Credits()
+	{
+		static const TArray<FCreditsBlock> List = []()
+		{
+			TArray<FCreditsBlock> Out;
+			const TSharedPtr<FJsonObject> Root = AirsoftAssets::LoadData(TEXT("Campaign.json"));
+			const TArray<TSharedPtr<FJsonValue>>* Entries = nullptr;
+			if (Root.IsValid() && Root->TryGetArrayField(TEXT("Credits"), Entries))
+			{
+				for (const TSharedPtr<FJsonValue>& Entry : *Entries)
+				{
+					const TSharedPtr<FJsonObject> C = Entry.IsValid() ? Entry->AsObject() : nullptr;
+					FCreditsBlock Block;
+					Block.Heading = GetString(C, TEXT("Heading"));
+					Block.Lines = GetStrings(C, TEXT("Lines"));
+					if (!Block.Heading.IsEmpty() || Block.Lines.Num() > 0)
+					{
+						Out.Add(MoveTemp(Block));
+					}
+				}
+			}
+			if (Out.Num() == 0)
+			{
+				Out.Add({ FString(), { TEXT("ANDREW'S AIRSOFT"), GameTitle().ToUpper() } });
+				Out.Add({ FString(), { TEXT("Thanks for playing.") } });
+			}
+			return Out;
+		}();
+		return List;
+	}
+
+	FString MissionOptions(int32 Number, bool bFromCheckpoint)
+	{
+		return FString::Printf(TEXT("game=/Script/AndrewsAirsoft.AirsoftCampaignGameMode?Mission=%d%s"), Number, bFromCheckpoint ? TEXT("?Checkpoint=1") : TEXT(""));
 	}
 
 	FName VoiceKey(int32 Number, const FString& Line)
 	{
 		return FName(*FString::Printf(TEXT("VO_M%d_%s"), Number, *Line));
+	}
+
+	// --- Progress ----------------------------------------------------------------------
+
+	int32 HighestUnlocked(const UObject* WorldContext)
+	{
+		const int32 Count = FMath::Max(1, Missions().Num());
+		const UAirsoftSaveGame* P = Profile(WorldContext);
+		if (!P)
+		{
+			return 1;
+		}
+		return P->bCampaignFinished ? Count : FMath::Clamp(P->CampaignReached, 1, Count);
+	}
+
+	bool IsUnlocked(const UObject* WorldContext, int32 Number)
+	{
+		return FindMission(Number) != nullptr && Number <= HighestUnlocked(WorldContext);
+	}
+
+	bool IsFinished(const UObject* WorldContext)
+	{
+		const UAirsoftSaveGame* P = Profile(WorldContext);
+		return P && P->bCampaignFinished;
+	}
+
+	int32 CheckpointMission(const UObject* WorldContext)
+	{
+		const UAirsoftSaveGame* P = Profile(WorldContext);
+		return (P && FindMission(P->CheckpointMission)) ? P->CheckpointMission : 0;
+	}
+
+	FString CheckpointLabel(const UObject* WorldContext)
+	{
+		const int32 Number = CheckpointMission(WorldContext);
+		const FMission* Mission = FindMission(Number);
+		const UAirsoftSaveGame* P = Profile(WorldContext);
+		if (!Mission || !P)
+		{
+			return FString();
+		}
+		const FString Stage = P->bCheckpointBoss ? FString::Printf(TEXT("%s"), *Mission->Boss.Name.ToUpper())
+			: FString::Printf(TEXT("%d OF %d DOWN"), P->CheckpointKills, Mission->Enemies);
+		return FString::Printf(TEXT("MISSION %d · %s · %s"), Number, *Mission->Title.ToUpper(), *Stage);
+	}
+
+	int32 ContinueMission(const UObject* WorldContext)
+	{
+		const int32 Checkpoint = CheckpointMission(WorldContext);
+		return Checkpoint > 0 ? Checkpoint : HighestUnlocked(WorldContext);
+	}
+
+	bool CanContinue(const UObject* WorldContext)
+	{
+		return CheckpointMission(WorldContext) > 0 || HighestUnlocked(WorldContext) > 1 || IsFinished(WorldContext);
+	}
+
+	void Continue(const UObject* WorldContext)
+	{
+		const int32 Checkpoint = CheckpointMission(WorldContext);
+		OpenMission(WorldContext, Checkpoint > 0 ? Checkpoint : HighestUnlocked(WorldContext), Checkpoint > 0);
+	}
+
+	void NewGame(const UObject* WorldContext)
+	{
+		if (UAirsoftSaveGame* P = Profile(WorldContext))
+		{
+			P->CheckpointMission = 0;
+		}
+		OpenMission(WorldContext, 1, false);
+	}
+
+	bool StartMission(const UObject* WorldContext, int32 Number)
+	{
+		if (!IsUnlocked(WorldContext, Number))
+		{
+			return false;
+		}
+		OpenMission(WorldContext, Number, false);
+		return true;
 	}
 }
 

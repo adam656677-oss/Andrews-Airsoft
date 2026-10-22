@@ -969,7 +969,8 @@ void AAirsoftBotController::PickCombatMove(AAirsoftCharacter* Me, const AAirsoft
 		}
 		const FVector ToEnemy = (EnemyLoc - MyLoc).GetSafeNormal2D();
 		const FVector Side = FVector::CrossProduct(FVector::UpVector, ToEnemy) * (Rng.FRand() < 0.5f ? -1.f : 1.f);
-		FVector Wanted = MyLoc + Side * Rng.FRandRange(200.f, 450.f) + ToEnemy * Rng.FRandRange(-150.f, 100.f);
+		// Bold bots side-step forward, timid ones back off a little.
+		FVector Wanted = MyLoc + Side * Rng.FRandRange(200.f, 450.f) + ToEnemy * Rng.FRandRange(-250.f + 250.f * Aggression, 300.f * Aggression);
 		if (const AAirsoftObjective* Obj = GoalObjective.Get())
 		{
 			if (Obj->bActive && Obj->IsInside(MyLoc))
@@ -1829,5 +1830,422 @@ void AAirsoftBotController::UpdateLook(AAirsoftCharacter* Me)
 		Look.Pitch = Rng.FRandRange(-5.f, 3.f);
 		Look.Roll = 0.f;
 		DesiredRotation = Look;
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Tactics: cover, peeking, flanking
+// ---------------------------------------------------------------------------
+
+void AAirsoftBotController::ClearTactics()
+{
+	bFlanker = false;
+	FlankUntil = 0.0;
+	bHasCover = false;
+	bAtCover = false;
+	bPeeking = false;
+	bPeekCutShort = false;
+	CoverPhaseUntil = 0.0;
+	CoverPhaseStart = 0.0;
+	CoverExpiresAt = 0.0;
+	NextCoverSearchAt = 0.0;
+	CoverRange = 0.f;
+}
+
+bool AAirsoftBotController::IsHiddenAt(const FVector& Floor, const FVector& Threat, const AAirsoftCharacter* Enemy) const
+{
+	// Crouched here, neither the head nor the body can be seen from where they stand.
+	FCollisionQueryParams Query(SCENE_QUERY_STAT(AirsoftBotCover), false, GetPawn());
+	Query.AddIgnoredActor(Enemy);
+	FHitResult Hit;
+	const UWorld* World = GetWorld();
+	return World->LineTraceSingleByChannel(Hit, Floor + FVector(0.f, 0.f, AirsoftBotLocal::CoverCrouchEyeZ), Threat, ECC_Visibility, Query)
+		&& World->LineTraceSingleByChannel(Hit, Floor + FVector(0.f, 0.f, AirsoftBotLocal::CoverBodyZ), Threat, ECC_Visibility, Query);
+}
+
+bool AAirsoftBotController::CanShootFrom(const FVector& Floor, float EyeHeight, const FVector& Threat, const AAirsoftCharacter* Enemy) const
+{
+	FCollisionQueryParams Query(SCENE_QUERY_STAT(AirsoftBotPeek), false, GetPawn());
+	Query.AddIgnoredActor(Enemy);
+	FHitResult Hit;
+	const FVector Eye = Floor + FVector(0.f, 0.f, EyeHeight);
+	// Their chest, or at least their head over their own cover.
+	return !GetWorld()->LineTraceSingleByChannel(Hit, Eye, Threat, ECC_Visibility, Query)
+		|| !GetWorld()->LineTraceSingleByChannel(Hit, Eye, Threat + FVector(0.f, 0.f, 50.f), ECC_Visibility, Query);
+}
+
+bool AAirsoftBotController::IsCoverTaken(const FVector& Point) const
+{
+	for (TActorIterator<AAirsoftBotController> It(GetWorld()); It; ++It)
+	{
+		const AAirsoftBotController* Other = *It;
+		FVector OtherCover;
+		if (Other && Other != this && Other->HasCoverPoint(OtherCover)
+			&& FVector::DistSquared2D(OtherCover, Point) < FMath::Square(AirsoftBotLocal::CoverSpacing))
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+bool AAirsoftBotController::FindCover(const AAirsoftCharacter* Me, const FVector& Threat, float PreferredRange, FVector& OutCover, FVector& OutPeek, bool& bOutPeekStand) const
+{
+	using namespace AirsoftBotLocal;
+	const FVector MyLoc = Me->GetActorLocation();
+	const FVector Chest = Threat + FVector(0.f, 0.f, ChestZ);
+	const AAirsoftCharacter* Enemy = Target.Get();
+	const double MyRange = FVector::Dist2D(MyLoc, Threat);
+	float BestScore = TNumericLimits<float>::Max();
+	bool bFound = false;
+	for (int32 i = 0; i < CoverSamples; ++i)
+	{
+		// A ring of candidate spots around the bot, nearer ones more often.
+		const float Angle = Rng.FRandRange(0.f, 2.f * UE_PI);
+		const float Radius = FMath::Lerp(180.f, 1100.f, FMath::Square(Rng.FRand()));
+		FVector Floor;
+		if (!ProjectToNav(MyLoc + FVector(FMath::Cos(Angle), FMath::Sin(Angle), 0.f) * Radius, Floor))
+		{
+			continue;
+		}
+		const double ToThreat = FVector::Dist2D(Floor, Threat);
+		if (ToThreat < TacticsMinRange || IsCoverTaken(Floor) || !IsHiddenAt(Floor, Chest, Enemy))
+		{
+			continue;
+		}
+		// Somewhere to shoot from: stand up here, or step out to one side.
+		const bool bStand = CanShootFrom(Floor, CoverStandEyeZ, Chest, Enemy);
+		FVector Peek = Floor;
+		if (!bStand)
+		{
+			const FVector ToThreatDir = (Threat - Floor).GetSafeNormal2D();
+			const FVector Side = FVector::CrossProduct(FVector::UpVector, ToThreatDir);
+			bool bSide = false;
+			for (const float Sign : { 1.f, -1.f })
+			{
+				FVector Step;
+				if (ProjectToNav(Floor + Side * (Sign * SidePeekStep), Step) && FVector::Dist2D(Step, Floor) > 40.0
+					&& CanShootFrom(Step, CoverStandEyeZ, Chest, Enemy))
+				{
+					Peek = Step;
+					bSide = true;
+					break;
+				}
+			}
+			if (!bSide)
+			{
+				continue; // hides us, but we could never shoot back from it
+			}
+		}
+		// A short dash, near the range we want, and for the bold, gaining ground.
+		const float Run = static_cast<float>(FVector::Dist2D(MyLoc, Floor));
+		const float Gain = static_cast<float>(MyRange - ToThreat);
+		float Score = Run * 1.2f + FMath::Abs(static_cast<float>(ToThreat) - PreferredRange) * 0.6f + (bStand ? 0.f : 60.f);
+		Score -= FMath::Max(Gain, 0.f) * 0.5f * Aggression;
+		Score += FMath::Max(-Gain, 0.f) * 0.3f * Aggression; // backing away suits the cautious only
+		if (Score < BestScore)
+		{
+			BestScore = Score;
+			OutCover = Floor;
+			OutPeek = Peek;
+			bOutPeekStand = bStand;
+			bFound = true;
+		}
+	}
+	return bFound;
+}
+
+bool AAirsoftBotController::FindFlankPoint(const AAirsoftCharacter* Me, const FVector& Threat, FVector& Out) const
+{
+	using namespace AirsoftBotLocal;
+	const FVector MyLoc = Me->GetActorLocation();
+	const FVector Line = (MyLoc - Threat).GetSafeNormal2D(); // from them toward us
+	if (Line.IsNearlyZero())
+	{
+		return false;
+	}
+	const FVector Side = FVector::CrossProduct(FVector::UpVector, Line);
+	const float Range = static_cast<float>(FVector::Dist2D(MyLoc, Threat));
+	const FVector Chest = Threat + FVector(0.f, 0.f, ChestZ);
+	const AAirsoftCharacter* Enemy = Target.Get();
+	float BestScore = -TNumericLimits<float>::Max();
+	bool bFound = false;
+	for (int32 i = 0; i < FlankSamples; ++i)
+	{
+		// Out to their side, 65-110 degrees round from where the squad is shooting from (both sides tried).
+		const float Sign = (i % 2 == 0) ? 1.f : -1.f;
+		const float Angle = FMath::DegreesToRadians(Rng.FRandRange(65.f, 110.f));
+		const float Radius = FMath::Clamp(Range * Rng.FRandRange(0.6f, 0.9f), 700.f, 1800.f);
+		const FVector Dir = Line * FMath::Cos(Angle) + Side * (Sign * FMath::Sin(Angle));
+		FVector Point;
+		if (!ProjectToNav(Threat + Dir * Radius, Point) || IsCoverTaken(Point))
+		{
+			continue;
+		}
+		// Best: a spot with a clear shot at them, not a marathon away.
+		float Score = -static_cast<float>(FVector::Dist2D(MyLoc, Point)) * 0.3f;
+		if (CanShootFrom(Point, CoverStandEyeZ, Chest, Enemy))
+		{
+			Score += 1000.f;
+		}
+		if (Score > BestScore)
+		{
+			BestScore = Score;
+			Out = Point;
+			bFound = true;
+		}
+	}
+	return bFound;
+}
+
+bool AAirsoftBotController::TryStartFlank(AAirsoftCharacter* Me, const FVector& Threat)
+{
+	const double T = WorldTime();
+	NextFlankAt = T + Rng.FRandRange(6.f, 10.f); // a roll every few seconds, not every frame
+	if (Rng.FRand() > 0.15f + 0.6f * Aggression)
+	{
+		return false;
+	}
+	// One flanker per team at a time, and only with someone else keeping them busy from the front.
+	int32 Busy = 0;
+	const EAirsoftTeam MyTeam = GetBotTeam();
+	for (TActorIterator<AAirsoftBotController> It(GetWorld()); It; ++It)
+	{
+		const AAirsoftBotController* Other = *It;
+		if (!Other || Other == this || Other->GetBotTeam() != MyTeam)
+		{
+			continue;
+		}
+		const AAirsoftCharacter* Mate = Cast<AAirsoftCharacter>(Other->GetPawn());
+		if (!Mate || Mate->IsOut())
+		{
+			continue;
+		}
+		if (Other->IsFlanking())
+		{
+			return false;
+		}
+		if (FVector::Dist(Mate->GetActorLocation(), Threat) < 4000.0)
+		{
+			++Busy;
+		}
+	}
+	FVector Point;
+	if (Busy < 1 || !FindFlankPoint(Me, Threat, Point) || !MoveToPoint(Point, 120.f, false))
+	{
+		return false;
+	}
+	bFlanker = true;
+	FlankPoint = Point;
+	FlankUntil = T + Rng.FRandRange(10.f, 16.f);
+	bHasCover = false;
+	bAtCover = false;
+	bPeeking = false;
+	if (Me->bIsCrouched)
+	{
+		Me->UnCrouch();
+	}
+	return true;
+}
+
+bool AAirsoftBotController::UpdateTactics(AAirsoftCharacter* Me, AAirsoftCharacter* Enemy, const FBotMemory& M, float Distance, bool bVisible)
+{
+	using namespace AirsoftBotLocal;
+	const double T = WorldTime();
+	const FVector MyLoc = Me->GetActorLocation();
+	UAirsoftCombatComponent* Combat = Me->GetCombat();
+	if (!Enemy || !Combat)
+	{
+		return false;
+	}
+	const FVector Threat = M.LastKnown;
+
+	// Point blank: no time for cover, fight it out.
+	if (Distance < TacticsMinRange)
+	{
+		if (bHasCover || bFlanker)
+		{
+			ClearTactics();
+		}
+		return false;
+	}
+
+	// The flanker works round the side, then fights from wherever it ends up.
+	if (bFlanker)
+	{
+		if (T < FlankUntil && FVector::Dist2D(MyLoc, FlankPoint) > 200.0)
+		{
+			if (!IsMoving() && !MoveToPoint(FlankPoint, 120.f, false))
+			{
+				bFlanker = false;
+			}
+			else
+			{
+				if (Me->bIsCrouched)
+				{
+					Me->UnCrouch();
+				}
+				CombatMove = EAirsoftBotCombatMove::Strafe;
+				return true;
+			}
+		}
+		bFlanker = false;
+		NextFlankAt = T + Rng.FRandRange(12.f, 20.f);
+		NextCoverSearchAt = 0.0; // look for cover from the new angle
+	}
+	else if (T >= NextFlankAt && TryStartFlank(Me, Threat))
+	{
+		return true;
+	}
+
+	// (Re)pick cover: none yet, or time to move on (closer, for the bold).
+	const bool bCoverStale = bHasCover && T >= CoverExpiresAt;
+	if ((!bHasCover || bCoverStale) && T >= NextCoverSearchAt)
+	{
+		NextCoverSearchAt = T + Rng.FRandRange(2.5f, 4.f);
+		const FAirsoftWeaponDef& W = Combat->Current();
+		const float GunRange = FMath::Max(W.MaxRange * 0.8f, 800.f);
+		if (CoverRange <= 0.f)
+		{
+			CoverRange = FMath::Clamp(W.MaxRange * 0.55f, 900.f, 2600.f);
+		}
+		else if (bCoverStale)
+		{
+			CoverRange = FMath::Max(700.f, CoverRange * FMath::Lerp(1.f, 0.7f, Aggression));
+		}
+		FVector NewCover = FVector::ZeroVector;
+		FVector NewPeek = FVector::ZeroVector;
+		bool bStand = true;
+		if (FindCover(Me, Threat, FMath::Min(CoverRange, GunRange), NewCover, NewPeek, bStand) && MoveToPoint(NewCover, 40.f, false))
+		{
+			bHasCover = true;
+			bAtCover = false;
+			CoverPoint = NewCover;
+			PeekPoint = NewPeek;
+			bPeekStand = bStand;
+			bPeeking = false;
+			bPeekCutShort = false;
+			CoverPhaseUntil = 0.0;
+			CoverExpiresAt = T + Rng.FRandRange(9.f, 16.f) * FMath::Lerp(1.3f, 0.7f, Aggression);
+		}
+		else if (bCoverStale)
+		{
+			CoverExpiresAt = T + 4.0; // nothing better nearby: stay put a while longer
+		}
+	}
+	if (!bHasCover)
+	{
+		return false;
+	}
+
+	// Getting there: run for it (shooting on the way if they're in sight).
+	if (!bAtCover)
+	{
+		if (FVector::Dist2D(MyLoc, CoverPoint) <= CoverArrive)
+		{
+			bAtCover = true;
+			bPeeking = false;
+			CoverPhaseUntil = 0.0;
+		}
+		else
+		{
+			if (!IsMoving() && !MoveToPoint(CoverPoint, 40.f, false))
+			{
+				ClearTactics();
+				NextCoverSearchAt = T + 3.0;
+				return false;
+			}
+			if (Me->bIsCrouched)
+			{
+				Me->UnCrouch();
+			}
+			CombatMove = EAirsoftBotCombatMove::Strafe;
+			return true;
+		}
+	}
+
+	// At cover: hide (reload) / peek (shoot) cycle. The bold peek longer and hide less.
+	const bool bReloading = Combat->IsReloading();
+	if (bPeeking && !bPeekCutShort && T < UnderFireUntil && Rng.FRand() > Aggression)
+	{
+		bPeekCutShort = true; // BBs cracking past: duck early
+		CoverPhaseUntil = FMath::Min(CoverPhaseUntil, T + 0.25);
+	}
+	if (bPeeking && bReloading)
+	{
+		CoverPhaseUntil = T;
+	}
+	if (T >= CoverPhaseUntil)
+	{
+		bPeeking = !bPeeking && !bReloading;
+		bPeekCutShort = false;
+		CoverPhaseStart = T;
+		CoverPhaseUntil = T + (bPeeking
+			? Rng.FRandRange(1.2f, 2.2f) * FMath::Lerp(0.8f, 1.8f, Aggression)
+			: Rng.FRandRange(0.9f, 1.8f) * FMath::Lerp(1.6f, 0.6f, Aggression));
+		if (!bPeeking && !bReloading && Combat->GetLocalReserve() > 0
+			&& Combat->GetLocalMag() < FMath::CeilToInt(Combat->Current().MagSize * 0.5f))
+		{
+			ReleaseTrigger();
+			Combat->BotReload(); // top up while out of sight
+		}
+	}
+
+	if (bPeeking)
+	{
+		if (!bPeekStand && FVector::Dist2D(MyLoc, PeekPoint) > 40.0 && !IsMoving())
+		{
+			MoveToPoint(PeekPoint, 25.f, false);
+		}
+		if (Me->bIsCrouched)
+		{
+			Me->UnCrouch();
+		}
+		CombatMove = EAirsoftBotCombatMove::Stand;
+	}
+	else
+	{
+		if (FVector::Dist2D(MyLoc, CoverPoint) > 40.0 && !IsMoving())
+		{
+			MoveToPoint(CoverPoint, 25.f, false);
+		}
+		if (!Me->bIsCrouched)
+		{
+			Me->Crouch();
+		}
+		CombatMove = EAirsoftBotCombatMove::Crouch;
+		// Still in their sight once we're down: they've moved round it. Find another spot soon.
+		if (bVisible && T - CoverPhaseStart > 0.6)
+		{
+			CoverExpiresAt = FMath::Min(CoverExpiresAt, T + 0.5);
+			NextCoverSearchAt = FMath::Min(NextCoverSearchAt, T + 0.5);
+		}
+	}
+	return true;
+}
+
+void AAirsoftBotController::HoldCoverBlind(AAirsoftCharacter* Me, AAirsoftCharacter* Enemy, const FBotMemory& M)
+{
+	const double T = WorldTime();
+	UAirsoftCombatComponent* Combat = Me->GetCombat();
+	State = EAirsoftBotState::Engage;
+	LastCombatAt = T;
+	TurnScale = 0.8f;
+	bHoldCrouch = false;
+	ReleaseTrigger();
+	Combat->BotSetAim(false);
+	ManageWeapon(Me); // reload when dry
+	// Pre-aim where they were, so the next peek starts on target.
+	LookAtPoint(M.LastKnown + FVector(0.f, 0.f, M.AimZ));
+	// Nobody showed for a while: move up to fresh cover nearer where they were (sooner for the bold).
+	if (bHasCover && bAtCover && T - M.LastSeen > 3.5 + 3.0 * (1.0 - Aggression))
+	{
+		CoverExpiresAt = FMath::Min(CoverExpiresAt, T);
+	}
+	const float Dist = static_cast<float>(FVector::Dist(GetEyeLocation(), M.LastKnown));
+	UpdateTactics(Me, Enemy, M, Dist, false);
+	if (T >= NextGrenadeAt)
+	{
+		TryGrenade(Me);
 	}
 }
