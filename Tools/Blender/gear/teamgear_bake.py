@@ -14,8 +14,13 @@ teeth.  One call bakes the whole piece into a texture set (Tools/Blender/CONVENT
     T_<Id>_<Piece>_M.png    role mask: R = Primary (colourway), G = Secondary, B = Accent (team)
 
 Pattern periods adapt to the piece's texel size so the 1-sample emission bakes never alias.
+
+Cloth, leather and rubber zones also layer a CC0 photo scan over their procedural pattern (SCANS:
+real weave / grain relief, fibre shading and roughness), pre-filtered to the piece's texel size.
+GEAR_SCANS=0 in the environment bakes the purely procedural look.
 """
 
+import json
 import math
 import os
 import time
@@ -94,6 +99,135 @@ WAVE_K = 2 * np.pi / 20.0  # Blender wave texture: period = 2*pi / (20 * scale)
 
 def wave_scale(period):
     return WAVE_K / period
+
+
+# --------------------------------------------------------------------------------------
+# CC0 photo-scan detail (Tools/Textures/fetch_cc0.py rows; SourceAssets/Materials/<Id>/T_<Id>_BC/ORM/H)
+# --------------------------------------------------------------------------------------
+# Layered over a zone's procedural pattern: the scan's height adds the real weave / grain relief, its
+# luminance (relative to its own ~2 cm average) shades the colour and its roughness modulates the zone's.
+# Only relative detail is used, so tinted zones stay neutral grey and the colourway tint in game is
+# unchanged.  zone: (material id, height weight, luminance weight, roughness weight)
+SCANS = {
+    "wool": ("ClothWool", 0.65, 0.9, 0.5),
+    "wool_edge": ("ClothWool", 0.65, 0.9, 0.5),
+    "shirt": ("ClothPoplin", 0.6, 0.7, 0.4),
+    "silk": ("ClothSilk", 0.6, 0.8, 0.6),
+    "pocket_sq": ("ClothSilk", 0.6, 0.8, 0.6),
+    "cordura": ("ClothCordura", 0.6, 0.8, 0.5),
+    "cordura_pad": ("ClothCordura", 0.6, 0.8, 0.5),
+    "armband": ("ClothCordura", 0.55, 0.7, 0.4),
+    "label": ("ClothCordura", 0.4, 0.5, 0.3),
+    "webbing": ("ClothWebbing", 0.5, 0.7, 0.4),
+    "binding": ("ClothWebbing", 0.45, 0.6, 0.4),
+    "webbing_black": ("ClothWebbing", 0.5, 0.7, 0.4),
+    "twill": ("ClothWebbing", 0.6, 0.8, 0.5),
+    "twill_brim": ("ClothWebbing", 0.6, 0.8, 0.5),
+    "leather": ("LeatherSmooth", 0.55, 0.6, 0.6),
+    "leather_belt": ("LeatherGrain", 0.65, 0.7, 0.6),
+    "sole": ("RubberSole", 0.55, 0.6, 0.5),
+    "rubber": ("RubberSole", 0.55, 0.6, 0.5),
+}
+ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".."))
+SCAN_DIR = os.path.join(ROOT, "SourceAssets", "Materials")
+SCAN_JSON = os.path.join(ROOT, "Content", "Airsoft", "Data", "Materials.json")
+SCAN_FLATTEN_M = 0.02  # the scan's own blotches larger than this are divided out (they would repeat per tile)
+_scan_tiles = {}
+_scan_images = {}
+
+
+def scans_enabled():
+    return os.environ.get("GEAR_SCANS", "1") != "0"
+
+
+def _blur_wrap(a, sigma):
+    """Gaussian blur of a tileable 2D array (FFT, so it wraps)."""
+    h, w = a.shape
+    fy = np.fft.fftfreq(h)[:, None]
+    fx = np.fft.rfftfreq(w)[None, :]
+    g = np.exp(-2.0 * (np.pi * sigma) ** 2 * (fx * fx + fy * fy))
+    return np.fft.irfft2(np.fft.rfft2(a) * g, s=(h, w)).astype(np.float32)
+
+
+def _box_down(a, f):
+    if f <= 1:
+        return a
+    h, w = a.shape
+    return a[: h // f * f, : w // f * f].reshape(h // f, f, w // f, f).mean(axis=(1, 3)).astype(np.float32)
+
+
+def _read_map(path, kind):
+    im = bpy.data.images.load(path)
+    im.colorspace_settings.name = "Non-Color"
+    a = bk._pixels(im)
+    bpy.data.images.remove(im)
+    if kind == "lum":  # the base colour is stored as sRGB bytes: linear luminance
+        c = np.clip(a[..., :3], 0.0, 1.0)
+        c = np.where(c <= 0.04045, c / 12.92, ((c + 0.055) / 1.055) ** 2.4)
+        return (c @ np.array([0.2126, 0.7152, 0.0722], np.float32)).astype(np.float32)
+    return a[..., {"r": 0, "g": 1}[kind]].astype(np.float32)
+
+
+def scan_tile(mid):
+    if mid not in _scan_tiles:
+        with open(SCAN_JSON) as f:
+            mats = json.load(f)["Materials"]
+        _scan_tiles.update({k: float(v["TileMeters"]) for k, v in mats.items() if "TileMeters" in v})
+    return _scan_tiles.get(mid)
+
+
+def scan_detail(mid, tex_m):
+    """(image, tile metres) of a scan's detail, pre-filtered so one scan texel >= ~the bake texel; None when the
+    scan isn't on disk (run Tools/Textures/fetch_cc0.py).  R = height (0.5 = mean, +-3 sigma), G = luminance ratio
+    to the local average ((G * 1.2) + 0.4), B = roughness offset ((B - 0.5) / 2)."""
+    tile = scan_tile(mid)
+    pre = os.path.join(SCAN_DIR, mid, f"T_{mid}_")
+    if tile is None or not all(os.path.exists(pre + k + ".png") for k in ("BC", "ORM", "H")):
+        return None
+    res0 = bpy.data.images.load(pre + "H.png", check_existing=True)
+    n0 = res0.size[0]
+    bpy.data.images.remove(res0)
+    f = 1
+    while tile / n0 * f < 0.8 * tex_m and n0 // (f * 2) >= 128:
+        f *= 2
+    key = (mid, f)
+    if key in _scan_images and _scan_images[key].name in bpy.data.images:
+        return _scan_images[key], tile
+    hgt = _box_down(_read_map(pre + "H.png", "r"), f)
+    lum = _box_down(_read_map(pre + "BC.png", "lum"), f)
+    rgh = _box_down(_read_map(pre + "ORM.png", "g"), f)
+    sigma = SCAN_FLATTEN_M / (tile / hgt.shape[0])
+    hd = hgt - _blur_wrap(hgt, sigma)
+    hd = np.clip(0.5 + hd / max(6.0 * float(hd.std()), 1e-6), 0.0, 1.0)
+    lr = lum / np.maximum(_blur_wrap(lum, sigma), 1e-4)
+    lr = (np.clip(lr, 0.4, 1.6) - 0.4) / 1.2
+    rd = np.clip(rgh - _blur_wrap(rgh, sigma), -0.25, 0.25) * 2.0 + 0.5
+    h, w = hd.shape
+    img = bpy.data.images.new(f"__scan_{mid}_{f}", w, h, alpha=False, float_buffer=True)
+    img.colorspace_settings.name = "Non-Color"
+    px = np.stack([hd, lr, rd, np.ones_like(hd)], axis=-1).astype(np.float32)
+    img.pixels.foreach_set(px.ravel())
+    _scan_images[key] = img
+    return img, tile
+
+
+def scan_layer(g, zname):
+    """Sockets (height 0..1, luminance ratio, roughness offset) of the zone's scan, box-projected in metres;
+    None for zones without one."""
+    if zname not in SCANS or not scans_enabled():
+        return None
+    mid, wh, wl, wr = SCANS[zname]
+    sd = scan_detail(mid, g.tex_m)
+    if sd is None:
+        return None
+    img, tile = sd
+    nb = g.nb
+    t = nb.node("ShaderNodeTexImage", image=img, interpolation="Linear", projection="BOX", extension="REPEAT")
+    t.projection_blend = 0.3
+    nb._in(t.inputs["Vector"], nb.vscale(g.p, (1.0 / tile, 1.0 / tile, 1.0 / tile)))
+    r, gr, b = nb.separate(t.outputs["Color"])
+    ratio = nb.add(nb.mul(gr, 1.2), 0.4)
+    return dict(h=r, wh=wh, lum=nb.add(1.0, nb.mul(nb.sub(ratio, 1.0), wl)), rough=nb.mul(nb.sub(b, 0.5), 0.5 * wr))
 
 
 class G:
@@ -354,6 +488,9 @@ def zone_graph(mat, zname, mask_img, seed, tex_m, edge_radius=0.0015):
     else:
         m_ao, m_convex = 1.0, 0.0
     pt = pattern(g, Z)
+    sc = scan_layer(g, zname)
+    if sc:  # the scan's relief under the stitching (stitch rows / binding stay crisp on top)
+        pt["h"] = nb.lerp(sc["wh"], pt["h"], sc["h"])
     h, stitch, binding = stitches(g, Z, pt["h"])
     # soft goods: low-frequency wrinkles / padding undulation (a few cm), baked into the normal map
     wrinkle = Z.get("wrinkle", WRINKLE.get(Z["kind"], 0.0))
@@ -383,6 +520,8 @@ def zone_graph(mat, zname, mask_img, seed, tex_m, edge_radius=0.0015):
     if role:
         lum = Z["lum"]
         cv = nb.mul(lum, nb.add(1.0, nb.mul(var, 0.8)))
+        if sc:
+            cv = nb.mul(cv, sc["lum"])
         if wrinkle:
             cv = nb.mul(cv, nb.add(0.88, nb.mul(macro, 0.24)))
         cv = nb.add(cv, nb.mul(nb.sub(h, 0.5), 0.06))  # weave shading
@@ -399,6 +538,8 @@ def zone_graph(mat, zname, mask_img, seed, tex_m, edge_radius=0.0015):
     else:
         base = Z["col"]
         gm = nb.add(1.0, nb.mul(var, 2.0))
+        if sc:
+            gm = nb.mul(gm, sc["lum"])
         col = nb.mixc(1.0, base, nb.combine(gm, gm, gm), "MULTIPLY")
         if wrinkle:
             mg = nb.add(0.88, nb.mul(macro, 0.24))
@@ -415,6 +556,8 @@ def zone_graph(mat, zname, mask_img, seed, tex_m, edge_radius=0.0015):
     outs["color"] = nb.emit(col)
     rv = nb.add(Z["rough"], nb.mul(var, 0.3))
     rv = nb.add(rv, nb.mul(nb.sub(nb.noise(p, 160.0, 3.0), 0.5), 0.10))
+    if sc:
+        rv = nb.add(rv, sc["rough"])
     if not isinstance(pt["rough_add"], float) or pt["rough_add"]:
         rv = nb.add(rv, pt["rough_add"])
     rough = nb.lerp(wear, rv, Z.get("wear_rough", max(0.2, Z["rough"] - 0.18)))

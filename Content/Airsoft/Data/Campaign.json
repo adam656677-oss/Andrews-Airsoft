@@ -301,7 +301,8 @@
     {
       "Heading": "Built with",
       "Lines": [
-        "Unreal Engine 5",
+        "Unreal Engine 5 by Epic Games",
+        "UE5 Mannequin by Epic Games",
         "Blender",
         "Python"
       ]
@@ -320,6 +321,13 @@
       "Heading": "Pronunciation",
       "Lines": [
         "misaki (Apache 2.0) · spaCy (MIT)"
+      ]
+    },
+    {
+      "Heading": "Type",
+      "Lines": [
+        "Big Shoulders · Libre Baskerville (SIL Open Font License)",
+        "Roboto (Apache 2.0)"
       ]
     },
     {

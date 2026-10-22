@@ -258,10 +258,10 @@ def build_audio(path):
     sfx.append(add(os.path.join(AUDIO, "ReplayImpact.wav"), 79.15, 0, "im"))
     n_music, n_voice, n_sfx = len(music), len(voices), len(sfx)
     filters.append("".join(f"[{m}]" for m in music) + f"amix=inputs={n_music}:normalize=0[music]")
-    filters.append("".join(f"[{v}]" for v in voices) + f"amix=inputs={n_voice}:normalize=0,asplit=2[voice][key]")
+    filters.append("".join(f"[{v}]" for v in voices) + f"amix=inputs={n_voice}:normalize=0,apad=whole_dur={DURATION},asplit=2[voice][key]")
     filters.append("".join(f"[{s}]" for s in sfx) + f"amix=inputs={n_sfx}:normalize=0[sfx]")
     filters.append("[music][key]sidechaincompress=threshold=0.02:ratio=10:attack=15:release=350:makeup=1[ducked]")
-    filters.append(f"[ducked][voice][sfx]amix=inputs=3:normalize=0,atrim=0:{DURATION},afade=t=out:st={DURATION - 1.2}:d=1.2[pre]")
+    filters.append(f"[ducked][voice][sfx]amix=inputs=3:normalize=0,apad=whole_dur={DURATION},atrim=0:{DURATION},afade=t=out:st={DURATION - 1.2}:d=1.2[pre]")
     graph = ";".join(filters)
 
     raw = os.path.join(WORK, "mix_raw.wav")

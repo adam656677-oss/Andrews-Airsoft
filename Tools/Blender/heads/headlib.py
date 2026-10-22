@@ -32,7 +32,8 @@ import teamgear_body as tb  # noqa: E402
 
 HEAD_PIVOT = tb.HEAD.copy()  # character space
 NECK_CUT = -0.122  # the neck ends inside the shirt collar
-COVER_MARGIN = 0.0055  # every point of the stand-in head stays this far inside the new head
+COVER_MARGIN = 0.0030  # every point of the stand-in head stays this far inside the new head
+COVER_MARGIN_EYES = 0.0004  # ... except around the eyes, where the sockets need the room
 
 
 def smoothstep(e0, e1, x):
@@ -187,13 +188,13 @@ class Head:
         fl, fw = s["face_len"], s["face_w"]
         self.fl, self.fw = fl, fw
         # landmarks (scaled by face length below the brow line / face width)
-        self.eye_c = np.array([0.0885 - 0.4 * s["eye_set"], 0.0322 * fw, 0.0705])
+        self.eye_c = np.array([0.0950 - 0.4 * s["eye_set"], 0.0322 * fw, 0.0705])
         self.eye_r = 0.0121
-        self.brow_z = 0.0915
-        self.nasion = np.array([0.1085, 0.0, 0.0855])
-        self.nose_tip = np.array([0.1325 + 0.010 * (s["nose_len"] - 1.0) + 0.002 * (s["nose_tip"] - 1.0), 0.0, 0.0700 - 0.0255 * fl * s["nose_len"]])
+        self.brow_z = 0.0925
+        self.nasion = np.array([0.1120, 0.0, 0.0845])
+        self.nose_tip = np.array([0.1390 + 0.010 * (s["nose_len"] - 1.0) + 0.002 * (s["nose_tip"] - 1.0), 0.0, 0.0700 - 0.0255 * fl * s["nose_len"]])
         self.mouth_z = 0.0105 - 0.040 * (fl - 1.0)
-        self.chin_c = np.array([0.1035 + s["chin"], 0.0, -0.0330 - 0.050 * (fl - 1.0) - 0.4 * s["jaw_drop"]])
+        self.chin_c = np.array([0.1020 + s["chin"], 0.0, -0.0330 - 0.050 * (fl - 1.0) - 0.4 * s["jaw_drop"]])
         self.skull_c = np.array([0.004, 0.0, 0.0905])
         self.skull_r = np.array([0.1035 * sx, 0.0815 * sy, 0.1135 * sz])
 
@@ -207,14 +208,14 @@ class Head:
 
     def face(self, p):
         s, fl, fw = self.s, self.fl, self.fw
-        d = ell(p, (0.052, 0.0, 0.032 - 0.02 * (fl - 1.0)), (0.071, 0.0655 * fw, 0.069 * fl))
+        d = ell(p, (0.054, 0.0, 0.034 - 0.02 * (fl - 1.0)), (0.072, 0.0660 * fw, 0.070 * fl))
         # forehead
         d = hk.smin(d, ell(p, (0.070, 0.0, 0.112), (0.043, 0.068 * self.s["skull"][1], 0.052)), 0.025)
         # cheekbones
         cz = 0.0505 - 0.004 * (fl - 1.0)
         for sgn in (1.0, -1.0):
             M = rot_z(18.0 * sgn)
-            d = hk.smin(d, ell_rot(p, (0.073, 0.0485 * fw * sgn, cz), (0.030, 0.021 * s["cheek"], 0.017 * s["cheek"]), M), 0.016)
+            d = hk.smin(d, ell_rot(p, (0.082, 0.0500 * fw * sgn, cz), (0.030, 0.021 * s["cheek"], 0.016 * s["cheek"]), M), 0.012)
         return d
 
     def jaw(self, p):
@@ -226,16 +227,17 @@ class Head:
         for sgn in (1.0, -1.0):
             d = hk.smin(d, cone(p, (0.004, 0.051 * jw * sgn, 0.018), (0.024, 0.049 * jw * sgn, -0.026 + zc * 0.4), 0.014, 0.012), 0.022)
         # chin
-        d = hk.smin(d, ell(p, self.chin_c, (0.019, 0.022 * s["chin_w"] * (1.0 - 0.12 * s["female"]), 0.020)), 0.016)
+        d = hk.smin(d, ell(p, self.chin_c, (0.0145, 0.0205 * s["chin_w"] * (1.0 - 0.12 * s["female"]), 0.0165)), 0.020)
         # muzzle (teeth / maxilla mass under the lips)
-        d = hk.smin(d, ell(p, (0.098, 0.0, self.mouth_z + 0.008), (0.028, 0.033 * s["lip_w"], 0.030 * fl)), 0.018)
+        d = hk.smin(d, ell(p, (0.096, 0.0, self.mouth_z + 0.010), (0.027, 0.034 * s["lip_w"], 0.031 * fl)), 0.018)
         return d
 
     def brow_ridge(self, p):
         s = self.s
         b = s["brow"]
-        d = cone(p, (0.096, 0.040 * self.fw, self.brow_z + 0.001), (0.104, 0.012, self.brow_z + 0.003), 0.0105 * b, 0.0085 * b)
-        d = np.minimum(d, cone(p, (0.096, -0.040 * self.fw, self.brow_z + 0.001), (0.104, -0.012, self.brow_z + 0.003), 0.0105 * b, 0.0085 * b))
+        x0 = self.eye_c[0]
+        d = cone(p, (x0 + 0.004, 0.042 * self.fw, self.brow_z), (x0 + 0.011, 0.011, self.brow_z + 0.002), 0.0095 * b, 0.0080 * b)
+        d = np.minimum(d, cone(p, (x0 + 0.004, -0.042 * self.fw, self.brow_z), (x0 + 0.011, -0.011, self.brow_z + 0.002), 0.0095 * b, 0.0080 * b))
         return d
 
     def nose(self, p):
@@ -268,17 +270,17 @@ class Head:
         s = self.s
         lw, lf = s["lip_w"], s["lip_full"]
         mz = self.mouth_z
-        up = ell_rot(p, (0.1195, 0.0, mz + 0.0060), (0.0090 * (0.8 + 0.2 * lf), 0.0245 * lw, 0.0060 * lf), rot_y(-12.0))
-        lo = ell_rot(p, (0.1165, 0.0, mz - 0.0058), (0.0090 * (0.8 + 0.2 * lf), 0.0215 * lw, 0.0068 * lf), rot_y(14.0))
+        up = ell_rot(p, (0.1200, 0.0, mz + 0.0058), (0.0105 * (0.8 + 0.2 * lf), 0.0250 * lw, 0.0062 * lf), rot_y(-14.0))
+        lo = ell_rot(p, (0.1172, 0.0, mz - 0.0060), (0.0105 * (0.8 + 0.2 * lf), 0.0220 * lw, 0.0072 * lf), rot_y(16.0))
         return np.minimum(up, lo)
 
     def mouth_cut(self, p):
         lw = self.s["lip_w"]
-        q = p - np.array([0.1290, 0.0, self.mouth_z + 0.0003])
+        q = p - np.array([0.1310, 0.0, self.mouth_z + 0.0002])
         # a thin slit, curving back at the corners
         q2 = q.copy()
         q2[:, 0] = q[:, 0] + 26.0 * q[:, 1] ** 2
-        return hk.sd_ellipsoid(q2, np.array([0.0110, 0.0262 * lw, 0.0011]))
+        return hk.sd_ellipsoid(q2, np.array([0.0125, 0.0268 * lw, 0.0010]))
 
     def eye_socket_cut(self, p):
         d = None
@@ -359,7 +361,10 @@ class Head:
         d = hk.smax(d, -self.nostril_cut(p), 0.0015)
         d = hk.smin(d, self.ears(p), 0.006)
         # cover the stand-in mannequin head everywhere (no poke-through in game)
-        d = hk.smin(d, standin_head(p) - COVER_MARGIN, 0.004)
+        near_eye = np.maximum(gauss(np.linalg.norm((p - self.eye_c) * (1.0, 0.8, 1.3), axis=1), 0, 0.016),
+                              gauss(np.linalg.norm((p - self.eye_c * (1, -1, 1)) * (1.0, 0.8, 1.3), axis=1), 0, 0.016))
+        margin = COVER_MARGIN + (COVER_MARGIN_EYES - COVER_MARGIN) * near_eye
+        d = hk.smin(d, standin_head(p) - margin, 0.003)
         if with_eyes:
             d = hk.smin(d, self.eyelids(p), 0.0012)
             d = np.minimum(d, self.eyeballs(p))
@@ -510,7 +515,7 @@ class Hair:
             # the hairline is a lower bound on the sides and back; the top is bald
             top = np.radians(28.0 + 10.0 * smoothstep(120.0, 180.0, az) - el)
             e = np.minimum(e, top)
-        tau = tau * (0.40 + 0.60 * smoothstep(0.0, 0.14, e))
+        tau = tau * smoothstep(0.0, 0.12, e)
         if self.style == "curly":
             # tight curls: a bumpy outer surface
             tau = tau + 0.0016 * (np.sin(p[:, 0] * 900.0) * np.sin(p[:, 1] * 900.0 + 1.3) * np.sin(p[:, 2] * 900.0 + 2.1))
@@ -518,7 +523,7 @@ class Hair:
         d = base - tau
         d = hk.smax(d, -e * 0.10, 0.0030)
         # do not grow inside the head
-        d = hk.smax(d, -(base + 0.0004), 0.0005)
+        d = hk.smax(d, -(base + 0.0006), 0.0004)
         if self.style == "bun":
             # a low bun at the back of the head
             bun = ell(p, (-0.098, 0.0, 0.058), (0.026, 0.030, 0.024))

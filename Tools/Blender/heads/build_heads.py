@@ -99,19 +99,26 @@ def mesh_sdf(F, h):
 
 
 def keep_largest(v, q):
-    """Drops tiny loose islands (surface-nets specks)."""
-    import scipy.sparse as sp
-    import scipy.sparse.csgraph as cg
+    """Drops tiny loose islands (surface-nets specks): min-label propagation with pointer jumping."""
     n = len(v)
-    rows = np.concatenate([q[:, i] for i in range(4)])
-    cols = np.concatenate([q[:, (i + 1) % 4] for i in range(4)])
-    A = sp.coo_matrix((np.ones(len(rows)), (rows, cols)), shape=(n, n))
-    k, lab = cg.connected_components(A, directed=False)
-    if k <= 1:
+    a = np.concatenate([q[:, i] for i in range(4)])
+    b = np.concatenate([q[:, (i + 1) % 4] for i in range(4)])
+    lab = np.arange(n)
+    for _ in range(2000):
+        m = np.minimum(lab[a], lab[b])
+        new = lab.copy()
+        np.minimum.at(new, a, m)
+        np.minimum.at(new, b, m)
+        new = new[new]
+        if np.array_equal(new, lab):
+            break
+        lab = new
+    roots, inv = np.unique(lab, return_inverse=True)
+    if len(roots) <= 1:
         return v, q
-    sizes = np.bincount(lab[q[:, 0]], minlength=k)
-    keep_lab = np.nonzero(sizes >= max(200, sizes.max() * 0.01))[0]
-    keep_f = np.isin(lab[q[:, 0]], keep_lab)
+    face_lab = inv[q[:, 0]]
+    sizes = np.bincount(face_lab, minlength=len(roots))
+    keep_f = sizes[face_lab] >= max(200, sizes.max() * 0.01)
     q = q[keep_f]
     used = np.unique(q)
     remap = -np.ones(n, np.int64)
@@ -437,7 +444,6 @@ def bake_object(ob, graph_fn, name, out_dir, aid, piece, res):
         bk._bake(ob, [mat], [outs[passname]], img, kind, margin=max(4, res // 256))
         a = bk._pixels(img).copy()
         bk.save_png(a, paths[key], srgb=srgb)
-        bk._save_proxy(bk._pixels(img).copy(), paths[key], srgb) if False else None
         bpy.data.images.remove(img)
         log(f"    {aid}.{piece} {key}: {res}px {time.time() - t0:.0f}s")
     # role mask: nothing tinted (real colours are baked)
