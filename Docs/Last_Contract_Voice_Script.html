@@ -155,11 +155,31 @@ const CAST = [
     dir: "Ex-military, all business, and the only one who knew Andrew before. Flat, controlled delivery with contempt underneath. Never raises her voice except to give an order.",
     ph: "Think of commands over a radio: short, final, no wasted breath.",
     tts: "Kokoro TTS: af_kore, speed 1.02" },
-  { id: "varga", name: "Silas Varga", role: "Final boss, Mission 4 (Ledger underboss)",
+  { id: "varga", name: "Silas Varga", role: "Boss, Mission 4 (Ledger underboss)",
     tags: ["Male, 50s", "Deep", "Measured", "Menacing charm"],
     dir: "Old money in the underworld. Speaks softly because he has never needed to shout. Intimate, almost fond of Andrew, which makes him worse. Rich low register.",
     ph: "Keep it close to the mic and quiet. Menace comes from control, not volume.",
     tts: "Kokoro TTS: bm_george 45% + bm_lewis 35% + am_onyx 20%, speed 0.85, darker EQ" },
+  { id: "kell", name: "Ezra Kell, the Cleaner", role: "Boss, Mission 5 (erases evidence for the Keeper)",
+    tags: ["Male, 40s", "Polite", "Patient", "Unbothered"],
+    dir: "Tidies up after other people's violence and finds it all faintly tedious. Speaks like a man asking you to wipe your feet. Never hurried, never loud.",
+    ph: "The menace is in how reasonable he sounds. The death line is the first time he's surprised.",
+    tts: "Kokoro TTS: am_adam 60% + am_echo 40%, speed 0.9" },
+  { id: "lind", name: "Petra Lind, the Auditor", role: "Boss, Mission 6 (the Keeper's marksman)",
+    tags: ["Female, 40s", "Exact", "Cool", "Knew Andrew's work"],
+    dir: "Checks every account twice and every shot once. Respects Andrew's record and says so, which is worse than an insult. Clear, clean British diction.",
+    ph: "Flat and precise. Her last line is almost kind.",
+    tts: "Kokoro TTS: bf_emma 60% + bf_isabella 40%, speed 0.95" },
+  { id: "brask", name: "Teodor Brask, the Keeper's Hand", role: "Boss, Mission 7 (runs Ledger Tower)",
+    tags: ["Male, 50s", "Heavy", "Formal", "Proud"],
+    dir: "The Keeper's doorman and his fist. Formal to the point of parody, then plainly shaken when the stories turn out to be true.",
+    ph: "Slow and weighty. The mid-fight line is the crack in the armour.",
+    tts: "Kokoro TTS: bm_daniel 60% + am_onyx 40%, speed 0.86, darker EQ" },
+  { id: "crane", name: "Augustin Crane, the Keeper", role: "Final boss, Mission 8 (head of the Ledger)",
+    tags: ["Male, 70s", "Soft", "Tired", "Every word placed"],
+    dir: "Has kept the Ledger's books for thirty years and never once raised his voice. An old bookkeeper, not a warlord: gentle, almost regretful, completely without mercy.",
+    ph: "Close and quiet, as if across a desk. His last line is an accountant closing a column.",
+    tts: "Kokoro TTS: bm_lewis 55% + bm_daniel 45%, speed 0.8, darker EQ" },
   { id: "crew", name: "Ledger Crew", role: "Enemy combat barks, 3 voices",
     tags: ["Male and female, 20s to 40s", "Shouted", "Panicked", "Profane"],
     dir: "Three distinct hired guns. Voice A: aggressive and loud. Voice B: nervous, younger, voice cracks. Voice C: older veteran, gravelly, calm until he isn't. Shouted across a room, with gunfire assumed around them.",
@@ -188,18 +208,47 @@ const LINES = [
   { c: "narrator", f: "VO_M4_I0", w: "Mission 4 intro", s: "live", t: "Ironwood Yard is the Ledger's freight depot, and Silas Varga's last fortress." },
   { c: "narrator", f: "VO_M4_I1", w: "Mission 4 intro", s: "live", t: "He is waiting there with everyone he has left." },
   { c: "narrator", f: "VO_M4_I2", w: "Mission 4 intro", s: "live", t: "So is Andrew.", p: "Three words. Give it a beat before and after." },
-  { c: "narrator", f: "VO_M4_Outro", w: "Campaign ending", s: "live", t: "The Ledger's debt is paid in full. Andrew goes home. For now.", p: "“For now” is almost a smile." },
+  { c: "narrator", f: "VO_M4_Outro", w: "Mission 4 complete (cliffhanger)", s: "live", t: "Varga's phone lit up in the mud. One message, from a number Andrew hadn't seen in five years. The Keeper will settle this himself.", p: "Quiet. The last sentence is the turn: let it land." },
+
+  // Narrator - mission 5
+  { c: "narrator", f: "VO_M5_I0", w: "Mission 5 intro", s: "live", t: "Varga kept two sets of books. One burned with him. The other is still somewhere in Ironwood Yard." },
+  { c: "narrator", f: "VO_M5_I1", w: "Mission 5 intro", s: "live", t: "Tonight the Ledger's cleaners are sweeping the yard, erasing every page and every witness." },
+  { c: "narrator", f: "VO_M5_I2", w: "Mission 5 intro", s: "live", t: "Andrew leaves the car a mile out, and walks in through the dark." },
+  { c: "narrator", f: "VO_M5_Outro", w: "Mission 5 complete", s: "live", t: "The book names the Keeper: Augustin Crane. And one more debt, marked to be paid at dawn. Theo Marsh." },
+  // Narrator - mission 6
+  { c: "narrator", f: "VO_M6_I0", w: "Mission 6 intro", s: "live", t: "Theo Marsh keeps the Lantern House. Under its lamp, no contract may be served, and no name may be spoken." },
+  { c: "narrator", f: "VO_M6_I1", w: "Mission 6 intro", s: "live", t: "Five years ago, Theo got Andrew out. Last night, he stepped outside the lamp's light to warn him." },
+  { c: "narrator", f: "VO_M6_I2", w: "Mission 6 intro", s: "live", t: "Crane's people are holding him on the Nightjar roof. Andrew parks the car on the top deck, and starts down before the sun comes up." },
+  { c: "narrator", f: "VO_M6_Outro", w: "Mission 6 complete", s: "live", t: "Theo was gone before first light. He left his lantern, and a note in his careful hand. Live, Andrew.", p: "The quietest line in the story. A real pause before “Live, Andrew.”" },
+  // Narrator - mission 7
+  { c: "narrator", f: "VO_M7_I0", w: "Mission 7 intro", s: "live", t: "Ledger Tower. Forty floors of glass, where the syndicate keeps its accounts." },
+  { c: "narrator", f: "VO_M7_I1", w: "Mission 7 intro", s: "live", t: "Every name, every price, every debt, written in Augustin Crane's own hand." },
+  { c: "narrator", f: "VO_M7_I2", w: "Mission 7 intro", s: "live", t: "Andrew isn't here to read them." },
+  { c: "narrator", f: "VO_M7_Outro", w: "Mission 7 complete", s: "live", t: "Crane's penthouse is empty. A freighter leaves Saltmarsh Terminal at four. He means to be on it." },
+  // Narrator - mission 8
+  { c: "narrator", f: "VO_M8_I0", w: "Mission 8 intro", s: "live", t: "Saltmarsh Terminal. Rain on steel, and a ship waiting in the dark." },
+  { c: "narrator", f: "VO_M8_I1", w: "Mission 8 intro", s: "live", t: "Augustin Crane has kept the Ledger for thirty years. He has never once stood in a room with Andrew." },
+  { c: "narrator", f: "VO_M8_I2", w: "Mission 8 intro", s: "live", t: "Tonight he will.", p: "Three words. A beat before." },
+  { c: "narrator", f: "VO_M8_Outro", w: "Campaign ending", s: "live", t: "The Ledger has no Keeper tonight. Andrew sets Theo's lantern on the water, starts the car, and drives home in the rain.", p: "The last line of the story. Unhurried; let “in the rain” fade." },
 
   // Andrew - mission openers
   { c: "andrew", f: "VO_M1_Andrew_Start", w: "Mission 1, as the cinematic ends", s: "live", t: "Five years. Couldn't even give me five years.", p: "Under his breath, more tired than angry." },
   { c: "andrew", f: "VO_M2_Andrew_Start", w: "Mission 2, as the cinematic ends", s: "live", t: "Should've let it lie, Varga." },
   { c: "andrew", f: "VO_M3_Andrew_Start", w: "Mission 3, as the cinematic ends", s: "live", t: "Top floor. Let's get this done." },
   { c: "andrew", f: "VO_M4_Andrew_Start", w: "Mission 4, as the cinematic ends", s: "live", t: "Last one. Make it count." },
+  { c: "andrew", f: "VO_M5_Andrew_Start", w: "Mission 5, as the cinematic ends", s: "live", t: "Lights out. Good." },
+  { c: "andrew", f: "VO_M6_Andrew_Start", w: "Mission 6, as the cinematic ends", s: "live", t: "Hold on, Theo." },
+  { c: "andrew", f: "VO_M7_Andrew_Start", w: "Mission 7, as the cinematic ends", s: "live", t: "Let's close the books." },
+  { c: "andrew", f: "VO_M8_Andrew_Start", w: "Mission 8, as the cinematic ends", s: "live", t: "Last contract." },
   // Andrew - replies to bosses
   { c: "andrew", f: "VO_M1_Andrew_Boss", w: "After Kade's taunt", s: "live", t: "Then come and collect." },
   { c: "andrew", f: "VO_M2_Andrew_Boss", w: "After Dorian's taunt", s: "live", t: "I'll send him yours back. In pieces." },
   { c: "andrew", f: "VO_M3_Andrew_Boss", w: "After Mara's taunt", s: "live", t: "I tried, Mara. You people wouldn't let me.", p: "The only line with old history in it. Quieter." },
   { c: "andrew", f: "VO_M4_Andrew_Boss", w: "After Varga's taunt", s: "live", t: "You came to my door first, Silas." },
+  { c: "andrew", f: "VO_M5_Andrew_Boss", w: "After Ezra's taunt", s: "live", t: "Then he knows I'm coming." },
+  { c: "andrew", f: "VO_M6_Andrew_Boss", w: "After Petra's taunt", s: "live", t: "Where is he?" },
+  { c: "andrew", f: "VO_M7_Andrew_Boss", w: "After Teodor's taunt", s: "live", t: "Cancel them." },
+  { c: "andrew", f: "VO_M8_Andrew_Boss", w: "After Augustin's taunt", s: "live", t: "Then put it down." },
   // Andrew - barks
   { c: "andrew", f: "VO_Andrew_Reload_1", w: "Reloading", s: "live", t: "Changing." },
   { c: "andrew", f: "VO_Andrew_Reload_2", w: "Reloading", s: "live", t: "Mag." },
@@ -233,6 +282,26 @@ const LINES = [
   { c: "varga", f: "VO_M4_Boss_Mid", w: "Varga at half health", s: "live", t: "You think killing me closes the Ledger? It's a book, Andrew. Somebody always picks it up.", p: "Calm, even wounded. He believes it." },
   { c: "varga", f: "VO_M4_Boss_Death", w: "Varga goes down", s: "live", t: "Then you... write the next page.", p: "A last, ugly smile." },
 
+  // Ezra Kell
+  { c: "kell", f: "VO_M5_Boss", w: "Ezra steps in", s: "live", t: "I clean up after the Keeper. You're just one more stain." },
+  { c: "kell", f: "VO_M5_Boss_Mid", w: "Ezra at half health", s: "live", t: "Stay still. This goes quicker if you stay still." },
+  { c: "kell", f: "VO_M5_Boss_Death", w: "Ezra goes down", s: "live", t: "He already knows... where you'll go next." },
+
+  // Petra Lind
+  { c: "lind", f: "VO_M6_Boss", w: "Petra steps in", s: "live", t: "The Keeper balances every account. Even old friends." },
+  { c: "lind", f: "VO_M6_Boss_Mid", w: "Petra at half health", s: "live", t: "You were the best we ever had. Now you're just late." },
+  { c: "lind", f: "VO_M6_Boss_Death", w: "Petra goes down", s: "live", t: "Too late, Andrew. It was always too late." },
+
+  // Teodor Brask
+  { c: "brask", f: "VO_M7_Boss", w: "Teodor steps in", s: "live", t: "Mister Crane is not available. I take his appointments." },
+  { c: "brask", f: "VO_M7_Boss_Mid", w: "Teodor at half health", s: "live", t: "We saw the grey Fastback in the lot. I knew it was you before the alarms did." },
+  { c: "brask", f: "VO_M7_Boss_Death", w: "Teodor goes down", s: "live", t: "Crane... is already on the water." },
+
+  // Augustin Crane
+  { c: "crane", f: "VO_M8_Boss", w: "Augustin steps in", s: "live", t: "You think this closes the Ledger? I only hold the pen." },
+  { c: "crane", f: "VO_M8_Boss_Mid", w: "Augustin at half health", s: "live", t: "Theo asked me to let you go. I should have listened to him." },
+  { c: "crane", f: "VO_M8_Boss_Death", w: "Augustin goes down", s: "live", t: "Write it down, then. Paid... in full." },
+
   // Crew barks
   { c: "crew", f: "VO_Crew_A_Spotted_1", w: "Enemy sees Andrew", s: "live", t: "Contact! He's right there!", p: "Voice A, aggressive." },
   { c: "crew", f: "VO_Crew_B_Spotted_1", w: "Enemy sees Andrew", s: "live", t: "Oh shit, that's him! That's him!", p: "Voice B, nervous." },
@@ -250,6 +319,8 @@ const LINES = [
   { c: "crew", f: "VO_Crew_C_Search_1", w: "Enemy lost sight of Andrew", s: "live", t: "Where'd he go? Check the corners." },
   { c: "crew", f: "VO_Crew_A_Search_1", w: "Enemy lost sight of Andrew", s: "live", t: "Come on out, old man!" },
   { c: "crew", f: "VO_Crew_B_Fear_1", w: "Last few enemies alive", s: "live", t: "Nobody said it was him. Nobody said it was HIM!", p: "Breaking." },
+  { c: "crew", f: "VO_Crew_C_Fear_1", w: "Last few enemies alive", s: "live", t: "He went through Varga's whole crew. Alone.", p: "Voice C, low. Reputation, not panic." },
+  { c: "crew", f: "VO_Crew_B_Spotted_2", w: "Enemy sees Andrew", s: "live", t: "Grey Fastback outside. It's him. It's really him.", p: "Voice B. They know the car on sight." },
   { c: "crew", f: "VO_Crew_Deaths", w: "Enemy deaths", s: "new", t: "(Each voice: three short death sounds, one cut-off scream, one breath out)", p: "One file per voice: VO_Crew_A_Deaths, VO_Crew_B_Deaths, VO_Crew_C_Deaths." }
 ];
 

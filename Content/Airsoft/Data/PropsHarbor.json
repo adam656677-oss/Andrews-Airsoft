@@ -1,0 +1,120 @@
+{
+  "Version": 1,
+  "Assets": {
+    "Harbor_ChainFence_4m": {
+      "Group": "Harbor",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Harbor_ChainFence_4m_Body"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -3.8,
+          -204.0,
+          0.0
+        ],
+        "Max": [
+          37.5,
+          204.0,
+          288.5
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 4926
+      },
+      "TextureSize": {
+        "Body": 1024
+      },
+      "Layout": {
+        "Core": [
+          [
+            -6,
+            -200
+          ],
+          [
+            6,
+            200
+          ]
+        ],
+        "Los": false,
+        "Cover": false
+      }
+    },
+    "Harbor_Fender": {
+      "Group": "Harbor",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Harbor_Fender_Body"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          2.0,
+          -102.0,
+          -160.0
+        ],
+        "Max": [
+          122.0,
+          102.0,
+          1.9
+        ]
+      },
+      "Collision": "None",
+      "Triangles": {
+        "Body": 776
+      },
+      "TextureSize": {
+        "Body": 1024
+      },
+      "Layout": {
+        "Solid": false,
+        "Los": false,
+        "Cover": false
+      }
+    },
+    "Harbor_MooringBollard": {
+      "Group": "Harbor",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Harbor_MooringBollard_Body"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -47.5,
+          -42.0,
+          0.0
+        ],
+        "Max": [
+          47.5,
+          42.0,
+          79.0
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 1668
+      },
+      "TextureSize": {
+        "Body": 1024
+      }
+    }
+  }
+}

@@ -46,7 +46,7 @@ DATA_PATH = os.path.join(ROOT, "Content", "Airsoft", "Data", "GearHeads.json")
 RENDER_DIR = os.path.join(ROOT, "Docs", "Renders", "Heads")
 SCRATCH = os.environ.get("HEADS_SCRATCH", os.path.join(ROOT, "Saved", "HeadsScratch"))
 MESH_H = 0.00135  # surface-nets cell (m)
-HAIR_H = 0.0016
+HAIR_H = 0.0011
 
 
 def log(*a):
@@ -673,7 +673,7 @@ def preview(names):
         head = hl.Head(name)
         hob = build_head_mesh(head, coll, h=0.0018)
         hob.data.materials.append(skin)
-        hair = build_hair_mesh(head, coll, h=0.0022)
+        hair = build_hair_mesh(head, coll, h=0.0022 if len(names) > 1 else 0.0014)
         obs = [hob] + ([hair] if hair else [])
         if hair:
             hair.data.materials.append(hairm)
@@ -685,6 +685,11 @@ def preview(names):
         place_cam(cam, (0.0, 0.0, 0.05), vd, 0.55 + 0.32 * w, 50)
         p = os.path.join(SCRATCH, f"pv_{vname}.png")
         render(p, (min(3200, 520 * w), 640), 12)
+        log("wrote", p)
+    if len(names) == 1:
+        place_cam(cam, (0.10, 0.0, 0.055), (0.85, -0.45, 0.05), 0.30, 50)
+        p = os.path.join(SCRATCH, "pv_close.png")
+        render(p, (800, 640), 16)
         log("wrote", p)
 
 

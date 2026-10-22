@@ -82,6 +82,15 @@ CAST = {
                  why="Kore is the firmest, lowest American female voice: flat, controlled and clipped, like radio orders."),
     "varga": dict(voice={"bm_george": 0.45, "bm_lewis": 0.35, "am_onyx": 0.2}, lang="b", speed=0.85, gap=0.6, comma=0.6, land=0.82, fx="boss_dark",
                   why="George (older, measured British) blended with Lewis and a little Onyx for a lower, darker register: soft-spoken old money; slow, close."),
+    # Missions 5-8: the Keeper's people (blends chosen to sit apart from the first four bosses and from each other)
+    "kell": dict(voice={"am_adam": 0.6, "am_echo": 0.4}, lang="a", speed=0.9, gap=0.45, comma=0.7, land=0.9, fx="boss_smooth",
+                 why="Adam's even, mild tone over Echo: the polite, unbothered cleaner who tidies up after the Keeper. Quiet and patient."),
+    "lind": dict(voice={"bf_emma": 0.6, "bf_isabella": 0.4}, lang="b", speed=0.95, gap=0.38, comma=0.8, land=0.92, fx="boss_cold",
+                 why="Emma's precise British diction warmed slightly with Isabella: the Auditor, cool and exact, never raises her voice."),
+    "brask": dict(voice={"bm_daniel": 0.6, "am_onyx": 0.4}, lang="b", speed=0.86, gap=0.5, comma=0.7, land=0.86, fx="boss_dark",
+                  why="Daniel's clipped British delivery under Onyx's weight: the Keeper's Hand, heavy, formal, unhurried."),
+    "crane": dict(voice={"bm_lewis": 0.55, "bm_daniel": 0.45}, lang="b", speed=0.8, gap=0.65, comma=0.6, land=0.8, fx="boss_dark",
+                  why="Lewis and Daniel, slowed: an old bookkeeper's voice, soft and tired, every word placed. Lighter than Varga, no Onyx."),
     # Andrew's lines and the crew barks
     "andrew": dict(voice={"am_fenrir": 0.7, "am_onyx": 0.3}, lang="a", speed=0.95, gap=0.4, comma=0.75, land=0.9, fx="dry",
                    why="Fenrir (40s, plain) with some Onyx grit: quiet, tired, economical."),
@@ -91,7 +100,8 @@ CAST = {
 }
 
 # Boss name in Campaign.json -> cast id
-BOSS_CAST = {"Kade": "kade", "Dorian": "dorian", "Mara": "mara", "Varga": "varga"}
+BOSS_CAST = {"Kade": "kade", "Dorian": "dorian", "Mara": "mara", "Varga": "varga",
+             "Kell": "kell", "Lind": "lind", "Brask": "brask", "Crane": "crane"}
 
 # Pronunciations the lexicon gets wrong (misaki inline phonemes, [word](/phonemes/)).
 PRONOUNCE = {
@@ -107,13 +117,19 @@ PRONOUNCE = {
 DIRECTION = {
     "VO_M1_I2": dict(slow={"settle a debt": 0.78}),                 # "Slow down on 'settle a debt.'"
     "VO_M4_I2": dict(speed=0.88, pre=0.25, slow={"Andrew": 0.8}),     # "Three words. Give it a beat before and after."
-    "VO_M4_Outro": dict(gaps=[0.6, 0.85]),                           # "'For now' is almost a smile." - let it land late
     "VO_M1_I1": dict(gaps=[0.65]),                                   # "Oil, brass, and silence." after a breath
     "VO_M3_Boss_Death": dict(speed=0.85),
     "VO_M1_Boss_Death": dict(speed=0.85),
     "VO_M2_Boss_Death": dict(speed=0.9),
     "VO_M4_Boss_Death": dict(speed=0.88),
     "VO_M3_Andrew_Boss": dict(speed=0.92),
+    "VO_M4_Outro": dict(gaps=[0.6, 0.7]),                            # cliffhanger: let "The Keeper will settle this himself" land
+    "VO_M6_Outro": dict(gaps=[0.6, 0.9], slow={"Live, Andrew": 0.78}),  # Theo's note: the quietest line in the story
+    "VO_M7_I2": dict(pre=0.2),
+    "VO_M8_I2": dict(speed=0.88, pre=0.25),                          # "Tonight he will." - a beat before
+    "VO_M8_Outro": dict(gaps=[0.7], slow={"in the rain": 0.8}),       # the last line of the story
+    "VO_M6_Boss_Death": dict(speed=0.88),
+    "VO_M8_Boss_Death": dict(speed=0.82, slow={"in full": 0.75}),
 }
 
 # ------------------------------------------------------------------------------------ post chain

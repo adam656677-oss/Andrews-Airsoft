@@ -199,6 +199,7 @@ In **Settings**, *Quality: High* with *Render scale: 60%* is the recommended 207
 **Tuning:**
 - weapon stats: `AirsoftWeaponData.cpp`;
 - which guns each story mission unlocks: `GunUnlocks` in `Campaign.json`. Missions and Skirmish use unlocked guns only; the Practice Range lets you try any gun without saving it to your loadout;
+- story missions (eight, in `Missions` in `Campaign.json`): each has a `Map` and optional `Options`. `?Night` and `?Dawn` re-light a map built for another time of day; `?Reverse` starts Andrew on the enemy's side. `FallbackMap` / `FallbackOptions` are played while `Map` hasn't been built yet;
 - round rules (round time, score limits, respawn time, friendly fire): *Project Settings → Game → Airsoft*.
 
 ## 9. Troubleshooting

@@ -16,8 +16,19 @@
 #include "AirsoftWeaponData.h"
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
+#include "Components/ExponentialHeightFogComponent.h"
+#include "Components/LightComponent.h"
+#include "Components/PointLightComponent.h"
+#include "Components/SkyLightComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "Dom/JsonObject.h"
+#include "Engine/DirectionalLight.h"
+#include "Engine/ExponentialHeightFog.h"
 #include "Engine/GameViewportClient.h"
+#include "Engine/PointLight.h"
+#include "Engine/SkyLight.h"
+#include "Engine/StaticMesh.h"
+#include "Engine/StaticMeshActor.h"
 #include "Engine/PostProcessVolume.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
@@ -116,7 +127,7 @@ namespace AirsoftCampaign
 				GI->StartMission(Number, bFromCheckpoint);
 				return;
 			}
-			UGameplayStatics::OpenLevel(WorldContext, FName(*Mission->MapPath), true, MissionOptions(Number, bFromCheckpoint));
+			UGameplayStatics::OpenLevel(WorldContext, FName(*MissionMap(Number)), true, MissionOptions(Number, bFromCheckpoint));
 		}
 	}
 
@@ -149,6 +160,9 @@ namespace AirsoftCampaign
 				FMission Mission;
 				Mission.Title = GetString(M, TEXT("Title"));
 				Mission.MapPath = GetString(M, TEXT("Map"));
+				Mission.Options = GetString(M, TEXT("Options"));
+				Mission.FallbackMap = GetString(M, TEXT("FallbackMap"));
+				Mission.FallbackOptions = GetString(M, TEXT("FallbackOptions"));
 				Mission.Intro = GetStrings(M, TEXT("Intro"));
 				Mission.Objective = GetString(M, TEXT("Objective"));
 				Mission.AndrewStart = GetString(M, TEXT("AndrewStart"));
@@ -300,7 +314,26 @@ namespace AirsoftCampaign
 
 	FString MissionOptions(int32 Number, bool bFromCheckpoint)
 	{
-		return FString::Printf(TEXT("game=/Script/AndrewsAirsoft.AirsoftCampaignGameMode?Mission=%d%s"), Number, bFromCheckpoint ? TEXT("?Checkpoint=1") : TEXT(""));
+		FString Extra;
+		if (const FMission* Mission = FindMission(Number))
+		{
+			Extra = MissionMap(Number) == Mission->MapPath ? Mission->Options : Mission->FallbackOptions;
+		}
+		return FString::Printf(TEXT("game=/Script/AndrewsAirsoft.AirsoftCampaignGameMode?Mission=%d%s%s"), Number, bFromCheckpoint ? TEXT("?Checkpoint=1") : TEXT(""), *Extra);
+	}
+
+	FString MissionMap(int32 Number)
+	{
+		const FMission* Mission = FindMission(Number);
+		if (!Mission)
+		{
+			return FString();
+		}
+		if (!Mission->FallbackMap.IsEmpty() && !FPackageName::DoesPackageExist(Mission->MapPath))
+		{
+			return Mission->FallbackMap;
+		}
+		return Mission->MapPath;
 	}
 
 	FName VoiceKey(int32 Number, const FString& Line)
@@ -442,6 +475,10 @@ void AAirsoftCampaignGameMode::InitGame(const FString& MapName, const FString& O
 	// Continue: pick up at the saved checkpoint when it belongs to this mission.
 	bResumeFromSave = UGameplayStatics::GetIntOption(Options, TEXT("Checkpoint"), 0) != 0
 		&& AirsoftCampaign::CheckpointMission(this) == MissionNumber;
+	// Time of day and spawn sides for maps replayed in a new light (Ironwood at night, the garage at dawn from the roof).
+	bNight = UGameplayStatics::HasOption(Options, TEXT("Night"));
+	bDawn = !bNight && UGameplayStatics::HasOption(Options, TEXT("Dawn"));
+	bReverseSpawns = UGameplayStatics::HasOption(Options, TEXT("Reverse"));
 	// Every story map is fought like a match map (team-vs-team rules), whatever the airsoft map list says.
 	bPendingMatchMap = true;
 	PendingMode = EAirsoftMode::TDM;
@@ -481,6 +518,7 @@ void AAirsoftCampaignGameMode::StartPlay()
 	GS->PhaseEndsAt = 0.f;
 	UpdateObjectiveText();
 	ApplyNoirGrade();
+	ApplyTimeOfDay();
 	AirsoftSubtitles::Clear();
 
 	if (bResumeFromSave)
@@ -574,6 +612,108 @@ void AAirsoftCampaignGameMode::ApplyNoirGrade()
 	S.SceneFringeIntensity = 0.35f;
 	S.bOverride_AutoExposureBias = true;
 	S.AutoExposureBias = 0.f;
+	if (bNight || bDawn)
+	{
+		// A day map re-lit for night or dawn meters like the night maps (EV100), so the dark stays dark.
+		S.bOverride_AutoExposureMinBrightness = true;
+		S.AutoExposureMinBrightness = bNight ? -2.5f : -1.5f;
+		S.bOverride_AutoExposureMaxBrightness = true;
+		S.AutoExposureMaxBrightness = bNight ? 1.f : 2.5f;
+	}
+}
+
+void AAirsoftCampaignGameMode::ApplyTimeOfDay()
+{
+	if (!bNight && !bDawn)
+	{
+		return;
+	}
+	// The map's own lights are movable (Lumen), so they can be re-aimed and re-tinted at runtime.
+	// Values follow the night maps' lighting preset (moon ~0.2 lux) and a low, cold-pink dawn sun.
+	for (TActorIterator<ADirectionalLight> It(GetWorld()); It; ++It)
+	{
+		It->SetActorRotation(bNight ? FRotator(-35.f, 200.f, 0.f) : FRotator(-5.f, 95.f, 0.f));
+		if (ULightComponent* Light = It->GetLightComponent())
+		{
+			Light->SetIntensity(bNight ? 0.25f : 2.5f);
+			Light->SetTemperature(bNight ? 9000.f : 2700.f);
+		}
+	}
+	for (TActorIterator<ASkyLight> It(GetWorld()); It; ++It)
+	{
+		if (USkyLightComponent* Sky = It->GetLightComponent())
+		{
+			Sky->SetIntensity(bNight ? 0.3f : 0.6f);
+		}
+	}
+	for (TActorIterator<AExponentialHeightFog> It(GetWorld()); It; ++It)
+	{
+		if (UExponentialHeightFogComponent* Fog = It->GetComponent())
+		{
+			Fog->SetFogDensity(bNight ? 0.06f : 0.045f);
+			Fog->SetStartDistance(bNight ? 300.f : 500.f);
+			Fog->SetFogInscatteringColor(bNight ? FLinearColor(0.035f, 0.05f, 0.065f) : FLinearColor(0.32f, 0.26f, 0.3f));
+		}
+	}
+	if (!bNight)
+	{
+		return;
+	}
+	// Night: sodium work lights over each objective and some of the team starts, so the yard reads in pools of light.
+	TArray<FVector> Spots;
+	for (TActorIterator<AAirsoftObjective> It(GetWorld()); It; ++It)
+	{
+		Spots.Add(It->GetActorLocation());
+	}
+	int32 StartIndex = 0;
+	for (TActorIterator<AAirsoftTeamStart> It(GetWorld()); It; ++It)
+	{
+		if (StartIndex++ % 2 == 0)
+		{
+			Spots.Add(It->GetActorLocation());
+		}
+	}
+	FActorSpawnParameters Params;
+	Params.ObjectFlags |= RF_Transient;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	const int32 Count = FMath::Min(Spots.Num(), 12);
+	for (int32 i = 0; i < Count; ++i)
+	{
+		APointLight* Lamp = GetWorld()->SpawnActor<APointLight>(APointLight::StaticClass(), Spots[i] + FVector(0.f, 0.f, 450.f), FRotator::ZeroRotator, Params);
+		UPointLightComponent* Light = Lamp ? Cast<UPointLightComponent>(Lamp->GetLightComponent()) : nullptr;
+		if (!Light)
+		{
+			continue;
+		}
+		Light->SetMobility(EComponentMobility::Movable);
+		Light->SetIntensityUnits(ELightUnits::Candelas);
+		Light->SetIntensity(6.f);
+		Light->SetLightColor(FLinearColor(1.f, 0.62f, 0.28f));
+		Light->SetAttenuationRadius(1600.f);
+		// Shadows only from the lamps over the objectives (the first spots), to keep the 2070 happy.
+		Light->SetCastShadows(i < 3);
+	}
+}
+
+AActor* AAirsoftCampaignGameMode::FindHeroCar() const
+{
+	static const FName HeroTag(TEXT("Car_Hero"));
+	for (TActorIterator<AActor> It(GetWorld()); It; ++It)
+	{
+		if (It->ActorHasTag(HeroTag))
+		{
+			return *It;
+		}
+		if (const AStaticMeshActor* Prop = Cast<AStaticMeshActor>(*It))
+		{
+			const UStaticMesh* Mesh = Prop->GetStaticMeshComponent() ? Prop->GetStaticMeshComponent()->GetStaticMesh() : nullptr;
+			if (Mesh && Mesh->GetName().Contains(TEXT("Car_Hero")))
+			{
+				return *It;
+			}
+		}
+	}
+	return nullptr;
 }
 
 float AAirsoftCampaignGameMode::PlayVoice(const FString& Line)
@@ -828,6 +968,8 @@ AActor* AAirsoftCampaignGameMode::ChoosePlayerStart_Implementation(AController* 
 {
 	const AAirsoftPlayerState* PS = Player ? Player->GetPlayerState<AAirsoftPlayerState>() : nullptr;
 	const bool bEnemy = PS && PS->Team == EAirsoftTeam::Red;
+	// ?Reverse: Andrew comes in from the enemy's side of the map (and they from his).
+	const bool bWantRed = bEnemy != bReverseSpawns;
 
 	TArray<APlayerStart*> Mine, Neutral, All;
 	for (TActorIterator<APlayerStart> It(GetWorld()); It; ++It)
@@ -840,7 +982,7 @@ AActor* AAirsoftCampaignGameMode::ChoosePlayerStart_Implementation(AController* 
 		{
 			Neutral.Add(Start);
 		}
-		else if (StartTeam == (bEnemy ? EAirsoftTeam::Red : EAirsoftTeam::Blue))
+		else if (StartTeam == (bWantRed ? EAirsoftTeam::Red : EAirsoftTeam::Blue))
 		{
 			Mine.Add(Start);
 		}
@@ -1302,8 +1444,7 @@ void AAirsoftCampaignGameMode::OnPlayerKilled(AController* Victim, const FString
 		return;
 	}
 	const int32 Number = MissionNumber;
-	const AirsoftCampaign::FMission* Mission = AirsoftCampaign::FindMission(Number);
-	const FString Map = Mission ? Mission->MapPath : FString();
+	const FString Map = AirsoftCampaign::MissionMap(Number);
 	GetWorldTimerManager().SetTimer(EndTimer, FTimerDelegate::CreateWeakLambda(this, [this, Number, Map]()
 	{
 		UGameplayStatics::OpenLevel(this, FName(*Map), true, AirsoftCampaign::MissionOptions(Number));
@@ -1782,6 +1923,36 @@ void AAirsoftCampaignGameMode::BeginEnding()
 	CamRotFrom = (Eye - CamFrom).Rotation();
 	CamRotTo = (Eye - FVector(0.f, 0.f, 60.f) - CamTo).Rotation();
 
+	// If his car is parked nearby, the shot ends wide on it instead: Andrew is gone, and the car pulls away into the rain.
+	bHeroDriving = false;
+	HeroCar = nullptr;
+	if (AActor* Car = FindHeroCar(); Car && FVector::Dist(Car->GetActorLocation(), Eye) < 8000.f)
+	{
+		HeroCar = Car;
+		HeroCarFrom = Car->GetActorLocation();
+		HeroCarDir = Car->GetActorForwardVector().GetSafeNormal2D();
+		if (HeroCarDir.IsNearlyZero())
+		{
+			HeroCarDir = FVector::ForwardVector;
+		}
+		const FVector CarRight = FVector::CrossProduct(FVector::UpVector, HeroCarDir);
+		// High and to one side behind the car, looking down the road it will take.
+		const FVector Look = HeroCarFrom + HeroCarDir * 900.f + FVector(0.f, 0.f, 80.f);
+		FVector Want = HeroCarFrom - HeroCarDir * 1100.f + CarRight * 650.f + FVector(0.f, 0.f, 420.f);
+		FHitResult Hit;
+		FCollisionQueryParams CarParams(SCENE_QUERY_STAT(CampaignEndingCar), false, Car);
+		if (GetWorld()->LineTraceSingleByChannel(Hit, HeroCarFrom + FVector(0.f, 0.f, 150.f), Want, ECC_Visibility, CarParams))
+		{
+			Want = Hit.Location + (HeroCarFrom - Hit.Location).GetSafeNormal() * 40.f;
+		}
+		CamTo = Want;
+		CamRotTo = (Look - CamTo).Rotation();
+		if (USceneComponent* Root = Car->GetRootComponent())
+		{
+			Root->SetMobility(EComponentMobility::Movable);
+		}
+	}
+
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.ObjectFlags |= RF_Transient;
 	if (CinematicCamera)
@@ -1797,7 +1968,9 @@ void AAirsoftCampaignGameMode::BeginEnding()
 	}
 
 	const float Voice = PlayVoice(TEXT("Outro"));
-	EndingLength = FMath::Max(9.f, Voice + 5.f);
+	EndingLength = FMath::Max(9.f, Voice + 5.f) + (HeroCar.IsValid() ? 4.f : 0.f);
+	// The car starts rolling once the camera has pulled back from Andrew.
+	HeroDriveStart = EndingLength * 0.55f;
 	AnnounceAll(TEXT("CONTRACT CLOSED"), Mission ? Mission->Outro : FString(), AirsoftColors::Accent(), EndingLength);
 	GetWorldTimerManager().SetTimer(EndTimer, FTimerDelegate::CreateWeakLambda(this, [this]() { RollCredits(); }), EndingLength, false);
 }
@@ -1812,6 +1985,27 @@ void AAirsoftCampaignGameMode::UpdateEndingCamera(float DeltaSeconds)
 	const float T = AirsoftCampaignLocal::Ease(EndingTime / FMath::Max(EndingLength, 0.1f));
 	CinematicCamera->SetActorLocationAndRotation(FMath::Lerp(CamFrom, CamTo, T), FMath::Lerp(CamRotFrom, CamRotTo, T));
 	CinematicCamera->GetCameraComponent()->SetFieldOfView(FMath::Lerp(45.f, 70.f, T));
+
+	AActor* Car = HeroCar.Get();
+	if (!Car || EndingTime < HeroDriveStart)
+	{
+		return;
+	}
+	if (!bHeroDriving)
+	{
+		// He's in the car now: out of the frame.
+		bHeroDriving = true;
+		if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
+		{
+			if (APawn* Andrew = PC->GetPawn())
+			{
+				Andrew->SetActorHiddenInGame(true);
+			}
+		}
+	}
+	// A slow, quiet pull-away that gathers speed: distance grows with the square of time (about 30 m by the fade).
+	const float Drive = FMath::Clamp((EndingTime - HeroDriveStart) / FMath::Max(EndingLength - HeroDriveStart, 0.1f), 0.f, 1.f);
+	Car->SetActorLocation(HeroCarFrom + HeroCarDir * (3000.f * Drive * Drive), false, nullptr, ETeleportType::TeleportPhysics);
 }
 
 void AAirsoftCampaignGameMode::RollCredits()

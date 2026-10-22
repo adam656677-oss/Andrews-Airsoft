@@ -114,7 +114,7 @@ void UAirsoftGameInstance::StartMission(int32 Number, bool bFromCheckpoint)
 	}
 	PendingMenuMessage.Reset();
 	SaveProfile();
-	OpenMap(Mission->MapPath, AirsoftCampaign::MissionOptions(Number, bFromCheckpoint), Mission->Title,
+	OpenMap(AirsoftCampaign::MissionMap(Number), AirsoftCampaign::MissionOptions(Number, bFromCheckpoint), Mission->Title,
 		FString::Printf(TEXT("Mission %d  \u00B7  %s"), Number, *AirsoftDifficulty::Label(AirsoftDifficulty::FromIndex(GetUserSettings().Difficulty))));
 }
 

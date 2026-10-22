@@ -215,7 +215,7 @@ class Head:
         cz = 0.0505 - 0.004 * (fl - 1.0)
         for sgn in (1.0, -1.0):
             M = rot_z(18.0 * sgn)
-            d = hk.smin(d, ell_rot(p, (0.082, 0.0500 * fw * sgn, cz), (0.030, 0.021 * s["cheek"], 0.016 * s["cheek"]), M), 0.012)
+            d = hk.smin(d, ell_rot(p, (0.077, 0.0495 * fw * sgn, cz - 0.004), (0.028, 0.019 * s["cheek"], 0.015 * s["cheek"]), M), 0.020)
         return d
 
     def jaw(self, p):
@@ -251,7 +251,7 @@ class Head:
         d = hk.smin(d, sphere(p, tip + (-0.0025, 0.0, 0.0), 0.0098 * s["nose_tip"] * (0.9 + 0.1 * nw)), 0.004)
         # wings (alae)
         for sgn in (1.0, -1.0):
-            d = hk.smin(d, ell(p, tip + (-0.0115, 0.0135 * nw * sgn, -0.0055), (0.0085, 0.0075 * nw, 0.0068)), 0.004)
+            d = hk.smin(d, ell(p, tip + (-0.0120, 0.0128 * nw * sgn, -0.0060), (0.0078, 0.0068 * nw, 0.0062)), 0.005)
         # columella and the nose's base into the lip
         d = hk.smin(d, ell(p, tip + (-0.009, 0.0, -0.010), (0.010, 0.006, 0.0045)), 0.004)
         return d
@@ -285,8 +285,8 @@ class Head:
     def eye_socket_cut(self, p):
         d = None
         for sgn in (1.0, -1.0):
-            c = self.eye_c * (1, sgn, 1) + (0.0075, 0.0, 0.0005)
-            e = ell(p, c, (0.0135, 0.0190, 0.0125))
+            c = self.eye_c * (1, sgn, 1) + (0.0065, 0.0012 * sgn, 0.0004)
+            e = ell(p, c, (0.0110, 0.0150, 0.0105))
             d = e if d is None else np.minimum(d, e)
         return d
 
@@ -302,7 +302,7 @@ class Head:
         d = None
         for sgn in (1.0, -1.0):
             c = self.eye_c * (1, sgn, 1)
-            shell = sphere(p, c, self.eye_r + 0.0011)
+            shell = sphere(p, c, self.eye_r + 0.0014)
             # almond opening: wider towards the outer corner, a little hooded with age
             q = p - (c + np.array([self.eye_r, 0.0015 * sgn, 0.0006 - 0.0006 * s["age"]]))
             q = q @ rot_z(-6.0 * sgn)
@@ -366,7 +366,7 @@ class Head:
         margin = COVER_MARGIN + (COVER_MARGIN_EYES - COVER_MARGIN) * near_eye
         d = hk.smin(d, standin_head(p) - margin, 0.003)
         if with_eyes:
-            d = hk.smin(d, self.eyelids(p), 0.0012)
+            d = hk.smin(d, self.eyelids(p), 0.0022)
             d = np.minimum(d, self.eyeballs(p))
         # the neck ends inside the collar
         d = hk.smax(d, -(p[:, 2] - NECK_CUT), 0.002)
@@ -497,7 +497,7 @@ class Hair:
         if st == "horseshoe":
             return 0.0030 + 0.0012 * smoothstep(-30.0, 0.0, el)
         if st == "buzz":
-            return np.full(len(p), 0.0013)
+            return np.full(len(p), 0.0027)
         if st == "crew":
             return 0.0020 + 0.0060 * smoothstep(10.0, 45.0, el) + 0.0020 * gauss(az, 0.0, 30.0) * smoothstep(20, 45, el)
         if st == "curly":
@@ -515,7 +515,7 @@ class Hair:
             # the hairline is a lower bound on the sides and back; the top is bald
             top = np.radians(28.0 + 10.0 * smoothstep(120.0, 180.0, az) - el)
             e = np.minimum(e, top)
-        tau = tau * smoothstep(0.0, 0.12, e)
+        tau = np.maximum(tau * smoothstep(0.0, 0.12, e), 0.0026)  # a resolvable rounded rim at the hairline
         if self.style == "curly":
             # tight curls: a bumpy outer surface
             tau = tau + 0.0016 * (np.sin(p[:, 0] * 900.0) * np.sin(p[:, 1] * 900.0 + 1.3) * np.sin(p[:, 2] * 900.0 + 2.1))

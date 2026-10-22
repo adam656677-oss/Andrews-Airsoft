@@ -1,5 +1,5 @@
 {
-  "Version": 2,
+  "Version": 3,
   "Title": "Last Contract",
   "Narrator": "Microsoft David Desktop",
   "Missions": [
@@ -129,9 +129,151 @@
         "Death": "Then you... write the next page.",
         "AndrewReply": "You came to my door first, Silas."
       },
-      "Outro": "The Ledger's debt is paid in full. Andrew goes home. For now.",
+      "Outro": "Varga's phone lit up in the mud. One message, from a number Andrew hadn't seen in five years. The Keeper will settle this himself.",
       "Checkpoints": [
         0.5
+      ]
+    },
+    {
+      "Title": "Cold Iron",
+      "Map": "/Game/Maps/L_IronwoodYard",
+      "Options": "?Night",
+      "Intro": [
+        "Varga kept two sets of books. One burned with him. The other is still somewhere in Ironwood Yard.",
+        "Tonight the Ledger's cleaners are sweeping the yard, erasing every page and every witness.",
+        "Andrew leaves the car a mile out, and walks in through the dark."
+      ],
+      "Objective": "Find Varga's second book",
+      "AndrewStart": "Lights out. Good.",
+      "Enemies": 20,
+      "MaxAlive": 7,
+      "EnemyWeapons": [
+        "M4",
+        "MP7",
+        "M870",
+        "AK74",
+        "SG4"
+      ],
+      "Boss": {
+        "Name": "Ezra Kell, the Cleaner",
+        "Weapon": "M870",
+        "Health": 650,
+        "Taunt": "I clean up after the Keeper. You're just one more stain.",
+        "Mid": "Stay still. This goes quicker if you stay still.",
+        "Death": "He already knows... where you'll go next.",
+        "AndrewReply": "Then he knows I'm coming."
+      },
+      "Outro": "The book names the Keeper: Augustin Crane. And one more debt, marked to be paid at dawn. Theo Marsh.",
+      "Checkpoints": [
+        0.35,
+        0.7
+      ]
+    },
+    {
+      "Title": "First Light",
+      "Map": "/Game/Maps/L_NightjarGarage",
+      "Options": "?Dawn?Reverse",
+      "Intro": [
+        "Theo Marsh keeps the Lantern House. Under its lamp, no contract may be served, and no name may be spoken.",
+        "Five years ago, Theo got Andrew out. Last night, he stepped outside the lamp's light to warn him.",
+        "Crane's people are holding him on the Nightjar roof. Andrew parks the car on the top deck, and starts down before the sun comes up."
+      ],
+      "Objective": "Reach Theo",
+      "AndrewStart": "Hold on, Theo.",
+      "Enemies": 22,
+      "MaxAlive": 7,
+      "EnemyWeapons": [
+        "M4",
+        "TR1",
+        "P90",
+        "SR25",
+        "AK74"
+      ],
+      "Boss": {
+        "Name": "Petra Lind, the Auditor",
+        "Weapon": "SR25",
+        "Health": 700,
+        "Taunt": "The Keeper balances every account. Even old friends.",
+        "Mid": "You were the best we ever had. Now you're just late.",
+        "Death": "Too late, Andrew. It was always too late.",
+        "AndrewReply": "Where is he?"
+      },
+      "Outro": "Theo was gone before first light. He left his lantern, and a note in his careful hand. Live, Andrew.",
+      "Checkpoints": [
+        0.35,
+        0.7
+      ]
+    },
+    {
+      "Title": "The Books",
+      "Map": "/Game/Maps/L_LedgerTower",
+      "FallbackMap": "/Game/Maps/L_VelvetClub",
+      "Intro": [
+        "Ledger Tower. Forty floors of glass, where the syndicate keeps its accounts.",
+        "Every name, every price, every debt, written in Augustin Crane's own hand.",
+        "Andrew isn't here to read them."
+      ],
+      "Objective": "Storm the penthouse",
+      "AndrewStart": "Let's close the books.",
+      "Enemies": 24,
+      "MaxAlive": 8,
+      "EnemyWeapons": [
+        "M4",
+        "TR1",
+        "AK74",
+        "VECTOR",
+        "M249"
+      ],
+      "Boss": {
+        "Name": "Teodor Brask, the Keeper's Hand",
+        "Weapon": "AK74",
+        "Health": 800,
+        "Taunt": "Mister Crane is not available. I take his appointments.",
+        "Mid": "We saw the grey Fastback in the lot. I knew it was you before the alarms did.",
+        "Death": "Crane... is already on the water.",
+        "AndrewReply": "Cancel them."
+      },
+      "Outro": "Crane's penthouse is empty. A freighter leaves Saltmarsh Terminal at four. He means to be on it.",
+      "Checkpoints": [
+        0.35,
+        0.7
+      ]
+    },
+    {
+      "Title": "Dead Tide",
+      "Map": "/Game/Maps/L_SaltmarshTerminal",
+      "FallbackMap": "/Game/Maps/L_IronwoodYard",
+      "FallbackOptions": "?Night",
+      "Intro": [
+        "Saltmarsh Terminal. Rain on steel, and a ship waiting in the dark.",
+        "Augustin Crane has kept the Ledger for thirty years. He has never once stood in a room with Andrew.",
+        "Tonight he will."
+      ],
+      "Objective": "Stop Crane before the ship sails",
+      "AndrewStart": "Last contract.",
+      "Enemies": 26,
+      "MaxAlive": 8,
+      "EnemyWeapons": [
+        "M4",
+        "TR1",
+        "AK74",
+        "SR25",
+        "M249",
+        "SG4"
+      ],
+      "Boss": {
+        "Name": "Augustin Crane, the Keeper",
+        "Weapon": "SG4",
+        "Health": 900,
+        "Taunt": "You think this closes the Ledger? I only hold the pen.",
+        "Mid": "Theo asked me to let you go. I should have listened to him.",
+        "Death": "Write it down, then. Paid... in full.",
+        "AndrewReply": "Then put it down."
+      },
+      "Outro": "The Ledger has no Keeper tonight. Andrew sets Theo's lantern on the water, starts the car, and drives home in the rain.",
+      "Checkpoints": [
+        0.35,
+        0.7
       ]
     }
   ],
@@ -196,6 +338,10 @@
       {
         "File": "VO_Crew_C_Spotted_1",
         "Text": "Eyes on target. Light him up."
+      },
+      {
+        "File": "VO_Crew_B_Spotted_2",
+        "Text": "Grey Fastback outside. It's him. It's really him."
       }
     ],
     "CrewFlank": [
@@ -264,6 +410,10 @@
       {
         "File": "VO_Crew_B_Fear_1",
         "Text": "Nobody said it was him. Nobody said it was HIM!"
+      },
+      {
+        "File": "VO_Crew_C_Fear_1",
+        "Text": "He went through Varga's whole crew. Alone."
       }
     ]
   },
@@ -271,10 +421,14 @@
     "Note": "Guns open from a new profile (Start), and the guns each finished mission adds. A gun not listed here is always open. Every primary and sidearm id in AirsoftWeaponData must appear once.",
     "Start": ["M4", "MP5", "G17", "M1911"],
     "Missions": [
-      { "Mission": 1, "Guns": ["MP7", "VECTOR", "M870", "G34"] },
-      { "Mission": 2, "Guns": ["AK74", "TR1", "P90", "SG4", "G18"] },
-      { "Mission": 3, "Guns": ["SR25", "VSR", "C1911"] },
-      { "Mission": 4, "Guns": ["M249", "DEAGLE"] }
+      { "Mission": 1, "Guns": ["MP7", "G34"] },
+      { "Mission": 2, "Guns": ["VECTOR", "M870"] },
+      { "Mission": 3, "Guns": ["AK74", "G18"] },
+      { "Mission": 4, "Guns": ["TR1", "P90"] },
+      { "Mission": 5, "Guns": ["SG4", "C1911"] },
+      { "Mission": 6, "Guns": ["SR25", "VSR"] },
+      { "Mission": 7, "Guns": ["M249"] },
+      { "Mission": 8, "Guns": ["DEAGLE"] }
     ]
   },
   "Credits": [

@@ -47,6 +47,11 @@ namespace AirsoftCampaign
 		FString Title;
 		/** Long package name of the map, e.g. /Game/Maps/L_VelvetClub. */
 		FString MapPath;
+		/** Extra URL options for the map, e.g. "?Night", "?Dawn?Reverse" (time of day, swapped spawn sides). */
+		FString Options;
+		/** Played instead while MapPath hasn't been built yet (a map still in production), with its own options. */
+		FString FallbackMap;
+		FString FallbackOptions;
 		/** Narrated story lines that open the mission (cinematic subtitles). */
 		TArray<FString> Intro;
 		/** Objective line on the HUD. */
@@ -93,8 +98,11 @@ namespace AirsoftCampaign
 	/** How hard enemies hit the player at each difficulty (the "bot skill" setting). */
 	ANDREWSAIRSOFT_API float EnemyDamageScale(EAirsoftBotSkill Skill);
 
-	/** URL options that open a mission with the campaign referee (bFromCheckpoint: resume at the saved checkpoint). */
+	/** URL options that open a mission with the campaign referee (bFromCheckpoint: resume at the saved checkpoint),
+	 *  plus the mission's own options (those of its fallback map when that is the one played). */
 	ANDREWSAIRSOFT_API FString MissionOptions(int32 Number, bool bFromCheckpoint = false);
+	/** The map a mission opens: its MapPath, or its FallbackMap while MapPath doesn't exist yet. */
+	ANDREWSAIRSOFT_API FString MissionMap(int32 Number);
 	/** Voice-over sound key, e.g. VoiceKey(2, "I1") -> VO_M2_I1. */
 	ANDREWSAIRSOFT_API FName VoiceKey(int32 Number, const FString& Line);
 
@@ -172,6 +180,10 @@ protected:
 	APawn* FindPlayerPawn() const;
 	/** The story's neon-noir look: an unbound post-process volume over the whole map. */
 	void ApplyNoirGrade();
+	/** ?Night / ?Dawn: re-lights a map built for another time of day (sun, sky, fog; sodium work lights at night). */
+	void ApplyTimeOfDay();
+	/** Andrew's car (a prop whose mesh is Car_Hero, or any actor tagged Car_Hero), if this map has one. */
+	AActor* FindHeroCar() const;
 	/** Plays this mission's voice line VO_M<n>_<Line> for the player; returns its length in seconds (0 if the sound isn't imported). */
 	float PlayVoice(const FString& Line);
 	/** Plays a voice line (2D, or at Location when bAt) and shows its subtitle; returns how long to hold the subtitle. */
@@ -262,10 +274,21 @@ protected:
 	TMap<TWeakObjectPtr<AController>, FCrewWatch> CrewWatch;
 	int32 CrewVoicesHanded = 0;
 
+	/** Mission options from the URL: time of day, and Andrew starting on the enemy's side (?Reverse). */
+	bool bNight = false;
+	bool bDawn = false;
+	bool bReverseSpawns = false;
+
 	/** Ending: the camera rises away from Andrew while the narrator closes the story, then the credits. */
 	bool bInEnding = false;
 	float EndingTime = 0.f;
 	float EndingLength = 8.f;
+	/** Ending drive-off: when the map has Andrew's car, he is gone from the frame and the car pulls away into the rain. */
+	TWeakObjectPtr<AActor> HeroCar;
+	FVector HeroCarFrom = FVector::ZeroVector;
+	FVector HeroCarDir = FVector::ForwardVector;
+	float HeroDriveStart = 0.f;
+	bool bHeroDriving = false;
 	/** The credits roll (an SAirsoftCredits) while it is on screen. */
 	TSharedPtr<SWidget> CreditsWidget;
 	/** On the way back to the main menu. */
