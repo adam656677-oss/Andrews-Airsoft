@@ -149,7 +149,7 @@ def bucket(A, x, y, z, P, mat, insert):
 def period_steering_wheel(A, at, r, P):
     parts = []
     path = [(r * math.cos(2 * math.pi * i / 48), r * math.sin(2 * math.pi * i / 48), 0) for i in range(48)]
-    parts.append(A.sweep(path, r=0.014, n=12, mat="lx_black", closed=True, piece=P))
+    parts.append(A.sweep(path, r=0.014, n=12, mat="lx_dash_hero", closed=True, piece=P))
     for a in (0, 120, 240):
         aa = math.radians(a - 90)
         parts.append(A.box((r * 0.9, 0.03, 0.006), at=(r * 0.45 * math.cos(aa), r * 0.45 * math.sin(aa), -0.01), rot=(0, 0, a - 90),

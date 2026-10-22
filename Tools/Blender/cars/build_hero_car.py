@@ -105,7 +105,7 @@ def night_set(objs, view, res, lens=40, margin=1.12):
         ob.scale = (5.6, 0.1, 0.004)
         ob.data.materials.append(line)
     # back wall + pillars (concrete), so the reflections have something to show
-    wall = _mat("Wall", (0.07, 0.075, 0.08), 0.8)
+    wall = _mat("Wall", (0.035, 0.038, 0.042), 0.85)
     bpy.ops.mesh.primitive_cube_add(size=1, location=(c.x - 4.2, c.y, 2.0))
     ob = bpy.context.active_object
     ob.scale = (0.3, 14, 4)
@@ -141,28 +141,28 @@ def night_set(objs, view, res, lens=40, margin=1.12):
             pk.look_at(o, target)
         return o
     # the single overhead lamp: a cool-white strip right above the roof
-    light("AREA", "Overhead", (c.x - 0.2, c.y, 3.05), 420, (0.80, 0.92, 1.0), size=(1.4, 0.18), target=(c.x - 0.2, c.y, 0))
+    light("AREA", "Overhead", (c.x - 0.2, c.y, 3.05), 160, (0.80, 0.92, 1.0), size=(1.4, 0.18), target=(c.x - 0.2, c.y, 0))
     bpy.ops.mesh.primitive_cube_add(size=1, location=(c.x - 0.2, c.y, 3.08))
     ob = bpy.context.active_object
     ob.scale = (1.42, 0.2, 0.04)
     em = bpy.data.materials.new("LampLens")
     e = em.node_tree.nodes.get("Principled BSDF")
     e.inputs["Emission Color"].default_value = (0.82, 0.93, 1.0, 1)
-    e.inputs["Emission Strength"].default_value = 18.0
+    e.inputs["Emission Strength"].default_value = 10.0
     ob.data.materials.append(em)
     # sodium pool spilling in from the side (reflects orange in the wet floor)
-    light("SPOT", "Sodium", (c.x + 1.8, c.y - 4.2, 2.8), 2600, (1.0, 0.5, 0.16), size=0.3, target=(c.x + 1.2, c.y - 1.2, 0), spot=70)
+    light("SPOT", "Sodium", (c.x + 1.8, c.y - 4.2, 2.8), 1400, (1.0, 0.5, 0.16), size=0.3, target=(c.x + 1.2, c.y - 1.2, 0), spot=70)
     # teal ambience: big soft fill from above-front, a cold rim from behind
-    light("AREA", "TealFill", (c.x + 5.0, c.y + 3.0, 2.6), 520, (0.15, 0.6, 0.62), size=(4.0, 2.0), target=c)
-    light("AREA", "Rim", (c.x - 3.6, c.y + 2.6, 1.8), 700, (0.45, 0.75, 0.95), size=(1.5, 1.0), target=c)
-    light("AREA", "Kick", (c.x + 2.0, c.y - 3.5, 0.5), 160, (0.2, 0.55, 0.7), size=(2.0, 0.6), target=(c.x, c.y, 0.5))
+    light("AREA", "TealFill", (c.x + 5.0, c.y + 3.0, 2.6), 170, (0.15, 0.6, 0.62), size=(4.0, 2.0), target=c)
+    light("AREA", "Rim", (c.x - 3.6, c.y + 2.6, 1.8), 420, (0.45, 0.75, 0.95), size=(1.5, 1.0), target=c)
+    light("AREA", "Kick", (c.x + 2.0, c.y - 3.5, 0.5), 90, (0.2, 0.55, 0.7), size=(2.0, 0.6), target=(c.x, c.y, 0.5))
     # thin haze for the shafts
     vol = bpy.data.materials.new("Haze")
     vt = vol.node_tree
     vt.nodes.clear()
     out = vt.nodes.new("ShaderNodeOutputMaterial")
     pv = vt.nodes.new("ShaderNodeVolumePrincipled")
-    pv.inputs["Density"].default_value = 0.006
+    pv.inputs["Density"].default_value = 0.0025
     pv.inputs["Color"].default_value = (0.7, 0.85, 0.9, 1)
     vt.links.new(pv.outputs[0], out.inputs["Volume"])
     bpy.ops.mesh.primitive_cube_add(size=1, location=(c.x, c.y, 1.55))
@@ -176,7 +176,7 @@ def night_set(objs, view, res, lens=40, margin=1.12):
     cam.data.sensor_width = 36
     bc._frame(cam, lo, hi, view, lens, res[0] / res[1], margin)
     scn.cycles.volume_bounces = 1
-    scn.cycles.volume_step_rate = 4.0
+    scn.cycles.volume_step_rate = 10.0
     return cam
 
 
@@ -219,13 +219,13 @@ def main(argv):
         entry["DisplayName"] = hero_car.DISPLAY_NAME
         pk.update_json(build_club.JSON_PATH, AID, entry)
     if not one or "--night" in flags:
-        night_shot("Hero_4K.jpg", (1.0, -0.62, 0.12), (3840, 2160), samples or 64, lens=38)
+        night_shot("Hero_4K.jpg", (1.0, -0.62, 0.12), (3840, 2160), samples or 32, lens=38)
     if not one or "--rear" in flags:
-        night_shot("Hero_Rear34.jpg", (-1.0, -0.7, 0.16), (1920, 1080), samples or 64, lens=40)
+        night_shot("Hero_Rear34.jpg", (-1.0, -0.7, 0.16), (1920, 1080), samples or 48, lens=40)
     if not one or "--studio" in flags:
         bc.product_shot(AID, samples=samples or 80)
     if not one or "--lineup" in flags:
-        lineup(samples=samples or 56)
+        lineup(samples=samples or 40)
 
 
 if __name__ == "__main__":
