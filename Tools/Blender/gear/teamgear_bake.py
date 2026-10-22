@@ -107,17 +107,18 @@ def wave_scale(period):
 # Layered over a zone's procedural pattern: the scan's height adds the real weave / grain relief, its
 # luminance (relative to its own ~2 cm average) shades the colour and its roughness modulates the zone's.
 # Only relative detail is used, so tinted zones stay neutral grey and the colourway tint in game is
-# unchanged.  zone: (material id, height weight, luminance weight, roughness weight)
+# unchanged.  zone: (material id, height weight, luminance weight, roughness weight[, scale]); scale < 1
+# shrinks the scan (Fabric061's basket weave reads as a checkerboard at its catalogued 40 cm).
 SCANS = {
     "wool": ("ClothWool", 0.65, 0.9, 0.5),
     "wool_edge": ("ClothWool", 0.65, 0.9, 0.5),
     "shirt": ("ClothPoplin", 0.6, 0.7, 0.4),
     "silk": ("ClothSilk", 0.6, 0.8, 0.6),
     "pocket_sq": ("ClothSilk", 0.6, 0.8, 0.6),
-    "cordura": ("ClothCordura", 0.6, 0.8, 0.5),
-    "cordura_pad": ("ClothCordura", 0.6, 0.8, 0.5),
-    "armband": ("ClothCordura", 0.55, 0.7, 0.4),
-    "label": ("ClothCordura", 0.4, 0.5, 0.3),
+    "cordura": ("ClothCordura", 0.6, 0.8, 0.5, 0.3),
+    "cordura_pad": ("ClothCordura", 0.6, 0.8, 0.5, 0.3),
+    "armband": ("ClothCordura", 0.55, 0.7, 0.4, 0.3),
+    "label": ("ClothCordura", 0.4, 0.5, 0.3, 0.3),
     "webbing": ("ClothWebbing", 0.5, 0.7, 0.4),
     "binding": ("ClothWebbing", 0.45, 0.6, 0.4),
     "webbing_black": ("ClothWebbing", 0.5, 0.7, 0.4),
@@ -214,11 +215,13 @@ def scan_layer(g, zname):
     None for zones without one."""
     if zname not in SCANS or not scans_enabled():
         return None
-    mid, wh, wl, wr = SCANS[zname]
-    sd = scan_detail(mid, g.tex_m)
+    mid, wh, wl, wr, *rest = SCANS[zname]
+    scale = rest[0] if rest else 1.0
+    sd = scan_detail(mid, g.tex_m / scale)  # pre-filtered for the texel size at the shrunk scale
     if sd is None:
         return None
     img, tile = sd
+    tile *= scale
     nb = g.nb
     t = nb.node("ShaderNodeTexImage", image=img, interpolation="Linear", projection="BOX", extension="REPEAT")
     t.projection_blend = 0.3

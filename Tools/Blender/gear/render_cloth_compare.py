@@ -6,7 +6,7 @@ Close-up before / after renders of the cloth and leather on the suit and the tea
     (re-bake: build_suit.py -- Suit --no-render ; build_teamgear.py -- <ids> --no-render)
     python Tools/Blender/gear/render_cloth_compare.py -- --tag after      # renders again, then the sheet
     python Tools/Blender/gear/render_cloth_compare.py -- --sheet          # only rebuild the sheet
-    flags: --samples N (default 64), --res W H (default 1600 1000)
+    flags: --samples N (default 64), --res W H (default 1600 1000), --only lapel,shoe,carrier
 
 Every shot uses build_suit's noir rig at full texture resolution (no 2K proxies), so the baked
 weave / grain is what shows.  The shots land in <scratch>/cloth_<tag>_<shot>.png; the sheet puts
@@ -56,9 +56,11 @@ def dress(spec, coll):
     return bt.import_asset(aid, coll, bt.tints_for(aid, team, cwi), proxy_res=4096)
 
 
-def render_tag(tag, samples, res):
+def render_tag(tag, samples, res, only=None):
     os.makedirs(SCRATCH, exist_ok=True)
     for name, (_label, spec, tgt, vd, dist, lens) in SHOTS.items():
+        if only and name not in only:
+            continue
         bs.reset_scene()
         coll = bpy.data.collections.new("R")
         bpy.context.scene.collection.children.link(coll)
@@ -132,7 +134,8 @@ def main(argv):
     res = (int(argv[argv.index("--res") + 1]), int(argv[argv.index("--res") + 2])) if "--res" in argv else (1600, 1000)
     if "--tag" in argv:
         t = argv[argv.index("--tag") + 1]
-        render_tag(t, samples, res)
+        only = argv[argv.index("--only") + 1].split(",") if "--only" in argv else None
+        render_tag(t, samples, res, only)
         if t == "after":
             sheet()
     if "--sheet" in argv:
