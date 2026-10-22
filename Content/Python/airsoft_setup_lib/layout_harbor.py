@@ -216,11 +216,15 @@ def build(L=None):
     # Blue / Andrew starts on the gate apron (the first one is Andrew's story start beside the booth)
     starts = [(-44.6, -6.0)]
     for x in (-47.6, -45.6):
-        for y in (-3.6, -1.6, 1.6, 3.6, 5.6):
+        for y in (1.2, 3.2, 5.2, 7.2, 9.2):
             starts.append((x, y))
-    starts.append((-43.4, 3.0))
+    starts.append((-43.4, 4.2))
     for (x, y) in starts:
         it.append(L.start(x, y, "Blue", 0.0))
+    # Andrew's '69 Fastback beside the booth, nose east down the gate lane. The ending camera drives it off: the
+    # strip y -3.6..-1.6 stays clear for 30 m ahead (through the gate, under the barrier arm's tip, down the
+    # central lane's north edge to x -12). Tagged "Car_Hero" (+ "Car_Hero_Gate") for the cutscene code.
+    it.append(prop("Car_Hero", -44.4, -2.6, 0.0, 0.0, tint="HeroGunmetal", pieces=PARKED, tags=["Car_Hero", "Car_Hero_Gate"]))
 
     # ---------------------------------------------------------------- yard containers + lane cover
     it += _container_stacks(L, rng)
@@ -308,16 +312,14 @@ def _lane_cover(L, rng):
     # the box hangs under the spreader (SpreaderBottom: local +X 7.8 m, z 5.82 m; yaw 180 puts it at -X), across
     # the lane with 3.2 m of headroom under it
     it.append(prop("Harbor_Container40", rs_x - 7.8, rs_y, 5.82 - C40_H, 90.0, tint="Rust"))
-    # a 20 ft box parked across the lane mouth inside the gate: screens the gate apron from the length of the lane
-    it.append(prop("Container_20ft", -35.8, 0.0, 0.0, 90.0, tint="Sand"))
     it += [prop("BoxTruck", -29.5, 1.6, 0.0, 4.0, tint="Grey", pieces=PARKED),
-           prop("Garage_JerseyBarrier", -22.0, -2.2, 0.0, 0.0), prop("Garage_JerseyBarrier", -18.4, 2.4, 0.0, 15.0),
+           prop("Garage_JerseyBarrier", -22.0, 1.9, 0.0, 0.0), prop("Garage_JerseyBarrier", -18.0, 2.9, 0.0, 15.0),
            prop("PalletStack", -24.6, 2.8, 0.0, 12.0), prop("PalletStack", -24.6, 2.8, 0.58, 30.0),
            prop("OilDrum", -2.4, 2.9, 0.0, 0.0, tint="Red"), prop("OilDrum", -1.8, 3.4, 0.0, 40.0, tint="Red"),
            prop("Crate_Wood", 2.2, -2.8, 0.0, 8.0), prop("Crate_Wood", 2.2, -2.8, 0.62, -6.0),
            prop("Garage_JerseyBarrier", 7.4, 2.0, 0.0, 0.0), prop("PalletStack", 11.8, -2.4, 0.0, 0.0),
            prop("Harbor_Forklift", 14.6, 1.8, 0.0, 160.0), prop("Garage_Cone", -6.6, -3.2, 0.0, 0.0),
-           prop("Garage_Cone", 4.6, 3.3, 0.0, 30.0), prop("TireStack", -33.6, -2.9, 0.0, 0.0)]
+           prop("Garage_Cone", 4.6, 3.3, 0.0, 30.0), prop("TireStack", -35.4, 3.8, 0.0, 0.0)]
     # north lane (y -22..-16)
     it += [prop("Garage_JerseyBarrier", -32.0, -20.4, 0.0, 10.0), prop("PalletStack", -21.0, -17.6, 0.0, 0.0),
            prop("Crate_Wood", -21.0, -17.6, 0.58, 15.0), prop("OilDrum", -11.0, -21.0, 0.0, 0.0, tint="Blue"),
@@ -355,14 +357,16 @@ def _warehouse(L, rng):
     it = []
     x0, x1, y0, y1 = WH_X0, WH_X1, WH_Y0, WH_Y1
     it.append(slab(x0, y0, x1, y1, -0.05, 0.02, "ConcreteFloor", name="ShedFloor", tint="Grey"))
-    # west wall (yard side, outside = -X): 7 bays, roller doors at bays 1 and 3 (y -18, -10)
+    # west wall (yard side, outside = -X): 7 bays, roller doors at bays 1 and 3 (y -16, -8)
     for i in range(7):
         yc = y0 + 2.0 + i * 4.0
         aid = "Harbor_RollerDoor" if i in (1, 3) else "Harbor_CladdingPanel_4m"
         it.append(prop(aid, x0, yc, 0.0, 180.0, tint=None if aid == "Harbor_RollerDoor" else "Teal"))
-    # east wall (quay side, outside = +X): solid
+    # east wall (quay side, outside = +X): the Keeper's way out, a roller door at bay 2 (y -12) onto the quay and
+    # the freighter's gangway
     for i in range(7):
-        it.append(prop("Harbor_CladdingPanel_4m", x1, y0 + 2.0 + i * 4.0, 0.0, 0.0, tint="Teal"))
+        aid = "Harbor_RollerDoor" if i == 2 else "Harbor_CladdingPanel_4m"
+        it.append(prop(aid, x1, y0 + 2.0 + i * 4.0, 0.0, 0.0, tint=None if aid == "Harbor_RollerDoor" else "Teal"))
     # north / south walls (outside = -Y / +Y): 6 bays; a roller door on the south side (to the crane apron)
     for i in range(6):
         xc = x0 + 2.0 + i * 4.0
@@ -388,9 +392,10 @@ def _warehouse(L, rng):
             else:
                 res.append(blocker(s0, fixed - 0.15, s1, fixed + 0.15, zb, 14.0))
         return res
-    it += wall_block("y", x0, y0, y1, [(-19.8, -16.2), (-11.8, -8.2)])
+    it += wall_block("y", x0, y0, y1, [(-17.8, -14.2), (-9.8, -6.2)])
+    it += wall_block("y", x1, y0, y1, [(-13.8, -10.2)])
     it += wall_block("x", y1, x0, x1, [(30.2, 33.8)])
-    it += [blocker(x1 - 0.15, y0, x1 + 0.15, y1, 0.0, 14.0), blocker(x0, y0 - 0.15, x1, y0 + 0.15, 0.0, 14.0)]
+    it += [blocker(x0, y0 - 0.15, x1, y0 + 0.15, 0.0, 14.0)]
     # trusses every 4 m (span along X, scaled to 24 m) and the roof: sheets with two broken gaps over the
     # floor (rain falls through; the key light shafts in through the east gap)
     for i in range(8):
@@ -457,12 +462,18 @@ def _warehouse(L, rng):
     it += [prop("Crate_Wood", 36.0, -16.0, MEZ_Z, 0.0), prop("PalletStack", 38.6, -16.0, MEZ_Z, 0.0)]
 
     # --- lighting inside: the hard key through the east roof gap, four hanging work lamps (unshadowed), neon
-    it.append(L.light("spot", 37.6, -1.6, roof_z + 2.6, pitch=-70.0, yaw=200.0, color=(0.6, 0.82, 1.0), cd=900.0,
-                      radius=26.0, cone=(10, 18), shadows=True, vol=4.0, src=4.0))
-    for (x, y) in ((27.0, -15.0), (27.0, 1.0), (33.0, -6.0), (35.0, 2.0)):
+    it.append(L.light("spot", 37.6, -1.6, roof_z + 2.6, pitch=-70.0, yaw=200.0, color=(0.6, 0.82, 1.0), cd=2600.0,
+                      radius=26.0, cone=(8, 14), shadows=True, vol=6.0, src=3.0))
+    # backlight: a quay flood outside the open east door throws sodium into the haze (the Keeper's exit), and a
+    # red beacon over the door
+    it += [L.light("spot", x1 + 1.6, -12.0, 4.2, pitch=-12.0, yaw=180.0, color="Sodium", cd=90.0, radius=24.0,
+                   cone=(22, 40), shadows=False, vol=4.0, src=25.0),
+           L.box(x1 - 0.2, -12.0, 5.6, 0.25, 0.25, 0.25, "Emissive:Red", glow=40.0, coll=False, cast=False, name="DoorBeacon"),
+           L.light("point", x1 - 0.5, -12.0, 5.4, color="Red", cd=2.0, radius=8.0, shadows=False, src=10.0, vol=2.0)]
+    for (x, y) in ((27.0, -15.0), (27.0, 1.0)):
         it += [L.box(x, y, 6.2, 0.5, 0.5, 0.25, "PaintedSteel", tint="Black", coll=False, name="WorkLamp"),
-               L.box(x, y, 6.06, 0.42, 0.42, 0.02, "Emissive:Sodium", glow=18.0, coll=False, cast=False, name="WorkLampLens"),
-               L.light("point", x, y, 5.9, color="Sodium", cd=8.0, radius=9.0, shadows=False, src=20.0)]
+               L.box(x, y, 6.06, 0.42, 0.42, 0.02, "Emissive:Sodium", glow=6.0, coll=False, cast=False, name="WorkLampLens"),
+               L.light("point", x, y, 5.9, color="Sodium", cd=4.0, radius=8.0, shadows=False, src=20.0)]
     it += [L.text(x0 - 0.12, -14.0, 6.6, 180.0, "SHED  7", size=70.0, color="Cyan", glow=5.0),
            L.box(x0 - 0.1, -8.0, WH_H - 0.25, 0.06, 27.6, 0.06, "Emissive:Teal", glow=10.0, coll=False, cast=False,
                  name="NeonEaves"),
@@ -513,6 +524,21 @@ def _ship(L, rng):
                 it.append(L.slab(52.94, y, 53.0, y + 1.0, z, z + 1.0, "Emissive:Warm", glow=rng.uniform(1.5, 3.0), coll=False,
                                  cast=False, name="Porthole"))
     it.append(L.slab(50.94, 40.4, 51.0, 43.6, 25.0, 26.4, "Emissive:Cool", glow=2.5, coll=False, cast=False, name="BridgeGlass"))
+    # the gangway the Keeper runs for: an accommodation ladder up the hull from the quay opposite Shed 7's east door
+    ax, ay, az, bx, by, bz = 49.0, -15.0, 0.3, 51.6, -5.0, 9.0
+    run = math.hypot(bx - ax, by - ay)
+    yaw = math.degrees(math.atan2(by - ay, bx - ax))
+    pitch = -math.degrees(math.atan2(bz - az, run))
+    ln = math.hypot(run, bz - az)
+    it += [L.box((ax + bx) / 2, (ay + by) / 2, (az + bz) / 2, ln, 1.0, 0.12, "DiamondPlate", yaw=yaw, pitch=pitch, coll=False,
+                 name="Gangway"),
+           L.box((ax + bx) / 2, (ay + by) / 2, (az + bz) / 2 + 0.9, ln, 0.05, 0.05, "PaintedSteel", tint="White", yaw=yaw,
+                 pitch=pitch, coll=False, name="GangwayRail"),
+           L.slab(51.0, -6.2, 52.6, -3.8, 8.9, 9.05, "DiamondPlate", coll=False, name="GangwayHead"),
+           L.box(52.2, -5.0, 11.2, 0.5, 0.35, 0.3, "Emissive:Sodium", glow=30.0, coll=False, cast=False, name="DeckFlood"),
+           L.light("spot", 52.0, -5.0, 11.0, pitch=-60.0, yaw=200.0, color="Sodium", cd=40.0, radius=16.0, cone=(35, 60),
+                   shadows=False, vol=1.5),
+           L.box(48.6, -15.6, 2.4, 0.3, 0.3, 0.3, "Emissive:Red", glow=20.0, coll=False, cast=False, name="GangwayBeacon")]
     for (x, y, z, c) in ((52.0, 63.0, 9.6, "Red"), (59.0, 48.0, 33.4, "Red"), (59.0, -94.0, 10.0, "White")):
         it.append(L.box(x, y, z, 0.35, 0.35, 0.35, "Emissive:" + c, glow=30.0, coll=False, cast=False, name="NavLight"))
     return it
