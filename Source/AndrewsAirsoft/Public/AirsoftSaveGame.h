@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/SaveGame.h"
+#include "InputCoreTypes.h"
 #include "AirsoftTypes.h"
 #include "AirsoftSaveGame.generated.h"
 
@@ -36,12 +37,22 @@ struct FAirsoftUserSettings
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) bool bThirdPersonStory = true;
 	/** Third person: camera over the left shoulder instead of the right. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) bool bLeftShoulder = false;
+	/** Story: subtitles for every voice line (the speaker's name and what they say). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) bool bSubtitles = true;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) FString LastJoinAddress;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) FString PlayerName;
 	/** When hosting: fill both teams with bots on match maps (AirsoftBots::TeamSize: 0 off, 1 4v4, 2 6v6, 3 8v8, 4 10v10). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 BotFill = 0;
 	/** When hosting: bot difficulty (EAirsoftBotSkill: 0 Easy .. 3 Expert). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 BotSkill = 1;
+	/** Story difficulty (EAirsoftDifficulty: 0 Recruit .. 3 Legend), picked on New Game. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 Difficulty = 1;
+	/** Team colours (AirsoftColors::EPalette): 0 standard, 1 red-green safe (deuteranopia / protanopia), 2 blue-yellow safe (tritanopia). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 ColorblindMode = 0;
+	/** Rebound keys: AirsoftKeyBindings slot name -> key. Slots not listed use their default. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) TMap<FName, FKey> KeyBindings;
+	/** The practice-range walkthrough has been finished once (Practice Range then opens free practice first). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) bool bTutorialDone = false;
 };
 
 UCLASS()
@@ -64,6 +75,14 @@ public:
 	/** Story campaign: the furthest mission unlocked (1-based) and whether the last one has been beaten. */
 	UPROPERTY() int32 CampaignReached = 1;
 	UPROPERTY() bool bCampaignFinished = false;
+	/** Story: the last mid-mission checkpoint (CheckpointMission 0 = none). Kills = crew down at the checkpoint;
+	 *  bCheckpointBoss = the boss fight; Andrew comes back at CheckpointLocation facing CheckpointYaw. */
+	UPROPERTY() int32 CheckpointMission = 0;
+	UPROPERTY() int32 CheckpointKills = 0;
+	UPROPERTY() int32 CheckpointIndex = 0;
+	UPROPERTY() bool bCheckpointBoss = false;
+	UPROPERTY() FVector CheckpointLocation = FVector::ZeroVector;
+	UPROPERTY() float CheckpointYaw = 0.f;
 	UPROPERTY() FAirsoftLoadout Loadout;
 	/** Saved attachments/finish per weapon id, so swapping guns keeps each one's setup. */
 	UPROPERTY() TMap<FName, FAirsoftCustomization> Customizations;

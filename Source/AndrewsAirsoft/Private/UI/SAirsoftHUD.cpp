@@ -19,6 +19,7 @@
 #include "AirsoftUIWidgets.h"
 #include "AirsoftWeaponData.h"
 #include "SAirsoftNeon.h"
+#include "SAirsoftSubtitles.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/SOverlay.h"
 #include "Widgets/Layout/SBorder.h"
@@ -195,6 +196,14 @@ void SAirsoftHUD::Construct(const FArguments& InArgs, AAirsoftPlayerController* 
 		.Padding(FMargin(0.f, 270.f, 0.f, 0.f))
 		[
 			BuildAnnouncement()
+		]
+		// Story subtitles, above the cinematic letterbox.
+		+ SOverlay::Slot()
+		.HAlign(HAlign_Center)
+		.VAlign(VAlign_Bottom)
+		.Padding(FMargin(0.f, 0.f, 0.f, 150.f))
+		[
+			SNew(SAirsoftSubtitles, InPC)
 		]
 	];
 }

@@ -15,7 +15,13 @@
 // Who counts as an enemy comes from AAirsoftGameState::AreHostile (Gun Game:
 // everyone). Goals per mode: TDM / Elimination / Gun Game roam, Domination
 // takes points, VIP escorts or hunts the VIP.
-// Numbers per difficulty live in UAirsoftSettings (Project Settings > Game > Airsoft > Bots).
+// Tactical bots (story enemies; SetTactical) fight from cover instead of in the
+// open: they pick a spot that hides them crouched but lets them shoot standing
+// or from a step to the side, then cycle hide (reload) / peek (shoot). One bot
+// per team works round the side of the fight (flank). Cover is re-picked every
+// few seconds, a little closer each time for the bolder difficulties.
+// Numbers per difficulty live in UAirsoftSettings (Project Settings > Game > Airsoft > Bots);
+// how hard they push comes from AirsoftDifficulty::Aggression.
 
 #pragma once
 
@@ -27,6 +33,24 @@
 class AAirsoftCharacter;
 class AAirsoftObjective;
 class UAirsoftCombatComponent;
+
+/**
+ * The single difficulty setting (Easy, Normal, Hard, Expert) shared by story enemies and skirmish bots. Stored in the
+ * profile as FAirsoftUserSettings::BotSkill (0..3); the menus read and write that field.
+ */
+namespace AirsoftDifficulty
+{
+	/** The difficulty in effect for this world (Normal without a profile). */
+	ANDREWSAIRSOFT_API EAirsoftBotSkill Get(const UObject* WorldContext);
+	/** "EASY", "NORMAL", "HARD", "EXPERT". */
+	ANDREWSAIRSOFT_API FString Label(EAirsoftBotSkill Skill);
+	/** One line for the menu: what the setting changes. */
+	ANDREWSAIRSOFT_API FString Blurb(EAirsoftBotSkill Skill);
+	/** 0..1: how hard enemies push - shorter hides behind cover, longer peeks, more flanking, less backing off. */
+	ANDREWSAIRSOFT_API float Aggression(EAirsoftBotSkill Skill);
+	/** Story missions: share of an enemy hit's damage the player takes (the player has health there; matches are one-tag-out). */
+	ANDREWSAIRSOFT_API float PlayerDamageScale(EAirsoftBotSkill Skill);
+}
 
 enum class EAirsoftBotState : uint8
 {
@@ -69,6 +93,17 @@ public:
 
 	/** Server: a validated shot was fired somewhere on the map (hearing; BBs passing close by). */
 	void HearShot(AAirsoftCharacter* Shooter, const FVector& Origin, const FVector& Direction, bool bQuiet);
+
+	/**
+	 * Squad tactics: fight from cover (duck, reload, peek out to shoot), and one bot per team flanks.
+	 * On by default for story enemies (the campaign game mode); call this to force it either way.
+	 */
+	void SetTactical(bool bInTactical);
+	bool IsTactical() const { return bTactical; }
+	/** True while this bot is the one working round the side of the fight. */
+	bool IsFlanking() const { return bFlanker; }
+	/** True while this bot has a cover spot (other bots keep clear of it). */
+	bool HasCoverPoint(FVector& OutPoint) const;
 
 protected:
 	virtual void OnPossess(APawn* InPawn) override;
@@ -139,6 +174,42 @@ private:
 	void UpdateLook(AAirsoftCharacter* Me);
 	void LookAtPoint(const FVector& Point);
 	FVector ThreatPointFor(const AAirsoftCharacter* Me) const;
+
+	// Tactics (cover, peeking, flanking)
+	/** Drives stance and movement in a fight; false = no usable cover or too close, fight in the open. */
+	bool UpdateTactics(AAirsoftCharacter* Me, AAirsoftCharacter* Enemy, const FBotMemory& M, float Distance, bool bVisible);
+	/** Behind cover with the enemy out of sight: keep the cover cycle going instead of chasing. */
+	void HoldCoverBlind(AAirsoftCharacter* Me, AAirsoftCharacter* Enemy, const FBotMemory& M);
+	bool FindCover(const AAirsoftCharacter* Me, const FVector& Threat, float PreferredRange, FVector& OutCover, FVector& OutPeek, bool& bOutPeekStand) const;
+	bool FindFlankPoint(const AAirsoftCharacter* Me, const FVector& Threat, FVector& Out) const;
+	bool IsCoverTaken(const FVector& Point) const;
+	bool TryStartFlank(AAirsoftCharacter* Me, const FVector& Threat);
+	bool IsHiddenAt(const FVector& Floor, const FVector& Threat, const AAirsoftCharacter* Enemy) const;
+	bool CanShootFrom(const FVector& Floor, float EyeHeight, const FVector& Threat, const AAirsoftCharacter* Enemy) const;
+	void ClearTactics();
+
+	bool bTactical = false;
+	bool bTacticalSet = false;
+	/** 0..1 from the difficulty, with a per-bot spread. */
+	float Aggression = 0.45f;
+	bool bFlanker = false;
+	FVector FlankPoint = FVector::ZeroVector;
+	double FlankUntil = 0.0;
+	double NextFlankAt = 0.0;
+	bool bHasCover = false;
+	/** Where the bot hides (crouched) and where it shoots from (the same spot standing, or a step to the side). */
+	FVector CoverPoint = FVector::ZeroVector;
+	FVector PeekPoint = FVector::ZeroVector;
+	bool bPeekStand = true;
+	bool bAtCover = false;
+	bool bPeeking = false;
+	bool bPeekCutShort = false;
+	double CoverPhaseStart = 0.0;
+	double CoverPhaseUntil = 0.0;
+	double CoverExpiresAt = 0.0;
+	double NextCoverSearchAt = 0.0;
+	/** Each move to fresh cover may close in a little (aggressive bots advance by bounds). */
+	float CoverRange = 0.f;
 
 	EAirsoftBotSkill Skill = EAirsoftBotSkill::Normal;
 	bool bSkillSet = false;

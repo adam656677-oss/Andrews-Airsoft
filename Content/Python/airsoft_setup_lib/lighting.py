@@ -359,6 +359,8 @@ def spawn_fixture(spawn, aid, it, json_assets, world_of_local):
     over = it.get("light")
     if isinstance(over, dict):
         fx.update(over)
+    fx["cd"] = fx.get("cd", 5.0) * fx.pop("cd_scale", 1.0)        # layouts.trim_lights merges neighbours into one
+    fx["w"] = fx.get("w", 100.0) * fx.pop("w_scale", 1.0)
     pt = L.asset_point(aid, fx.get("point", "Light"), json_assets)
     if pt is None:
         mn, mx = L.asset_bounds(aid, json_assets)

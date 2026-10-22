@@ -7,6 +7,7 @@
 
 class SWidget;
 class AAirsoftPlayerController;
+class UAirsoftGameInstance;
 
 namespace AirsoftUI
 {
@@ -32,4 +33,13 @@ namespace AirsoftUI
 
 	/** The chat line (Enter / Y). Focusable; Enter sends, Tab switches everyone/team, Esc cancels. */
 	ANDREWSAIRSOFT_API TSharedRef<SWidget> MakeChatInput(AAirsoftPlayerController* PC);
+
+	/**
+	 * Full-screen loading card shown by the movie player between maps. Pure Slate (no UObjects):
+	 * it is painted from the loading thread while the world is torn down and rebuilt.
+	 */
+	ANDREWSAIRSOFT_API TSharedRef<SWidget> MakeLoadingScreen(const FString& Title, const FString& Subtitle);
+
+	/** Practice-range walkthrough prompts (move, aim, shoot, reload, grenade, slide); added over the HUD. */
+	ANDREWSAIRSOFT_API TSharedRef<SWidget> MakeWalkthrough(UAirsoftGameInstance* GameInstance);
 }

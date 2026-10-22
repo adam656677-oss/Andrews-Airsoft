@@ -394,9 +394,9 @@ def analyse(L, m, assets, materials, plans=True):
         if len(teams["None"]) < 16:
             errors.append("staging needs >= 16 neutral starts (has %d)" % len(teams["None"]))
         disp = [it["display"] for it in items if it["t"] == "prop" and it.get("display")]
-        if len(disp) != 14 or set(disp) != set(L.WEAPON_IDS):
-            errors.append("armory needs 14 displays, one per weapon (has %d: missing %s)" %
-                          (len(disp), sorted(set(L.WEAPON_IDS) - set(disp))))
+        if len(disp) != len(L.WEAPON_IDS) or set(disp) != set(L.WEAPON_IDS):
+            errors.append("armory needs %d displays, one per weapon (has %d: missing %s)" %
+                          (len(L.WEAPON_IDS), len(disp), sorted(set(L.WEAPON_IDS) - set(disp))))
         fl = m.get("firing_line_x", 0.0)
         targets = [it for it in items if it["t"] == "target"]
         for d in (10, 25, 40, 60):

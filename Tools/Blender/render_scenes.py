@@ -908,6 +908,8 @@ class Builder:
             return
         if isinstance(it.get("light"), dict):
             fx.update(it["light"])
+        fx["cd"] = fx.get("cd", 5.0) * fx.pop("cd_scale", 1.0)    # merged neighbours (layouts.trim_lights)
+        fx["w"] = fx.get("w", 100.0) * fx.pop("w_scale", 1.0)
         sc = scale3(it.get("scale"))
         pt = point_of(aid, fx.get("point", "Light"))
         if pt is None:

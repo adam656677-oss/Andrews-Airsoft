@@ -139,7 +139,7 @@ const CAST = [
     tags: ["Male, 40s", "Quiet", "Economical", "Controlled"],
     dir: "A man who stopped wasting words years ago. Calm under fire, tired rather than angry. Never shouts unless hurt. Short lines, often under his breath, as if talking to himself.",
     ph: "Effort sounds (breaths, grunts) matter as much as words. Record them dry.",
-    tts: "Not in game yet (draft: Kokoro am_fenrir 70% + am_onyx 30%)" },
+    tts: "Kokoro TTS: am_fenrir 70% + am_onyx 30%, speed 0.95, dry" },
   { id: "kade", name: "Kade, the Collector", role: "Boss, Mission 1",
     tags: ["Male, 30s", "Cocky", "Street-hard", "Fast"],
     dir: "A hired collector who thinks this is an easy job. Smirking, loud, a bit of swagger. Gets rattled and ugly as the fight turns against him.",
@@ -164,7 +164,7 @@ const CAST = [
     tags: ["Male and female, 20s to 40s", "Shouted", "Panicked", "Profane"],
     dir: "Three distinct hired guns. Voice A: aggressive and loud. Voice B: nervous, younger, voice cracks. Voice C: older veteran, gravelly, calm until he isn't. Shouted across a room, with gunfire assumed around them.",
     ph: "Record shouted at full effort but back off the mic to avoid clipping.",
-    tts: "Not in game yet (draft: Kokoro am_eric / am_liam / am_echo + am_onyx)" }
+    tts: "Kokoro TTS: A am_eric, B am_liam, C am_echo 60% + am_onyx 40%, dry" }
 ];
 
 // status: "live" = already plays in the game today; "new" = written, wired in next build
@@ -191,65 +191,65 @@ const LINES = [
   { c: "narrator", f: "VO_M4_Outro", w: "Campaign ending", s: "live", t: "The Ledger's debt is paid in full. Andrew goes home. For now.", p: "“For now” is almost a smile." },
 
   // Andrew - mission openers
-  { c: "andrew", f: "VO_M1_Andrew_Start", w: "Mission 1, as the cinematic ends", s: "new", t: "Five years. Couldn't even give me five years.", p: "Under his breath, more tired than angry." },
-  { c: "andrew", f: "VO_M2_Andrew_Start", w: "Mission 2, as the cinematic ends", s: "new", t: "Should've let it lie, Varga." },
-  { c: "andrew", f: "VO_M3_Andrew_Start", w: "Mission 3, as the cinematic ends", s: "new", t: "Top floor. Let's get this done." },
-  { c: "andrew", f: "VO_M4_Andrew_Start", w: "Mission 4, as the cinematic ends", s: "new", t: "Last one. Make it count." },
+  { c: "andrew", f: "VO_M1_Andrew_Start", w: "Mission 1, as the cinematic ends", s: "live", t: "Five years. Couldn't even give me five years.", p: "Under his breath, more tired than angry." },
+  { c: "andrew", f: "VO_M2_Andrew_Start", w: "Mission 2, as the cinematic ends", s: "live", t: "Should've let it lie, Varga." },
+  { c: "andrew", f: "VO_M3_Andrew_Start", w: "Mission 3, as the cinematic ends", s: "live", t: "Top floor. Let's get this done." },
+  { c: "andrew", f: "VO_M4_Andrew_Start", w: "Mission 4, as the cinematic ends", s: "live", t: "Last one. Make it count." },
   // Andrew - replies to bosses
-  { c: "andrew", f: "VO_M1_Andrew_Boss", w: "After Kade's taunt", s: "new", t: "Then come and collect." },
-  { c: "andrew", f: "VO_M2_Andrew_Boss", w: "After Dorian's taunt", s: "new", t: "I'll send him yours back. In pieces." },
-  { c: "andrew", f: "VO_M3_Andrew_Boss", w: "After Mara's taunt", s: "new", t: "I tried, Mara. You people wouldn't let me.", p: "The only line with old history in it. Quieter." },
-  { c: "andrew", f: "VO_M4_Andrew_Boss", w: "After Varga's taunt", s: "new", t: "You came to my door first, Silas." },
+  { c: "andrew", f: "VO_M1_Andrew_Boss", w: "After Kade's taunt", s: "live", t: "Then come and collect." },
+  { c: "andrew", f: "VO_M2_Andrew_Boss", w: "After Dorian's taunt", s: "live", t: "I'll send him yours back. In pieces." },
+  { c: "andrew", f: "VO_M3_Andrew_Boss", w: "After Mara's taunt", s: "live", t: "I tried, Mara. You people wouldn't let me.", p: "The only line with old history in it. Quieter." },
+  { c: "andrew", f: "VO_M4_Andrew_Boss", w: "After Varga's taunt", s: "live", t: "You came to my door first, Silas." },
   // Andrew - barks
-  { c: "andrew", f: "VO_Andrew_Reload_1", w: "Reloading", s: "new", t: "Changing." },
-  { c: "andrew", f: "VO_Andrew_Reload_2", w: "Reloading", s: "new", t: "Mag." },
-  { c: "andrew", f: "VO_Andrew_Reload_3", w: "Reloading", s: "new", t: "Loading." },
-  { c: "andrew", f: "VO_Andrew_Hurt_1", w: "Health below 30%", s: "new", t: "Not yet.", p: "Through gritted teeth." },
-  { c: "andrew", f: "VO_Andrew_Hurt_2", w: "Health below 30%", s: "new", t: "Keep moving. Keep moving." },
-  { c: "andrew", f: "VO_Andrew_Hurt_3", w: "Health below 30%", s: "new", t: "Shit. Shit.", p: "Sharp exhale, pain." },
-  { c: "andrew", f: "VO_Andrew_Kill_1", w: "Now and then after a kill", s: "new", t: "Stay down." },
-  { c: "andrew", f: "VO_Andrew_Kill_2", w: "Now and then after a kill", s: "new", t: "Should've walked away." },
-  { c: "andrew", f: "VO_Andrew_Kill_3", w: "Now and then after a kill", s: "new", t: "That's one." },
-  { c: "andrew", f: "VO_Andrew_Kill_4", w: "Last enemy before the boss", s: "new", t: "Who's next?" },
+  { c: "andrew", f: "VO_Andrew_Reload_1", w: "Reloading", s: "live", t: "Changing." },
+  { c: "andrew", f: "VO_Andrew_Reload_2", w: "Reloading", s: "live", t: "Mag." },
+  { c: "andrew", f: "VO_Andrew_Reload_3", w: "Reloading", s: "live", t: "Loading." },
+  { c: "andrew", f: "VO_Andrew_Hurt_1", w: "Health below 30%", s: "live", t: "Not yet.", p: "Through gritted teeth." },
+  { c: "andrew", f: "VO_Andrew_Hurt_2", w: "Health below 30%", s: "live", t: "Keep moving. Keep moving." },
+  { c: "andrew", f: "VO_Andrew_Hurt_3", w: "Health below 30%", s: "live", t: "Shit. Shit.", p: "Sharp exhale, pain." },
+  { c: "andrew", f: "VO_Andrew_Kill_1", w: "Now and then after a kill", s: "live", t: "Stay down." },
+  { c: "andrew", f: "VO_Andrew_Kill_2", w: "Now and then after a kill", s: "live", t: "Should've walked away." },
+  { c: "andrew", f: "VO_Andrew_Kill_3", w: "Now and then after a kill", s: "live", t: "That's one." },
+  { c: "andrew", f: "VO_Andrew_Kill_4", w: "Last enemy before the boss", s: "live", t: "Who's next?" },
   { c: "andrew", f: "VO_Andrew_Efforts", w: "Getting hit, jumping, sliding", s: "new", t: "(Six short efforts: hit grunt x3, jump breath, slide exhale, heavy landing)", p: "One file, a second of silence between each." },
 
   // Kade
   { c: "kade", f: "VO_M1_Boss", w: "Kade steps in", s: "live", t: "Nothing personal, Andrew. The Ledger always collects." },
-  { c: "kade", f: "VO_M1_Boss_Mid", w: "Kade at half health", s: "new", t: "Hold still, you old bastard!", p: "Anger covering fear." },
-  { c: "kade", f: "VO_M1_Boss_Death", w: "Kade goes down", s: "new", t: "Should've... asked for more money.", p: "Wet, fading, almost a laugh." },
+  { c: "kade", f: "VO_M1_Boss_Mid", w: "Kade at half health", s: "live", t: "Hold still, you old bastard!", p: "Anger covering fear." },
+  { c: "kade", f: "VO_M1_Boss_Death", w: "Kade goes down", s: "live", t: "Should've... asked for more money.", p: "Wet, fading, almost a laugh." },
 
   // Dorian
   { c: "dorian", f: "VO_M2_Boss", w: "Dorian steps in", s: "live", t: "Mister Varga sends his regards. And his best." },
-  { c: "dorian", f: "VO_M2_Boss_Mid", w: "Dorian at half health", s: "new", t: "Do you have any idea what this carpet cost? Kill him!", p: "Offended first, then a scream at his men." },
-  { c: "dorian", f: "VO_M2_Boss_Death", w: "Dorian goes down", s: "new", t: "He'll... burn your whole life down for this.", p: "The polish is gone." },
+  { c: "dorian", f: "VO_M2_Boss_Mid", w: "Dorian at half health", s: "live", t: "Do you have any idea what this carpet cost? Kill him!", p: "Offended first, then a scream at his men." },
+  { c: "dorian", f: "VO_M2_Boss_Death", w: "Dorian goes down", s: "live", t: "He'll... burn your whole life down for this.", p: "The polish is gone." },
 
   // Mara
   { c: "mara", f: "VO_M3_Boss", w: "Mara steps in", s: "live", t: "You should have stayed retired, Andrew." },
-  { c: "mara", f: "VO_M3_Boss_Mid", w: "Mara at half health", s: "new", t: "You're slower than you used to be. Pin him down. Now.", p: "First half to Andrew, second half an order." },
-  { c: "mara", f: "VO_M3_Boss_Death", w: "Mara goes down", s: "new", t: "Damn you... Andrew.", p: "Quiet. Something like regret." },
+  { c: "mara", f: "VO_M3_Boss_Mid", w: "Mara at half health", s: "live", t: "You're slower than you used to be. Pin him down. Now.", p: "First half to Andrew, second half an order." },
+  { c: "mara", f: "VO_M3_Boss_Death", w: "Mara goes down", s: "live", t: "Damn you... Andrew.", p: "Quiet. Something like regret." },
 
   // Varga
   { c: "varga", f: "VO_M4_Boss", w: "Varga steps in", s: "live", t: "Five years, Andrew. Five years, and you came back for this?" },
-  { c: "varga", f: "VO_M4_Boss_Mid", w: "Varga at half health", s: "new", t: "You think killing me closes the Ledger? It's a book, Andrew. Somebody always picks it up.", p: "Calm, even wounded. He believes it." },
-  { c: "varga", f: "VO_M4_Boss_Death", w: "Varga goes down", s: "new", t: "Then you... write the next page.", p: "A last, ugly smile." },
+  { c: "varga", f: "VO_M4_Boss_Mid", w: "Varga at half health", s: "live", t: "You think killing me closes the Ledger? It's a book, Andrew. Somebody always picks it up.", p: "Calm, even wounded. He believes it." },
+  { c: "varga", f: "VO_M4_Boss_Death", w: "Varga goes down", s: "live", t: "Then you... write the next page.", p: "A last, ugly smile." },
 
   // Crew barks
-  { c: "crew", f: "VO_Crew_A_Spotted_1", w: "Enemy sees Andrew", s: "new", t: "Contact! He's right there!", p: "Voice A, aggressive." },
-  { c: "crew", f: "VO_Crew_B_Spotted_1", w: "Enemy sees Andrew", s: "new", t: "Oh shit, that's him! That's him!", p: "Voice B, nervous." },
-  { c: "crew", f: "VO_Crew_C_Spotted_1", w: "Enemy sees Andrew", s: "new", t: "Eyes on target. Light him up.", p: "Voice C, veteran." },
-  { c: "crew", f: "VO_Crew_A_Flank_1", w: "Enemy moves around cover", s: "new", t: "Go wide! Take the left!" },
-  { c: "crew", f: "VO_Crew_C_Flank_1", w: "Enemy moves around cover", s: "new", t: "Push him. Don't give him room." },
-  { c: "crew", f: "VO_Crew_A_Reload_1", w: "Enemy reloads", s: "new", t: "Reloading! Cover me!" },
-  { c: "crew", f: "VO_Crew_B_Reload_1", w: "Enemy reloads", s: "new", t: "I'm dry, I'm dry!" },
-  { c: "crew", f: "VO_Crew_A_Grenade_1", w: "Enemy throws a grenade", s: "new", t: "Frag out!" },
-  { c: "crew", f: "VO_Crew_C_Grenade_1", w: "Andrew throws a grenade", s: "new", t: "Grenade! Get down!" },
-  { c: "crew", f: "VO_Crew_A_Hit_1", w: "Enemy is wounded", s: "new", t: "Fuck! I'm hit!" },
-  { c: "crew", f: "VO_Crew_B_Hit_1", w: "Enemy is wounded", s: "new", t: "Ah, shit, shit, shit!" },
-  { c: "crew", f: "VO_Crew_C_ManDown_1", w: "A crewmate dies nearby", s: "new", t: "Man down! He's dropping us one by one!" },
-  { c: "crew", f: "VO_Crew_B_ManDown_1", w: "A crewmate dies nearby", s: "new", t: "They said this would be easy!" },
-  { c: "crew", f: "VO_Crew_C_Search_1", w: "Enemy lost sight of Andrew", s: "new", t: "Where'd he go? Check the corners." },
-  { c: "crew", f: "VO_Crew_A_Search_1", w: "Enemy lost sight of Andrew", s: "new", t: "Come on out, old man!" },
-  { c: "crew", f: "VO_Crew_B_Fear_1", w: "Last few enemies alive", s: "new", t: "Nobody said it was him. Nobody said it was HIM!", p: "Breaking." },
+  { c: "crew", f: "VO_Crew_A_Spotted_1", w: "Enemy sees Andrew", s: "live", t: "Contact! He's right there!", p: "Voice A, aggressive." },
+  { c: "crew", f: "VO_Crew_B_Spotted_1", w: "Enemy sees Andrew", s: "live", t: "Oh shit, that's him! That's him!", p: "Voice B, nervous." },
+  { c: "crew", f: "VO_Crew_C_Spotted_1", w: "Enemy sees Andrew", s: "live", t: "Eyes on target. Light him up.", p: "Voice C, veteran." },
+  { c: "crew", f: "VO_Crew_A_Flank_1", w: "Enemy moves around cover", s: "live", t: "Go wide! Take the left!" },
+  { c: "crew", f: "VO_Crew_C_Flank_1", w: "Enemy moves around cover", s: "live", t: "Push him. Don't give him room." },
+  { c: "crew", f: "VO_Crew_A_Reload_1", w: "Enemy reloads", s: "live", t: "Reloading! Cover me!" },
+  { c: "crew", f: "VO_Crew_B_Reload_1", w: "Enemy reloads", s: "live", t: "I'm dry, I'm dry!" },
+  { c: "crew", f: "VO_Crew_A_Grenade_1", w: "Enemy throws a grenade", s: "live", t: "Frag out!" },
+  { c: "crew", f: "VO_Crew_C_Grenade_1", w: "Andrew throws a grenade", s: "live", t: "Grenade! Get down!" },
+  { c: "crew", f: "VO_Crew_A_Hit_1", w: "Enemy is wounded", s: "live", t: "Fuck! I'm hit!" },
+  { c: "crew", f: "VO_Crew_B_Hit_1", w: "Enemy is wounded", s: "live", t: "Ah, shit, shit, shit!" },
+  { c: "crew", f: "VO_Crew_C_ManDown_1", w: "A crewmate dies nearby", s: "live", t: "Man down! He's dropping us one by one!" },
+  { c: "crew", f: "VO_Crew_B_ManDown_1", w: "A crewmate dies nearby", s: "live", t: "They said this would be easy!" },
+  { c: "crew", f: "VO_Crew_C_Search_1", w: "Enemy lost sight of Andrew", s: "live", t: "Where'd he go? Check the corners." },
+  { c: "crew", f: "VO_Crew_A_Search_1", w: "Enemy lost sight of Andrew", s: "live", t: "Come on out, old man!" },
+  { c: "crew", f: "VO_Crew_B_Fear_1", w: "Last few enemies alive", s: "live", t: "Nobody said it was him. Nobody said it was HIM!", p: "Breaking." },
   { c: "crew", f: "VO_Crew_Deaths", w: "Enemy deaths", s: "new", t: "(Each voice: three short death sounds, one cut-off scream, one breath out)", p: "One file per voice: VO_Crew_A_Deaths, VO_Crew_B_Deaths, VO_Crew_C_Deaths." }
 ];
 

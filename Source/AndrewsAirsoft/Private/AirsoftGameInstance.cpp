@@ -1,16 +1,59 @@
 #include "AirsoftGameInstance.h"
 
 #include "AirsoftCampaign.h"
+#include "AirsoftCharacter.h"
+#include "AirsoftKeyBindings.h"
+#include "AirsoftModeRules.h"
 #include "AirsoftSaveGame.h"
 #include "AirsoftSettings.h"
 #include "AirsoftWeaponData.h"
 #include "AudioDevice.h"
 #include "Engine/Engine.h"
+#include "Engine/GameViewportClient.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
 #include "GameFramework/GameUserSettings.h"
 #include "HAL/IConsoleManager.h"
 #include "HAL/PlatformProcess.h"
 #include "Kismet/GameplayStatics.h"
+#include "Misc/PackageName.h"
+#include "MoviePlayer.h"
+#include "UI/AirsoftUI.h"
+#include "UObject/UObjectGlobals.h"
+#include "Widgets/SWidget.h"
+
+namespace AirsoftGameInstanceLocal
+{
+	/** Loading-screen heading for a map nobody announced (opened from the editor, a console travel...). */
+	void DescribeMap(const FString& MapName, FString& OutTitle, FString& OutSubtitle)
+	{
+		const FString Short = FPackageName::GetShortName(MapName);
+		for (const FAirsoftMapInfo& Info : AirsoftRules::Maps())
+		{
+			if (!Info.LevelPath.IsEmpty() && FPackageName::GetShortName(Info.LevelPath).Equals(Short, ESearchCase::IgnoreCase))
+			{
+				OutTitle = AirsoftRules::MapDisplayName(Info.Key);
+				OutSubtitle = TEXT("Skirmish");
+				return;
+			}
+		}
+		const UAirsoftSettings* S = UAirsoftSettings::Get();
+		if (FPackageName::GetShortName(S->MainMenuMap).Equals(Short, ESearchCase::IgnoreCase))
+		{
+			OutTitle = AirsoftCampaign::GameTitle();
+			OutSubtitle = FString();
+			return;
+		}
+		if (FPackageName::GetShortName(S->StagingMap).Equals(Short, ESearchCase::IgnoreCase))
+		{
+			OutTitle = TEXT("The Range");
+			OutSubtitle = TEXT("Armory and firing lanes");
+			return;
+		}
+		OutTitle = Short.StartsWith(TEXT("L_")) ? Short.Mid(2) : Short;
+		OutSubtitle = FString();
+	}
+}
 
 void UAirsoftGameInstance::Init()
 {
@@ -20,12 +63,17 @@ void UAirsoftGameInstance::Init()
 		GEngine->OnNetworkFailure().AddUObject(this, &UAirsoftGameInstance::HandleNetworkFailure);
 		GEngine->OnTravelFailure().AddUObject(this, &UAirsoftGameInstance::HandleTravelFailure);
 	}
+	FCoreUObjectDelegates::PreLoadMap.AddUObject(this, &UAirsoftGameInstance::HandlePreLoadMap);
+	FCoreUObjectDelegates::PostLoadMapWithWorld.AddUObject(this, &UAirsoftGameInstance::HandlePostLoadMap);
 	GetProfile();
 	ApplyUserSettings();
 }
 
 void UAirsoftGameInstance::Shutdown()
 {
+	FCoreUObjectDelegates::PreLoadMap.RemoveAll(this);
+	FCoreUObjectDelegates::PostLoadMapWithWorld.RemoveAll(this);
+	CloseWalkthrough();
 	SaveProfile();
 	Super::Shutdown();
 }
@@ -64,7 +112,123 @@ void UAirsoftGameInstance::StartMission(int32 Number)
 	}
 	PendingMenuMessage.Reset();
 	SaveProfile();
-	UGameplayStatics::OpenLevel(this, FName(*Mission->MapPath), true, AirsoftCampaign::MissionOptions(Number));
+	OpenMap(Mission->MapPath, AirsoftCampaign::MissionOptions(Number), Mission->Title,
+		FString::Printf(TEXT("Mission %d  \u00B7  %s"), Number, *AirsoftDifficulty::Label(AirsoftDifficulty::FromIndex(GetUserSettings().Difficulty))));
+}
+
+void UAirsoftGameInstance::StartNewGame(EAirsoftDifficulty Difficulty)
+{
+	FAirsoftUserSettings Settings = GetUserSettings();
+	Settings.Difficulty = static_cast<int32>(Difficulty);
+	// The campaign referee reads the bot skill for its enemies; keep the two in step.
+	Settings.BotSkill = static_cast<int32>(AirsoftDifficulty::BotSkill(Difficulty));
+	SetUserSettings(Settings);
+	// A fresh start: drop any mid-mission checkpoint so mission 1 begins at its opening.
+	GetProfile()->CheckpointMission = 0;
+	StartMission(1);
+}
+
+void UAirsoftGameInstance::StartSkirmish(EAirsoftMode Mode, int32 MapIndex, int32 BotFill, EAirsoftDifficulty Difficulty)
+{
+	const TArray<FAirsoftMapInfo>& Maps = AirsoftRules::Maps();
+	if (!Maps.IsValidIndex(MapIndex))
+	{
+		return;
+	}
+	const FAirsoftMapInfo& Map = Maps[MapIndex];
+	if (!Map.SupportsMode(Mode))
+	{
+		Mode = Map.Modes.Num() > 0 ? Map.Modes[0] : EAirsoftMode::TDM;
+	}
+	// The match reads its bots from these (AAirsoftGameMode::GetBotSettings); no listen server, so nobody can join.
+	FAirsoftUserSettings Settings = GetUserSettings();
+	Settings.BotFill = FMath::Clamp(BotFill, 1, AirsoftBots::NumFillOptions - 1);
+	Settings.BotSkill = static_cast<int32>(AirsoftDifficulty::BotSkill(Difficulty));
+	Settings.Difficulty = static_cast<int32>(Difficulty);
+	SetUserSettings(Settings);
+	PendingMenuMessage.Reset();
+	OpenMap(Map.LevelPath, FString::Printf(TEXT("Mode=%s?Skirmish"), *AirsoftRules::ModeOption(Mode)),
+		AirsoftRules::MapDisplayName(Map.Key),
+		FString::Printf(TEXT("%s  \u00B7  %s  \u00B7  %s bots"), *AirsoftRules::ModeName(Mode),
+			*AirsoftDifficulty::Label(Difficulty), *AirsoftBots::FillLabel(Settings.BotFill)));
+}
+
+void UAirsoftGameInstance::StartPractice(bool bWalkthrough)
+{
+	PendingMenuMessage.Reset();
+	SaveProfile();
+	bWalkthroughPending = bWalkthrough;
+	OpenMap(UAirsoftSettings::Get()->PracticeMap, TEXT("Practice"), TEXT("The Range"),
+		bWalkthrough ? TEXT("How to play") : TEXT("Free practice"));
+}
+
+void UAirsoftGameInstance::FinishWalkthrough()
+{
+	if (UAirsoftSaveGame* P = GetProfile())
+	{
+		if (!P->Settings.bTutorialDone)
+		{
+			P->Settings.bTutorialDone = true;
+			SaveProfile();
+		}
+	}
+}
+
+void UAirsoftGameInstance::CloseWalkthrough()
+{
+	if (WalkthroughWidget.IsValid())
+	{
+		if (UGameViewportClient* Viewport = GetGameViewportClient())
+		{
+			Viewport->RemoveViewportWidgetContent(WalkthroughWidget.ToSharedRef());
+		}
+		WalkthroughWidget.Reset();
+	}
+}
+
+void UAirsoftGameInstance::OpenMap(const FString& LevelPath, const FString& Options, const FString& Title, const FString& Subtitle)
+{
+	LoadingTitle = Title;
+	LoadingSubtitle = Subtitle;
+	UGameplayStatics::OpenLevel(this, FName(*LevelPath), true, Options);
+}
+
+void UAirsoftGameInstance::HandlePreLoadMap(const FString& MapName)
+{
+	CloseWalkthrough();
+	FString Title = LoadingTitle;
+	FString Subtitle = LoadingSubtitle;
+	LoadingTitle.Reset();
+	LoadingSubtitle.Reset();
+	if (Title.IsEmpty())
+	{
+		AirsoftGameInstanceLocal::DescribeMap(MapName, Title, Subtitle);
+	}
+	if (IsRunningDedicatedServer() || !IsMoviePlayerEnabled())
+	{
+		return;
+	}
+	FLoadingScreenAttributes Attributes;
+	Attributes.bAutoCompleteWhenLoadingCompletes = true;
+	// Long enough to read the tip, short enough not to stall a quick load.
+	Attributes.MinimumLoadingScreenDisplayTime = 2.f;
+	Attributes.WidgetLoadingScreen = AirsoftUI::MakeLoadingScreen(Title, Subtitle);
+	GetMoviePlayer()->SetupLoadingScreen(Attributes);
+}
+
+void UAirsoftGameInstance::HandlePostLoadMap(UWorld* World)
+{
+	if (!bWalkthroughPending || !World || World->GetGameInstance() != this)
+	{
+		return;
+	}
+	bWalkthroughPending = false;
+	if (UGameViewportClient* Viewport = GetGameViewportClient())
+	{
+		WalkthroughWidget = AirsoftUI::MakeWalkthrough(this);
+		// Above the HUD (10), below menus (50).
+		Viewport->AddViewportWidgetContent(WalkthroughWidget.ToSharedRef(), 30);
+	}
 }
 
 int32 UAirsoftGameInstance::GetContinueMission()
@@ -77,7 +241,7 @@ void UAirsoftGameInstance::ReturnToMainMenu(const FString& Reason)
 {
 	PendingMenuMessage = Reason;
 	SaveProfile();
-	UGameplayStatics::OpenLevel(this, FName(*UAirsoftSettings::Get()->MainMenuMap), true);
+	OpenMap(UAirsoftSettings::Get()->MainMenuMap, FString(), AirsoftCampaign::GameTitle(), FString());
 }
 
 UAirsoftSaveGame* UAirsoftGameInstance::GetProfile()
@@ -159,6 +323,25 @@ void UAirsoftGameInstance::ApplyUserSettings()
 		if (FAudioDeviceHandle Device = World->GetAudioDevice())
 		{
 			Device->SetTransientPrimaryVolume(FMath::Clamp(S.MasterVolume, 0.f, 1.f));
+		}
+	}
+
+	// Accessibility: team colours are read through AirsoftColors::Team everywhere; repaint the people already out there.
+	const AirsoftColors::EPalette Palette = static_cast<AirsoftColors::EPalette>(FMath::Clamp(S.ColorblindMode, 0, 2));
+	const bool bPaletteChanged = Palette != AirsoftColors::ActivePalette;
+	AirsoftColors::ActivePalette = Palette;
+	if (UWorld* World = GetWorld())
+	{
+		for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
+		{
+			AirsoftKeyBindings::Apply(It->Get());
+		}
+		if (bPaletteChanged)
+		{
+			for (TActorIterator<AAirsoftCharacter> It(World); It; ++It)
+			{
+				It->ApplyTeamLook();
+			}
 		}
 	}
 }

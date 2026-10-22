@@ -276,13 +276,44 @@ namespace AirsoftBots
 
 namespace AirsoftColors
 {
+	/** Team colour sets (Settings > Accessibility; FAirsoftUserSettings::ColorblindMode). */
+	enum class EPalette : uint8
+	{
+		Standard,
+		/** Deuteranopia / protanopia: blue against yellow, which red-green colour blindness keeps apart. */
+		RedGreenSafe,
+		/** Tritanopia: red against cyan, which blue-yellow colour blindness keeps apart. */
+		BlueYellowSafe
+	};
+
+	/** This PC's palette. Set by UAirsoftGameInstance::ApplyUserSettings; purely local, never replicated. */
+	inline EPalette ActivePalette = EPalette::Standard;
+
 	inline FLinearColor Team(EAirsoftTeam InTeam)
 	{
-		switch (InTeam)
+		switch (ActivePalette)
 		{
-		case EAirsoftTeam::Blue: return FLinearColor(0.08f, 0.30f, 1.0f);
-		case EAirsoftTeam::Red: return FLinearColor(1.0f, 0.09f, 0.07f);
-		default: return FLinearColor(1.0f, 0.55f, 0.05f);
+		case EPalette::RedGreenSafe:
+			switch (InTeam)
+			{
+			case EAirsoftTeam::Blue: return FLinearColor(0.02f, 0.32f, 1.0f);
+			case EAirsoftTeam::Red: return FLinearColor(1.0f, 0.78f, 0.02f);
+			default: return FLinearColor(0.85f, 0.85f, 0.85f);
+			}
+		case EPalette::BlueYellowSafe:
+			switch (InTeam)
+			{
+			case EAirsoftTeam::Blue: return FLinearColor(0.0f, 0.85f, 0.85f);
+			case EAirsoftTeam::Red: return FLinearColor(1.0f, 0.06f, 0.18f);
+			default: return FLinearColor(0.85f, 0.85f, 0.85f);
+			}
+		default:
+			switch (InTeam)
+			{
+			case EAirsoftTeam::Blue: return FLinearColor(0.08f, 0.30f, 1.0f);
+			case EAirsoftTeam::Red: return FLinearColor(1.0f, 0.09f, 0.07f);
+			default: return FLinearColor(1.0f, 0.55f, 0.05f);
+			}
 		}
 	}
 

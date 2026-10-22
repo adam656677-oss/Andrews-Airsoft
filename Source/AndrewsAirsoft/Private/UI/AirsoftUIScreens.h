@@ -7,6 +7,7 @@
 
 class SWidget;
 class AAirsoftPlayerController;
+class UAirsoftGameInstance;
 
 namespace AirsoftUIScreens
 {
@@ -20,4 +21,7 @@ namespace AirsoftUIScreens
 	/** SAirsoftChat.cpp: the typing line, and the fading message box the HUD embeds. */
 	TSharedRef<SWidget> CreateChatInput(AAirsoftPlayerController* PC);
 	TSharedRef<SWidget> CreateChatBox(AAirsoftPlayerController* PC);
+	/** SAirsoftLoading.cpp: the loading card and the practice walkthrough overlay. */
+	TSharedRef<SWidget> CreateLoadingScreen(const FString& Title, const FString& Subtitle);
+	TSharedRef<SWidget> CreateWalkthrough(UAirsoftGameInstance* GameInstance);
 }

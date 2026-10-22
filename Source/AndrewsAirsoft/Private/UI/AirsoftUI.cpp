@@ -46,4 +46,14 @@ namespace AirsoftUI
 	{
 		return AirsoftUIScreens::CreateChatInput(PC);
 	}
+
+	TSharedRef<SWidget> MakeLoadingScreen(const FString& Title, const FString& Subtitle)
+	{
+		return AirsoftUIScreens::CreateLoadingScreen(Title, Subtitle);
+	}
+
+	TSharedRef<SWidget> MakeWalkthrough(UAirsoftGameInstance* GameInstance)
+	{
+		return AirsoftUIScreens::CreateWalkthrough(GameInstance);
+	}
 }

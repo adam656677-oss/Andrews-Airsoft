@@ -4,16 +4,20 @@ Replaces the Windows text-to-speech voices of make_voice.ps1 (kept as a no-downl
 with Kokoro-82M (https://huggingface.co/hexgrad/Kokoro-82M, Apache-2.0, runs on CPU).
 All voices are Kokoro's own synthetic voices (some blended); none imitates a real person.
 
-Reads Content/Airsoft/Data/Campaign.json and writes the same files as make_voice.ps1:
-    Tools/Audio/Generated/Voice/VO_M<n>_I<k>.wav    narrator, mission intro line k
-    Tools/Audio/Generated/Voice/VO_M<n>_Boss.wav    the mission boss's taunt
-    Tools/Audio/Generated/Voice/VO_M<n>_Outro.wav   narrator, mission outro
+Reads Content/Airsoft/Data/Campaign.json and writes (make_voice.ps1 covers the first three only):
+    Tools/Audio/Generated/Voice/VO_M<n>_I<k>.wav          narrator, mission intro line k
+    Tools/Audio/Generated/Voice/VO_M<n>_Boss.wav          the mission boss's taunt
+    Tools/Audio/Generated/Voice/VO_M<n>_Outro.wav         narrator, mission outro
+    Tools/Audio/Generated/Voice/VO_M<n>_Andrew_Start.wav  Andrew, as the opening cinematic ends
+    Tools/Audio/Generated/Voice/VO_M<n>_Andrew_Boss.wav   Andrew's reply to the boss
+    Tools/Audio/Generated/Voice/VO_M<n>_Boss_Mid.wav      the boss at half health
+    Tools/Audio/Generated/Voice/VO_M<n>_Boss_Death.wav    the boss going down
+    Tools/Audio/Generated/Voice/VO_Andrew_*.wav, VO_Crew_<A|B|C>_*.wav   combat barks ("Barks")
 48 kHz / 16-bit mono, about -18 LUFS, true peak <= -1 dBTP. The editor setup script imports
 them as /Game/Airsoft/Audio/<name>; AirsoftCampaign::VoiceKey() finds them by that name.
 
-Optional: --next-build DIR also voices the spoken "Next build" lines of
-Docs/Last_Contract_Voice_Script.html (Andrew, boss mid-fight/death lines, crew barks) under the
-script's file names into DIR. They are not loaded by the game yet, so they are kept out of
+Optional: --next-build DIR also voices any spoken lines still marked "new" (not yet in the game) in
+Docs/Last_Contract_Voice_Script.html under the script's file names into DIR. They are kept out of
 Tools/Audio/Generated (the importer imports every WAV under it).
 
 Setup (Python 3.10-3.12; 3.13 has no wheels for some dependencies yet):
@@ -78,7 +82,7 @@ CAST = {
                  why="Kore is the firmest, lowest American female voice: flat, controlled and clipped, like radio orders."),
     "varga": dict(voice={"bm_george": 0.45, "bm_lewis": 0.35, "am_onyx": 0.2}, lang="b", speed=0.85, gap=0.6, comma=0.6, land=0.82, fx="boss_dark",
                   why="George (older, measured British) blended with Lewis and a little Onyx for a lower, darker register: soft-spoken old money; slow, close."),
-    # Next-build only (not loaded by the game yet)
+    # Andrew's lines and the crew barks
     "andrew": dict(voice={"am_fenrir": 0.7, "am_onyx": 0.3}, lang="a", speed=0.95, gap=0.4, comma=0.75, land=0.9, fx="dry",
                    why="Fenrir (40s, plain) with some Onyx grit: quiet, tired, economical."),
     "crew_a": dict(voice={"am_eric": 1.0}, lang="a", speed=1.12, gap=0.2, comma=1.0, land=1.0, fx="dry", why="Aggressive and loud."),
@@ -143,14 +147,26 @@ def campaign_lines(root):
     for n, m in enumerate(data["Missions"], 1):
         for k, t in enumerate(m.get("Intro", [])):
             out.append(("VO_M%d_I%d" % (n, k), "narrator", t))
+        if m.get("AndrewStart"):
+            out.append(("VO_M%d_Andrew_Start" % n, "andrew", m["AndrewStart"]))
         boss = m.get("Boss") or {}
-        if boss.get("Taunt"):
+        if boss.get("Name"):
             cast = next((c for key, c in BOSS_CAST.items() if key in boss.get("Name", "")), None)
             if not cast:
                 raise SystemExit("No cast entry for boss %r: add it to BOSS_CAST" % boss.get("Name"))
-            out.append(("VO_M%d_Boss" % n, cast, boss["Taunt"]))
+            for field, suffix in (("Taunt", "Boss"), ("Mid", "Boss_Mid"), ("Death", "Boss_Death")):
+                if boss.get(field):
+                    out.append(("VO_M%d_%s" % (n, suffix), cast, boss[field]))
+            if boss.get("AndrewReply"):
+                out.append(("VO_M%d_Andrew_Boss" % n, "andrew", boss["AndrewReply"]))
         if m.get("Outro"):
             out.append(("VO_M%d_Outro" % n, "narrator", m["Outro"]))
+    # Combat barks: Andrew's (VO_Andrew_*) and the three crew voices (VO_Crew_<A|B|C>_*).
+    for lines in (data.get("Barks") or {}).values():
+        for b in lines:
+            f = b["File"]
+            cast = "andrew" if f.startswith("VO_Andrew_") else "crew_" + f.split("_")[2].lower()
+            out.append((f, cast, b["Text"]))
     return out
 
 
@@ -438,7 +454,8 @@ def main():
         nb = os.path.abspath(a.next_build)
         if nb.startswith(os.path.join(ROOT, "Tools", "Audio", "Generated")):
             raise SystemExit("--next-build must be outside Tools/Audio/Generated (the importer would pull those files into the game)")
-        jobs += [(n, c, t, nb) for n, c, t in next_build_lines(ROOT)]
+        live = {j[0] for j in jobs}
+        jobs += [(n, c, t, nb) for n, c, t in next_build_lines(ROOT) if n not in live]
     if a.names:
         jobs = [j for j in jobs if j[0] in set(a.names)]
         if not jobs:

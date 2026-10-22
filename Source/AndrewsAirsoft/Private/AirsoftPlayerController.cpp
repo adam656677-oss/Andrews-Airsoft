@@ -4,6 +4,7 @@
 #include "AirsoftAssets.h"
 #include "AirsoftBallistics.h"
 #include "AirsoftCampaign.h"
+#include "AirsoftKeyBindings.h"
 #include "AirsoftCharacter.h"
 #include "AirsoftCombatComponent.h"
 #include "AirsoftEffects.h"
@@ -147,6 +148,11 @@ void AAirsoftPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	if (IsLocalController())
 	{
+		if (bPausedByMenu)
+		{
+			bPausedByMenu = false;
+			SetPause(false);
+		}
 		StopReplay();
 		StopTeamCam();
 		HideWidget(ChatWidget);
@@ -166,6 +172,7 @@ void AAirsoftPlayerController::RebuildUI()
 	HideWidget(SummaryWidget);
 	HideWidget(HUDWidget);
 	OpenMenu = EAirsoftMenu::None;
+	UpdateMenuPause();
 	bScoreboard = false;
 	InteractTarget.Reset();
 	StopReplay();
@@ -325,6 +332,8 @@ void AAirsoftPlayerController::BuildInput()
 	// Camera: F5 first <-> third person (V is inspect), X / right stick click swaps the shoulder.
 	Button(IA_CameraView, { EKeys::F5 });
 	Button(IA_Shoulder, { EKeys::X, EKeys::Gamepad_RightThumbstick });
+	// Settings > Key bindings: move rebound keyboard/mouse keys onto their saved keys.
+	AirsoftKeyBindings::Apply(this);
 }
 
 void AAirsoftPlayerController::AddMappingContext()
@@ -383,6 +392,10 @@ void AAirsoftPlayerController::SetupInputComponent()
 	EIC->BindAction(Get(IA_LeanRight), ETriggerEvent::Completed, this, &AAirsoftPlayerController::OnLeanRightReleased);
 	EIC->BindAction(Get(IA_Scoreboard), ETriggerEvent::Started, this, &AAirsoftPlayerController::OnScoreboardPressed);
 	EIC->BindAction(Get(IA_Scoreboard), ETriggerEvent::Completed, this, &AAirsoftPlayerController::OnScoreboardReleased);
+	if (UInputAction* MenuAction = Get(IA_Menu))
+	{
+		MenuAction->bTriggerWhenPaused = true; // P / Start must close the menu that paused the game
+	}
 	EIC->BindAction(Get(IA_Menu), ETriggerEvent::Started, this, &AAirsoftPlayerController::OnMenu);
 	EIC->BindAction(Get(IA_Loadout), ETriggerEvent::Started, this, &AAirsoftPlayerController::OnLoadout);
 	EIC->BindAction(Get(IA_VoteMode), ETriggerEvent::Started, this, &AAirsoftPlayerController::OnVoteModeKey);
@@ -723,7 +736,7 @@ void AAirsoftPlayerController::OnTeamChatKey()
 bool AAirsoftPlayerController::CanVote() const
 {
 	const AAirsoftGameState* GS = GetAirsoftGameState();
-	return GS && !GS->bIsMatchMap && !bMainMenu && (GS->Phase == EAirsoftPhase::Waiting || GS->Phase == EAirsoftPhase::Intermission);
+	return UAirsoftSettings::IsMultiplayerEnabled() && GS && !GS->bIsMatchMap && !bMainMenu && (GS->Phase == EAirsoftPhase::Waiting || GS->Phase == EAirsoftPhase::Intermission);
 }
 
 void AAirsoftPlayerController::CycleModeVote(int32 Step)
@@ -778,7 +791,8 @@ void AAirsoftPlayerController::VoteMap(int32 MapIndex)
 
 void AAirsoftPlayerController::OpenChat(bool bTeam)
 {
-	if (!IsLocalController() || bMainMenu || IsMenuOpen() || IsChatOpen())
+	// Text chat is online-only (hidden while multiplayer is off).
+	if (!IsLocalController() || bMainMenu || IsMenuOpen() || IsChatOpen() || !UAirsoftSettings::IsMultiplayerEnabled())
 	{
 		return;
 	}
@@ -1024,6 +1038,7 @@ void AAirsoftPlayerController::ShowMenu(EAirsoftMenu Menu)
 		AirsoftAssets::Play2D(this, TEXT("UIClick"), 0.35f, 0.9f);
 	}
 	RefreshInputMode();
+	UpdateMenuPause();
 	if (Widget.IsValid() && FSlateApplication::IsInitialized())
 	{
 		FSlateApplication::Get().SetKeyboardFocus(Widget, EFocusCause::SetDirectly);
@@ -1041,6 +1056,73 @@ void AAirsoftPlayerController::CloseMenus()
 	OpenMenu = EAirsoftMenu::None;
 	ArmoryFocus = NAME_None;
 	RefreshInputMode();
+	UpdateMenuPause();
+}
+
+bool AAirsoftPlayerController::CanPauseGame() const
+{
+	const UWorld* World = GetWorld();
+	if (!World || bMainMenu || !IsLocalController())
+	{
+		return false;
+	}
+	const ENetMode NetMode = World->GetNetMode();
+	if (NetMode == NM_Standalone)
+	{
+		return true;
+	}
+	if (NetMode != NM_ListenServer)
+	{
+		return false; // a client never pauses the host's world
+	}
+	// Listen server: only while no other person is connected (bots have AI controllers, not player controllers).
+	for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
+	{
+		const APlayerController* PC = It->Get();
+		if (PC && PC != this)
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+void AAirsoftPlayerController::UpdateMenuPause()
+{
+	UWorld* World = GetWorld();
+	if (!World || !IsLocalController())
+	{
+		return;
+	}
+	const bool bWant = IsMenuOpen() && CanPauseGame();
+	if (bWant == bPausedByMenu)
+	{
+		return;
+	}
+	const double Now = World->GetRealTimeSeconds();
+	if (bWant)
+	{
+		// Stop the trigger and movement first so nothing is held down across the pause.
+		HaltPawnActions();
+		if (SetPause(true))
+		{
+			bPausedByMenu = true;
+			MenuPauseStartedAt = Now;
+		}
+		return;
+	}
+	bPausedByMenu = false;
+	SetPause(false);
+	// The slow-motion replay and the team cam run on real time: skip the stretch the game stood still.
+	const double Paused = FMath::Max(0.0, Now - MenuPauseStartedAt);
+	if (ReplayStart >= 0.0)
+	{
+		ReplayStart += Paused;
+	}
+	if (OutSince >= 0.0)
+	{
+		OutSince += Paused;
+	}
 }
 
 void AAirsoftPlayerController::ToggleGameMenu()

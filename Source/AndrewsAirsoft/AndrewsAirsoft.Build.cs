@@ -29,5 +29,8 @@ public class AndrewsAirsoft : ModuleRules
 			"NavigationSystem",
 			"GameplayTasks"
 		});
+
+		// Loading screen between maps (UAirsoftGameInstance::HandlePreLoadMap).
+		PrivateDependencyModuleNames.Add("MoviePlayer");
 	}
 }

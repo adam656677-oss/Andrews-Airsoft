@@ -11,6 +11,60 @@ class UAnimInstance;
 class USkeletalMesh;
 class UMaterialInterface;
 
+/**
+ * Story and skirmish difficulty, picked on New Game and in Skirmish and saved as
+ * FAirsoftUserSettings::Difficulty. Same order as EAirsoftBotSkill, so the index
+ * doubles as the enemy bot skill (AirsoftDifficulty::BotSkill).
+ */
+UENUM(BlueprintType)
+enum class EAirsoftDifficulty : uint8
+{
+	/** Slow, forgiving enemies; for enjoying the story. */
+	Recruit,
+	Operator,
+	Professional,
+	/** Fast, accurate enemies that flank. */
+	Legend
+};
+
+namespace AirsoftDifficulty
+{
+	constexpr int32 Num = 4;
+
+	inline EAirsoftDifficulty FromIndex(int32 Index)
+	{
+		return static_cast<EAirsoftDifficulty>(FMath::Clamp(Index, 0, Num - 1));
+	}
+
+	inline FString Label(EAirsoftDifficulty Difficulty)
+	{
+		switch (Difficulty)
+		{
+		case EAirsoftDifficulty::Recruit: return TEXT("RECRUIT");
+		case EAirsoftDifficulty::Professional: return TEXT("PROFESSIONAL");
+		case EAirsoftDifficulty::Legend: return TEXT("LEGEND");
+		default: return TEXT("OPERATOR");
+		}
+	}
+
+	inline FString Blurb(EAirsoftDifficulty Difficulty)
+	{
+		switch (Difficulty)
+		{
+		case EAirsoftDifficulty::Recruit: return TEXT("Enemies react slowly and miss often. For the story.");
+		case EAirsoftDifficulty::Professional: return TEXT("Quick, accurate enemies. Cover matters.");
+		case EAirsoftDifficulty::Legend: return TEXT("They see you first, flank and rarely miss.");
+		default: return TEXT("A fair fight. The intended experience.");
+		}
+	}
+
+	/** Enemy bot skill for a difficulty (same order). */
+	inline EAirsoftBotSkill BotSkill(EAirsoftDifficulty Difficulty)
+	{
+		return static_cast<EAirsoftBotSkill>(static_cast<uint8>(Difficulty));
+	}
+}
+
 UCLASS(Config = Game, DefaultConfig, meta = (DisplayName = "Airsoft"))
 class ANDREWSAIRSOFT_API UAirsoftSettings : public UDeveloperSettings
 {
@@ -49,6 +103,19 @@ public:
 
 	UPROPERTY(Config, EditAnywhere, Category = "Maps")
 	FString MainMenuMap = TEXT("/Game/Maps/L_MainMenu");
+
+	/** Practice Range and its how-to-play walkthrough: the staging area's firing lanes. */
+	UPROPERTY(Config, EditAnywhere, Category = "Maps")
+	FString PracticeMap = TEXT("/Game/Maps/L_Staging");
+
+	/**
+	 * Developer only. The game ships single-player: off hides Host/Join, the Tailscale address,
+	 * text chat, lobby votes and Start Match Now, and staging works as a hub. The online code stays.
+	 */
+	UPROPERTY(Config, EditAnywhere, Category = "Multiplayer")
+	bool bEnableMultiplayer = false;
+
+	static bool IsMultiplayerEnabled() { return Get()->bEnableMultiplayer; }
 
 	/**
 	 * Match maps offered in the lobby vote, in vote order: key, display name, level, the modes each

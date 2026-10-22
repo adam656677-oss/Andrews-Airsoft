@@ -112,6 +112,13 @@ public:
 	void ShowMenu(EAirsoftMenu Menu);
 	void CloseMenus();
 	void ToggleGameMenu();
+	/**
+	 * True when nobody else is in the game (standalone, or a listen server with only this player and bots):
+	 * an open menu then really pauses the world (SetPause) until it closes.
+	 */
+	bool CanPauseGame() const;
+	/** True while an open menu holds the world paused. */
+	bool IsPausedByMenu() const { return bPausedByMenu; }
 	/** Opens the armory, optionally on a specific weapon (from a display rack). */
 	void OpenArmory(FName FocusWeapon = NAME_None);
 	FName GetArmoryFocus() const { return ArmoryFocus; }
@@ -267,8 +274,14 @@ protected:
 	/** Music bed under the after-action report. */
 	UPROPERTY() TObjectPtr<UAudioComponent> PostRoundMusic;
 
+	/** Pauses or resumes the world to match the open menu (single player only). */
+	void UpdateMenuPause();
+
 	EAirsoftMenu OpenMenu = EAirsoftMenu::None;
 	bool bMainMenu = false;
+	bool bPausedByMenu = false;
+	/** Real time the menu pause began: real-time clocks (the replay, the team cam) skip the paused stretch. */
+	double MenuPauseStartedAt = 0.0;
 	bool bScoreboard = false;
 	bool bLeanLeft = false;
 	bool bLeanRight = false;

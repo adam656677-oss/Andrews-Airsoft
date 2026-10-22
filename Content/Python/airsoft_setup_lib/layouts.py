@@ -878,7 +878,7 @@ def neon_strip(x0, x1, y, z, colour, facing, cd=5.0, out=0.42, glow=26.0, drop=T
                   coll=False, cast=False, name="NeonStrip")]
     if drop:
         items.append(light("rect", (x0 + x1) / 2, yb + s * 0.08, z - 0.05, yaw=facing, pitch=-72.0, color=colour, cd=cd,
-                           radius=9.0, w=abs(x1 - x0), h=0.12, vol=2.0))
+                           radius=9.0, w=abs(x1 - x0), h=0.12, vol=2.0, name="NeonStrip"))
     return items
 
 
@@ -1320,6 +1320,7 @@ def _velvet():
            sound("AmbienceClubInterior", 0, 6, 3, spatial=True, radius=18, falloff=10, volume=0.8),
            sound("ClubMusic", -5, 17.6, 2.4, spatial=True, radius=6, falloff=34, volume=1.0),
            sound("ClubMusic", 5, 17.6, 2.4, spatial=True, radius=6, falloff=34, volume=1.0)]
+    it = trim_lights(it)
     return {
         "name": "VelvetClub", "path": "/Game/Maps/L_VelvetClub", "kind": "match",
         "bounds": (X0, Y0, X1, Y1), "lighting": "velvet_night", "game_mode": "AirsoftGameMode",
@@ -1329,15 +1330,90 @@ def _velvet():
     }
 
 
+def _fixture_light(it):
+    """The prop's light override dict (a bare `light=True` becomes {})."""
+    lt = it.get("light")
+    return dict(lt) if isinstance(lt, dict) else {}
+
+
+def _neon_colour(it):
+    if it["t"] == "light":
+        return it.get("color")
+    return _fixture_light(it).get("color") or NEON_LIGHT.get(it["id"])
+
+
+def trim_lights(items, merge_m=5.5, shadow_chandeliers=1):
+    """Light budget pass for the Velvet Club (85 -> 75 lights, 9 -> 7 shadow casters, for an RTX 2070):
+      * tiny fills (Neon_OpenSign, cd 0.6) go emissive-only - the tube's glow already reads;
+      * same-colour neon lights closer than `merge_m` merge into the brightest one (+70% of each absorbed light's
+        strength, so the colour pool on the wet street keeps its brightness);
+      * the upper row of wall sconces goes emissive-only, the sconce below takes the extra light;
+      * the contiguous back-bar LED runs become one wide rect light;
+      * only `shadow_chandeliers` chandeliers (nearest the dance floor centre) keep shadows."""
+    lit = lambda i: i["t"] == "prop" and i.get("light")
+    drop = set()
+    # 1. tiny fills
+    for k, i in enumerate(items):
+        if lit(i) and i["id"] == "Neon_OpenSign":
+            i["light"] = False
+    # 2. same-colour neon merges (blade / box signs and the strips' drop lights)
+    neon = [k for k, i in enumerate(items)
+            if (lit(i) and i["id"] in NEON_LIGHT) or (i["t"] == "light" and i.get("name") == "NeonStrip")]
+    neon.sort(key=lambda k: -(items[k].get("cd", 0.0) if items[k]["t"] == "light" else 10.0))   # signs first
+    for a in neon:
+        if a in drop:
+            continue
+        absorbed = 0
+        for b in neon:
+            if b == a or b in drop or _neon_colour(items[a]) != _neon_colour(items[b]):
+                continue
+            if math.dist(items[a]["p"], items[b]["p"]) < merge_m:
+                drop.add(b)
+                absorbed += 1
+        if absorbed:
+            ia = items[a]
+            if ia["t"] == "light":
+                ia["cd"] = ia.get("cd", 5.0) * (1.0 + 0.7 * absorbed)
+            else:
+                lt = _fixture_light(ia)
+                lt["cd_scale"] = lt.get("cd_scale", 1.0) * (1.0 + 0.7 * absorbed)
+                ia["light"] = lt
+    # 3. upper sconces -> emissive-only, lower neighbour on the same wall brighter
+    sconces = [i for i in items if lit(i) and i["id"] == "WallSconce"]
+    for up in [i for i in sconces if i["p"][2] > 4.0]:
+        up["light"] = False
+        low = [i for i in sconces if i["p"][2] <= 4.0 and i.get("light") and abs(i["p"][0] - up["p"][0]) < 0.5]
+        if low:
+            n = min(low, key=lambda i: abs(i["p"][1] - up["p"][1]))
+            lt = _fixture_light(n)
+            lt["cd_scale"] = lt.get("cd_scale", 1.0) * 1.35
+            n["light"] = lt
+    # 4. back-bar LED runs in a row -> one rect light on the middle one
+    bars = sorted([i for i in items if lit(i) and i["id"] == "BackBar_4m"], key=lambda i: i["p"][0])
+    if len(bars) > 1:
+        mid = bars[len(bars) // 2]
+        for b in bars:
+            b["light"] = False
+        mid["light"] = {"cd_scale": float(len(bars)), "w_scale": float(len(bars))}
+    # 5. shadow cap on the chandeliers
+    ch = [i for i in items if lit(i) and i["id"] == "Chandelier" and _fixture_light(i).get("shadows", True)]
+    ch.sort(key=lambda i: math.hypot(i["p"][0], i["p"][1] - 2.0))
+    for i in ch[shadow_chandeliers:]:
+        lt = _fixture_light(i)
+        lt["shadows"] = False
+        i["light"] = lt
+    return [i for k, i in enumerate(items) if k not in drop]
+
+
 # =============================================================================================
 # L_Staging - lobby: spawn hall, The Armory, outdoor range and a kill house. Golden hour.
 # =============================================================================================
 FIRING_LINE_X = 6.0
 RANGE_LANES = (-9.0, -3.0, 3.0, 9.0)
 RANGE_DISTANCES = (10, 25, 40, 60)
-ARMORY_SOUTH = ["M4", "AK74", "SR25", "VSR", "M870", "MP5", "VECTOR", "MP7"]
-ARMORY_WEST = ["P90", "M249", "G18"]
-ARMORY_EAST = ["G17", "M1911", "DEAGLE"]
+ARMORY_SOUTH = ["M4", "TR1", "AK74", "SR25", "VSR", "M870", "SG4", "MP5", "VECTOR", "MP7"]
+ARMORY_WEST = ["P90", "M249", "G18", "G34"]
+ARMORY_EAST = ["G17", "M1911", "C1911", "DEAGLE"]
 
 
 def _staging():
@@ -1390,12 +1466,12 @@ def _staging():
            capture(-12, -7, 2.5, 14)]
 
     # ---- The Armory ----
-    xs = [-21.0 + 2.4 * i for i in range(8)]
+    xs = [-21.6 + 2.2 * i for i in range(10)]
     for w, x in zip(ARMORY_SOUTH, xs):
         it.append(bay_with_display(w, x, 13.55, -90))
-    for w, y in zip(ARMORY_WEST, (2.6, 5.6, 8.6)):
+    for w, y in zip(ARMORY_WEST, (2.0, 4.6, 7.2, 9.8)):
         it.append(bay_with_display(w, -23.55, y, 0))
-    for w, y in zip(ARMORY_EAST, (2.0, 5.0, 8.0)):
+    for w, y in zip(ARMORY_EAST, (2.0, 4.6, 7.2, 9.8)):
         it.append(bay_with_display(w, -0.45, y, 180))
     for x in (-22, -18, -14, -10, -6, -2):
         it.append(prop("WallPanel_Walnut_4m", x, 13.77, 0, -90))

@@ -1,11 +1,14 @@
 #include "AirsoftBotController.h"
 
 #include "AirsoftBallistics.h"
+#include "AirsoftCampaign.h"
 #include "AirsoftCharacter.h"
 #include "AirsoftCombatComponent.h"
+#include "AirsoftGameInstance.h"
 #include "AirsoftGameState.h"
 #include "AirsoftObjective.h"
 #include "AirsoftPlayerState.h"
+#include "AirsoftSaveGame.h"
 #include "AirsoftSettings.h"
 #include "AirsoftTeamStart.h"
 #include "AirsoftWeaponData.h"
@@ -38,6 +41,16 @@ namespace AirsoftBotLocal
 	constexpr float GrenadeArcCheck = 0.85f;     // clear-path check over this share of the flight (it lands by cover)
 	constexpr double SightMemoryGap = 1.5;       // unseen this long = the next sighting is new (react again)
 	constexpr double InvestigateMaxAge = 4.0;
+	// Tactics (cover is judged from the navmesh floor).
+	constexpr float CoverStandEyeZ = 158.f;      // eye above the floor, standing
+	constexpr float CoverCrouchEyeZ = 98.f;      // ...crouched
+	constexpr float CoverBodyZ = 60.f;           // a crouched body's middle
+	constexpr float TacticsMinRange = 450.f;     // closer than this nobody looks for cover: it's a brawl
+	constexpr float CoverArrive = 75.f;
+	constexpr float CoverSpacing = 160.f;        // two bots never share a spot
+	constexpr float SidePeekStep = 90.f;
+	constexpr int32 CoverSamples = 18;
+	constexpr int32 FlankSamples = 8;
 
 	float AngleBetweenDeg(const FVector& A, const FVector& B)
 	{
@@ -124,6 +137,52 @@ namespace AirsoftBotLocal
 	}
 }
 
+// ---------------------------------------------------------------------------
+// Difficulty
+// ---------------------------------------------------------------------------
+
+namespace AirsoftDifficulty
+{
+	EAirsoftBotSkill Get(const UObject* WorldContext)
+	{
+		const UWorld* World = WorldContext ? WorldContext->GetWorld() : nullptr;
+		UAirsoftGameInstance* GI = World ? World->GetGameInstance<UAirsoftGameInstance>() : nullptr;
+		return AirsoftBots::SkillFromIndex(GI ? GI->GetUserSettings().BotSkill : 1);
+	}
+
+	FString Label(EAirsoftBotSkill Skill)
+	{
+		return AirsoftBots::SkillLabel(static_cast<int32>(Skill));
+	}
+
+	FString Blurb(EAirsoftBotSkill Skill)
+	{
+		switch (Skill)
+		{
+		case EAirsoftBotSkill::Easy: return TEXT("Slow to react, loose aim, cautious. Enemy hits barely scratch you.");
+		case EAirsoftBotSkill::Hard: return TEXT("Quick, accurate and pushy. They flank and close in from cover.");
+		case EAirsoftBotSkill::Expert: return TEXT("Sharp aim, fast reactions, relentless pressure. Every hit counts.");
+		default: return TEXT("Steady aim and sensible use of cover.");
+		}
+	}
+
+	float Aggression(EAirsoftBotSkill Skill)
+	{
+		switch (Skill)
+		{
+		case EAirsoftBotSkill::Easy: return 0.25f;
+		case EAirsoftBotSkill::Hard: return 0.65f;
+		case EAirsoftBotSkill::Expert: return 0.85f;
+		default: return 0.45f;
+		}
+	}
+
+	float PlayerDamageScale(EAirsoftBotSkill Skill)
+	{
+		return AirsoftCampaign::EnemyDamageScale(Skill);
+	}
+}
+
 AAirsoftBotController::AAirsoftBotController(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
@@ -182,11 +241,38 @@ void AAirsoftBotController::SetSkill(EAirsoftBotSkill InSkill)
 	bSkillSet = true;
 	Skill = InSkill;
 	Tune = UAirsoftSettings::Get()->GetBotTuning(Skill);
+	Aggression = FMath::Clamp(AirsoftDifficulty::Aggression(Skill) * Rng.FRandRange(0.85f, 1.15f), 0.f, 1.f);
+}
+
+void AAirsoftBotController::SetTactical(bool bInTactical)
+{
+	bTacticalSet = true;
+	bTactical = bInTactical;
+	if (!bTactical)
+	{
+		ClearTactics();
+	}
+}
+
+bool AAirsoftBotController::HasCoverPoint(FVector& OutPoint) const
+{
+	if (!bTactical || !bHasCover)
+	{
+		return false;
+	}
+	OutPoint = CoverPoint;
+	return true;
 }
 
 void AAirsoftBotController::OnPossess(APawn* InPawn)
 {
 	Super::OnPossess(InPawn);
+	if (!bTacticalSet)
+	{
+		// Story enemies fight from cover; skirmish bots run and gun.
+		const UWorld* World = GetWorld();
+		bTactical = World && World->GetAuthGameMode<AAirsoftCampaignGameMode>() != nullptr;
+	}
 	ResetBrain();
 	if (AAirsoftCharacter* Me = Cast<AAirsoftCharacter>(InPawn))
 	{
@@ -245,6 +331,8 @@ void AAirsoftBotController::ResetBrain()
 	InvestigatedStamp = -1.0;
 	LastCombatAt = -100.0;
 	UnderFireUntil = 0.0;
+	ClearTactics();
+	NextFlankAt = T + Rng.FRandRange(4.f, 9.f);
 }
 
 void AAirsoftBotController::CacheSpawns(const AAirsoftCharacter* Me)
@@ -409,6 +497,10 @@ void AAirsoftBotController::TickLive(AAirsoftCharacter* Me, float DeltaSeconds)
 			State = EAirsoftBotState::Advance;
 		}
 		CombatMove = EAirsoftBotCombatMove::Stand;
+		if (bHasCover || bFlanker)
+		{
+			ClearTactics(); // the fight is over: back to patrolling
+		}
 		if (Me->bIsCrouched && !bHoldCrouch)
 		{
 			Me->UnCrouch();
@@ -602,6 +694,10 @@ void AAirsoftBotController::UpdateSight(AAirsoftCharacter* Me)
 			{
 				React *= 0.7f;
 			}
+			if (bTactical && (bHasCover || bFlanker) && T - M.LastSeen < Tune.MemoryTime)
+			{
+				React *= 0.5f; // peeking out where we know they are: already looking that way
+			}
 			M.NoticeAt = T + React * 0.4f;
 			M.FireReadyAt = T + React;
 		}
@@ -689,6 +785,16 @@ void AAirsoftBotController::ChooseTarget(AAirsoftCharacter* Me)
 			Best = Enemy;
 		}
 	}
+	if (!Best && bTactical && (bHasCover || bFlanker))
+	{
+		// Ducked behind cover (or working round the side): out of sight is not out of mind.
+		const AAirsoftCharacter* Current = Target.Get();
+		const FBotMemory* Kept = FindMemory(Current);
+		if (Current && Kept && !Current->IsOut() && T - Kept->LastSeen < Tune.MemoryTime)
+		{
+			return;
+		}
+	}
 	if (Best == Target.Get())
 	{
 		return;
@@ -717,9 +823,15 @@ void AAirsoftBotController::Engage(AAirsoftCharacter* Me, float DeltaSeconds)
 	AAirsoftCharacter* Enemy = Target.Get();
 	FBotMemory* M = FindMemory(Enemy);
 	UAirsoftCombatComponent* Combat = Me->GetCombat();
+	if (bTactical && Enemy && M && !Enemy->IsOut() && !M->bVisible && (bHasCover || bFlanker) && T - M->LastSeen < Tune.MemoryTime)
+	{
+		HoldCoverBlind(Me, Enemy, *M);
+		return;
+	}
 	if (!Enemy || !M || Enemy->IsOut() || !M->bVisible)
 	{
 		// Lost them: go and look where they were heading.
+		ClearTactics();
 		const bool bKnown = Enemy && M && !Enemy->IsOut();
 		const FVector Last = bKnown ? M->LastKnown + M->Velocity * 0.6f : FVector::ZeroVector;
 		if (bKnown)
@@ -797,8 +909,12 @@ void AAirsoftBotController::Engage(AAirsoftCharacter* Me, float DeltaSeconds)
 	const bool bCanStart = bReady && bSightsUp && Lag <= Allowed && AimError <= Allowed * 3.f + 1.5f;
 	const bool bCanContinue = bReady && Lag <= Allowed * 3.f;
 
-	// Stance and movement while fighting.
-	if (!bInRange)
+	// Stance and movement while fighting: from cover (tactical bots), else in the open.
+	if (bTactical && bNoticed && UpdateTactics(Me, Enemy, *M, Dist, true))
+	{
+		// Cover, peeking and flanking drive the feet; the trigger logic below shoots whenever they're in sight.
+	}
+	else if (!bInRange)
 	{
 		// Out of reach for this gun: close the distance.
 		if (!IsMoving() || T >= NextCombatMoveAt)

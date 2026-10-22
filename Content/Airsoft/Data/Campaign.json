@@ -1,5 +1,5 @@
 {
-  "Version": 1,
+  "Version": 2,
   "Title": "Last Contract",
   "Narrator": "Microsoft David Desktop",
   "Missions": [
@@ -12,16 +12,28 @@
         "Tonight, the Ledger has come to settle a debt with him."
       ],
       "Objective": "Survive the hit team",
+      "AndrewStart": "Five years. Couldn't even give me five years.",
       "Enemies": 8,
       "MaxAlive": 4,
-      "EnemyWeapons": ["MP5", "MP7", "M870", "VECTOR"],
+      "EnemyWeapons": [
+        "MP5",
+        "MP7",
+        "M870",
+        "VECTOR"
+      ],
       "Boss": {
         "Name": "Kade, the Collector",
         "Weapon": "SG4",
         "Health": 300,
-        "Taunt": "Nothing personal, Andrew. The Ledger always collects."
+        "Taunt": "Nothing personal, Andrew. The Ledger always collects.",
+        "Mid": "Hold still, you old bastard!",
+        "Death": "Should've... asked for more money.",
+        "AndrewReply": "Then come and collect."
       },
-      "Outro": "Every one of them carried a matchbook from the Velvet Club."
+      "Outro": "Every one of them carried a matchbook from the Velvet Club.",
+      "Checkpoints": [
+        0.5
+      ]
     },
     {
       "Title": "Velvet",
@@ -32,16 +44,29 @@
         "Andrew goes in through the front door."
       ],
       "Objective": "Clear the club",
+      "AndrewStart": "Should've let it lie, Varga.",
       "Enemies": 14,
       "MaxAlive": 6,
-      "EnemyWeapons": ["MP5", "VECTOR", "P90", "M870", "SG4"],
+      "EnemyWeapons": [
+        "MP5",
+        "VECTOR",
+        "P90",
+        "M870",
+        "SG4"
+      ],
       "Boss": {
         "Name": "Dorian Sloane",
         "Weapon": "VECTOR",
         "Health": 350,
-        "Taunt": "Mister Varga sends his regards. And his best."
+        "Taunt": "Mister Varga sends his regards. And his best.",
+        "Mid": "Do you have any idea what this carpet cost? Kill him!",
+        "Death": "He'll... burn your whole life down for this.",
+        "AndrewReply": "I'll send him yours back. In pieces."
       },
-      "Outro": "Varga's books name a meeting tonight. The roof of the Nightjar Garage."
+      "Outro": "Varga's books name a meeting tonight. The roof of the Nightjar Garage.",
+      "Checkpoints": [
+        0.5
+      ]
     },
     {
       "Title": "Nightjar",
@@ -52,16 +77,29 @@
         "Somewhere above, Mara Voss is counting the seconds."
       ],
       "Objective": "Fight through the garage",
+      "AndrewStart": "Top floor. Let's get this done.",
       "Enemies": 16,
       "MaxAlive": 6,
-      "EnemyWeapons": ["M4", "TR1", "AK74", "MP7", "SG4"],
+      "EnemyWeapons": [
+        "M4",
+        "TR1",
+        "AK74",
+        "MP7",
+        "SG4"
+      ],
       "Boss": {
         "Name": "Mara Voss",
         "Weapon": "TR1",
         "Health": 420,
-        "Taunt": "You should have stayed retired, Andrew."
+        "Taunt": "You should have stayed retired, Andrew.",
+        "Mid": "You're slower than you used to be. Pin him down. Now.",
+        "Death": "Damn you... Andrew.",
+        "AndrewReply": "I tried, Mara. You people wouldn't let me."
       },
-      "Outro": "The money is gone, and so is Varga. The trail ends at Ironwood Yard."
+      "Outro": "The money is gone, and so is Varga. The trail ends at Ironwood Yard.",
+      "Checkpoints": [
+        0.5
+      ]
     },
     {
       "Title": "Ironwood",
@@ -72,16 +110,220 @@
         "So is Andrew."
       ],
       "Objective": "Break Varga's crew",
+      "AndrewStart": "Last one. Make it count.",
       "Enemies": 20,
       "MaxAlive": 7,
-      "EnemyWeapons": ["M4", "TR1", "AK74", "SR25", "M249"],
+      "EnemyWeapons": [
+        "M4",
+        "TR1",
+        "AK74",
+        "SR25",
+        "M249"
+      ],
       "Boss": {
         "Name": "Silas Varga",
         "Weapon": "M249",
         "Health": 600,
-        "Taunt": "Five years, Andrew. Five years, and you came back for this?"
+        "Taunt": "Five years, Andrew. Five years, and you came back for this?",
+        "Mid": "You think killing me closes the Ledger? It's a book, Andrew. Somebody always picks it up.",
+        "Death": "Then you... write the next page.",
+        "AndrewReply": "You came to my door first, Silas."
       },
-      "Outro": "The Ledger's debt is paid in full. Andrew goes home. For now."
+      "Outro": "The Ledger's debt is paid in full. Andrew goes home. For now.",
+      "Checkpoints": [
+        0.5
+      ]
+    }
+  ],
+  "Barks": {
+    "AndrewReload": [
+      {
+        "File": "VO_Andrew_Reload_1",
+        "Text": "Changing."
+      },
+      {
+        "File": "VO_Andrew_Reload_2",
+        "Text": "Mag."
+      },
+      {
+        "File": "VO_Andrew_Reload_3",
+        "Text": "Loading."
+      }
+    ],
+    "AndrewHurt": [
+      {
+        "File": "VO_Andrew_Hurt_1",
+        "Text": "Not yet."
+      },
+      {
+        "File": "VO_Andrew_Hurt_2",
+        "Text": "Keep moving. Keep moving."
+      },
+      {
+        "File": "VO_Andrew_Hurt_3",
+        "Text": "Shit. Shit."
+      }
+    ],
+    "AndrewKill": [
+      {
+        "File": "VO_Andrew_Kill_1",
+        "Text": "Stay down."
+      },
+      {
+        "File": "VO_Andrew_Kill_2",
+        "Text": "Should've walked away."
+      },
+      {
+        "File": "VO_Andrew_Kill_3",
+        "Text": "That's one."
+      }
+    ],
+    "AndrewLastKill": [
+      {
+        "File": "VO_Andrew_Kill_4",
+        "Text": "Who's next?"
+      }
+    ],
+    "CrewSpotted": [
+      {
+        "File": "VO_Crew_A_Spotted_1",
+        "Text": "Contact! He's right there!"
+      },
+      {
+        "File": "VO_Crew_B_Spotted_1",
+        "Text": "Oh shit, that's him! That's him!"
+      },
+      {
+        "File": "VO_Crew_C_Spotted_1",
+        "Text": "Eyes on target. Light him up."
+      }
+    ],
+    "CrewFlank": [
+      {
+        "File": "VO_Crew_A_Flank_1",
+        "Text": "Go wide! Take the left!"
+      },
+      {
+        "File": "VO_Crew_C_Flank_1",
+        "Text": "Push him. Don't give him room."
+      }
+    ],
+    "CrewReload": [
+      {
+        "File": "VO_Crew_A_Reload_1",
+        "Text": "Reloading! Cover me!"
+      },
+      {
+        "File": "VO_Crew_B_Reload_1",
+        "Text": "I'm dry, I'm dry!"
+      }
+    ],
+    "CrewGrenade": [
+      {
+        "File": "VO_Crew_A_Grenade_1",
+        "Text": "Frag out!"
+      }
+    ],
+    "CrewIncoming": [
+      {
+        "File": "VO_Crew_C_Grenade_1",
+        "Text": "Grenade! Get down!"
+      }
+    ],
+    "CrewHit": [
+      {
+        "File": "VO_Crew_A_Hit_1",
+        "Text": "Fuck! I'm hit!"
+      },
+      {
+        "File": "VO_Crew_B_Hit_1",
+        "Text": "Ah, shit, shit, shit!"
+      }
+    ],
+    "CrewManDown": [
+      {
+        "File": "VO_Crew_C_ManDown_1",
+        "Text": "Man down! He's dropping us one by one!"
+      },
+      {
+        "File": "VO_Crew_B_ManDown_1",
+        "Text": "They said this would be easy!"
+      }
+    ],
+    "CrewSearch": [
+      {
+        "File": "VO_Crew_C_Search_1",
+        "Text": "Where'd he go? Check the corners."
+      },
+      {
+        "File": "VO_Crew_A_Search_1",
+        "Text": "Come on out, old man!"
+      }
+    ],
+    "CrewFear": [
+      {
+        "File": "VO_Crew_B_Fear_1",
+        "Text": "Nobody said it was him. Nobody said it was HIM!"
+      }
+    ]
+  },
+  "Credits": [
+    {
+      "Heading": "",
+      "Lines": [
+        "ANDREW'S AIRSOFT",
+        "LAST CONTRACT"
+      ]
+    },
+    {
+      "Heading": "Cast",
+      "Lines": [
+        "Andrew",
+        "The Narrator",
+        "Kade, the Collector",
+        "Dorian Sloane",
+        "Mara Voss",
+        "Silas Varga",
+        "The Ledger's crew",
+        "All voices synthesised with Kokoro-82M by hexgrad (Apache 2.0)"
+      ]
+    },
+    {
+      "Heading": "Built with",
+      "Lines": [
+        "Unreal Engine 5",
+        "Blender",
+        "Python"
+      ]
+    },
+    {
+      "Heading": "Surface scans (CC0)",
+      "Lines": [
+        "Poly Haven",
+        "ambientCG",
+        "Dimitrios Savva · Dario Barresi · Rob Tuytel · Charlotte Baglioni",
+        "Rico Cilliers · colormass · Amal Kumar · Jenelle van Heerden",
+        "Lennart Demes"
+      ]
+    },
+    {
+      "Heading": "Pronunciation",
+      "Lines": [
+        "misaki (Apache 2.0) · spaCy (MIT)"
+      ]
+    },
+    {
+      "Heading": "",
+      "Lines": [
+        "No real people, places or companies were harmed.",
+        "Any resemblance is a coincidence."
+      ]
+    },
+    {
+      "Heading": "",
+      "Lines": [
+        "Thanks for playing."
+      ]
     }
   ]
 }
