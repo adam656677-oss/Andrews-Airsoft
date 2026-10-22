@@ -33,7 +33,7 @@ public:
 
 private:
 	TSharedRef<SWidget> BuildRow(int32 Row);
-	bool IsEnabled() const;
+	bool AreSubtitlesOn() const;
 
 	TWeakObjectPtr<APlayerController> WeakPC;
 };

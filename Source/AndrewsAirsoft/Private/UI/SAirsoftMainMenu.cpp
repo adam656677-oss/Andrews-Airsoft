@@ -893,11 +893,11 @@ TSharedRef<SWidget> SAirsoftMainMenu::MakeStat(const FString& Label, TFunction<i
 
 TSharedRef<SWidget> SAirsoftMainMenu::BuildProfileCard()
 {
-	UAirsoftGameInstance* GI = AUI::GetGameInstance(WeakPC.Get());
-	FString InitialName = GI ? GI->GetUserSettings().PlayerName : FString();
-	if (InitialName.IsEmpty() && GI)
+	UAirsoftGameInstance* Instance = AUI::GetGameInstance(WeakPC.Get());
+	FString InitialName = Instance ? Instance->GetUserSettings().PlayerName : FString();
+	if (InitialName.IsEmpty() && Instance)
 	{
-		InitialName = GI->GetPlayerName();
+		InitialName = Instance->GetPlayerName();
 	}
 
 	return SNew(SBox)
@@ -1069,8 +1069,8 @@ TSharedRef<SWidget> SAirsoftMainMenu::BuildProfileCard()
 
 void SAirsoftMainMenu::Join()
 {
-	UAirsoftGameInstance* GI = AUI::GetGameInstance(WeakPC.Get());
-	if (!GI || !AddressBox.IsValid())
+	UAirsoftGameInstance* Instance = AUI::GetGameInstance(WeakPC.Get());
+	if (!Instance || !AddressBox.IsValid())
 	{
 		return;
 	}
@@ -1086,23 +1086,23 @@ void SAirsoftMainMenu::Join()
 		SaveName(NameBox->GetText().ToString());
 	}
 	LocalMessage = FString::Printf(TEXT("Connecting to %s..."), *Address);
-	GI->PendingMenuMessage.Reset();
-	GI->JoinGame(Address);
+	Instance->PendingMenuMessage.Reset();
+	Instance->JoinGame(Address);
 }
 
 void SAirsoftMainMenu::SaveName(const FString& Raw)
 {
-	UAirsoftGameInstance* GI = AUI::GetGameInstance(WeakPC.Get());
-	if (!GI)
+	UAirsoftGameInstance* Instance = AUI::GetGameInstance(WeakPC.Get());
+	if (!Instance)
 	{
 		return;
 	}
 	const FString Clean = Raw.TrimStartAndEnd().Left(AirsoftMainMenuLocal::MaxNameLength);
-	FAirsoftUserSettings Settings = GI->GetUserSettings();
+	FAirsoftUserSettings Settings = Instance->GetUserSettings();
 	if (Settings.PlayerName == Clean)
 	{
 		return;
 	}
 	Settings.PlayerName = Clean;
-	GI->SetUserSettings(Settings);
+	Instance->SetUserSettings(Settings);
 }

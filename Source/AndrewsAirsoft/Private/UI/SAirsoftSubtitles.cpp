@@ -113,7 +113,7 @@ void SAirsoftSubtitles::Construct(const FArguments& InArgs, APlayerController* I
 	];
 }
 
-bool SAirsoftSubtitles::IsEnabled() const
+bool SAirsoftSubtitles::AreSubtitlesOn() const
 {
 	const APlayerController* PC = WeakPC.Get();
 	UAirsoftGameInstance* GI = PC ? PC->GetGameInstance<UAirsoftGameInstance>() : nullptr;
@@ -128,7 +128,7 @@ TSharedRef<SWidget> SAirsoftSubtitles::BuildRow(int32 Row)
 		.Padding(FMargin(14.f, 6.f, 14.f, 7.f))
 		.Visibility_Lambda([this, Row]() -> EVisibility
 		{
-			return (IsEnabled() && LineForRow(Row)) ? EVisibility::HitTestInvisible : EVisibility::Collapsed;
+			return (AreSubtitlesOn() && LineForRow(Row)) ? EVisibility::HitTestInvisible : EVisibility::Collapsed;
 		})
 		.BorderBackgroundColor_Lambda([Row]() -> FSlateColor
 		{

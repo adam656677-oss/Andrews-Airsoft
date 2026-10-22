@@ -103,7 +103,6 @@ void SAirsoftSettings::Apply()
 	Settings.BotSkill = Working.BotSkill;
 	Settings.Difficulty = Working.Difficulty;
 	Settings.ColorblindMode = Working.ColorblindMode;
-	Settings.bSubtitles = Working.bSubtitles;
 	Settings.KeyBindings = Working.KeyBindings;
 	GI->SetUserSettings(Settings);
 }
@@ -558,12 +557,6 @@ void SAirsoftSettings::Construct(const FArguments& InArgs, AAirsoftPlayerControl
 		ChoiceRow(TEXT("Screen shake"), TEXT("Camera shake from nearby grenades and when you are tagged."), { TEXT("ON"), TEXT("OFF") },
 			[this]() { return Working.bScreenShake ? 0 : 1; },
 			[this](int32 Index) { Working.bScreenShake = Index == 0; })
-	];
-	Rows->AddSlot().AutoHeight().Padding(FMargin(0.f, 0.f, 0.f, 4.f))
-	[
-		ChoiceRow(TEXT("Subtitles"), TEXT("Story: the speaker and every spoken line at the bottom of the screen."), { TEXT("ON"), TEXT("OFF") },
-			[this]() { return Working.bSubtitles ? 0 : 1; },
-			[this](int32 Index) { Working.bSubtitles = Index == 0; })
 	];
 
 	Rows->AddSlot().AutoHeight()[Section(TEXT("ACCESSIBILITY"))];

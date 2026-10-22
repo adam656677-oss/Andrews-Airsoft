@@ -116,7 +116,7 @@ public:
 		for (int32 i = 0; i < 3; ++i)
 		{
 			const float Phase = FMath::Frac(T * 1.2f - i * 0.18f);
-			const float Height = 8.f + 18.f * FMath::Sin(Phase * PI);
+			const float Height = 8.f + 18.f * FMath::Sin(Phase * UE_PI);
 			const FVector2f Pos(Size.X - 150.f + i * 14.f, RuleY - 30.f - Height);
 			AUI::PaintRect(OutDrawElements, LayerId + 2, AllottedGeometry, Pos, FVector2f(6.f, Height), i == 1 ? AUI::WithAlpha(Magenta, 0.9f) : AUI::WithAlpha(Amber, 0.9f));
 		}
