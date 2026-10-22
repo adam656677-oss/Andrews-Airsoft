@@ -8,6 +8,7 @@ of any real person, actor or film character.
     python Tools/Blender/heads/build_heads.py -- Andrew Kade     # only these characters
     python Tools/Blender/heads/build_heads.py -- --preview [Name]  # flat-shaded shape check (scratch dir)
     python Tools/Blender/heads/build_heads.py -- --renders-only  # lineup + Andrew portrait from the exported files
+    python Tools/Blender/heads/build_heads.py -- --json-only     # rewrite GearHeads.json from the exported files
     flags: --res 2048|1024 (texture size, default 2048)  --samples N  --no-render  --no-bake
 
 Output (Tools/Blender/CONVENTIONS.md):
@@ -172,7 +173,68 @@ def vertex_normals(ob):
     return n.reshape(-1, 3).astype(np.float64)
 
 
+MESH_CACHE = os.path.join(bk.HASH_DIR, "heads")
+
+
+def _cache_path(kind, name, h):
+    import hashlib
+    lib = open(os.path.join(HERE, "headlib.py"), "rb").read()
+    lib = lib[:lib.index(b"CAST = {")] + lib[lib.index(b"ASSET_IDS = {"):]  # colours do not change the geometry
+    cfg = hl.CAST[name]
+    geo = json.dumps([cfg["shape"], cfg["hair"].get("style"), cfg["hair"].get("thin", 1.0), cfg["hair"].get("beard"), cfg.get("brow_thick")], sort_keys=True)
+    src = lib + open(__file__, "rb").read().split(b"# == bake graphs ==")[0]
+    key = hashlib.sha1(src + f"{kind}|{name}|{h}|{geo}".encode()).hexdigest()[:16]
+    return os.path.join(MESH_CACHE, f"{kind}_{hl.ASSET_IDS[name]}_{key}.npz")
+
+
+def save_mesh_cache(path, ob):
+    me = ob.data
+    v = np.empty(len(me.vertices) * 3, np.float32)
+    me.vertices.foreach_get("co", v)
+    vi = np.empty(len(me.loops), np.int32)
+    me.loops.foreach_get("vertex_index", vi)
+    ls = np.empty(len(me.polygons), np.int32)
+    me.polygons.foreach_get("loop_start", ls)
+    lt = np.empty(len(me.polygons), np.int32)
+    me.polygons.foreach_get("loop_total", lt)
+    attrs = {}
+    for a in me.attributes:
+        if a.domain == "POINT" and a.data_type == "FLOAT" and not a.name.startswith("."):
+            arr = np.empty(len(me.vertices), np.float32)
+            a.data.foreach_get("value", arr)
+            attrs["attr_" + a.name] = arr
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    np.savez_compressed(path, v=v, vi=vi, ls=ls, lt=lt, **attrs)
+
+
+def load_mesh_cache(path, name, coll):
+    if not os.path.exists(path):
+        return None
+    z = np.load(path)
+    me = bpy.data.meshes.new(name)
+    me.vertices.add(len(z["v"]) // 3)
+    me.vertices.foreach_set("co", z["v"])
+    me.loops.add(len(z["vi"]))
+    me.loops.foreach_set("vertex_index", z["vi"])
+    me.polygons.add(len(z["ls"]))
+    me.polygons.foreach_set("loop_start", z["ls"])
+    me.polygons.foreach_set("loop_total", z["lt"])
+    me.update(calc_edges=True)
+    me.polygons.foreach_set("use_smooth", np.ones(len(me.polygons), bool))
+    ob = bpy.data.objects.new(name, me)
+    coll.objects.link(ob)
+    for k in z.files:
+        if k.startswith("attr_"):
+            set_attr(ob, k[5:], z[k])
+    return ob
+
+
 def build_head_mesh(head, coll, h=MESH_H):
+    cache = _cache_path("head", head.name, h)
+    ob = load_mesh_cache(cache, f"SM_{hl.ASSET_IDS[head.name]}_Head", coll)
+    if ob is not None:
+        log(f"  {head.name}: head from cache")
+        return ob
     lo, hi = head.bounds()
     F = Fn(lambda p: head.skin_sdf(p), lo, hi)
     t0 = time.time()
@@ -185,7 +247,9 @@ def build_head_mesh(head, coll, h=MESH_H):
     attrs = head.attributes(v, vertex_normals(ob))
     for k, a in attrs.items():
         set_attr(ob, k, a)
-    log(f"  {head.name}: head {len(q) * 2} tris ({time.time() - t0:.0f}s)")
+    log(f"  {head.name}: head {tri_count(ob)} tris ({time.time() - t0:.0f}s)")
+    if h <= MESH_H:
+        save_mesh_cache(cache, ob)
     return ob
 
 
@@ -194,6 +258,11 @@ def build_hair_mesh(head, coll, h=HAIR_H):
     if not hl.style_has_mesh(style["style"]) and not style.get("beard"):
         return None
     hair = hl.Hair(head, style["style"], style.get("thin", 1.0))
+    cache = _cache_path("hair", head.name, h)
+    ob = load_mesh_cache(cache, f"SM_{hl.ASSET_IDS[head.name]}_Hair", coll)
+    if ob is not None:
+        log(f"  {head.name}: hair from cache")
+        return ob
     parts_v, parts_q = [], []
     t0 = time.time()
     if hl.style_has_mesh(style["style"]):
@@ -220,12 +289,15 @@ def build_hair_mesh(head, coll, h=HAIR_H):
     psi = np.arctan2(v[:, 2] - c[2], v[:, 1] - c[1])
     set_attr(ob, "psi", psi)
     set_attr(ob, "ao", hl.sdf_ao(lambda p: np.minimum(hair.sdf(p), head.skin_sdf(p, False)), v, vertex_normals(ob), k=0.8))
-    log(f"  {head.name}: hair {len(q) * 2} tris ({time.time() - t0:.0f}s)")
+    log(f"  {head.name}: hair {tri_count(ob)} tris ({time.time() - t0:.0f}s)")
+    if h <= HAIR_H:
+        save_mesh_cache(cache, ob)
     return ob
 
 
 # --------------------------------------------------------------------------------------
-# Bake graphs
+# Bake graphs  (edits below this line do not invalidate the mesh cache)
+# == bake graphs ==
 # --------------------------------------------------------------------------------------
 
 
@@ -346,6 +418,8 @@ def skin_graph(mat, name):
     mott = g.noise(P, 18.0, 3.0, 0.55)
     fine = g.noise(P, 220.0, 2.0, 0.5)
     col = g.mixmul(g.mr(mott, 0.3, 0.7, 0.0, 0.18), skin, (0.82, 0.74, 0.72))
+    blotch = g.noise(P, 70.0, 3.0, 0.6)
+    col = g.mixmul(g.mr(blotch, 0.45, 0.75, 0.0, 0.14), col, (0.86, 0.80, 0.78))
     col = g.mix(g.mr(fine, 0.35, 0.65, 0.0, 0.08), col, (min(1.0, skin[0] * 1.15), skin[1] * 0.95, skin[2] * 0.92))
     # warmth: cheeks, nose, ears, lips' surround
     red = (min(1.0, skin[0] * 1.25), skin[1] * 0.70, skin[2] * 0.72)
@@ -358,14 +432,14 @@ def skin_graph(mat, name):
     # stubble: dense dark dots in the beard region
     stub = cfg.get("stubble", 0.0)
     if stub > 0:
-        dots = g.voronoi(P, 1800.0)
-        dotm = g.mr(dots, 0.18, 0.05)
+        dots = g.voronoi(P, 1300.0)
+        dotm = g.mr(dots, 0.22, 0.06)
         shadow = g.mul(g.attr("beard"), stub)
-        col = g.mixmul(g.mul(shadow, 0.55), col, (0.72, 0.68, 0.66))
-        col = g.mix(g.mul(g.mul(dotm, shadow), 0.85), col, cfg["stubble_col"])
+        col = g.mixmul(g.mul(shadow, 0.8), col, (0.62, 0.58, 0.57))
+        col = g.mix(g.math("MINIMUM", g.mul(dotm, shadow), 1.0), col, cfg["stubble_col"])
     # lips
-    lip_col = cfg.get("lip_tint") or (skin[0] * 0.85, skin[1] * 0.42, skin[2] * 0.45)
-    col = g.mix(g.mr(g.attr("lip"), 0.15, 0.7), col, lip_col)
+    lip_col = cfg.get("lip_tint") or (skin[0] * 0.90, skin[1] * 0.60, skin[2] * 0.60)
+    col = g.mix(g.mul(g.mr(g.attr("lip"), 0.25, 0.95), 0.75), col, lip_col)
     # brows: strands across the arch
     bpos = g.scale_vec(P, (1.0, 9.0, 1.0))
     strands = g.noise(bpos, 900.0, 1.0, 0.5)
@@ -380,7 +454,7 @@ def skin_graph(mat, name):
     limbal = g.mul(g.mr(cosv, 0.850, 0.862), g.mr(cosv, 0.885, 0.868))
     rays = g.noise(g.scale_vec(P, (1.0, 1.0, 1.0)), 1400.0, 2.0, 0.6)
     iris_col = g.mix(g.mr(rays, 0.3, 0.7), cfg["iris"], tuple(min(1.0, c * 2.2) for c in cfg["iris"]))
-    sclera = g.mix(g.mul(g.mr(cosv, 0.6, 0.2), 0.35), (0.62, 0.58, 0.55), (0.55, 0.40, 0.38))
+    sclera = g.mix(g.mul(g.mr(cosv, 0.6, 0.2), 0.30), (0.72, 0.69, 0.65), (0.62, 0.48, 0.45))
     eye_col = g.mix(iris_m, sclera, iris_col)
     eye_col = g.mix(g.mul(limbal, 0.7), eye_col, (0.02, 0.02, 0.02))
     eye_col = g.mix(pupil_m, eye_col, (0.004, 0.004, 0.004))
@@ -431,11 +505,11 @@ def hair_graph(mat, name):
     stretch = {"slick": (1.0, 40.0, 40.0), "bun": (1.0, 45.0, 45.0), "crop": (1.0, 14.0, 14.0), "textured": (1.0, 6.0, 6.0),
                "horseshoe": (8.0, 12.0, 1.0), "buzz": (1.0, 1.0, 1.0), "crew": (1.0, 5.0, 5.0), "curly": (1.0, 1.0, 1.0)}[style]
     sp = g.scale_vec(P, stretch)
-    streak = g.noise(sp, 260.0, 4.0, 0.6)
-    fine = g.noise(g.scale_vec(P, stretch), 1200.0, 2.0, 0.5)
-    lighter = tuple(min(1.0, c * 2.4 + 0.004) for c in col)
-    c = g.mix(g.mr(streak, 0.35, 0.7), col, lighter)
-    c = g.mix(g.mr(fine, 0.4, 0.7, 0.0, 0.5), c, tuple(x * 0.5 for x in col))
+    streak = g.noise(sp, 150.0, 4.0, 0.62)
+    fine = g.noise(g.scale_vec(P, stretch), 650.0, 2.0, 0.5)
+    lighter = tuple(min(1.0, c * 1.8 + 0.003) for c in col)
+    c = g.mix(g.mr(streak, 0.35, 0.72), col, lighter)
+    c = g.mix(g.mr(fine, 0.42, 0.68, 0.0, 0.35), c, tuple(x * 0.55 for x in col))
     if cfg.get("grey", 0.0) > 0:
         grey = g.mr(g.noise(P, 900.0, 2.0, 0.5), 0.55 - cfg["grey"] * 0.5, 0.62 - cfg["grey"] * 0.5)
         c = g.mix(g.mul(grey, cfg["grey"] * 1.4), c, (0.30, 0.29, 0.28))
@@ -530,6 +604,44 @@ def tri_count(ob):
     return sum(len(p.vertices) - 2 for p in ob.data.polygons)
 
 
+def entry_from_files(name, res):
+    """Rebuilds a JSON entry from the exported FBX files (no meshing or baking)."""
+    aid = hl.ASSET_IDS[name]
+    out_dir = os.path.join(OUT_ROOT, aid)
+    pieces = []
+    for piece in ("Head", "Hair"):
+        f = os.path.join(out_dir, f"SM_{aid}_{piece}.fbx")
+        if not os.path.exists(f):
+            continue
+        before = set(bpy.data.objects)
+        bpy.ops.import_scene.fbx(filepath=f, axis_forward="X", axis_up="Z")
+        obs = [o for o in bpy.data.objects if o not in before and o.type == "MESH"]
+        if not obs:
+            continue
+        ob = obs[0]
+        pieces.append({"Name": piece, "Kind": "Static", "Slots": [f"M_{aid}_{piece}"], "Bounds": bounds_ue(ob), "Triangles": tri_count(ob),
+                       "TextureSize": res, "Anchor": anchor()})
+    return aid, make_entry(name, pieces)
+
+
+def make_entry(name, pieces):
+    aid = hl.ASSET_IDS[name]
+    mins = [p["Bounds"]["Min"] for p in pieces]
+    maxs = [p["Bounds"]["Max"] for p in pieces]
+    return {
+        "Pieces": pieces,
+        "Points": {"Pivot": [0.0, 0.0, 0.0]},
+        "Bounds": {"Min": [min(m[i] for m in mins) for i in range(3)], "Max": [max(m[i] for m in maxs) for i in range(3)]},
+        "Anchor": anchor(),
+        "Outfit": {"Outfit": "Head", "Tint": "Head", "TintRoughness": 0.5, "RoughnessDetail": 1.0, "TintMetallic": 0.0},
+        "SourceDir": "Characters/Heads",
+        "Character": name,
+        "Notes": "Original procedural head (Tools/Blender/heads). Unreal cm, character space; origin = the head bone pivot of the assumed "
+                 "UE5 Manny reference pose. UAirsoftTeamGearComponent::ApplyHead attaches every piece to the head bone (tune with "
+                 "airsoft.gear.tune " + aid + "). Colours are baked; the role mask is empty.",
+    }
+
+
 def build_character(name, res, do_bake, coll):
     t0 = time.time()
     aid = hl.ASSET_IDS[name]
@@ -548,21 +660,8 @@ def build_character(name, res, do_bake, coll):
         export_fbx(ob, os.path.join(out_dir, f"SM_{aid}_{piece}.fbx"))
         pieces.append({"Name": piece, "Kind": "Static", "Slots": [f"M_{aid}_{piece}"], "Bounds": bounds_ue(ob), "Triangles": tri_count(ob),
                        "TextureSize": pres, "Anchor": anchor()})
-    mins = [p["Bounds"]["Min"] for p in pieces]
-    maxs = [p["Bounds"]["Max"] for p in pieces]
     cfg = hl.CAST[name]
-    entry = {
-        "Pieces": pieces,
-        "Points": {"Pivot": [0.0, 0.0, 0.0]},
-        "Bounds": {"Min": [min(m[i] for m in mins) for i in range(3)], "Max": [max(m[i] for m in maxs) for i in range(3)]},
-        "Anchor": anchor(),
-        "Outfit": {"Outfit": "Head", "Tint": "Head", "TintRoughness": 0.5, "RoughnessDetail": 1.0, "TintMetallic": 0.0},
-        "SourceDir": "Characters/Heads",
-        "Character": name,
-        "Notes": "Original procedural head (Tools/Blender/heads). Unreal cm, character space; origin = the head bone pivot of the assumed "
-                 "UE5 Manny reference pose. UAirsoftTeamGearComponent::ApplyHead attaches every piece to the head bone (tune with "
-                 "airsoft.gear.tune " + aid + "). Colours are baked; the role mask is empty.",
-    }
+    entry = make_entry(name, pieces)
     log(f"  {name}: done in {time.time() - t0:.0f}s ({cfg['title']})")
     return aid, entry
 
@@ -578,8 +677,11 @@ def write_json(entries):
 def _write_json_locked(entries):
     data = {"Version": 1, "Assets": {}}
     if os.path.exists(DATA_PATH):
-        with open(DATA_PATH) as f:
-            data = json.load(f)
+        try:
+            with open(DATA_PATH) as f:
+                data = json.load(f)
+        except ValueError:
+            log("GearHeads.json was unreadable - starting it afresh")
     data.setdefault("Assets", {})
     for aid, e in entries.items():
         old = data["Assets"].get(aid)
@@ -595,10 +697,11 @@ def _write_json_locked(entries):
         "Notes": "Story characters by name (Andrew, and the bosses by their Campaign.json names). Ledger crew heads are picked by seed. "
                  "Putting a head on removes the suit's own haircut (HideHair).",
     }
-    os.makedirs(os.path.dirname(DATA_PATH), exist_ok=True)
-    with open(DATA_PATH, "w", newline="\n") as f:
-        json.dump(data, f, indent=2)
-        f.write("\n")
+    text = json.dumps(data, indent=2) + "\n"  # serialise first: a failure never leaves a half-written file
+    tmp = DATA_PATH + ".tmp"
+    with open(tmp, "w", newline="\n") as f:
+        f.write(text)
+    os.replace(tmp, DATA_PATH)
     log("wrote", DATA_PATH)
 
 
@@ -808,32 +911,62 @@ def dress_bust(coll, name, off, rz):
         return []
 
 
-def render_lineup(samples, res=(3840, 2160)):
+LINEUP_COLS, LINEUP_ROWS = 7, 2
+LABEL_FONTS = ("/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+               "C:/Windows/Fonts/arialbd.ttf")
+
+
+def render_bust(name, path, res, samples):
     reset_scene()
-    coll = bpy.data.collections.new("Lineup")
+    coll = bpy.data.collections.new("Bust")
     bpy.context.scene.collection.children.link(coll)
     bs = suit_module()
-    base = bs.mannequin_trimmed(coll, (0.012, 0.012, 0.013))
+    bs.mannequin_trimmed(coll, (0.012, 0.012, 0.013))
+    dress_bust(coll, name, (0, 0, 0), 0.0)
+    import_head(name, coll)
+    cam = noir_rig((0.0, 0.0, 1.62), scale=1.0)
+    place_cam(cam, (0.035, 0.0, 1.575), (0.93, -0.36, 0.05), 1.02, 70)
+    render(path, res, samples)
+
+
+def _font(size):
+    from PIL import ImageFont
+    for f in LABEL_FONTS:
+        if os.path.exists(f):
+            return ImageFont.truetype(f, size)
+    return ImageFont.load_default()
+
+
+def render_lineup(samples, res=(3840, 2160)):
+    """A 7 x 2 grid of head-and-shoulders tiles (each rendered on its own), with names."""
+    from PIL import Image, ImageDraw
+    os.makedirs(SCRATCH, exist_ok=True)
+    tw, th = res[0] // LINEUP_COLS, res[1] // LINEUP_ROWS
+    sheet = Image.new("RGB", res, (6, 9, 12))
+    draw = ImageDraw.Draw(sheet)
     names = list(hl.ASSET_IDS)
-    n = len(names)
-    gap = 0.50
-    for i, name in enumerate(names):
-        y = (i - (n - 1) / 2) * gap
-        off = (0.0, y, 0.0)
-        R = math.radians(-12.0 + 24.0 * (i % 2))
-        man = bpy.data.objects.new("Man", base.data)
-        coll.objects.link(man)
-        man.matrix_world = Matrix.Translation(Vector(off)) @ Matrix.Rotation(R, 4, "Z")
-        dress_bust(coll, name, off, R)
-        import_head(name, coll, off, R)
-    coll.objects.unlink(base)
-    cam = noir_rig((0.0, 0.0, 1.55), scale=2.6)
-    place_cam(cam, (0.0, 0.0, 1.50), (1.0, 0.0, 0.02), 6.6, 85)
-    png = os.path.join(SCRATCH, "_Heads_Lineup.png")
     t0 = time.time()
-    render(png, res, samples)
-    save_jpg(png, os.path.join(RENDER_DIR, "_Lineup_4K.jpg"))
-    log(f"wrote {RENDER_DIR}/_Lineup_4K.jpg ({time.time() - t0:.0f}s)")
+    for i, name in enumerate(names):
+        tile = os.path.join(SCRATCH, f"bust_{hl.ASSET_IDS[name]}.png")
+        if "--reuse-tiles" not in sys.argv or not os.path.exists(tile):
+            render_bust(name, tile, (tw, th), samples)
+        col, row = i % LINEUP_COLS, i // LINEUP_COLS
+        sheet.paste(Image.open(tile).convert("RGB"), (col * tw, row * th))
+        cfg = hl.CAST[name]
+        x, y = col * tw + 22, row * th + th - 92
+        draw.text((x, y), cfg["title"].upper(), font=_font(30), fill=(236, 232, 226))
+        draw.text((x, y + 40), cfg["role"], font=_font(22), fill=(150, 196, 214))
+        log(f"  tile {name} ({time.time() - t0:.0f}s)")
+    # last cell: the title card
+    col, row = len(names) % LINEUP_COLS, len(names) // LINEUP_COLS
+    x0, y0 = col * tw, row * th
+    draw.text((x0 + 30, y0 + th // 2 - 70), "LAST CONTRACT", font=_font(44), fill=(236, 232, 226))
+    draw.text((x0 + 30, y0 + th // 2 - 10), "Character heads", font=_font(28), fill=(150, 196, 214))
+    draw.text((x0 + 30, y0 + th // 2 + 30), "Original procedural sculpts", font=_font(20), fill=(120, 130, 138))
+    os.makedirs(RENDER_DIR, exist_ok=True)
+    out = os.path.join(RENDER_DIR, "_Lineup_4K.jpg")
+    sheet.save(out, quality=92, subsampling=0)
+    log(f"wrote {out} ({time.time() - t0:.0f}s)")
 
 
 def render_portrait(samples, res=(1800, 2250)):
@@ -862,6 +995,10 @@ def main(argv):
     names = [n for n in hl.ASSET_IDS if not only or n in only or n.split()[0] in only]
     if "--preview" in flags:
         preview(names)
+        return
+    if "--json-only" in flags:
+        reset_scene()
+        write_json(dict(entry_from_files(n, res) for n in names))
         return
     if "--renders-only" in flags:
         if "--portrait-only" not in flags:

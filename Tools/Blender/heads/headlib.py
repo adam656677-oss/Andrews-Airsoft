@@ -94,7 +94,7 @@ CAST = {
                    face_w=0.97, eye_set=0.0015),
         skin=(0.71, 0.53, 0.43), redness=0.35, stubble=0.55, stubble_col=(0.030, 0.026, 0.024),
         brow_col=(0.028, 0.022, 0.019), brow_thick=1.05, iris=(0.10, 0.075, 0.045),
-        hair=dict(style="crop", col=(0.026, 0.022, 0.020), grey=0.28)),
+        hair=dict(style="crop", col=(0.020, 0.017, 0.015), grey=0.12)),
     "Kade": dict(
         title="Kade", role="The Collector", seed=23,
         shape=dict(skull=(0.98, 0.98, 1.0), jaw_w=0.93, chin=-0.002, cheek=0.94, brow=0.88, nose_len=0.94, nose_tip=1.08, nose_w=0.96,
