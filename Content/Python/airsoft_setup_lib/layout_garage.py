@@ -448,6 +448,11 @@ def _street_level(L, rng):
     it += [prop("Garage_JerseyBarrier", -20.2, 0.05, z, 0.0), prop("Garage_JerseyBarrier", -14.4, 0.05, z, 0.0),
            prop("Car_SUV", -19.0, 3.4, z, 172.0, tint="PearlWhite", pieces=PARKED),
            prop("Garage_Cone", -21.4, 2.2, z, 0.0), prop("Garage_Cone", -16.8, 4.6, z, 30.0)]
+    # --- Andrew's car ('69 Fastback): backed into the free bay by the entrance, nose out, under its own lamp.
+    # Tagged "Car_Hero" for the story / cutscene code; the batten above this bay has no light of its own.
+    it += [prop("Car_Hero", -18.75, -9.05, z, 90.0, tint="HeroGunmetal", pieces=PARKED, tags=["Car_Hero"]),
+           L.light("rect", -18.75, -9.15, Z2 - SLAB - 0.75, pitch=-90.0, color="Cool", cd=6.0, radius=7.0, w=1.2, h=0.2,
+                   shadows=True, name="HeroCarLamp")]
     # --- north aisle chicane: plywood hoarding + barriers (closing half the lane) ---
     it += [prop("Barricade_Plywood_4m", -2.0, -15.4, z, 90.0), prop("Garage_JerseyBarrier", 2.2, -15.6, z, 0.0),
            prop("Garage_Cone", 4.4, -14.2, z, 0.0), prop("Garage_Cone", -4.6, -14.0, z, 0.0),

@@ -214,6 +214,12 @@ def place_prop(ctx, it):
                                       unreal.AttachmentRule.KEEP_WORLD, False)
                 except Exception:
                     pass
+        if body is not None and it.get("tags"):
+            # extra actor tags (e.g. "Car_Hero") so game code can find a specific placed prop
+            try:
+                body.set_editor_property("tags", list(body.tags) + [unreal.Name(t) for t in it["tags"]])
+            except Exception:
+                pass
         ctx.count("props (imported mesh)")
     else:
         place_fallback(ctx, it, aid, folder)

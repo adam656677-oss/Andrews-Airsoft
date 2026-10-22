@@ -596,6 +596,96 @@
         "Wheels": 2048
       }
     },
+    "Car_Hero": {
+      "Group": "Cars",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Car_Hero_Body"
+          ]
+        },
+        {
+          "Name": "Interior",
+          "Kind": "Static",
+          "Slots": [
+            "M_Car_Hero_Interior"
+          ]
+        },
+        {
+          "Name": "Glass",
+          "Kind": "Glass",
+          "Slots": [
+            "M_Car_Hero_Glass"
+          ]
+        },
+        {
+          "Name": "Emissive",
+          "Kind": "Emissive",
+          "Slots": [
+            "M_Car_Hero_Emissive"
+          ]
+        },
+        {
+          "Name": "Wheels",
+          "Kind": "Static",
+          "Slots": [
+            "M_Car_Hero_Wheels"
+          ]
+        }
+      ],
+      "Points": {
+        "HeadlightL": [
+          241.0,
+          -68.5,
+          60.5
+        ],
+        "HeadlightR": [
+          241.0,
+          68.5,
+          60.5
+        ],
+        "TaillightL": [
+          -238.0,
+          -51.0,
+          70.0
+        ],
+        "TaillightR": [
+          -238.0,
+          51.0,
+          70.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -243.0,
+          -95.5,
+          0.0
+        ],
+        "Max": [
+          243.0,
+          95.5,
+          173.3
+        ]
+      },
+      "Collision": "Convex",
+      "Triangles": {
+        "Body": 54284,
+        "Interior": 10119,
+        "Glass": 2080,
+        "Emissive": 4016,
+        "Wheels": 29152
+      },
+      "TextureSize": {
+        "Body": 4096,
+        "Interior": 2048,
+        "Glass": 256,
+        "Emissive": 512,
+        "Wheels": 2048
+      },
+      "DisplayName": "'69 Fastback"
+    },
     "Car_Hypercar": {
       "Group": "Cars",
       "Pieces": [

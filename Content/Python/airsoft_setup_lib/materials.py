@@ -42,6 +42,7 @@ GLASS = {
     "*": ((0.08, 0.12, 0.13), 0.22, 0.04, 0.0),
     "Car_Limousine": ((0.03, 0.035, 0.04), 0.55, 0.02, 0.0), "Car_GrandTourer": ((0.03, 0.035, 0.04), 0.55, 0.02, 0.0),
     "Car_Hypercar": ((0.025, 0.028, 0.032), 0.6, 0.02, 0.0), "Car_SUV": ((0.03, 0.035, 0.04), 0.55, 0.02, 0.0),
+    "Car_Hero": ((0.03, 0.035, 0.04), 0.5, 0.02, 0.0),
     "Car_SUV/GlassPrivacy": ((0.008, 0.009, 0.01), 0.86, 0.02, 0.0),        # rear privacy glass (per-piece key)
     "BoxTruck": ((0.04, 0.045, 0.05), 0.55, 0.05, 0.0),
     "Goggles": ((0.025, 0.027, 0.03), 0.62, 0.04, 0.0),       # smoked lens (the gear component also sets it at runtime)
@@ -57,7 +58,7 @@ GLASS = {
 EMISSIVE = {
     "*": (None, 12.0), "NeonSign_Velvet": (None, 30.0), "StreetLamp": (None, 16.0), "Chandelier": (None, 22.0),
     "WallSconce": (None, 16.0), "BackBar_4m": (None, 28.0), "DJBooth": (None, 18.0), "Car_Limousine": (None, 10.0),
-    "Car_GrandTourer": (None, 10.0), "Car_Hypercar": (None, 12.0), "Car_SUV": (None, 10.0), "BoxTruck": (None, 8.0), "GunDisplayBay": (None, 6.0), "CeilingLight_Brass": (None, 14.0),
+    "Car_GrandTourer": (None, 10.0), "Car_Hypercar": (None, 12.0), "Car_SUV": (None, 10.0), "Car_Hero": (None, 10.0), "BoxTruck": (None, 8.0), "GunDisplayBay": (None, 6.0), "CeilingLight_Brass": (None, 14.0),
     "BankersLamp": (None, 10.0), "ArmorySign": (None, 8.0), "MovingHeadLight": (None, 20.0),
     "Garage_LightFluo": (None, 16.0), "Garage_LightSodium": (None, 22.0), "Garage_ExitSign": (None, 5.0),
     "Garage_ElevatorDoors": (None, 5.0), "Garage_PayMachine": (None, 3.0), "Garage_TicketBooth": (None, 5.0),
@@ -85,7 +86,7 @@ RETICLE = ((1.0, 0.05, 0.03), 30.0)
 # Car bodies on M_CarPaint (Body piece only): ClearCoat, ClearCoatRoughness, FlakeStrength, FlakeScale (flakes per cm)
 CAR_PAINT = {
     "Car_Limousine": (1.0, 0.02, 0.10, 2.5), "Car_GrandTourer": (1.0, 0.02, 0.14, 2.5),
-    "Car_Hypercar": (1.0, 0.03, 0.16, 2.5), "Car_SUV": (1.0, 0.02, 0.08, 2.5),
+    "Car_Hypercar": (1.0, 0.03, 0.16, 2.5), "Car_SUV": (1.0, 0.02, 0.08, 2.5), "Car_Hero": (1.0, 0.03, 0.12, 2.5),
 }
 
 _cache = {}

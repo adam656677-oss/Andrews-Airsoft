@@ -215,7 +215,9 @@ def main(argv):
     if not one and "--render-only" not in flags:
         import build_club
         log(f"== {AID}")
-        build_club.build(AID, res, do_render=False)
+        entry = build_club.build(AID, res, do_render=False)
+        entry["DisplayName"] = hero_car.DISPLAY_NAME
+        pk.update_json(build_club.JSON_PATH, AID, entry)
     if not one or "--night" in flags:
         night_shot("Hero_4K.jpg", (1.0, -0.62, 0.12), (3840, 2160), samples or 64, lens=38)
     if not one or "--rear" in flags:

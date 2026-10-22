@@ -58,6 +58,7 @@ TINTS = {
     "Orange": (0.7, 0.22, 0.03), "Teal": (0.02, 0.18, 0.2),
     # luxury car colourways (Tools/Blender/club/luxury_cars.py; clear-coated metallic on M_CarPaint)
     "Obsidian": (0.005, 0.005, 0.006), "MidnightBlue": (0.006, 0.014, 0.045), "DeepBurgundy": (0.075, 0.004, 0.012),
+    "HeroGunmetal": (0.045, 0.048, 0.052),          # Andrew's '69 Fastback (Car_Hero): dark gunmetal
     "PearlWhite": (0.70, 0.69, 0.66),
 }
 EMISSIVE_COLORS = {
@@ -75,6 +76,7 @@ TINT_VARIANTS = {
     "Car_GrandTourer": ["Obsidian", "MidnightBlue", "DeepBurgundy", "Gunmetal", "PearlWhite"],
     "Car_Hypercar": ["Obsidian", "MidnightBlue", "DeepBurgundy", "Gunmetal", "PearlWhite"],
     "Car_SUV": ["Obsidian", "MidnightBlue", "DeepBurgundy", "Gunmetal", "PearlWhite"],
+    "Car_Hero": ["HeroGunmetal", "Obsidian", "Gunmetal"],
     "BoxTruck": ["White", "Grey", "Blue"],
     "OilDrum": ["Blue", "Red", "Green"],
     "FlagPole_Objective": ["Blue", "Red"],
@@ -84,7 +86,7 @@ TINT_VARIANTS = {
 }
 # Default PrimaryTint baked into the base instance of masked props (guns stay white: the game tints them).
 DEFAULT_TINT = {"Container_20ft": "Blue", "Car_Limousine": "DeepBurgundy", "Car_GrandTourer": "MidnightBlue",
-                "Car_Hypercar": "Gunmetal", "Car_SUV": "Obsidian", "BoxTruck": "White",
+                "Car_Hypercar": "Gunmetal", "Car_SUV": "Obsidian", "Car_Hero": "HeroGunmetal", "BoxTruck": "White",
                 "OilDrum": "Blue", "Dumpster": "Green", "Street_Shutter": "Grey", "Street_Awning": "Burgundy"}
 # Second paint role (mask G): the limousine's two-tone upper body (bonnet, roof, pillars, boot) stays obsidian;
 # a placement tinted Obsidian is therefore single-tone.
@@ -92,7 +94,7 @@ SECONDARY_TINT = {"Car_Limousine": "Obsidian"}
 # Car paint is glossy: TintMetallic / TintRoughness for the masked areas (luxury cars: base layer under M_CarPaint's
 # clear coat, so the roughness here is the metallic base, not the gloss).
 TINT_SURFACE = {"Car_Limousine": (0.45, 0.32), "Car_GrandTourer": (0.55, 0.3), "Car_Hypercar": (0.6, 0.3),
-                "Car_SUV": (0.4, 0.32), "BoxTruck": (0.0, 0.45),
+                "Car_SUV": (0.4, 0.32), "Car_Hero": (0.6, 0.3), "BoxTruck": (0.0, 0.45),
                 "Container_20ft": (0.0, 0.5), "OilDrum": (0.0, 0.45), "Dumpster": (0.0, 0.5)}
 
 
@@ -180,6 +182,9 @@ KNOWN_ASSETS = {
                        tintable=True),
     "Car_SUV": _K("Props", (-259.3, -119.3, 0), (265.1, 119.3, 193.5), "car:PaintedSteel", coll="Convex",
                   tintable=True),
+    # Andrew's car, display name "'69 Fastback" (Tools/Blender/cars/hero_car.py); actor tag "Car_Hero" where placed
+    "Car_Hero": _K("Props", (-240.0, -101.0, 0), (240.0, 101.0, 128.5), "car:PaintedSteel", coll="Convex",
+                   tintable=True),
     "Chandelier": _K("Props", (-44.1, -44.1, 0), (44.1, 44.1, 123), "hanglamp:Brass", coll="Convex", los=False),
     "DJBooth": _K("Props", (-43, -122, 0), (45.6, 122, 120.8), "box:MarbleBlack", coll="Box"),
     "Dumpster": _K("Props", (-58, -100, 0), (58, 100, 130), "box:PaintedSteel", coll="Box", tintable=True),

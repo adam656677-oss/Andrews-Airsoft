@@ -454,7 +454,7 @@ def flood_mast(A):
     # platform + rail
     zp = Hm - 1.2
     A.cyl(1.2, 0.08, at=(0, 0, zp), mat="galvanized", n=24, bevel=0.005)
-    A.sweep(circle_pts(1.2, 24), r=0.025, n=6, mat="galvanized", closed=True, at=(0, 0, zp + 1.0))
+    A.sweep([(x, y, 0.0) for (x, y) in circle_pts(1.2, 24)], r=0.025, n=6, mat="galvanized", closed=True, at=(0, 0, zp + 1.0))
     for i in range(8):
         a = i * math.pi / 4
         A.cyl(0.02, 1.0, at=(1.18 * math.cos(a), 1.18 * math.sin(a), zp), mat="galvanized", n=6)

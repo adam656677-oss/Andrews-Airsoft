@@ -34,6 +34,7 @@ HEAD_PIVOT = tb.HEAD.copy()  # character space
 NECK_CUT = -0.122  # the neck ends inside the shirt collar
 COVER_MARGIN = 0.0030  # every point of the stand-in head stays this far inside the new head
 COVER_MARGIN_EYES = 0.0004  # ... except around the eyes, where the sockets need the room
+FACE_FWD = np.array([0.0065, 0.0, 0.0])  # the face sits this far ahead of the stand-in (which has no eye sockets)
 
 
 def smoothstep(e0, e1, x):
@@ -348,38 +349,41 @@ class Head:
 
     # -- whole head -------------------------------------------------------------------
     def skin_sdf(self, p, with_eyes=True):
+        pf = p - FACE_FWD  # face features live in the face frame
         d = self.cranium(p)
-        d = hk.smin(d, self.face(p), 0.030)
-        d = hk.smin(d, self.jaw(p), 0.022)
-        d = hk.smin(d, self.brow_ridge(p), 0.016)
+        d = hk.smin(d, self.face(pf), 0.030)
+        d = hk.smin(d, self.jaw(pf), 0.022)
+        d = hk.smin(d, self.brow_ridge(pf), 0.016)
         d = hk.smin(d, self.neck(p), 0.030)
-        d = hk.smin(d, self.nose(p), 0.006)
+        d = hk.smin(d, self.nose(pf), 0.006)
         # eye sockets, then lids
-        d = hk.smax(d, -self.eye_socket_cut(p), 0.006)
-        d = hk.smin(d, self.lips(p), 0.0035)
-        d = hk.smax(d, -self.mouth_cut(p), 0.0007)
-        d = hk.smax(d, -self.nostril_cut(p), 0.0015)
+        d = hk.smax(d, -self.eye_socket_cut(pf), 0.006)
+        d = hk.smin(d, self.lips(pf), 0.0035)
+        d = hk.smax(d, -self.mouth_cut(pf), 0.0007)
+        d = hk.smax(d, -self.nostril_cut(pf), 0.0015)
         d = hk.smin(d, self.ears(p), 0.006)
         # cover the stand-in mannequin head everywhere (no poke-through in game)
-        near_eye = np.maximum(gauss(np.linalg.norm((p - self.eye_c) * (1.0, 0.8, 1.3), axis=1), 0, 0.016),
-                              gauss(np.linalg.norm((p - self.eye_c * (1, -1, 1)) * (1.0, 0.8, 1.3), axis=1), 0, 0.016))
+        near_eye = np.maximum(gauss(np.linalg.norm((pf - self.eye_c) * (1.0, 0.8, 1.3), axis=1), 0, 0.016),
+                              gauss(np.linalg.norm((pf - self.eye_c * (1, -1, 1)) * (1.0, 0.8, 1.3), axis=1), 0, 0.016))
         margin = COVER_MARGIN + (COVER_MARGIN_EYES - COVER_MARGIN) * near_eye
         d = hk.smin(d, standin_head(p) - margin, 0.003)
         if with_eyes:
-            d = hk.smin(d, self.eyelids(p), 0.0022)
-            d = np.minimum(d, self.eyeballs(p))
+            d = hk.smin(d, self.eyelids(pf), 0.0022)
+            d = np.minimum(d, self.eyeballs(pf))
         # the neck ends inside the collar
         d = hk.smax(d, -(p[:, 2] - NECK_CUT), 0.002)
         return d
 
     def bounds(self):
-        return np.array([-0.125, -0.115, NECK_CUT - 0.01]), np.array([0.165, 0.115, 0.225])
+        return np.array([-0.125, -0.115, NECK_CUT - 0.01]), np.array([0.172, 0.115, 0.225])
 
     # -- surface attributes for the bake (per vertex) ---------------------------------------
     def attributes(self, v, n):
         """Masks used by the skin shader: eye (iris/pupil cosine), lips, brows, beard, cheeks, ears, lashes, scalp, AO."""
         s = self.s
         out = {}
+        v_head = v
+        v = v - FACE_FWD  # face frame
         ey = self.eyeballs(v)
         eye = (np.abs(ey) < 0.0006).astype(np.float64)
         cosang = np.full(len(v), -1.0)
@@ -424,7 +428,7 @@ class Head:
         out["cheek"] = gauss(np.linalg.norm((v - (0.090, 0.045, 0.040)) * (1, 1, 1), axis=1), 0, 0.020) + gauss(
             np.linalg.norm(v - (0.090, -0.045, 0.040), axis=1), 0, 0.020)
         out["nose"] = gauss(np.linalg.norm(v - self.nose_tip, axis=1), 0, 0.014)
-        out["ear"] = np.maximum(smoothstep(0.0025, 0.0, self.ears(v)), 0.0) * (ay > 0.07)
+        out["ear"] = np.maximum(smoothstep(0.0025, 0.0, self.ears(v_head)), 0.0) * (ay > 0.07)
         out["scalp"] = smoothstep(0.100, 0.130, z + 0.25 * np.maximum(-x, 0)) * (1 - smoothstep(0.09, 0.11, x))
         out["under_eye"] = np.zeros(len(v))
         for sgn in (1.0, -1.0):
@@ -432,7 +436,7 @@ class Head:
         out["neck"] = smoothstep(-0.03, -0.07, z) * smoothstep(0.01, -0.02, x + 0.03)
         # T-zone (forehead, nose ridge, chin): slightly shinier
         out["tzone"] = np.maximum(gauss(ay, 0, 0.022) * smoothstep(0.03, 0.06, z) * smoothstep(0.08, 0.10, x), smoothstep(0.10, 0.13, z) * smoothstep(0.08, 0.1, x) * 0.6)
-        out["ao"] = sdf_ao(lambda q: self.skin_sdf(q), v, n)
+        out["ao"] = sdf_ao(lambda q: self.skin_sdf(q), v_head, n)
         return out
 
 
@@ -535,12 +539,12 @@ class Hair:
         """Short boxed beard and moustache (Silas)."""
         h = self.h
         base = h.skin_sdf(p, with_eyes=False)
-        v = p
+        v = p - FACE_FWD
         x, y, z = v[:, 0], v[:, 1], v[:, 2]
         ay = np.abs(y)
         upper = 0.034 - 0.25 * np.maximum(ay - 0.032, 0.0) - 0.10 * np.maximum(0.05 - x, 0.0)
         region = smoothstep(upper + 0.003, upper - 0.003, z) * smoothstep(-0.072, -0.055, z) * smoothstep(-0.005, 0.015, x + 0.02)
-        lips = h.lips(p)
+        lips = h.lips(v)
         region *= smoothstep(-0.0005, 0.0030, lips)  # keep the lips clear
         # moustache band over the upper lip
         mz = h.mouth_z
