@@ -449,8 +449,8 @@ def _street_level(L, rng):
            prop("Car_SUV", -19.0, 3.4, z, 172.0, tint="PearlWhite", pieces=PARKED),
            prop("Garage_Cone", -21.4, 2.2, z, 0.0), prop("Garage_Cone", -16.8, 4.6, z, 30.0)]
     # --- Andrew's car ('69 Fastback): backed into the free bay by the entrance, nose out, under its own lamp.
-    # Tagged "Car_Hero" for the story / cutscene code; the batten above this bay has no light of its own.
-    it += [prop("Car_Hero", -18.75, -9.05, z, 90.0, tint="HeroGunmetal", pieces=PARKED, tags=["Car_Hero"]),
+    # Tagged "Car_Hero" (+ "Car_Hero_Street") for the story / cutscene code; the batten above has no light of its own.
+    it += [prop("Car_Hero", -18.75, -9.05, z, 90.0, tint="HeroGunmetal", pieces=PARKED, tags=["Car_Hero", "Car_Hero_Street"]),
            L.light("rect", -18.75, -9.15, Z2 - SLAB - 0.75, pitch=-90.0, color="Cool", cd=6.0, radius=7.0, w=1.2, h=0.2,
                    shadows=True, name="HeroCarLamp")]
     # --- north aisle chicane: plywood hoarding + barriers (closing half the lane) ---
@@ -549,6 +549,9 @@ def _roof_level(L, rng):
            prop("WreckedCar", -2.0, 14.0, z, -8.0), prop("Garage_JerseyBarrier", 2.6, -14.0, z, 15.0),
            prop("Garage_JerseyBarrier", -3.0, 14.6, z, 0.0), prop("Garage_Scaffold", 24.0, -15.8, z, 90.0),
            prop("Garage_BlockPallet", -24.4, 16.0, z, 0.0), prop("Garage_MaintCage", 16.0, 3.4, z, 90.0)]
+    # --- Andrew's car again, on the roof deck by the Red lobby: Mission 6 starts here ("where Andrew parked the
+    # car"). Free bay, the point mirror of the street bay, nose out; tags "Car_Hero" + "Car_Hero_Roof"
+    it.append(prop("Car_Hero", 18.75, 9.05, z, -90.0, tint="HeroGunmetal", pieces=PARKED, tags=["Car_Hero", "Car_Hero_Roof"]))
     # light poles (sodium) along the parapets and the ramp strip
     for (x, y, yaw) in ((-22.5, -22.3, 90.0), (0.0, -22.3, 90.0), (22.5, -22.3, 90.0), (-22.5, 22.3, -90.0),
                         (0.0, 22.3, -90.0), (15.0, 22.3, -90.0), (-26.0, 5.6, 0.0), (26.0, -5.6, 180.0)):
