@@ -20,7 +20,7 @@ from mathutils import Vector as V, Matrix
 
 import propkit as pk
 from propkit import round_poly, rrect_pts
-from propkit_mats import leather, plastic, fabric
+from propkit_mats import paint
 from club_registry import asset
 from luxury_cars import (Car, interp, lerp, reg, lux_paint, lux_metal, lux_leather, lux_fabric, lux_plate, plate_image,
                          build_lower, build_greenhouse, dlo_loop, frame_sweep, fan_patch, bar_across, grid_mesh,
@@ -30,10 +30,10 @@ DISPLAY_NAME = "'69 Fastback"
 
 # Panel gaps (see luxury_cars.gap_field): doors, hood, deck lid
 HERO_GAPS = [
-    ("XZ", [(0.15, 0.27), (0.15, 0.60), (0.12, 0.84)], 0.45),
+    ("XZ", [(0.21, 0.27), (0.21, 0.60), (0.18, 0.83)], 0.45),
     ("XZ", [(-0.97, 0.27), (-0.98, 0.60), (-1.0, 0.86)], 0.45),
-    ("XZ", [(0.15, 0.27), (-0.97, 0.27)], 0.6, 0.0016),
-    ("XY", [(0.44, 0.0), (0.44, 0.71), (2.27, 0.71), (2.27, 0.0)], 0.5),
+    ("XZ", [(0.21, 0.27), (-0.97, 0.27)], 0.6, 0.0016),
+    ("XY", [(0.50, 0.0), (0.50, 0.71), (2.27, 0.71), (2.27, 0.0)], 0.5),
     ("XY", [(-1.90, 0.0), (-1.90, 0.69), (-2.30, 0.69), (-2.30, 0.0)], 0.5),
 ]
 
@@ -44,21 +44,21 @@ def hero_spec():
         plan_rf=0.10, plan_rr=0.10,
         width=[(-2.38, 0.86), (-2.2, 0.895), (-1.6, 0.905), (-1.29, 0.905), (-0.8, 0.89), (-0.2, 0.876), (0.5, 0.873),
                (1.45, 0.882), (2.1, 0.878), (2.38, 0.86)],
-        zbot=[(-2.38, 0.34), (-2.2, 0.22), (-1.9, 0.16), (1.95, 0.16), (2.2, 0.20), (2.38, 0.27)],
-        zsill=[(-2.38, 0.40), (-2.0, 0.27), (1.95, 0.27), (2.38, 0.33)],
-        zsh=[(-2.38, 0.76), (-1.6, 0.80), (-1.05, 0.765), (-0.6, 0.705), (0.5, 0.69), (1.5, 0.70), (2.38, 0.66)],
-        belt_t=[(-2.38, 0.93), (-2.2, 0.955), (-1.86, 0.95), (-1.3, 0.92), (-0.8, 0.885), (0.0, 0.862), (0.8, 0.852),
-                (1.6, 0.846), (2.2, 0.822), (2.38, 0.76)],
-        deck_t=[(-2.38, 0.93), (-2.31, 0.988), (-2.2, 0.99), (-1.86, 0.978), (-1.0, 0.942), (-0.3, 0.908), (0.36, 0.882),
-                (0.7, 0.878), (1.3, 0.868), (1.9, 0.846), (2.25, 0.805), (2.38, 0.76)],
+        zbot=[(-2.38, 0.34), (-2.2, 0.22), (-1.9, 0.16), (1.95, 0.16), (2.2, 0.21), (2.38, 0.29)],
+        zsill=[(-2.38, 0.40), (-2.0, 0.27), (1.95, 0.27), (2.38, 0.34)],
+        zsh=[(-2.38, 0.76), (-1.6, 0.80), (-1.05, 0.765), (-0.6, 0.705), (0.5, 0.69), (1.5, 0.705), (2.38, 0.72)],
+        belt_t=[(-2.38, 0.93), (-2.2, 0.955), (-1.86, 0.945), (-1.3, 0.905), (-0.8, 0.872), (0.0, 0.852), (0.8, 0.848),
+                (1.6, 0.846), (2.2, 0.838), (2.38, 0.80)],
+        deck_t=[(-2.38, 0.93), (-2.31, 0.988), (-2.2, 0.99), (-1.86, 0.968), (-1.0, 0.93), (-0.3, 0.9), (0.42, 0.878),
+                (0.7, 0.878), (1.3, 0.868), (1.9, 0.856), (2.25, 0.84), (2.38, 0.80)],
         tuck_t=[(-2.38, 0.03), (-1.5, 0.085), (-0.6, 0.07), (0.6, 0.05), (1.6, 0.04), (2.38, 0.03)],
-        x_ws=0.36, x_bl=-1.86,
-        roof_t=[(-1.86, 0.978), (-1.5, 1.065), (-1.15, 1.165), (-0.85, 1.24), (-0.62, 1.275), (-0.40, 1.28), (-0.22, 1.262),
-                (-0.10, 1.215), (0.10, 1.07), (0.36, 0.882)],
+        x_ws=0.42, x_bl=-1.86,
+        roof_t=[(-1.86, 0.968), (-1.4, 1.09), (-1.05, 1.19), (-0.78, 1.255), (-0.55, 1.28), (-0.3, 1.276), (-0.12, 1.245),
+                (0.05, 1.16), (0.25, 1.0), (0.42, 0.878)],
         lean_t=[(-1.9, 0.17), (0.4, 0.14)], n_exp=3.6,
         s_g0=0.035, s_g1=0.36, s_rail=0.41, s_w0=0.44,
-        side_breaks=[0.36, (0.20, -0.12), -0.86, -0.89, (-1.38, -0.98), -1.86],
-        roof_breaks=[0.36, -0.20, -0.86, -0.89, -1.02, -1.86],
+        side_breaks=[0.42, (0.26, -0.08), -0.86, -0.89, (-1.38, -0.98), -1.86],
+        roof_breaks=[0.42, -0.14, -0.86, -0.89, -1.02, -1.86],
         col_counts=[10, 16, 2, 10, 16],
         seat_x=[-0.55, -1.30],
     )
@@ -129,7 +129,7 @@ def five_spoke_wheel(A, at, side, r_t, wdt, rim_r, piece="Wheels"):
 
 
 def bucket(A, x, y, z, P, mat, insert):
-    w, depth, back_h = 0.52, 0.52, 0.78
+    w, depth, back_h = 0.52, 0.52, 0.56
     A.box((depth, w, 0.11), at=(x, y, z + 0.055), mat=mat, bevel=0.035, segs=3, piece=P)
     A.box((depth * 0.8, w * 0.66, 0.03), at=(x + 0.01, y, z + 0.12), mat=insert, bevel=0.012, segs=3, piece=P)
     bx, bz = x - depth / 2 + 0.06, z + 0.12
@@ -142,8 +142,8 @@ def bucket(A, x, y, z, P, mat, insert):
     o = A.box((0.025, w * 0.62, back_h * 0.62), mat=insert, bevel=0.01, segs=3, piece=P)
     place(o, (0.04, 0, back_h * 0.42))
     # integrated headrest: the high back narrows at the top
-    o = A.box((0.11, w * 0.6, 0.18), mat=mat, bevel=0.05, segs=3, piece=P)
-    place(o, (-0.02, 0, back_h + 0.07))
+    o = A.box((0.11, w * 0.6, 0.15), mat=mat, bevel=0.05, segs=3, piece=P)
+    place(o, (-0.02, 0, back_h + 0.06))
 
 
 def period_steering_wheel(A, at, r, P):
@@ -250,9 +250,9 @@ def hood_pin(A, T, x, y):
 def quarter_scoop(A, cs, side, P1):
     """Simulated scoop on the rear quarter just behind the door: body-colour fairing with a dark rear mouth."""
     S = surf_side(cs, side)
-    out = round_poly([(-1.03, 0.665), (-1.07, 0.705), (-1.24, 0.735), (-1.27, 0.70), (-1.25, 0.655)], 0.012)
+    out = round_poly([(-1.0, 0.655), (-1.05, 0.705), (-1.29, 0.75), (-1.33, 0.70), (-1.30, 0.64)], 0.015)
     fan_patch(A, out if side > 0 else list(reversed(out)), S, 0.028, P1, rings=4, smooth=40)
-    mouth = round_poly([(-1.215, 0.668), (-1.235, 0.715), (-1.262, 0.71), (-1.255, 0.666)], 0.006)
+    mouth = round_poly([(-1.27, 0.655), (-1.29, 0.725), (-1.322, 0.715), (-1.312, 0.652)], 0.006)
     fan_patch(A, mouth if side > 0 else list(reversed(mouth)), S, 0.031, "lx_satin_black", rings=2)
 
 
@@ -262,10 +262,10 @@ def stripe_side(A, cs, side):
     upper = [(1.02, 0.712), (0.5, 0.705), (-0.2, 0.708), (-0.85, 0.727), (-1.0, 0.70)]
     lower = [(-0.97, 0.672), (-0.85, 0.687), (-0.2, 0.668), (0.5, 0.665), (1.06, 0.674)]
     out = upper + lower
-    fan_patch(A, out if side > 0 else list(reversed(out)), S, 0.0009, "lx_satin_black", rings=2, smooth=30)
+    fan_patch(A, out if side > 0 else list(reversed(out)), S, 0.003, "lx_matte_black", rings=2, smooth=30)
     # pinstripe below the band
     lo2 = [(1.06, 0.662), (0.5, 0.654), (-0.2, 0.657), (-0.9, 0.676), (-0.9, 0.669), (-0.2, 0.650), (0.5, 0.647), (1.08, 0.655)]
-    fan_patch(A, lo2 if side > 0 else list(reversed(lo2)), S, 0.0009, "lx_satin_black", rings=1, smooth=30)
+    fan_patch(A, lo2 if side > 0 else list(reversed(lo2)), S, 0.003, "lx_matte_black", rings=1, smooth=30)
 
 
 def windscreen_trim(A, cs, x_a, x_b, s0, off=0.005, n=24, mat="lx_chrome"):
@@ -313,6 +313,7 @@ def car_hero(A):
     reg("lx_headliner_hero", lux_fabric, col=(0.018, 0.018, 0.019), rough=0.95)
     reg("lx_carpet", lux_fabric, col=(0.012, 0.012, 0.013), rough=0.95)
     reg("lx_plate_hero", lux_plate, image=plate_image("PLATE_HERO", "NJR 429"))
+    reg("lx_matte_black", paint, col=(0.008, 0.008, 0.009), rough=0.62, peel=0.0, grime=0.03)   # hood panel, stripes
 
     def mats(c, n):
         if n.z < -0.5 and c.z < interp(cs.zbot, c.x) + 0.04:
@@ -334,9 +335,9 @@ def car_hero(A):
     build_greenhouse(A, cs, tagmat, headliner="lx_headliner_hero")
     # chrome reveals: side glass, windscreen, backlight
     for side in (1, -1):
-        loop = dlo_loop(cs, (0.20, -0.12), (-1.38, -0.98), cs.s_g0, cs.s_g1, side, off=0.004)
+        loop = dlo_loop(cs, (0.26, -0.08), (-1.38, -0.98), cs.s_g0, cs.s_g1, side, off=0.004)
         frame_sweep(A, loop, 0.004, 0.012, "lx_chrome", closed=True, smooth=60)
-    windscreen_trim(A, cs, 0.36, -0.20, cs.s_w0)
+    windscreen_trim(A, cs, 0.42, -0.14, cs.s_w0)
     windscreen_trim(A, cs, -1.02, -1.86, cs.s_w0)
     # ---- sides ------------------------------------------------------------------------------
     for side in (1, -1):
@@ -355,19 +356,19 @@ def car_hero(A):
     plain_mirror(A, cs, 0.14, 0.0, 1, P1)
     plain_mirror(A, cs, 0.14, 0.0, -1, P1)
     pa, na = surf_side(cs, -1)(1.30, 0.80)
-    A.cyl(0.0035, 0.78, at=tuple(pa + V(na) * 0.01 + V((0, 0, 0.39))), mat="lx_chrome", n=8, bevel=0.0)        # antenna
+    A.cyl(0.0035, 0.62, at=tuple(pa + V(na) * 0.01 + V((0, 0, 0.31))), mat="lx_chrome", n=8, bevel=0.0)        # antenna
     # ---- hood: matte black centre panel, scoop, pins, wipers ----------------------------------
     T = surf_top(cs)
-    hp = round_poly([(0.50, 0.36), (2.16, 0.40), (2.16, -0.40), (0.50, -0.36)], 0.04)
-    fan_patch(A, hp, T, 0.0012, "lx_satin_black", rings=3, smooth=30)
+    hp = round_poly([(0.56, 0.36), (2.16, 0.40), (2.16, -0.40), (0.56, -0.36)], 0.04)
+    fan_patch(A, hp, T, 0.003, "lx_matte_black", rings=3, smooth=30)
     sc = round_poly([(0.95, 0.17), (1.62, 0.23), (1.64, -0.23), (0.95, -0.17)], 0.05)
-    fan_patch(A, sc, T, 0.055, "lx_satin_black", rings=4, smooth=40)
+    fan_patch(A, sc, T, 0.055, "lx_matte_black", rings=4, smooth=40)
     pm, nm = T(1.66, 0.0)
     A.box((0.03, 0.40, 0.04), at=tuple(pm + V(nm) * 0.026), mat="lx_black", bevel=0.008, segs=2)          # scoop mouth
     for yy in (0.56, -0.56):
         hood_pin(A, T, 2.13, yy)
     for yy in (0.28, -0.32):
-        pw, nw = T(0.40, yy)
+        pw, nw = T(0.47, yy)
         A.box((0.02, 0.42, 0.012), at=tuple(pw + V(nw) * 0.01), rot=(0, 0, -12), mat="lx_satin_black", bevel=0.003)
     # ---- front: recessed grille with the inner lamps at its ends, outer lamps in the fenders, blade bumper
     F = surf_front(cs)
@@ -392,7 +393,7 @@ def car_hero(A):
     # ---- rear: black tail panel, triple-lens lamps, plain gas cap, blade bumper, twin tips ----
     R = surf_rear(cs)
     tp = round_poly([(0.79, 0.585), (0.79, 0.81), (-0.79, 0.81), (-0.79, 0.585)], 0.02)
-    fan_patch(A, list(reversed(tp)), R, 0.002, "lx_satin_black", rings=2)
+    fan_patch(A, list(reversed(tp)), R, 0.004, "lx_satin_black", rings=2)
     for s in (1, -1):
         for k, yy in enumerate((0.36, 0.51, 0.66)):
             bz = round_poly(rrect_pts(0.125, 0.18, 0.012, 3), 0.003)
@@ -413,7 +414,7 @@ def car_hero(A):
         A.cyl(0.025, 0.142, at=(cs.x0 + 0.1, s * 0.52, 0.27), axis="X", mat="lx_black", n=20, bevel=0.002)
     # plain stripe across the ducktail
     dk = round_poly([(-2.08, 0.66), (-2.26, 0.66), (-2.26, -0.66), (-2.08, -0.66)], 0.02)
-    fan_patch(A, dk, T, 0.0012, "lx_satin_black", rings=2, smooth=30)
+    fan_patch(A, dk, T, 0.003, "lx_matte_black", rings=2, smooth=30)
     # ---- wheels + interior ---------------------------------------------------------------------
     for wx, tw in ((cs.wf, cs.tire_w), (cs.wr, cs.tire_wr)):
         for s in (1, -1):

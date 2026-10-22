@@ -52,6 +52,18 @@ PRESETS = {
         "grade": {"shadows_gain": (0.9, 1.0, 1.1, 1.0), "shadows_saturation": (1.0, 1.0, 1.0, 1.15),
                   "highlights_gain": (1.04, 1.0, 0.96, 1.0), "midtones_saturation": (1.0, 1.0, 1.0, 1.06)},
     },
+    # Saltmarsh Terminal: cold teal-blue night in the rain over a container port. Teal haze and moonlight, the
+    # sodium high-masts lay orange pools between black container canyons; deep shadows, cool grade.
+    "saltmarsh_rain": {
+        "sun": {"pitch": -32.0, "yaw": 150.0, "lux": 0.25, "temp": 10000, "angle": 1.2},
+        "sky": {"intensity": 0.3, "lower": (0.006, 0.012, 0.016)}, "clouds": True,
+        "fog": {"density": 0.08, "falloff": 0.28, "start": 300.0, "inscatter": (0.025, 0.06, 0.075),
+                "vol_scatter": 0.7, "vol_albedo": (175, 222, 232), "vol_extinction": 2.2, "vol_distance": 7000.0},
+        "exposure": (-2.5, 1.0, 0.7), "white_temp": 6300.0, "bloom": 0.9, "vignette": 0.42, "grain": 0.18,
+        "ca": 0.1, "saturation": 1.06, "contrast": 1.1, "local_exposure": (0.66, 0.85),
+        "grade": {"shadows_gain": (0.86, 1.0, 1.14, 1.0), "shadows_saturation": (1.0, 1.0, 1.0, 1.2),
+                  "highlights_gain": (1.05, 1.0, 0.94, 1.0), "midtones_saturation": (1.0, 1.0, 1.0, 1.04)},
+    },
     "menu_armory": {
         "sun": {"pitch": -30.0, "yaw": 40.0, "lux": 0.05, "temp": 6500, "angle": 1.0, "shadows": False},
         "sky": {"intensity": 0.15, "lower": (0.02, 0.015, 0.01)}, "clouds": False,
@@ -91,6 +103,11 @@ FIXTURES = {
                         "shadows": False},
     "Garage_TicketBooth": {"kind": "point", "point": "Light", "color": "Warm", "cd": 1.6, "radius": 5.0, "src": 15.0,
                            "shadows": False},
+    # Saltmarsh Terminal kit (Tools/Blender/harbor). High-mast sodium floods: one shadowed spot each (4 on the map).
+    "Harbor_FloodMast": {"kind": "spot", "point": "Light", "color": "Sodium", "cd": 160.0, "radius": 48.0,
+                         "cone": (40, 62), "pitch": -55.0, "src": 40.0, "shadows": True, "vol": 1.2},
+    "Harbor_Gatehouse": {"kind": "point", "point": "Light", "color": "Warm", "cd": 2.5, "radius": 7.0, "src": 30.0,
+                         "shadows": False, "vol": 1.0},
     # Neon street kit (Tools/Blender/club/neon_kit.py). Signs light the wet street in their own colour: unshadowed
     # (cheap; the emissive tubes also feed Lumen), large source radius so the highlight on wet asphalt is a soft
     # smear instead of a pin-prick, high volumetric scattering so each sign glows in the teal haze.

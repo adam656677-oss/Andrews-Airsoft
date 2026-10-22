@@ -304,10 +304,10 @@ class Head:
             c = self.eye_c * (1, sgn, 1)
             shell = sphere(p, c, self.eye_r + 0.0014)
             # almond opening: wider towards the outer corner, a little hooded with age
-            q = p - (c + np.array([self.eye_r, 0.0015 * sgn, 0.0006 - 0.0006 * s["age"]]))
+            q = p - (c + np.array([0.0045, 0.0015 * sgn, 0.0006 - 0.0006 * s["age"]]))
             q = q @ rot_z(-6.0 * sgn)
             open_h = 0.0052 * s["eye_open"] * (1.0 - 0.10 * s["age"]) * (1.0 + 0.06 * s["female"])
-            ap = hk.sd_ellipsoid(q, np.array([0.0105, 0.0132, open_h]))
+            ap = hk.sd_ellipsoid(q, np.array([0.0125, 0.0142, open_h]))
             lid = hk.smax(shell, -ap, 0.0008)
             # keep only the front half of the shell (the back is buried in the socket)
             lid = np.maximum(lid, -(p[:, 0] - (c[0] - 0.004)))

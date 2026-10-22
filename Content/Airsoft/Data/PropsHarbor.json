@@ -47,6 +47,88 @@
         "Cover": false
       }
     },
+    "Harbor_Container40": {
+      "Group": "Harbor",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Harbor_Container40_Body"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -609.5,
+          -122.6,
+          0.0
+        ],
+        "Max": [
+          619.0,
+          122.6,
+          259.0
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 26912
+      },
+      "TextureSize": {
+        "Body": 4096
+      },
+      "Layout": {
+        "Cover": true
+      },
+      "TintVariants": {
+        "Red": [
+          0.42,
+          0.04,
+          0.03
+        ],
+        "Blue": [
+          0.04,
+          0.13,
+          0.32
+        ],
+        "Green": [
+          0.07,
+          0.2,
+          0.09
+        ],
+        "Rust": [
+          0.36,
+          0.13,
+          0.05
+        ],
+        "Sand": [
+          0.5,
+          0.4,
+          0.26
+        ],
+        "Grey": [
+          0.3,
+          0.31,
+          0.32
+        ],
+        "Teal": [
+          0.02,
+          0.18,
+          0.2
+        ],
+        "Orange": [
+          0.7,
+          0.22,
+          0.03
+        ],
+        "White": [
+          0.8,
+          0.8,
+          0.78
+        ]
+      }
+    },
     "Harbor_Fender": {
       "Group": "Harbor",
       "Pieces": [

@@ -96,7 +96,7 @@ public:
 	/** "Tracer unit" glow on night maps. */
 	UPROPERTY(Config, EditAnywhere, Category = "Tracers") float NightTracerBoost = 2.f;
 	/** Map name fragments that count as night maps. */
-	UPROPERTY(Config, EditAnywhere, Category = "Tracers") TArray<FString> NightMapKeywords = { TEXT("VelvetClub"), TEXT("NightjarGarage") };
+	UPROPERTY(Config, EditAnywhere, Category = "Tracers") TArray<FString> NightMapKeywords = { TEXT("VelvetClub"), TEXT("NightjarGarage"), TEXT("SaltmarshTerminal") };
 	/** Brightness of spent, bouncing BBs. */
 	UPROPERTY(Config, EditAnywhere, Category = "Tracers") float RicochetIntensity = 2.5f;
 
@@ -116,7 +116,7 @@ public:
 
 	// --- Rain ---------------------------------------------------------------------
 	/** Map name fragments where it rains: streaks fall around the camera, ripples appear on wet ground and puddles. */
-	UPROPERTY(Config, EditAnywhere, Category = "Rain") TArray<FString> RainMapKeywords = { TEXT("NightjarGarage"), TEXT("VelvetClub") };
+	UPROPERTY(Config, EditAnywhere, Category = "Rain") TArray<FString> RainMapKeywords = { TEXT("NightjarGarage"), TEXT("VelvetClub"), TEXT("SaltmarshTerminal") };
 	/** Ripples per second (0 = off); a short downward trace each. */
 	UPROPERTY(Config, EditAnywhere, Category = "Rain", meta = (ClampMin = "0")) float RainRipplesPerSecond = 14.f;
 	/** Ripples land within this distance of the camera (cm). */

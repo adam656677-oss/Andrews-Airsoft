@@ -19,6 +19,8 @@ TArray<FAirsoftMapInfo> UAirsoftSettings::DefaultMatchMaps()
 	Maps.Add(Map(TEXT("Club"), TEXT("Velvet Club"), TEXT("/Game/Maps/L_VelvetClub"), 4, 14, true));
 	// Three storeys of parking garage at night: close fights on each deck, long ramps between them.
 	Maps.Add(Map(TEXT("Garage"), TEXT("Nightjar Garage"), TEXT("/Game/Maps/L_NightjarGarage"), 4, 18, true));
+	// Container port at night: canyon lanes between box stacks, a warehouse at the quay.
+	Maps.Add(Map(TEXT("Harbor"), TEXT("Saltmarsh Terminal"), TEXT("/Game/Maps/L_SaltmarshTerminal"), 4, 18, true));
 	return Maps;
 }
 

@@ -240,9 +240,8 @@ def sts_crane(A):
             A.box((3.6, 1.0, 0.25), at=(x, y, 1.45), mat="h_hazard", bevel=0.02)
             # upper legs to the girder (waterside legs straight, landside legs too)
             A.box((LEG * 0.9, LEG * 0.9, ZG - ZP - 1.0), at=(x, y, ZP + 1.0 + (ZG - ZP - 1.0) / 2), mat="h_crane", bevel=0.04)
-    # sill beams along Y (connect the bogie pairs) and portal beams along X / Y
+    # portal beams along X / Y (the portal stays open at ground level: trucks drive through it)
     for sx in (-1, 1):
-        A.box((1.0, 2 * G, 1.0), at=(sx * S, 0, 2.0), mat="h_crane", bevel=0.04)
         A.box((1.4, 2 * G + LEG, 1.6), at=(sx * S, 0, ZP + 0.6), mat="h_crane", bevel=0.05)
     for sy in (-1, 1):
         A.box((2 * S + LEG, 1.4, 1.8), at=(0, sy * G, ZP + 0.4), mat="h_crane", bevel=0.05)
@@ -318,8 +317,8 @@ def sts_crane(A):
     A.point("FloodA", (S - 4.0, 0, ZG - 0.2))
     A.point("FloodB", (S + 14.0, 0, ZG - 0.2))
     A.point("Light", (S + 2.0, 0, ZG - 0.2))
-    # checker: only the bogies / sill beams / legs stand in the playable area
-    A.layout = {"Core": [[-S * 100 - 170, -G * 100 - 70], [S * 100 + 170, G * 100 + 70]], "Los": False, "Cover": False}
+    # checker: the portal is open between the legs; the layout adds a blocker at each leg / bogie instead
+    A.layout = {"Solid": False, "Los": False, "Cover": False}
     A.view = (0.55, -1.0, 0.32)
     A.lens = 24
     A.margin = 1.04
