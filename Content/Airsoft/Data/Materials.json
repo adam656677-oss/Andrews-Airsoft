@@ -204,6 +204,130 @@
         "ProceduralLayers": "carpet"
       }
     },
+    "ClothCordura": {
+      "TileMeters": 0.4,
+      "BC": "Materials/ClothCordura/T_ClothCordura_BC.png",
+      "N": "Materials/ClothCordura/T_ClothCordura_N.png",
+      "ORM": "Materials/ClothCordura/T_ClothCordura_ORM.png",
+      "H": "Materials/ClothCordura/T_ClothCordura_H.png",
+      "Opacity": null,
+      "Resolution": 2048,
+      "ArchUVScale": 5.0,
+      "HeightRangeM": 0.001,
+      "Source": {
+        "Site": "ambientCG",
+        "Asset": "Fabric061",
+        "Name": "Fabric 061",
+        "Url": "https://ambientcg.com/view?id=Fabric061",
+        "Authors": [
+          "ambientCG (Lennart Demes)"
+        ],
+        "License": "CC0 1.0",
+        "ScanMeters": 0.4,
+        "Repeat": 1,
+        "Download": "2k"
+      }
+    },
+    "ClothPoplin": {
+      "TileMeters": 0.291,
+      "BC": "Materials/ClothPoplin/T_ClothPoplin_BC.png",
+      "N": "Materials/ClothPoplin/T_ClothPoplin_N.png",
+      "ORM": "Materials/ClothPoplin/T_ClothPoplin_ORM.png",
+      "H": "Materials/ClothPoplin/T_ClothPoplin_H.png",
+      "Opacity": null,
+      "Resolution": 2048,
+      "ArchUVScale": 6.87285,
+      "HeightRangeM": 0.0004,
+      "Source": {
+        "Site": "Poly Haven",
+        "Asset": "stretch_poplin",
+        "Name": "Stretch Poplin",
+        "Url": "https://polyhaven.com/a/stretch_poplin",
+        "Authors": [
+          "colormass",
+          "Rico Cilliers"
+        ],
+        "License": "CC0 1.0",
+        "ScanMeters": 0.291,
+        "Repeat": 1,
+        "Download": "2k"
+      }
+    },
+    "ClothSilk": {
+      "TileMeters": 0.263,
+      "BC": "Materials/ClothSilk/T_ClothSilk_BC.png",
+      "N": "Materials/ClothSilk/T_ClothSilk_N.png",
+      "ORM": "Materials/ClothSilk/T_ClothSilk_ORM.png",
+      "H": "Materials/ClothSilk/T_ClothSilk_H.png",
+      "Opacity": null,
+      "Resolution": 2048,
+      "ArchUVScale": 7.60456,
+      "HeightRangeM": 0.0004,
+      "Source": {
+        "Site": "Poly Haven",
+        "Asset": "crepe_satin",
+        "Name": "Crepe Satin",
+        "Url": "https://polyhaven.com/a/crepe_satin",
+        "Authors": [
+          "colormass",
+          "Rico Cilliers"
+        ],
+        "License": "CC0 1.0",
+        "ScanMeters": 0.263,
+        "Repeat": 1,
+        "Download": "2k"
+      }
+    },
+    "ClothWebbing": {
+      "TileMeters": 0.273,
+      "BC": "Materials/ClothWebbing/T_ClothWebbing_BC.png",
+      "N": "Materials/ClothWebbing/T_ClothWebbing_N.png",
+      "ORM": "Materials/ClothWebbing/T_ClothWebbing_ORM.png",
+      "H": "Materials/ClothWebbing/T_ClothWebbing_H.png",
+      "Opacity": null,
+      "Resolution": 2048,
+      "ArchUVScale": 7.32601,
+      "HeightRangeM": 0.0008,
+      "Source": {
+        "Site": "Poly Haven",
+        "Asset": "denim_fabric_04",
+        "Name": "Denim Fabric 04",
+        "Url": "https://polyhaven.com/a/denim_fabric_04",
+        "Authors": [
+          "colormass",
+          "Rico Cilliers"
+        ],
+        "License": "CC0 1.0",
+        "ScanMeters": 0.273,
+        "Repeat": 1,
+        "Download": "2k"
+      }
+    },
+    "ClothWool": {
+      "TileMeters": 0.27,
+      "BC": "Materials/ClothWool/T_ClothWool_BC.png",
+      "N": "Materials/ClothWool/T_ClothWool_N.png",
+      "ORM": "Materials/ClothWool/T_ClothWool_ORM.png",
+      "H": "Materials/ClothWool/T_ClothWool_H.png",
+      "Opacity": null,
+      "Resolution": 2048,
+      "ArchUVScale": 7.40741,
+      "HeightRangeM": 0.0008,
+      "Source": {
+        "Site": "Poly Haven",
+        "Asset": "poly_wool_herringbone",
+        "Name": "Poly Wool Herringbone",
+        "Url": "https://polyhaven.com/a/poly_wool_herringbone",
+        "Authors": [
+          "colormass",
+          "Rico Cilliers"
+        ],
+        "License": "CC0 1.0",
+        "ScanMeters": 0.27,
+        "Repeat": 1,
+        "Download": "2k"
+      }
+    },
     "Concrete": {
       "TileMeters": 2.71,
       "BC": "Materials/Concrete/T_Concrete_BC.png",
@@ -478,6 +602,54 @@
         "Download": "2k"
       }
     },
+    "LeatherGrain": {
+      "TileMeters": 0.45,
+      "BC": "Materials/LeatherGrain/T_LeatherGrain_BC.png",
+      "N": "Materials/LeatherGrain/T_LeatherGrain_N.png",
+      "ORM": "Materials/LeatherGrain/T_LeatherGrain_ORM.png",
+      "H": "Materials/LeatherGrain/T_LeatherGrain_H.png",
+      "Opacity": null,
+      "Resolution": 2048,
+      "ArchUVScale": 4.44444,
+      "HeightRangeM": 0.0006,
+      "Source": {
+        "Site": "ambientCG",
+        "Asset": "Leather031",
+        "Name": "Leather 031",
+        "Url": "https://ambientcg.com/view?id=Leather031",
+        "Authors": [
+          "ambientCG (Lennart Demes)"
+        ],
+        "License": "CC0 1.0",
+        "ScanMeters": 0.45,
+        "Repeat": 1,
+        "Download": "2k"
+      }
+    },
+    "LeatherSmooth": {
+      "TileMeters": 0.3,
+      "BC": "Materials/LeatherSmooth/T_LeatherSmooth_BC.png",
+      "N": "Materials/LeatherSmooth/T_LeatherSmooth_N.png",
+      "ORM": "Materials/LeatherSmooth/T_LeatherSmooth_ORM.png",
+      "H": "Materials/LeatherSmooth/T_LeatherSmooth_H.png",
+      "Opacity": null,
+      "Resolution": 2048,
+      "ArchUVScale": 6.66667,
+      "HeightRangeM": 0.0004,
+      "Source": {
+        "Site": "Poly Haven",
+        "Asset": "leather_white",
+        "Name": "Leather White",
+        "Url": "https://polyhaven.com/a/leather_white",
+        "Authors": [
+          "Rob Tuytel"
+        ],
+        "License": "CC0 1.0",
+        "ScanMeters": 0.3,
+        "Repeat": 1,
+        "Download": "2k"
+      }
+    },
     "MarbleBlack": {
       "TileMeters": 2.0,
       "BC": "Materials/MarbleBlack/T_MarbleBlack_BC.png",
@@ -630,6 +802,30 @@
       "Opacity": null,
       "Resolution": 4096,
       "ArchUVScale": 2.0
+    },
+    "RubberSole": {
+      "TileMeters": 0.75,
+      "BC": "Materials/RubberSole/T_RubberSole_BC.png",
+      "N": "Materials/RubberSole/T_RubberSole_N.png",
+      "ORM": "Materials/RubberSole/T_RubberSole_ORM.png",
+      "H": "Materials/RubberSole/T_RubberSole_H.png",
+      "Opacity": null,
+      "Resolution": 2048,
+      "ArchUVScale": 2.66667,
+      "HeightRangeM": 0.001,
+      "Source": {
+        "Site": "ambientCG",
+        "Asset": "Rubber004",
+        "Name": "Rubber 004",
+        "Url": "https://ambientcg.com/view?id=Rubber004",
+        "Authors": [
+          "ambientCG (Lennart Demes)"
+        ],
+        "License": "CC0 1.0",
+        "ScanMeters": 0.75,
+        "Repeat": 1,
+        "Download": "2k"
+      }
     },
     "Straw": {
       "TileMeters": 1.0,

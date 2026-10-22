@@ -125,6 +125,25 @@ TABLE = {
                          match=('rgb', (0.485, 0.483, 0.480), 0.8)),
     'CorrodedMetal': dict(src='ph', asset='rust_coarse_01', size=2.2, metal='scan',
                           match=('lum', (0.355, 0.244, 0.186), 0.7), flatten=(0.08, 0.9)),
+    # cloth and leather for the suit and the team gear (Tools/Blender/gear/teamgear_bake.py SCANS): baked into
+    # the per-piece texture sets as luminance / height / roughness detail under the colourway tint, so the
+    # tinted ones are fully desaturated to a neutral grey (the colourway is applied in game)
+    'ClothWool': dict(src='ph', asset='poly_wool_herringbone', size=0.270, res=2048, dl='2k', desat=1.0,
+                      match=('lum', (0.46, 0.46, 0.46), 1.0), height=0.0008),          # suit worsted (herringbone)
+    'ClothPoplin': dict(src='ph', asset='stretch_poplin', size=0.291, res=2048, dl='2k', desat=1.0,
+                        match=('lum', (0.62, 0.62, 0.62), 1.0), height=0.0004),        # dress shirt
+    'ClothSilk': dict(src='ph', asset='crepe_satin', size=0.263, res=2048, dl='2k', desat=1.0,
+                      match=('lum', (0.50, 0.50, 0.50), 1.0), height=0.0004),          # tie, pocket square
+    'ClothCordura': dict(src='acg', asset='Fabric061', size=0.40, res=2048, dl='2k', desat=1.0,
+                         match=('lum', (0.46, 0.46, 0.46), 1.0), height=0.0010),       # plate carrier, pouches
+    'ClothWebbing': dict(src='ph', asset='denim_fabric_04', size=0.273, res=2048, dl='2k', desat=1.0,
+                         match=('lum', (0.40, 0.40, 0.40), 1.0), height=0.0008),       # twill webbing, caps
+    'LeatherSmooth': dict(src='ph', asset='leather_white', size=0.30, res=2048, dl='2k', desat=1.0,
+                          match=('lum', (0.06, 0.06, 0.06), 1.0), height=0.0004),      # polished shoes
+    'LeatherGrain': dict(src='acg', asset='Leather031', size=0.45, res=2048, dl='2k', desat=1.0,
+                         match=('lum', (0.07, 0.07, 0.07), 1.0), height=0.0006),       # belt, holster
+    'RubberSole': dict(src='acg', asset='Rubber004', size=0.75, res=2048, dl='2k', desat=1.0,
+                       match=('lum', (0.05, 0.05, 0.05), 1.0), height=0.0010),         # soles, rubber parts
 }
 # Not replaced (no CC0 photo scan that fits; see Docs/CREDITS.md): MarbleBlack, Brass, Rubber, Netting,
 # Straw, Granite (baked into the rock props), PlywoodPainted, PaintLineWhite/Yellow.

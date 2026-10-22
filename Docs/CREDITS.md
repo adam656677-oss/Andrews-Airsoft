@@ -28,6 +28,11 @@ All are released under [CC0 1.0 Universal](https://creativecommons.org/publicdom
 | Burlap | [Hessian 230](https://polyhaven.com/a/hessian_230) | Poly Haven | colormass, Rico Cilliers | 0.27 m | CC0 1.0 |
 | Canvas | [Rough Linen](https://polyhaven.com/a/rough_linen) | Poly Haven | colormass, Rico Cilliers | 0.27 m | CC0 1.0 |
 | Carpet | [Carpet 016](https://ambientcg.com/view?id=Carpet016) | ambientCG | ambientCG (Lennart Demes) | 1.70 m | CC0 1.0 |
+| ClothCordura | [Fabric 061](https://ambientcg.com/view?id=Fabric061) | ambientCG | ambientCG (Lennart Demes) | 0.40 m | CC0 1.0 |
+| ClothPoplin | [Stretch Poplin](https://polyhaven.com/a/stretch_poplin) | Poly Haven | colormass, Rico Cilliers | 0.29 m | CC0 1.0 |
+| ClothSilk | [Crepe Satin](https://polyhaven.com/a/crepe_satin) | Poly Haven | colormass, Rico Cilliers | 0.26 m | CC0 1.0 |
+| ClothWebbing | [Denim Fabric 04](https://polyhaven.com/a/denim_fabric_04) | Poly Haven | colormass, Rico Cilliers | 0.27 m | CC0 1.0 |
+| ClothWool | [Poly Wool Herringbone](https://polyhaven.com/a/poly_wool_herringbone) | Poly Haven | colormass, Rico Cilliers | 0.27 m | CC0 1.0 |
 | Concrete | [Concrete Wall 008](https://polyhaven.com/a/concrete_wall_008) | Poly Haven | Dario Barresi, Charlotte Baglioni | 2.71 m | CC0 1.0 |
 | ConcreteFloor | [Concrete Floor Worn 001](https://polyhaven.com/a/concrete_floor_worn_001) | Poly Haven | Dimitrios Savva, Rico Cilliers | 3.00 m | CC0 1.0 |
 | ConcreteGarage | [Brushed Concrete](https://polyhaven.com/a/brushed_concrete) | Poly Haven | Dario Barresi, Dimitrios Savva | 2.50 m | CC0 1.0 |
@@ -39,10 +44,13 @@ All are released under [CC0 1.0 Universal](https://creativecommons.org/publicdom
 | Grass | [Leafy Grass](https://polyhaven.com/a/leafy_grass) | Poly Haven | Charlotte Baglioni | 2.00 m | CC0 1.0 |
 | Gravel | [Gravel 033](https://ambientcg.com/view?id=Gravel033) | ambientCG | ambientCG (Lennart Demes) | 2.00 m | CC0 1.0 |
 | Leather | [Brown Leather](https://polyhaven.com/a/brown_leather) | Poly Haven | Rob Tuytel | 0.40 m | CC0 1.0 |
+| LeatherGrain | [Leather 031](https://ambientcg.com/view?id=Leather031) | ambientCG | ambientCG (Lennart Demes) | 0.45 m | CC0 1.0 |
+| LeatherSmooth | [Leather White](https://polyhaven.com/a/leather_white) | Poly Haven | Rob Tuytel | 0.30 m | CC0 1.0 |
 | Mud | [Brown Mud 02](https://polyhaven.com/a/brown_mud_02) | Poly Haven | Rob Tuytel | 1.30 m | CC0 1.0 |
 | OSB | [Oriented Strand Board](https://polyhaven.com/a/oriented_strand_board) | Poly Haven | Dimitrios Savva | 2.51 m | CC0 1.0 |
 | PaintedSteel | [Rusty Metal Sheet](https://polyhaven.com/a/rusty_metal_sheet) | Poly Haven | Amal Kumar | 2.00 m | CC0 1.0 |
 | Plywood | [Oak Veneer 01](https://polyhaven.com/a/oak_veneer_01) | Poly Haven | Jenelle van Heerden | 1.83 m | CC0 1.0 |
+| RubberSole | [Rubber 004](https://ambientcg.com/view?id=Rubber004) | ambientCG | ambientCG (Lennart Demes) | 0.75 m | CC0 1.0 |
 | Timber | [Wood 062](https://ambientcg.com/view?id=Wood062) | ambientCG | ambientCG (Lennart Demes) | 0.50 m (est.) | CC0 1.0 |
 | Velvet | [Velour Velvet](https://polyhaven.com/a/velour_velvet) | Poly Haven | colormass, Rico Cilliers | 0.28 m | CC0 1.0 |
 | Walnut | [Walnut Veneer](https://polyhaven.com/a/walnut_veneer) | Poly Haven | Jenelle van Heerden | 1.80 m | CC0 1.0 |
