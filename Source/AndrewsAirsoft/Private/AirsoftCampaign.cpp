@@ -284,8 +284,8 @@ namespace AirsoftCampaign
 			}
 			if (Out.Num() == 0)
 			{
-				Out.Add({ FString(), { TEXT("ANDREW'S AIRSOFT"), GameTitle().ToUpper() } });
-				Out.Add({ FString(), { TEXT("Thanks for playing.") } });
+				Out.Add({ FString(), { FString(TEXT("ANDREW'S AIRSOFT")), GameTitle().ToUpper() } });
+				Out.Add({ FString(), { FString(TEXT("Thanks for playing.")) } });
 			}
 			return Out;
 		}();
@@ -1352,6 +1352,493 @@ void AAirsoftCampaignGameMode::CompleteMission()
 		}
 		GI->StartMission(Next);
 	}), Hold + 1.f, false);
+}
+
+void AAirsoftCampaignGameMode::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (CreditsWidget.IsValid())
+	{
+		if (UGameViewportClient* Viewport = GetWorld() ? GetWorld()->GetGameViewport() : nullptr)
+		{
+			Viewport->RemoveViewportWidgetContent(CreditsWidget.ToSharedRef());
+		}
+		CreditsWidget.Reset();
+	}
+	AirsoftSubtitles::Clear();
+	Super::EndPlay(EndPlayReason);
+}
+
+// ---------------------------------------------------------------------------
+// Checkpoints: the mission start (in the level only), a fraction of the crew down
+// (Campaign.json "Checkpoints") and the boss fight. The mid-mission ones are saved in the
+// profile, so Continue picks up there. A death puts Andrew back at the last one with the
+// enemies that were up cleared away and the crew count as it was then.
+// ---------------------------------------------------------------------------
+
+void AAirsoftCampaignGameMode::SaveCheckpoint(bool bBossPhase)
+{
+	// Where Andrew stands now, if he's on his feet on solid ground; otherwise the last good spot.
+	const AAirsoftCharacter* Andrew = Cast<AAirsoftCharacter>(FindPlayerPawn());
+	const UCharacterMovementComponent* Move = Andrew ? Andrew->GetCharacterMovement() : nullptr;
+	if (Andrew && !Andrew->IsOut() && Move && Move->IsMovingOnGround())
+	{
+		CheckpointLocation = Andrew->GetActorLocation();
+		CheckpointYaw = Andrew->GetControlRotation().Yaw;
+	}
+	bHasCheckpoint = true;
+	CheckpointKills = EnemiesKilled;
+	bCheckpointBoss = bBossPhase;
+	++CheckpointsReached;
+
+	if (UAirsoftGameInstance* GI = Cast<UAirsoftGameInstance>(GetGameInstance()))
+	{
+		if (UAirsoftSaveGame* Profile = GI->GetProfile())
+		{
+			Profile->CheckpointMission = MissionNumber;
+			Profile->CheckpointKills = CheckpointKills;
+			Profile->CheckpointIndex = CheckpointsReached;
+			Profile->bCheckpointBoss = bCheckpointBoss;
+			Profile->CheckpointLocation = CheckpointLocation;
+			Profile->CheckpointYaw = CheckpointYaw;
+		}
+		GI->SaveProfile();
+	}
+	AnnounceAll(TEXT("CHECKPOINT"), FString(), AirsoftColors::Accent(), 1.8f);
+}
+
+void AAirsoftCampaignGameMode::CheckCrewCheckpoint()
+{
+	const AirsoftCampaign::FMission* Mission = AirsoftCampaign::FindMission(MissionNumber);
+	if (!Mission)
+	{
+		return;
+	}
+	bool bDue = false;
+	while (Mission->Checkpoints.IsValidIndex(NextCheckpoint)
+		&& EnemiesKilled >= FMath::Clamp(FMath::CeilToInt(Mission->Checkpoints[NextCheckpoint] * Mission->Enemies), 1, Mission->Enemies))
+	{
+		++NextCheckpoint;
+		bDue = true;
+	}
+	if (bDue && EnemiesKilled < Mission->Enemies)
+	{
+		SaveCheckpoint(false);
+	}
+}
+
+void AAirsoftCampaignGameMode::RestoreCheckpoint(bool bAnnounce)
+{
+	const AirsoftCampaign::FMission* Mission = AirsoftCampaign::FindMission(MissionNumber);
+	AAirsoftGameState* GS = GetAirsoftGameState();
+	APlayerController* PC = GetWorld()->GetFirstPlayerController();
+	if (!Mission || !GS || !PC)
+	{
+		return;
+	}
+	FTimerManager& Timers = GetWorldTimerManager();
+	Timers.ClearTimer(BossTimer);
+	Timers.ClearTimer(RefillTimer);
+	Timers.ClearTimer(VoiceTimer);
+	Timers.ClearTimer(EndTimer);
+	AirsoftSubtitles::Clear();
+
+	// Clear the field: whoever was up goes; the controllers stay for the next wave. The boss starts over.
+	const TArray<TObjectPtr<AAirsoftBotController>> Current = Enemies;
+	for (AAirsoftBotController* Bot : Current)
+	{
+		if (Bot)
+		{
+			if (APawn* Body = Bot->GetPawn())
+			{
+				Bot->UnPossess();
+				Body->Destroy();
+			}
+		}
+	}
+	if (BossController)
+	{
+		Enemies.Remove(BossController);
+		BossController->Destroy();
+		BossController = nullptr;
+	}
+	GS->BossName.Reset();
+	GS->BossHealth = 0.f;
+
+	EnemiesKilled = CheckpointKills;
+	EnemiesSpawned = CheckpointKills;
+	bBossDown = false;
+	bBossMidSaid = false;
+	bFearSaid = false;
+	bLastKillSaid = CheckpointKills >= Mission->Enemies;
+	NextCheckpoint = 0;
+	while (Mission->Checkpoints.IsValidIndex(NextCheckpoint)
+		&& CheckpointKills >= FMath::Clamp(FMath::CeilToInt(Mission->Checkpoints[NextCheckpoint] * Mission->Enemies), 1, Mission->Enemies))
+	{
+		++NextCheckpoint;
+	}
+	CrewWatch.Reset();
+	bAndrewWasReloading = false;
+	bAndrewWasThrowing = false;
+	bAndrewHurtArmed = true;
+
+	// Andrew, back on his feet at the checkpoint (or the mission start if that spot is blocked).
+	if (APawn* Old = PC->GetPawn())
+	{
+		PC->UnPossess();
+		Old->Destroy();
+	}
+	if (AAirsoftPlayerState* PS = PC->GetPlayerState<AAirsoftPlayerState>())
+	{
+		PS->bOut = false;
+	}
+	bMissionOver = false;
+	bRespawning = false;
+	const FRotator Facing(0.f, CheckpointYaw, 0.f);
+	if (!CheckpointLocation.IsNearlyZero())
+	{
+		RestartPlayerAtTransform(PC, FTransform(Facing, CheckpointLocation));
+	}
+	if (!PC->GetPawn())
+	{
+		RestartPlayer(PC);
+	}
+	PC->SetControlRotation(Facing);
+	PC->ResetIgnoreInputFlags();
+	PC->SetViewTarget(PC->GetPawn());
+
+	bEnemiesStarted = true;
+	const int32 Left = FMath::Max(0, Mission->Enemies - EnemiesKilled);
+	if (bAnnounce)
+	{
+		const FString Title = bResumeFromSave
+			? FString::Printf(TEXT("MISSION %d · %s"), MissionNumber, *Mission->Title.ToUpper())
+			: FString(TEXT("CHECKPOINT"));
+		const FString Sub = bCheckpointBoss
+			? FString::Printf(TEXT("Take down %s"), *Mission->Boss.Name)
+			: FString::Printf(TEXT("%s · %d hostiles left"), *Mission->Objective, Left);
+		AnnounceAll(Title, Sub, AirsoftColors::Accent(), 3.f);
+	}
+	bResumeFromSave = false;
+	// A breath to find cover, then the fight picks up where the checkpoint was.
+	if (bCheckpointBoss)
+	{
+		Timers.SetTimer(BossTimer, FTimerDelegate::CreateWeakLambda(this, [this]() { SpawnBoss(); }), 3.f, false);
+	}
+	else
+	{
+		Timers.SetTimer(RefillTimer, FTimerDelegate::CreateWeakLambda(this, [this]() { TopUpEnemies(); }), 3.f, false);
+	}
+	UpdateObjectiveText();
+}
+
+// ---------------------------------------------------------------------------
+// Barks: short combat lines from Andrew and the crew (Campaign.json "Barks"), one voice
+// at a time, never over a story line, with a few seconds between them. Each crew member
+// keeps one of three voices (A, B, C) and is heard from where he stands.
+// ---------------------------------------------------------------------------
+
+TCHAR AAirsoftCampaignGameMode::CrewVoiceFor(const AController* Enemy)
+{
+	FCrewWatch& Watch = CrewWatch.FindOrAdd(TWeakObjectPtr<AController>(const_cast<AController*>(Enemy)));
+	if (Watch.Voice == 0)
+	{
+		static const TCHAR Voices[] = { TEXT('A'), TEXT('B'), TEXT('C') };
+		Watch.Voice = Voices[CrewVoicesHanded++ % 3];
+	}
+	return Watch.Voice;
+}
+
+bool AAirsoftCampaignGameMode::Bark(FName Event, AController* Speaker, float Chance)
+{
+	const double Now = GetWorld()->GetTimeSeconds();
+	const bool bAndrew = Speaker == nullptr;
+	if (Now < VoiceBusyUntil || Now < (bAndrew ? NextAndrewBark : NextCrewBark) || FMath::FRand() > Chance)
+	{
+		return false;
+	}
+	const TArray<AirsoftCampaign::FLine>* Lines = AirsoftCampaign::FindBarks(Event);
+	if (!Lines)
+	{
+		return false;
+	}
+	const APawn* Body = Speaker ? Speaker->GetPawn() : nullptr;
+	if (!bAndrew && !Body)
+	{
+		return false;
+	}
+
+	// The crew member's own voice when the event has a line for it.
+	TArray<const AirsoftCampaign::FLine*> Pick;
+	if (!bAndrew)
+	{
+		const FString Tag = FString::Printf(TEXT("_%c_"), CrewVoiceFor(Speaker));
+		for (const AirsoftCampaign::FLine& Line : *Lines)
+		{
+			if (Line.File.ToString().Contains(Tag))
+			{
+				Pick.Add(&Line);
+			}
+		}
+	}
+	if (Pick.Num() == 0)
+	{
+		for (const AirsoftCampaign::FLine& Line : *Lines)
+		{
+			Pick.Add(&Line);
+		}
+	}
+	const AirsoftCampaign::FLine& Line = *Pick[FMath::RandRange(0, Pick.Num() - 1)];
+
+	if (bAndrew)
+	{
+		SpeakLine(Line.File, AirsoftCampaignLocal::AndrewName, Line.Text, AirsoftCampaignLocal::AndrewColor);
+		NextAndrewBark = Now + FMath::FRandRange(7.f, 11.f);
+	}
+	else
+	{
+		const AAirsoftPlayerState* PS = Speaker->GetPlayerState<AAirsoftPlayerState>();
+		const FVector At = Body->GetActorLocation();
+		SpeakLine(Line.File, PS ? PS->GetPlayerName() : FString(TEXT("Hostile")), Line.Text, AirsoftCampaignLocal::CrewColor, &At);
+		NextCrewBark = Now + FMath::FRandRange(3.f, 6.f);
+	}
+	return true;
+}
+
+void AAirsoftCampaignGameMode::UpdateBarks()
+{
+	if (!bEnemiesStarted || bMissionOver || bInCinematic || bInEnding || bRespawning || bBossDown)
+	{
+		return;
+	}
+	// Andrew: reloading, badly hurt, and the crew shouting when he throws a grenade.
+	const APlayerController* PC = GetWorld()->GetFirstPlayerController();
+	const AAirsoftCharacter* Andrew = PC ? Cast<AAirsoftCharacter>(PC->GetPawn()) : nullptr;
+	if (Andrew && !Andrew->IsOut())
+	{
+		if (const UAirsoftCombatComponent* Combat = Andrew->GetCombat())
+		{
+			const bool bReloading = Combat->IsReloading();
+			if (bReloading && !bAndrewWasReloading)
+			{
+				Bark(TEXT("AndrewReload"), nullptr, 0.4f);
+			}
+			bAndrewWasReloading = bReloading;
+
+			const bool bThrowing = Combat->IsThrowing();
+			if (bThrowing && !bAndrewWasThrowing)
+			{
+				AController* Nearest = nullptr;
+				float Best = 2500.f;
+				for (AAirsoftBotController* Bot : Enemies)
+				{
+					const AAirsoftCharacter* C = Bot ? Cast<AAirsoftCharacter>(Bot->GetPawn()) : nullptr;
+					const float D = C ? static_cast<float>(FVector::Dist(C->GetActorLocation(), Andrew->GetActorLocation())) : Best;
+					if (C && !C->IsOut() && Bot != BossController && D < Best)
+					{
+						Best = D;
+						Nearest = Bot;
+					}
+				}
+				if (Nearest)
+				{
+					Bark(TEXT("CrewIncoming"), Nearest, 0.8f);
+				}
+			}
+			bAndrewWasThrowing = bThrowing;
+		}
+		const float Health = Andrew->GetHealth() / FMath::Max(1.f, Andrew->GetMaxHealth());
+		if (bAndrewHurtArmed && Health < 0.3f)
+		{
+			if (Bark(TEXT("AndrewHurt"), nullptr, 1.f))
+			{
+				bAndrewHurtArmed = false;
+			}
+		}
+		else if (Health > 0.6f)
+		{
+			bAndrewHurtArmed = true;
+		}
+	}
+
+	// The crew: spotting him, losing him, pushing, reloading, throwing.
+	for (AAirsoftBotController* Bot : Enemies)
+	{
+		if (!Bot || Bot == BossController)
+		{
+			continue;
+		}
+		CrewVoiceFor(Bot); // makes sure the entry exists, so Bark() below never grows the map under this reference
+		FCrewWatch& Watch = CrewWatch.FindChecked(TWeakObjectPtr<AController>(Bot));
+		const AAirsoftCharacter* C = Cast<AAirsoftCharacter>(Bot->GetPawn());
+		if (!C || C->IsOut())
+		{
+			Watch.LastState = static_cast<uint8>(EAirsoftBotState::Idle);
+			Watch.bWasReloading = false;
+			Watch.bWasThrowing = false;
+			continue;
+		}
+		const EAirsoftBotState State = Bot->GetBotState();
+		const EAirsoftBotState Last = static_cast<EAirsoftBotState>(Watch.LastState);
+		if (State != Last)
+		{
+			if (State == EAirsoftBotState::Engage)
+			{
+				Bark(TEXT("CrewSpotted"), Bot, 0.6f);
+			}
+			else if (State == EAirsoftBotState::Investigate && Last == EAirsoftBotState::Engage)
+			{
+				Bark(TEXT("CrewSearch"), Bot, 0.5f);
+			}
+			else if (State == EAirsoftBotState::Advance && (Last == EAirsoftBotState::Engage || Last == EAirsoftBotState::Hold))
+			{
+				Bark(TEXT("CrewFlank"), Bot, 0.35f);
+			}
+			Watch.LastState = static_cast<uint8>(State);
+		}
+		if (const UAirsoftCombatComponent* Combat = C->GetCombat())
+		{
+			const bool bReloading = Combat->IsReloading();
+			if (bReloading && !Watch.bWasReloading)
+			{
+				Bark(TEXT("CrewReload"), Bot, 0.4f);
+			}
+			Watch.bWasReloading = bReloading;
+			const bool bThrowing = Combat->IsThrowing();
+			if (bThrowing && !Watch.bWasThrowing)
+			{
+				Bark(TEXT("CrewGrenade"), Bot, 0.9f);
+			}
+			Watch.bWasThrowing = bThrowing;
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Ending: after the last boss, the camera rises away from Andrew while the narrator
+// closes the story; then the screen goes black and the credits roll. Space skips each.
+// ---------------------------------------------------------------------------
+
+void AAirsoftCampaignGameMode::BeginEnding()
+{
+	const AirsoftCampaign::FMission* Mission = AirsoftCampaign::FindMission(MissionNumber);
+	AAirsoftGameState* GS = GetAirsoftGameState();
+	APlayerController* PC = GetWorld()->GetFirstPlayerController();
+	APawn* Andrew = PC ? PC->GetPawn() : nullptr;
+	AirsoftSubtitles::Clear();
+	GetWorldTimerManager().ClearTimer(VoiceTimer);
+	if (!GS || !PC || !Andrew)
+	{
+		RollCredits();
+		return;
+	}
+	bInEnding = true;
+	EndingTime = 0.f;
+	GS->bCinematic = true;
+	GS->BossName.Reset();
+	PC->SetIgnoreMoveInput(true);
+	PC->SetIgnoreLookInput(true);
+	if (AAirsoftCharacter* C = Cast<AAirsoftCharacter>(Andrew))
+	{
+		C->ServerSetFrozen(true);
+	}
+
+	// From a three-quarter close-up of his face to high and wide behind him: one man in the rain.
+	const FVector Eye = Andrew->GetPawnViewLocation();
+	const FRotator Flat(0.f, Andrew->GetActorRotation().Yaw, 0.f);
+	const FVector Forward = Flat.Vector();
+	const FVector Right = FRotationMatrix(Flat).GetUnitAxis(EAxis::Y);
+	FCollisionQueryParams Params(SCENE_QUERY_STAT(CampaignEnding), false, Andrew);
+	auto Clear = [this, &Eye, &Params](const FVector& Want) -> FVector
+	{
+		FHitResult Hit;
+		if (GetWorld()->LineTraceSingleByChannel(Hit, Eye, Want, ECC_Visibility, Params))
+		{
+			return Hit.Location + (Eye - Hit.Location).GetSafeNormal() * 30.f;
+		}
+		return Want;
+	};
+	CamFrom = Clear(Eye + Forward * 160.f + Right * 70.f - FVector(0.f, 0.f, 8.f));
+	CamTo = Clear(Eye - Forward * 420.f + Right * 120.f + FVector(0.f, 0.f, 520.f));
+	CamRotFrom = (Eye - CamFrom).Rotation();
+	CamRotTo = (Eye - FVector(0.f, 0.f, 60.f) - CamTo).Rotation();
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.ObjectFlags |= RF_Transient;
+	if (CinematicCamera)
+	{
+		CinematicCamera->Destroy();
+	}
+	CinematicCamera = GetWorld()->SpawnActor<ACameraActor>(ACameraActor::StaticClass(), CamFrom, CamRotFrom, SpawnParams);
+	if (CinematicCamera)
+	{
+		CinematicCamera->GetCameraComponent()->SetConstraintAspectRatio(false);
+		CinematicCamera->GetCameraComponent()->SetFieldOfView(45.f);
+		PC->SetViewTarget(CinematicCamera);
+	}
+
+	const float Voice = PlayVoice(TEXT("Outro"));
+	EndingLength = FMath::Max(9.f, Voice + 5.f);
+	AnnounceAll(TEXT("CONTRACT CLOSED"), Mission ? Mission->Outro : FString(), AirsoftColors::Accent(), EndingLength);
+	GetWorldTimerManager().SetTimer(EndTimer, FTimerDelegate::CreateWeakLambda(this, [this]() { RollCredits(); }), EndingLength, false);
+}
+
+void AAirsoftCampaignGameMode::UpdateEndingCamera(float DeltaSeconds)
+{
+	EndingTime += DeltaSeconds;
+	if (!CinematicCamera)
+	{
+		return;
+	}
+	const float T = AirsoftCampaignLocal::Ease(EndingTime / FMath::Max(EndingLength, 0.1f));
+	CinematicCamera->SetActorLocationAndRotation(FMath::Lerp(CamFrom, CamTo, T), FMath::Lerp(CamRotFrom, CamRotTo, T));
+	CinematicCamera->GetCameraComponent()->SetFieldOfView(FMath::Lerp(45.f, 70.f, T));
+}
+
+void AAirsoftCampaignGameMode::RollCredits()
+{
+	if (CreditsWidget.IsValid() || bLeaving)
+	{
+		return;
+	}
+	bInEnding = false; // the camera holds its last frame behind the black
+	GetWorldTimerManager().ClearTimer(EndTimer);
+	AirsoftSubtitles::Clear();
+	UGameViewportClient* Viewport = GetWorld()->GetGameViewport();
+	if (!Viewport)
+	{
+		FinishCredits();
+		return;
+	}
+	TSharedRef<SAirsoftCredits> Widget = SNew(SAirsoftCredits)
+		.OnFinished(FSimpleDelegate::CreateWeakLambda(this, [this]()
+		{
+			// Leave on the next frame, not from inside the widget's own tick.
+			GetWorldTimerManager().SetTimerForNextTick(FTimerDelegate::CreateWeakLambda(this, [this]() { FinishCredits(); }));
+		}));
+	CreditsWidget = Widget;
+	Viewport->AddViewportWidgetContent(Widget, 100);
+	AirsoftAssets::Play2D(this, TEXT("PostRoundMusic"));
+}
+
+void AAirsoftCampaignGameMode::FinishCredits()
+{
+	if (bLeaving)
+	{
+		return;
+	}
+	bLeaving = true;
+	if (CreditsWidget.IsValid())
+	{
+		if (UGameViewportClient* Viewport = GetWorld()->GetGameViewport())
+		{
+			Viewport->RemoveViewportWidgetContent(CreditsWidget.ToSharedRef());
+		}
+		CreditsWidget.Reset();
+	}
+	if (UAirsoftGameInstance* GI = Cast<UAirsoftGameInstance>(GetGameInstance()))
+	{
+		GI->ReturnToMainMenu(FString::Printf(TEXT("%s complete. Thanks for playing."), *AirsoftCampaign::GameTitle()));
+	}
 }
 
 // ---------------------------------------------------------------------------

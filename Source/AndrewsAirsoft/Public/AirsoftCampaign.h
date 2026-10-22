@@ -107,7 +107,7 @@ namespace AirsoftCampaign
 	ANDREWSAIRSOFT_API bool IsFinished(const UObject* WorldContext);
 	/** Mission of the saved mid-mission checkpoint, 0 when there is none. */
 	ANDREWSAIRSOFT_API int32 CheckpointMission(const UObject* WorldContext);
-	/** e.g. "MISSION 2 · VELVET · CHECKPOINT 2 OF 3"; empty when there is no checkpoint. */
+	/** e.g. "MISSION 2 · VELVET · 7 OF 14 DOWN" or "... · SILAS VARGA" (the boss fight); empty when there is none. */
 	ANDREWSAIRSOFT_API FString CheckpointLabel(const UObject* WorldContext);
 	/** The mission Continue opens: the checkpoint's mission, else the furthest unlocked. */
 	ANDREWSAIRSOFT_API int32 ContinueMission(const UObject* WorldContext);
@@ -180,7 +180,6 @@ protected:
 	// --- Checkpoints ---------------------------------------------------------------
 	/** Saves a checkpoint at the current progress (Andrew's position, crew killed, boss phase). */
 	void SaveCheckpoint(bool bBossPhase);
-	void ClearSavedCheckpoint();
 	/** Puts the mission back to the last checkpoint: clears the enemies that are up, respawns Andrew there, resumes the fight. */
 	void RestoreCheckpoint(bool bAnnounce);
 	/** Mid-mission: a checkpoint is due when the crew killed crosses one of the mission's fractions. */
@@ -235,6 +234,8 @@ protected:
 	bool bResumeFromSave = false;
 	/** Andrew is down and about to be put back at the checkpoint. */
 	bool bRespawning = false;
+	/** The boss is down; his last words play before the mission ends. */
+	bool bBossDown = false;
 
 	/** Bark pacing: one voice at a time, a few seconds between crew barks, longer between Andrew's. */
 	double VoiceBusyUntil = 0.0;
@@ -251,7 +252,8 @@ protected:
 		uint8 LastState = 0;
 		bool bWasReloading = false;
 		bool bWasThrowing = false;
-		TCHAR Voice = TEXT('A');
+		/** 'A', 'B' or 'C' once handed out (CrewVoiceFor). */
+		TCHAR Voice = 0;
 	};
 	TMap<TWeakObjectPtr<AController>, FCrewWatch> CrewWatch;
 	int32 CrewVoicesHanded = 0;
@@ -262,4 +264,6 @@ protected:
 	float EndingLength = 8.f;
 	/** The credits roll (an SAirsoftCredits) while it is on screen. */
 	TSharedPtr<SWidget> CreditsWidget;
+	/** On the way back to the main menu. */
+	bool bLeaving = false;
 };

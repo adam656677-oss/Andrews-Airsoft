@@ -1,14 +1,21 @@
-// Andrew's Airsoft - title screen: host, join by IP, armory, settings, quit,
-// call sign and the player's service record.
+// Andrew's Airsoft - title screen. The story leads: Continue, New Game (with a
+// difficulty), Mission Select, then Skirmish against bots, the Practice Range,
+// Armory, Settings and Quit, plus the call sign and service record. Host / Join
+// and the Tailscale address only show when multiplayer is switched on
+// (UAirsoftSettings::bEnableMultiplayer, developer only).
 
+#include "AirsoftAssets.h"
 #include "AirsoftCampaign.h"
 #include "AirsoftGameInstance.h"
+#include "AirsoftModeRules.h"
 #include "AirsoftPlayerController.h"
 #include "AirsoftSaveGame.h"
+#include "AirsoftSettings.h"
 #include "AirsoftUIScreens.h"
 #include "AirsoftUIStyle.h"
 #include "AirsoftUIWidgets.h"
 #include "AirsoftWeaponData.h"
+#include "Framework/Application/SlateApplication.h"
 #include "HAL/PlatformMisc.h"
 #include "HAL/PlatformTime.h"
 #include "IPAddress.h"
@@ -21,6 +28,7 @@
 #include "Widgets/Layout/SScaleBox.h"
 #include "Widgets/Layout/SSpacer.h"
 #include "Widgets/Layout/SUniformGridPanel.h"
+#include "Widgets/Layout/SWidgetSwitcher.h"
 #include "Widgets/Text/STextBlock.h"
 
 namespace AUI = AirsoftUIStyle;
@@ -74,11 +82,35 @@ public:
 	void Construct(const FArguments& InArgs, AAirsoftPlayerController* InPC);
 
 protected:
-	/** Escape does nothing on the title screen. */
-	virtual void HandleBack() override {}
+	/** Escape steps back from a sub-page; on the title page it does nothing. */
+	virtual void HandleBack() override;
 
 private:
+	/** The left column's pages. */
+	enum class EPage : int32
+	{
+		Home,
+		NewGame,
+		Missions,
+		Skirmish,
+		Practice
+	};
+
 	TSharedRef<SWidget> BuildLeftColumn();
+	TSharedRef<SWidget> BuildHomePage();
+	TSharedRef<SWidget> BuildNewGamePage();
+	TSharedRef<SWidget> BuildMissionsPage();
+	TSharedRef<SWidget> BuildSkirmishPage();
+	TSharedRef<SWidget> BuildPracticePage();
+	/** Page heading with a BACK button. */
+	TSharedRef<SWidget> PageHeader(const FString& Title, const FString& Note);
+	/** Label above a row of choice buttons. */
+	TSharedRef<SWidget> ChoiceLabel(const FString& Label);
+	TSharedRef<SWidget> MenuButton(const FText& Text, const TAttribute<FText>& SubText, TFunction<void()> OnClick, TSharedPtr<SAirsoftButton>* OutButton = nullptr);
+	void ShowPage(EPage NewPage);
+	UAirsoftGameInstance* GI() const { return AUI::GetGameInstance(WeakPC.Get()); }
+	/** Continue has something to resume (a later mission or a mid-mission checkpoint). */
+	bool HasProgress() const;
 	TSharedRef<SWidget> BuildProfileCard();
 	TSharedRef<SWidget> MakeStat(const FString& Label, TFunction<int32(const UAirsoftSaveGame&)> Getter);
 	void Join();
@@ -90,6 +122,15 @@ private:
 	TSharedPtr<SEditableTextBox> NameBox;
 	FString TailscaleIPs;
 	FString LocalMessage;
+
+	EPage Page = EPage::Home;
+	/** First button of each page, focused when the page opens (keyboard / gamepad). */
+	TMap<EPage, TSharedPtr<SAirsoftButton>> PageFocus;
+	/** Choices on the New Game and Skirmish pages (start from the saved settings). */
+	int32 PickDifficulty = 1;
+	int32 PickMode = 0;
+	int32 PickMap = 0;
+	int32 PickBots = 2;
 };
 
 TSharedRef<SWidget> AirsoftUIScreens::CreateMainMenu(AAirsoftPlayerController* PC)
@@ -111,7 +152,16 @@ void SAirsoftMainMenu::Construct(const FArguments& InArgs, AAirsoftPlayerControl
 {
 	WeakPC = InPC;
 	OpenTime = FPlatformTime::Seconds();
-	TailscaleIPs = AirsoftMainMenuLocal::FindTailscaleAddresses();
+	if (UAirsoftSettings::IsMultiplayerEnabled())
+	{
+		TailscaleIPs = AirsoftMainMenuLocal::FindTailscaleAddresses();
+	}
+	if (UAirsoftGameInstance* G = AUI::GetGameInstance(InPC))
+	{
+		const FAirsoftUserSettings& S = G->GetUserSettings();
+		PickDifficulty = FMath::Clamp(S.Difficulty, 0, AirsoftDifficulty::Num - 1);
+		PickBots = FMath::Clamp(S.BotFill, 1, AirsoftBots::NumFillOptions - 1);
+	}
 	ForceVolatile(true);
 
 	ChildSlot
@@ -154,11 +204,124 @@ void SAirsoftMainMenu::Construct(const FArguments& InArgs, AAirsoftPlayerControl
 	];
 }
 
+bool SAirsoftMainMenu::HasProgress() const
+{
+	UAirsoftGameInstance* G = GI();
+	const UAirsoftSaveGame* P = Profile();
+	return (G && G->GetContinueMission() > 1) || (P && P->CheckpointMission > 0);
+}
+
+void SAirsoftMainMenu::HandleBack()
+{
+	if (Page != EPage::Home)
+	{
+		ShowPage(EPage::Home);
+	}
+}
+
+void SAirsoftMainMenu::ShowPage(EPage NewPage)
+{
+	Page = NewPage;
+	LocalMessage.Reset();
+	const TSharedPtr<SAirsoftButton>* Focus = PageFocus.Find(NewPage);
+	if (Focus && Focus->IsValid() && FSlateApplication::IsInitialized())
+	{
+		FSlateApplication::Get().SetKeyboardFocus((*Focus)->GetButton(), EFocusCause::SetDirectly);
+	}
+	if (AAirsoftPlayerController* PC = WeakPC.Get())
+	{
+		AirsoftAssets::Play2D(PC, TEXT("UIClick"), 0.35f, 1.f);
+	}
+}
+
+TSharedRef<SWidget> SAirsoftMainMenu::MenuButton(const FText& Text, const TAttribute<FText>& SubText, TFunction<void()> OnClick, TSharedPtr<SAirsoftButton>* OutButton)
+{
+	TSharedPtr<SAirsoftButton> Button;
+	TSharedRef<SWidget> Widget = SNew(SBox)
+		.Padding(FMargin(0.f, 6.f, 0.f, 0.f))
+		[
+			SAssignNew(Button, SAirsoftButton)
+			.Text(Text)
+			.SubText(SubText)
+			.FontSize(14)
+			.OnClicked_Lambda([OnClick]()
+			{
+				OnClick();
+				return FReply::Handled();
+			})
+		];
+	if (OutButton)
+	{
+		*OutButton = Button;
+	}
+	return Widget;
+}
+
+TSharedRef<SWidget> SAirsoftMainMenu::PageHeader(const FString& Title, const FString& Note)
+{
+	return SNew(SVerticalBox)
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot()
+			.FillWidth(1.f)
+			.VAlign(VAlign_Center)
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(Title))
+				.Font(AUI::Font(AUI::EFontWeight::Bold, 22, 220))
+				.ColorAndOpacity(FLinearColor::White)
+			]
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.VAlign(VAlign_Center)
+			[
+				SNew(SBox)
+				.WidthOverride(110.f)
+				[
+					SNew(SAirsoftButton)
+					.Text(FText::FromString(TEXT("BACK")))
+					.FontSize(11)
+					.HAlign(HAlign_Center)
+					.ShowEdge(false)
+					.ContentPadding(FMargin(8.f, 6.f))
+					.OnClicked_Lambda([this]()
+					{
+						ShowPage(EPage::Home);
+						return FReply::Handled();
+					})
+				]
+			]
+		]
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(FMargin(0.f, 6.f, 0.f, 4.f))
+		[
+			SNew(STextBlock)
+			.Visibility(Note.IsEmpty() ? EVisibility::Collapsed : EVisibility::HitTestInvisible)
+			.AutoWrapText(true)
+			.Text(FText::FromString(Note))
+			.Font(AUI::Font(AUI::EFontWeight::Regular, 11, 20))
+			.ColorAndOpacity(AUI::TextDim())
+		];
+}
+
+TSharedRef<SWidget> SAirsoftMainMenu::ChoiceLabel(const FString& Label)
+{
+	return SNew(SBox)
+		.Padding(FMargin(2.f, 14.f, 0.f, 6.f))
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(Label))
+			.Font(AUI::Caption(8))
+			.ColorAndOpacity(AUI::TextDim())
+		];
+}
+
 TSharedRef<SWidget> SAirsoftMainMenu::BuildLeftColumn()
 {
-	TSharedPtr<SAirsoftButton> HostButton;
-
-	TSharedRef<SWidget> Column = SNew(SBox)
+	return SNew(SBox)
 		.WidthOverride(440.f)
 		[
 			SNew(SVerticalBox)
@@ -166,7 +329,7 @@ TSharedRef<SWidget> SAirsoftMainMenu::BuildLeftColumn()
 			+ SVerticalBox::Slot()
 			.AutoHeight()
 			[
-				AirsoftUIWidgets::SectionLabel(FText::FromString(TEXT("A STORY CAMPAIGN  \u00B7  SINGLE PLAYER")))
+				AirsoftUIWidgets::SectionLabel(FText::FromString(TEXT("A STORY CAMPAIGN  ·  SINGLE PLAYER")))
 			]
 			+ SVerticalBox::Slot()
 			.AutoHeight()
@@ -186,7 +349,6 @@ TSharedRef<SWidget> SAirsoftMainMenu::BuildLeftColumn()
 			]
 			+ SVerticalBox::Slot()
 			.AutoHeight()
-			.Padding(FMargin(0.f, 0.f, 0.f, 0.f))
 			[
 				SNew(SScaleBox)
 				.Stretch(EStretch::ScaleToFit)
@@ -227,7 +389,7 @@ TSharedRef<SWidget> SAirsoftMainMenu::BuildLeftColumn()
 				.ColorAndOpacity(AUI::Accent())
 				.Visibility_Lambda([this]() -> EVisibility
 				{
-					const UAirsoftGameInstance* G = AUI::GetGameInstance(WeakPC.Get());
+					const UAirsoftGameInstance* G = GI();
 					const bool bShow = !LocalMessage.IsEmpty() || (G && !G->PendingMenuMessage.IsEmpty());
 					return bShow ? EVisibility::HitTestInvisible : EVisibility::Collapsed;
 				})
@@ -237,127 +399,488 @@ TSharedRef<SWidget> SAirsoftMainMenu::BuildLeftColumn()
 					{
 						return FText::FromString(LocalMessage);
 					}
-					const UAirsoftGameInstance* G = AUI::GetGameInstance(WeakPC.Get());
+					const UAirsoftGameInstance* G = GI();
 					return G ? FText::FromString(G->PendingMenuMessage) : FText::GetEmpty();
 				})
 			]
-			// Story
 			+ SVerticalBox::Slot()
 			.AutoHeight()
-			.Padding(FMargin(0.f, 36.f, 0.f, 0.f))
+			.Padding(FMargin(0.f, 28.f, 0.f, 0.f))
 			[
-				SAssignNew(HostButton, SAirsoftButton)
-				.Text_Lambda([this]()
-				{
-					UAirsoftGameInstance* G = AUI::GetGameInstance(WeakPC.Get());
-					const bool bResume = G && G->GetContinueMission() > 1;
-					return FText::FromString(bResume ? TEXT("CONTINUE") : TEXT("NEW GAME"));
-				})
-				.SubText_Lambda([this]()
-				{
-					UAirsoftGameInstance* G = AUI::GetGameInstance(WeakPC.Get());
-					const int32 Number = G ? G->GetContinueMission() : 1;
-					const AirsoftCampaign::FMission* Mission = AirsoftCampaign::FindMission(Number);
-					return FText::FromString(FString::Printf(TEXT("MISSION %d \u00B7 %s"), Number, Mission ? *Mission->Title.ToUpper() : TEXT("")));
-				})
-				.FontSize(14)
-				.OnClicked_Lambda([this]()
-				{
-					if (UAirsoftGameInstance* G = AUI::GetGameInstance(WeakPC.Get()))
-					{
-						G->StartMission(G->GetContinueMission());
-					}
-					return FReply::Handled();
-				})
-			]
-			// Restart the story from the first mission (shown once there is progress to restart from).
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.Padding(FMargin(0.f, 6.f, 0.f, 0.f))
-			[
-				SNew(SAirsoftButton)
-				.Visibility_Lambda([this]() -> EVisibility
-				{
-					UAirsoftGameInstance* G = AUI::GetGameInstance(WeakPC.Get());
-					return (G && G->GetContinueMission() > 1) ? EVisibility::Visible : EVisibility::Collapsed;
-				})
-				.Text(FText::FromString(TEXT("NEW GAME")))
-				.SubText(FText::FromString(TEXT("FROM MISSION 1")))
-				.FontSize(14)
-				.OnClicked_Lambda([this]()
-				{
-					if (UAirsoftGameInstance* G = AUI::GetGameInstance(WeakPC.Get()))
-					{
-						G->StartMission(1);
-					}
-					return FReply::Handled();
-				})
-			]
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.Padding(FMargin(0.f, 6.f, 0.f, 0.f))
-			[
-				SNew(SAirsoftButton)
-				.Text(FText::FromString(TEXT("ARMORY")))
-				.SubText(FText::FromString(TEXT("LOADOUT & FINISHES")))
-				.FontSize(14)
-				.OnClicked_Lambda([this]()
-				{
-					if (AAirsoftPlayerController* PC = WeakPC.Get())
-					{
-						PC->OpenArmory();
-					}
-					return FReply::Handled();
-				})
-			]
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.Padding(FMargin(0.f, 6.f, 0.f, 0.f))
-			[
-				SNew(SAirsoftButton)
-				.Text(FText::FromString(TEXT("SETTINGS")))
-				.FontSize(14)
-				.OnClicked_Lambda([this]()
-				{
-					if (AAirsoftPlayerController* PC = WeakPC.Get())
-					{
-						PC->ShowMenu(EAirsoftMenu::Settings);
-					}
-					return FReply::Handled();
-				})
-			]
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.Padding(FMargin(0.f, 6.f, 0.f, 0.f))
-			[
-				SNew(SAirsoftButton)
-				.Text(FText::FromString(TEXT("QUIT")))
-				.FontSize(14)
-				.OnClicked_Lambda([this]()
-				{
-					if (UAirsoftGameInstance* G = AUI::GetGameInstance(WeakPC.Get()))
-					{
-						G->SaveProfile();
-					}
-					FPlatformMisc::RequestExit(false);
-					return FReply::Handled();
-				})
-			]
-			// Story blurb
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.Padding(FMargin(4.f, 30.f, 0.f, 0.f))
-			[
-				SNew(STextBlock)
-				.AutoWrapText(true)
-				.Text(FText::FromString(TEXT("LAST CONTRACT \u00B7 A story in four missions. Difficulty: Settings > Bot skill.")))
-				.Font(AUI::Font(AUI::EFontWeight::Regular, 10, 20))
-				.ColorAndOpacity(AUI::TextDim())
+				SNew(SWidgetSwitcher)
+				.WidgetIndex_Lambda([this]() { return static_cast<int32>(Page); })
+				+ SWidgetSwitcher::Slot()[BuildHomePage()]
+				+ SWidgetSwitcher::Slot()[BuildNewGamePage()]
+				+ SWidgetSwitcher::Slot()[BuildMissionsPage()]
+				+ SWidgetSwitcher::Slot()[BuildSkirmishPage()]
+				+ SWidgetSwitcher::Slot()[BuildPracticePage()]
 			]
 		];
+}
 
-	SetInitialFocus(HostButton);
-	return Column;
+TSharedRef<SWidget> SAirsoftMainMenu::BuildHomePage()
+{
+	TSharedPtr<SAirsoftButton> ContinueButton;
+	TSharedPtr<SAirsoftButton> NewGameButton;
+	const bool bMultiplayer = UAirsoftSettings::IsMultiplayerEnabled();
+
+	TSharedRef<SVerticalBox> Box = SNew(SVerticalBox);
+	// Continue: the furthest mission, from its last checkpoint when there is one.
+	Box->AddSlot()
+	.AutoHeight()
+	[
+		SNew(SBox)
+		.Visibility_Lambda([this]() { return HasProgress() ? EVisibility::Visible : EVisibility::Collapsed; })
+		[
+			MenuButton(FText::FromString(TEXT("CONTINUE")),
+				TAttribute<FText>::CreateLambda([this]()
+				{
+					UAirsoftGameInstance* G = GI();
+					const UAirsoftSaveGame* P = Profile();
+					const bool bCheckpoint = P && P->CheckpointMission > 0;
+					const int32 Number = bCheckpoint ? P->CheckpointMission : (G ? G->GetContinueMission() : 1);
+					const AirsoftCampaign::FMission* Mission = AirsoftCampaign::FindMission(Number);
+					return FText::FromString(FString::Printf(TEXT("MISSION %d · %s%s"), Number, Mission ? *Mission->Title.ToUpper() : TEXT(""),
+						bCheckpoint ? TEXT(" · CHECKPOINT") : TEXT("")));
+				}),
+				[this]()
+				{
+					if (UAirsoftGameInstance* G = GI())
+					{
+						const UAirsoftSaveGame* P = Profile();
+						G->StartMission((P && P->CheckpointMission > 0) ? P->CheckpointMission : G->GetContinueMission());
+					}
+				}, &ContinueButton)
+		]
+	];
+	Box->AddSlot().AutoHeight()
+	[
+		MenuButton(FText::FromString(TEXT("NEW GAME")),
+			TAttribute<FText>::CreateLambda([this]() { return FText::FromString(HasProgress() ? TEXT("FROM MISSION 1") : TEXT("BEGIN THE STORY")); }),
+			[this]() { ShowPage(EPage::NewGame); }, &NewGameButton)
+	];
+	Box->AddSlot().AutoHeight()
+	[
+		MenuButton(FText::FromString(TEXT("MISSION SELECT")),
+			TAttribute<FText>::CreateLambda([this]()
+			{
+				UAirsoftGameInstance* G = GI();
+				const int32 Count = AirsoftCampaign::Missions().Num();
+				const int32 Open = G ? FMath::Min(G->GetContinueMission(), Count) : 1;
+				return FText::FromString(FString::Printf(TEXT("%d OF %d UNLOCKED"), Open, Count));
+			}),
+			[this]() { ShowPage(EPage::Missions); })
+	];
+	Box->AddSlot().AutoHeight().Padding(FMargin(0.f, 14.f, 0.f, 0.f))
+	[
+		MenuButton(FText::FromString(TEXT("SKIRMISH")), FText::FromString(TEXT("YOU AND BOTS")),
+			[this]() { ShowPage(EPage::Skirmish); })
+	];
+	Box->AddSlot().AutoHeight()
+	[
+		MenuButton(FText::FromString(TEXT("PRACTICE RANGE")),
+			TAttribute<FText>::CreateLambda([this]()
+			{
+				const UAirsoftSaveGame* P = Profile();
+				return FText::FromString((P && P->Settings.bTutorialDone) ? TEXT("FIRING LANES") : TEXT("LEARN THE CONTROLS"));
+			}),
+			[this]() { ShowPage(EPage::Practice); })
+	];
+	Box->AddSlot().AutoHeight()
+	[
+		MenuButton(FText::FromString(TEXT("ARMORY")), FText::FromString(TEXT("LOADOUT & FINISHES")),
+			[this]()
+			{
+				if (AAirsoftPlayerController* PC = WeakPC.Get())
+				{
+					PC->OpenArmory();
+				}
+			})
+	];
+	Box->AddSlot().AutoHeight()
+	[
+		MenuButton(FText::FromString(TEXT("SETTINGS")), FText::GetEmpty(),
+			[this]()
+			{
+				if (AAirsoftPlayerController* PC = WeakPC.Get())
+				{
+					PC->ShowMenu(EAirsoftMenu::Settings);
+				}
+			})
+	];
+	Box->AddSlot().AutoHeight()
+	[
+		MenuButton(FText::FromString(TEXT("QUIT")), FText::GetEmpty(),
+			[this]()
+			{
+				if (UAirsoftGameInstance* G = GI())
+				{
+					G->SaveProfile();
+				}
+				FPlatformMisc::RequestExit(false);
+			})
+	];
+
+	// Developer only: the online code is kept, and shows here when multiplayer is switched on.
+	if (bMultiplayer)
+	{
+		Box->AddSlot().AutoHeight().Padding(FMargin(0.f, 22.f, 0.f, 8.f))
+		[
+			AirsoftUIWidgets::SectionLabel(FText::FromString(TEXT("MULTIPLAYER  ·  DEV")))
+		];
+		Box->AddSlot().AutoHeight()
+		[
+			MenuButton(FText::FromString(TEXT("HOST")),
+				FText::FromString(TailscaleIPs.IsEmpty() ? FString(TEXT("NO TAILSCALE ADDRESS")) : TailscaleIPs),
+				[this]()
+				{
+					if (UAirsoftGameInstance* G = GI())
+					{
+						if (NameBox.IsValid())
+						{
+							SaveName(NameBox->GetText().ToString());
+						}
+						G->HostGame();
+					}
+				})
+		];
+		Box->AddSlot().AutoHeight().Padding(FMargin(0.f, 6.f, 0.f, 0.f))
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot()
+			.FillWidth(1.f)
+			[
+				SAssignNew(AddressBox, SEditableTextBox)
+				.Style(&AUI::TextBoxStyle())
+				.Font(AUI::Font(AUI::EFontWeight::Bold, 13, 60))
+				.ForegroundColor(FLinearColor::White)
+				.BackgroundColor(FLinearColor::White)
+				.HintText(FText::FromString(TEXT("Host address, e.g. 100.101.102.103")))
+				.Text(FText::FromString(GI() ? GI()->GetUserSettings().LastJoinAddress : FString()))
+				.OnTextCommitted_Lambda([this](const FText&, ETextCommit::Type CommitType)
+				{
+					if (CommitType == ETextCommit::OnEnter)
+					{
+						Join();
+					}
+				})
+			]
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.Padding(FMargin(6.f, 0.f, 0.f, 0.f))
+			[
+				SNew(SBox)
+				.WidthOverride(110.f)
+				[
+					SNew(SAirsoftButton)
+					.Text(FText::FromString(TEXT("JOIN")))
+					.FontSize(12)
+					.HAlign(HAlign_Center)
+					.OnClicked_Lambda([this]()
+					{
+						Join();
+						return FReply::Handled();
+					})
+				]
+			]
+		];
+	}
+
+	Box->AddSlot()
+	.AutoHeight()
+	.Padding(FMargin(4.f, 26.f, 0.f, 0.f))
+	[
+		SNew(STextBlock)
+		.AutoWrapText(true)
+		.Font(AUI::Font(AUI::EFontWeight::Regular, 10, 20))
+		.ColorAndOpacity(AUI::TextDim())
+		.Text_Lambda([this]()
+		{
+			UAirsoftGameInstance* G = GI();
+			const int32 Difficulty = G ? G->GetUserSettings().Difficulty : 1;
+			return FText::FromString(FString::Printf(TEXT("LAST CONTRACT · A story in %d missions · Difficulty %s"),
+				AirsoftCampaign::Missions().Num(), *AirsoftDifficulty::Label(AirsoftDifficulty::FromIndex(Difficulty))));
+		})
+	];
+
+	// Keyboard / gamepad start on Continue when there is one, else New Game.
+	SetInitialFocus(HasProgress() ? ContinueButton : NewGameButton);
+	PageFocus.Add(EPage::Home, HasProgress() ? ContinueButton : NewGameButton);
+	return Box;
+}
+
+TSharedRef<SWidget> SAirsoftMainMenu::BuildNewGamePage()
+{
+	TSharedRef<SVerticalBox> Box = SNew(SVerticalBox);
+	Box->AddSlot().AutoHeight()
+	[
+		PageHeader(TEXT("NEW GAME"), TEXT("Pick how hard the story fights back. You can change it later in Settings."))
+	];
+	TSharedPtr<SAirsoftButton> First;
+	for (int32 i = 0; i < AirsoftDifficulty::Num; ++i)
+	{
+		const EAirsoftDifficulty Difficulty = AirsoftDifficulty::FromIndex(i);
+		TSharedPtr<SAirsoftButton> Button;
+		Box->AddSlot().AutoHeight().Padding(FMargin(0.f, i == 0 ? 10.f : 4.f, 0.f, 0.f))
+		[
+			SAssignNew(Button, SAirsoftButton)
+			.Text(FText::FromString(AirsoftDifficulty::Label(Difficulty)))
+			.SubText(FText::FromString(AirsoftDifficulty::Blurb(Difficulty).ToUpper()))
+			.FontSize(13)
+			.IsSelected_Lambda([this, i]() { return PickDifficulty == i; })
+			.OnClicked_Lambda([this, i]()
+			{
+				PickDifficulty = i;
+				return FReply::Handled();
+			})
+		];
+		if (i == 1)
+		{
+			First = Button;
+		}
+	}
+	Box->AddSlot().AutoHeight().Padding(FMargin(4.f, 14.f, 0.f, 0.f))
+	[
+		SNew(STextBlock)
+		.AutoWrapText(true)
+		.Visibility_Lambda([this]() { return HasProgress() ? EVisibility::HitTestInvisible : EVisibility::Collapsed; })
+		.Text(FText::FromString(TEXT("Starts the story again from Mission 1 and clears the last checkpoint. Unlocked missions stay in Mission Select.")))
+		.Font(AUI::Font(AUI::EFontWeight::Regular, 10, 20))
+		.ColorAndOpacity(AUI::Accent())
+	];
+	Box->AddSlot().AutoHeight().Padding(FMargin(0.f, 10.f, 0.f, 0.f))
+	[
+		MenuButton(FText::FromString(TEXT("BEGIN")), FText::FromString(TEXT("MISSION 1")),
+			[this]()
+			{
+				if (UAirsoftGameInstance* G = GI())
+				{
+					G->StartNewGame(AirsoftDifficulty::FromIndex(PickDifficulty));
+				}
+			})
+	];
+	PageFocus.Add(EPage::NewGame, First);
+	return Box;
+}
+
+TSharedRef<SWidget> SAirsoftMainMenu::BuildMissionsPage()
+{
+	TSharedRef<SVerticalBox> Box = SNew(SVerticalBox);
+	Box->AddSlot().AutoHeight()
+	[
+		PageHeader(TEXT("MISSION SELECT"), TEXT("Replay any mission you have reached."))
+	];
+	TSharedPtr<SAirsoftButton> First;
+	const TArray<AirsoftCampaign::FMission>& Missions = AirsoftCampaign::Missions();
+	for (int32 i = 0; i < Missions.Num(); ++i)
+	{
+		const int32 Number = i + 1;
+		const FString Title = Missions[i].Title.ToUpper();
+		TSharedPtr<SAirsoftButton> Button;
+		Box->AddSlot().AutoHeight().Padding(FMargin(0.f, i == 0 ? 10.f : 4.f, 0.f, 0.f))
+		[
+			SAssignNew(Button, SAirsoftButton)
+			.Text(FText::FromString(FString::Printf(TEXT("%d  ·  %s"), Number, *Title)))
+			.FontSize(13)
+			.IsDimmed_Lambda([this, Number]()
+			{
+				UAirsoftGameInstance* G = GI();
+				return !G || Number > G->GetContinueMission();
+			})
+			.SubText_Lambda([this, Number]()
+			{
+				UAirsoftGameInstance* G = GI();
+				const bool bLocked = !G || Number > G->GetContinueMission();
+				return FText::FromString(bLocked ? TEXT("LOCKED") : TEXT("PLAY"));
+			})
+			.OnClicked_Lambda([this, Number]()
+			{
+				UAirsoftGameInstance* G = GI();
+				if (!G || Number > G->GetContinueMission())
+				{
+					LocalMessage = TEXT("Finish the mission before it to unlock this one.");
+					return FReply::Handled();
+				}
+				G->StartMission(Number);
+				return FReply::Handled();
+			})
+		];
+		if (i == 0)
+		{
+			First = Button;
+		}
+	}
+	PageFocus.Add(EPage::Missions, First);
+	return Box;
+}
+
+TSharedRef<SWidget> SAirsoftMainMenu::BuildSkirmishPage()
+{
+	TSharedRef<SVerticalBox> Box = SNew(SVerticalBox);
+	Box->AddSlot().AutoHeight()
+	[
+		PageHeader(TEXT("SKIRMISH"), TEXT("An offline match against bots on this PC."))
+	];
+
+	auto Choice = [](const FString& Label, TFunction<bool()> IsSelected, TFunction<bool()> IsDimmed, TFunction<void()> OnPick)
+	{
+		return SNew(SAirsoftButton)
+			.Text(FText::FromString(Label))
+			.FontSize(10)
+			.HAlign(HAlign_Center)
+			.ShowEdge(false)
+			.ContentPadding(FMargin(6.f, 7.f))
+			.IsSelected_Lambda([IsSelected]() { return IsSelected(); })
+			.IsDimmed_Lambda([IsDimmed]() { return IsDimmed(); })
+			.OnClicked_Lambda([OnPick]()
+			{
+				OnPick();
+				return FReply::Handled();
+			});
+	};
+
+	// Mode: a 3 + 2 grid.
+	TSharedRef<SUniformGridPanel> Modes = SNew(SUniformGridPanel).SlotPadding(FMargin(0.f, 0.f, 4.f, 4.f));
+	TSharedPtr<SAirsoftButton> First;
+	for (int32 i = 0; i < AirsoftRules::NumModes; ++i)
+	{
+		TSharedRef<SAirsoftButton> Button = Choice(AirsoftRules::ModeName(AirsoftRules::ModeFromIndex(i)).ToUpper(),
+			[this, i]() { return PickMode == i; },
+			[]() { return false; },
+			[this, i]()
+			{
+				PickMode = i;
+				// Keep the map valid for the mode.
+				const TArray<FAirsoftMapInfo>& Maps = AirsoftRules::Maps();
+				if (Maps.IsValidIndex(PickMap) && !Maps[PickMap].SupportsMode(AirsoftRules::ModeFromIndex(i)))
+				{
+					for (int32 m = 0; m < Maps.Num(); ++m)
+					{
+						if (Maps[m].SupportsMode(AirsoftRules::ModeFromIndex(i)))
+						{
+							PickMap = m;
+							break;
+						}
+					}
+				}
+			});
+		if (i == 0)
+		{
+			First = Button;
+		}
+		Modes->AddSlot(i % 3, i / 3)[Button];
+	}
+	Box->AddSlot().AutoHeight()[ChoiceLabel(TEXT("MODE"))];
+	Box->AddSlot().AutoHeight()[Modes];
+	Box->AddSlot().AutoHeight().Padding(FMargin(2.f, 2.f, 0.f, 0.f))
+	[
+		SNew(STextBlock)
+		.AutoWrapText(true)
+		.Font(AUI::Font(AUI::EFontWeight::Regular, 10, 20))
+		.ColorAndOpacity(AUI::TextDim())
+		.Text_Lambda([this]() { return FText::FromString(AirsoftRules::ModeBlurb(AirsoftRules::ModeFromIndex(PickMode))); })
+	];
+
+	TSharedRef<SUniformGridPanel> Maps = SNew(SUniformGridPanel).SlotPadding(FMargin(0.f, 0.f, 4.f, 4.f));
+	const TArray<FAirsoftMapInfo>& MapList = AirsoftRules::Maps();
+	for (int32 i = 0; i < MapList.Num(); ++i)
+	{
+		Maps->AddSlot(i, 0)
+		[
+			Choice(AirsoftRules::MapDisplayName(MapList[i].Key).ToUpper(),
+				[this, i]() { return PickMap == i; },
+				[this, i]()
+				{
+					const TArray<FAirsoftMapInfo>& List = AirsoftRules::Maps();
+					return List.IsValidIndex(i) && !List[i].SupportsMode(AirsoftRules::ModeFromIndex(PickMode));
+				},
+				[this, i]() { PickMap = i; })
+		];
+	}
+	Box->AddSlot().AutoHeight()[ChoiceLabel(TEXT("MAP"))];
+	Box->AddSlot().AutoHeight()[Maps];
+
+	TSharedRef<SUniformGridPanel> Bots = SNew(SUniformGridPanel).SlotPadding(FMargin(0.f, 0.f, 4.f, 4.f));
+	for (int32 Fill = 1; Fill < AirsoftBots::NumFillOptions; ++Fill)
+	{
+		Bots->AddSlot(Fill - 1, 0)
+		[
+			Choice(AirsoftBots::FillLabel(Fill),
+				[this, Fill]() { return PickBots == Fill; },
+				[]() { return false; },
+				[this, Fill]() { PickBots = Fill; })
+		];
+	}
+	Box->AddSlot().AutoHeight()[ChoiceLabel(TEXT("TEAM SIZE  ·  YOU PLUS BOTS"))];
+	Box->AddSlot().AutoHeight()[Bots];
+
+	TSharedRef<SUniformGridPanel> Difficulty = SNew(SUniformGridPanel).SlotPadding(FMargin(0.f, 0.f, 4.f, 4.f));
+	for (int32 i = 0; i < AirsoftDifficulty::Num; ++i)
+	{
+		Difficulty->AddSlot(i, 0)
+		[
+			Choice(AirsoftDifficulty::Label(AirsoftDifficulty::FromIndex(i)),
+				[this, i]() { return PickDifficulty == i; },
+				[]() { return false; },
+				[this, i]() { PickDifficulty = i; })
+		];
+	}
+	Box->AddSlot().AutoHeight()[ChoiceLabel(TEXT("BOT DIFFICULTY"))];
+	Box->AddSlot().AutoHeight()[Difficulty];
+
+	Box->AddSlot().AutoHeight().Padding(FMargin(0.f, 10.f, 0.f, 0.f))
+	[
+		MenuButton(FText::FromString(TEXT("START SKIRMISH")),
+			TAttribute<FText>::CreateLambda([this]()
+			{
+				const TArray<FAirsoftMapInfo>& List = AirsoftRules::Maps();
+				const FString Map = List.IsValidIndex(PickMap) ? AirsoftRules::MapDisplayName(List[PickMap].Key).ToUpper() : FString();
+				return FText::FromString(Map + TEXT(" · ") + AirsoftBots::FillLabel(PickBots));
+			}),
+			[this]()
+			{
+				if (UAirsoftGameInstance* G = GI())
+				{
+					G->StartSkirmish(AirsoftRules::ModeFromIndex(PickMode), PickMap, PickBots, AirsoftDifficulty::FromIndex(PickDifficulty));
+				}
+			})
+	];
+	PageFocus.Add(EPage::Skirmish, First);
+	return Box;
+}
+
+TSharedRef<SWidget> SAirsoftMainMenu::BuildPracticePage()
+{
+	TSharedPtr<SAirsoftButton> First;
+	TSharedRef<SVerticalBox> Box = SNew(SVerticalBox);
+	Box->AddSlot().AutoHeight()
+	[
+		PageHeader(TEXT("PRACTICE RANGE"), TEXT("Steel plates down the lanes, every gun in the armory, and nobody shooting back."))
+	];
+	Box->AddSlot().AutoHeight().Padding(FMargin(0.f, 4.f, 0.f, 0.f))
+	[
+		MenuButton(FText::FromString(TEXT("HOW TO PLAY")), FText::FromString(TEXT("STEP BY STEP · 2 MINUTES")),
+			[this]()
+			{
+				if (UAirsoftGameInstance* G = GI())
+				{
+					G->StartPractice(true);
+				}
+			}, &First)
+	];
+	Box->AddSlot().AutoHeight()
+	[
+		MenuButton(FText::FromString(TEXT("FREE PRACTICE")), FText::FromString(TEXT("JUST THE RANGE")),
+			[this]()
+			{
+				if (UAirsoftGameInstance* G = GI())
+				{
+					G->StartPractice(false);
+				}
+			})
+	];
+	PageFocus.Add(EPage::Practice, First);
+	return Box;
 }
 
 TSharedRef<SWidget> SAirsoftMainMenu::MakeStat(const FString& Label, TFunction<int32(const UAirsoftSaveGame&)> Getter)
@@ -428,7 +951,9 @@ TSharedRef<SWidget> SAirsoftMainMenu::BuildProfileCard()
 				.Padding(FMargin(0.f, 6.f, 0.f, 0.f))
 				[
 					SNew(STextBlock)
-					.Text(FText::FromString(TEXT("Up to 20 characters. Shown to everyone in the match.")))
+					.Text(FText::FromString(UAirsoftSettings::IsMultiplayerEnabled()
+							? TEXT("Up to 20 characters. Shown to everyone in the match.")
+							: TEXT("Up to 20 characters. Your name on the scoreboard.")))
 					.Font(AUI::Font(AUI::EFontWeight::Regular, 9, 20))
 					.ColorAndOpacity(AUI::TextDim())
 				]

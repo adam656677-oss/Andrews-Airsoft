@@ -32,8 +32,9 @@ namespace AirsoftGameInstanceLocal
 		{
 			if (!Info.LevelPath.IsEmpty() && FPackageName::GetShortName(Info.LevelPath).Equals(Short, ESearchCase::IgnoreCase))
 			{
+				// Story missions and skirmishes share these maps; their own starts name what is coming.
 				OutTitle = AirsoftRules::MapDisplayName(Info.Key);
-				OutSubtitle = TEXT("Skirmish");
+				OutSubtitle = FString();
 				return;
 			}
 		}

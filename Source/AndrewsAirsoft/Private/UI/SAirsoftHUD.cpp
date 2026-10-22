@@ -14,6 +14,7 @@
 #include "AirsoftPlayerController.h"
 #include "AirsoftPlayerState.h"
 #include "AirsoftSaveGame.h"
+#include "AirsoftSettings.h"
 #include "AirsoftUIScreens.h"
 #include "AirsoftUIStyle.h"
 #include "AirsoftUIWidgets.h"
@@ -149,7 +150,12 @@ void SAirsoftHUD::Construct(const FArguments& InArgs, AAirsoftPlayerController* 
 		.VAlign(VAlign_Bottom)
 		.Padding(FMargin(32.f, 0.f, 0.f, 200.f))
 		[
-			AirsoftUIScreens::CreateChatBox(InPC)
+			// Text chat is online-only.
+			SNew(SBox)
+			.Visibility(UAirsoftSettings::IsMultiplayerEnabled() ? EVisibility::SelfHitTestInvisible : EVisibility::Collapsed)
+			[
+				AirsoftUIScreens::CreateChatBox(InPC)
+			]
 		]
 		// Story campaign: the objective, bottom left.
 		+ SOverlay::Slot()
@@ -748,14 +754,19 @@ FText SAirsoftHUD::PhaseCaption() const
 	}
 	switch (GS->Phase)
 	{
-	case EAirsoftPhase::Waiting: return FText::FromString(GS->bIsMatchMap ? TEXT("STANDBY") : TEXT("WAITING FOR PLAYERS"));
+	case EAirsoftPhase::Waiting:
+		if (!GS->bIsMatchMap && !UAirsoftSettings::IsMultiplayerEnabled())
+		{
+			return FText::FromString(TEXT("THE RANGE"));
+		}
+		return FText::FromString(GS->bIsMatchMap ? TEXT("STANDBY") : TEXT("WAITING FOR PLAYERS"));
 	case EAirsoftPhase::Intermission: return FText::FromString(TEXT("NEXT MATCH IN"));
 	case EAirsoftPhase::Briefing:
 		return GS->IsRoundBased() ? FText::FromString(FString::Printf(TEXT("ROUND %d \u00B7 FREEZE"), GS->RoundNumber)) : FText::FromString(TEXT("BRIEFING"));
 	case EAirsoftPhase::Live:
 		if (!GS->bIsMatchMap)
 		{
-			return FText::FromString(TEXT("STAGING"));
+			return FText::FromString(UAirsoftSettings::IsMultiplayerEnabled() ? TEXT("STAGING") : TEXT("THE RANGE"));
 		}
 		switch (GS->Mode)
 		{
@@ -988,7 +999,9 @@ TSharedRef<SWidget> SAirsoftHUD::BuildTopCenter()
 			{
 				// Story campaign: the objective panel (bottom left) carries this line.
 				const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
-				return HudVis(GS && !GS->StatusMessage.IsEmpty() && !GS->bCampaign);
+				// Single player: staging is the range, not a lobby, so its "waiting for players" line stays hidden.
+				const bool bLobbyLine = GS && !GS->bIsMatchMap && !UAirsoftSettings::IsMultiplayerEnabled();
+				return HudVis(GS && !GS->StatusMessage.IsEmpty() && !GS->bCampaign && !bLobbyLine);
 			})
 			.Text_Lambda([this]()
 			{
@@ -2006,7 +2019,7 @@ TSharedRef<SWidget> SAirsoftHUD::BuildVotePanel()
 		.Visibility_Lambda([this]() -> EVisibility
 		{
 			const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
-			return HudVis(!IsHidden() && GS && !GS->bIsMatchMap
+			return HudVis(UAirsoftSettings::IsMultiplayerEnabled() && !IsHidden() && GS && !GS->bIsMatchMap
 				&& (GS->Phase == EAirsoftPhase::Intermission || GS->Phase == EAirsoftPhase::Waiting));
 		})
 		[

@@ -6,6 +6,7 @@
 #include "AirsoftGameState.h"
 #include "AirsoftPlayerController.h"
 #include "AirsoftPlayerState.h"
+#include "AirsoftSettings.h"
 #include "AirsoftUIScreens.h"
 #include "AirsoftUIStyle.h"
 #include "AirsoftUIWidgets.h"
@@ -623,7 +624,7 @@ void SAirsoftScoreboard::Construct(const FArguments& InArgs, AAirsoftPlayerContr
 									const AAirsoftGameState* GS = AUI::GetGameState(WeakPC.Get());
 									if (!GS || !GS->bIsMatchMap)
 									{
-										return FText::FromString(TEXT("STAGING AREA"));
+										return FText::FromString(UAirsoftSettings::IsMultiplayerEnabled() ? TEXT("STAGING AREA") : TEXT("THE RANGE"));
 									}
 									return AUI::Upper(AAirsoftGameState::MapDisplayName(GS->MapId));
 								})

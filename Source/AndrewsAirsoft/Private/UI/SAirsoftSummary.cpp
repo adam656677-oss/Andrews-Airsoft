@@ -5,6 +5,7 @@
 #include "AirsoftGameState.h"
 #include "AirsoftPlayerController.h"
 #include "AirsoftPlayerState.h"
+#include "AirsoftSettings.h"
 #include "AirsoftSaveGame.h"
 #include "AirsoftUIScreens.h"
 #include "AirsoftUIStyle.h"
@@ -293,7 +294,7 @@ void SAirsoftSummary::Construct(const FArguments& InArgs, AAirsoftPlayerControll
 						{
 							const AAirsoftGameState* State = AUI::GetGameState(WeakPC.Get());
 							const int32 Seconds = State ? FMath::CeilToInt(State->GetTimeRemaining()) : 0;
-							return FText::FromString(FString::Printf(TEXT("Returning to staging in %d"), FMath::Max(0, Seconds)));
+							return FText::FromString(FString::Printf(UAirsoftSettings::IsMultiplayerEnabled() ? TEXT("Returning to staging in %d") : TEXT("Continuing in %d"), FMath::Max(0, Seconds)));
 						})
 					]
 				]

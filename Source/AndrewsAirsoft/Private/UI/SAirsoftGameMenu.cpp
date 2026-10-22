@@ -8,6 +8,7 @@
 #include "AirsoftPlayerController.h"
 #include "AirsoftPlayerState.h"
 #include "AirsoftSaveGame.h"
+#include "AirsoftSettings.h"
 #include "AirsoftUIScreens.h"
 #include "AirsoftUIStyle.h"
 #include "AirsoftUIWidgets.h"
@@ -66,6 +67,10 @@ private:
 	bool IsStaging() const;
 	bool CanVote() const;
 	bool IsLeaveArmed() const { return FPlatformTime::Seconds() - LeaveArmedAt < 3.0; }
+	/** Online play switched on (developer only): team switch, votes, force start and the host's bot rows. */
+	static bool Multiplayer() { return UAirsoftSettings::IsMultiplayerEnabled(); }
+	/** Ending the session affects other people (multiplayer host outside the story). */
+	bool EndsForEveryone() const;
 	/** Host's bot fill option (0 = off). */
 	int32 BotFill() const;
 
@@ -94,7 +99,13 @@ int32 SAirsoftGameMenu::BotFill() const
 bool SAirsoftGameMenu::CanVote() const
 {
 	const AAirsoftGameState* State = GS();
-	return State && !State->bIsMatchMap && (State->Phase == EAirsoftPhase::Waiting || State->Phase == EAirsoftPhase::Intermission);
+	return Multiplayer() && State && !State->bIsMatchMap && (State->Phase == EAirsoftPhase::Waiting || State->Phase == EAirsoftPhase::Intermission);
+}
+
+bool SAirsoftGameMenu::EndsForEveryone() const
+{
+	const AAirsoftPlayerController* PC = WeakPC.Get();
+	return Multiplayer() && PC && PC->IsHost() && !AAirsoftGameState::IsCampaign(PC);
 }
 
 void SAirsoftGameMenu::HandleBack()
@@ -178,7 +189,11 @@ TSharedRef<SWidget> SAirsoftGameMenu::BuildLeftColumn()
 				.Text_Lambda([this]()
 				{
 					const AAirsoftGameState* State = GS();
-					return (State && State->bIsMatchMap) ? AUI::Upper(AAirsoftGameState::MapDisplayName(State->MapId)) : FText::FromString(TEXT("STAGING AREA"));
+					if (State && State->bIsMatchMap)
+					{
+						return AUI::Upper(AAirsoftGameState::MapDisplayName(State->MapId));
+					}
+					return FText::FromString(Multiplayer() ? TEXT("STAGING AREA") : TEXT("THE RANGE"));
 				})
 			]
 			+ SVerticalBox::Slot()
@@ -194,6 +209,10 @@ TSharedRef<SWidget> SAirsoftGameMenu::BuildLeftColumn()
 					if (!State)
 					{
 						return FText::FromString(TEXT("CONNECTING"));
+					}
+					if (!State->bIsMatchMap && !Multiplayer())
+					{
+						return FText::FromString(TEXT("ARMORY  \u00B7  FIRING LANES"));
 					}
 					FString Line = AAirsoftGameState::ModeDisplayName(State->Mode).ToUpper() + TEXT("  \u00B7  ") + PhaseName(State->Phase);
 					const float T = State->GetTimeRemaining();
@@ -288,7 +307,7 @@ TSharedRef<SWidget> SAirsoftGameMenu::BuildLeftColumn()
 			.Padding(FMargin(0.f, 6.f, 0.f, 0.f))
 			[
 				SNew(SAirsoftButton)
-				.Visibility_Lambda([this]() -> EVisibility { return MenuVis(IsStaging()); })
+				.Visibility_Lambda([this]() -> EVisibility { return MenuVis(Multiplayer() && IsStaging()); })
 				.Text(FText::FromString(TEXT("SWITCH TEAM")))
 				.SubText_Lambda([this]()
 				{
@@ -337,7 +356,10 @@ TSharedRef<SWidget> SAirsoftGameMenu::BuildLeftColumn()
 				.Visibility_Lambda([this]() -> EVisibility
 				{
 					const AAirsoftPlayerController* PC = WeakPC.Get();
-					return MenuVis(PC && PC->IsHost() && !AAirsoftGameState::IsCampaign(PC));
+					// Single player: team size in a skirmish. Multiplayer: the host's fill, anywhere.
+					const AAirsoftGameState* State = GS();
+					const bool bSkirmish = State && State->bIsMatchMap;
+					return MenuVis(PC && PC->IsHost() && !AAirsoftGameState::IsCampaign(PC) && (Multiplayer() || bSkirmish));
 				})
 				.Text(FText::FromString(TEXT("BOTS")))
 				.SubText_Lambda([this]()
@@ -365,21 +387,25 @@ TSharedRef<SWidget> SAirsoftGameMenu::BuildLeftColumn()
 				.Visibility_Lambda([this]() -> EVisibility
 				{
 					const AAirsoftPlayerController* PC = WeakPC.Get();
-					return MenuVis(PC && PC->IsHost() && (BotFill() > 0 || AAirsoftGameState::IsCampaign(PC)));
+					const AAirsoftGameState* State = GS();
+					const bool bSkirmish = State && State->bIsMatchMap;
+					return MenuVis(PC && PC->IsHost() && (BotFill() > 0 || AAirsoftGameState::IsCampaign(PC) || (!Multiplayer() && bSkirmish)));
 				})
-				.Text_Lambda([this]() { return FText::FromString(AAirsoftGameState::IsCampaign(WeakPC.Get()) ? TEXT("DIFFICULTY") : TEXT("BOT SKILL")); })
+				.Text_Lambda([this]() { return FText::FromString((Multiplayer() && !AAirsoftGameState::IsCampaign(WeakPC.Get())) ? TEXT("BOT SKILL") : TEXT("DIFFICULTY")); })
 				.SubText_Lambda([this]()
 				{
 					UAirsoftGameInstance* GI = AUI::GetGameInstance(WeakPC.Get());
-					return FText::FromString(AirsoftBots::SkillLabel(GI ? GI->GetUserSettings().BotSkill : 1));
+					return FText::FromString(AirsoftDifficulty::Label(AirsoftDifficulty::FromIndex(GI ? GI->GetUserSettings().BotSkill : 1)));
 				})
 				.FontSize(14)
 				.OnClicked_Lambda([this]()
 				{
 					if (UAirsoftGameInstance* GI = AUI::GetGameInstance(WeakPC.Get()))
 					{
+						// Difficulty and bot skill share one ladder (AirsoftDifficulty::BotSkill); step both.
 						FAirsoftUserSettings Settings = GI->GetUserSettings();
 						Settings.BotSkill = (FMath::Clamp(Settings.BotSkill, 0, AirsoftBots::NumSkillOptions - 1) + 1) % AirsoftBots::NumSkillOptions;
+						Settings.Difficulty = Settings.BotSkill;
 						GI->SetUserSettings(Settings);
 					}
 					return FReply::Handled();
@@ -395,14 +421,13 @@ TSharedRef<SWidget> SAirsoftGameMenu::BuildLeftColumn()
 					const AAirsoftPlayerController* PC = WeakPC.Get();
 					if (IsLeaveArmed())
 					{
-						return FText::FromString(AAirsoftGameState::IsCampaign(PC) ? TEXT("CONFIRM \u2014 QUIT MISSION") : ((PC && PC->IsHost()) ? TEXT("CONFIRM \u2014 END SESSION") : TEXT("CONFIRM \u2014 LEAVE")));
+						return FText::FromString(AAirsoftGameState::IsCampaign(PC) ? TEXT("CONFIRM \u2014 QUIT MISSION") : (EndsForEveryone() ? TEXT("CONFIRM \u2014 END SESSION") : TEXT("CONFIRM \u2014 LEAVE")));
 					}
 					return FText::FromString(AAirsoftGameState::IsCampaign(WeakPC.Get()) ? TEXT("QUIT MISSION") : TEXT("LEAVE"));
 				})
 				.SubText_Lambda([this]()
 				{
-					const AAirsoftPlayerController* PC = WeakPC.Get();
-					return FText::FromString((PC && PC->IsHost() && !AAirsoftGameState::IsCampaign(PC)) ? TEXT("ENDS IT FOR EVERYONE") : TEXT("BACK TO TITLE"));
+					return FText::FromString(EndsForEveryone() ? TEXT("ENDS IT FOR EVERYONE") : TEXT("BACK TO TITLE"));
 				})
 				.IsSelected_Lambda([this]() { return IsLeaveArmed(); })
 				.FontSize(14)
@@ -431,8 +456,7 @@ TSharedRef<SWidget> SAirsoftGameMenu::BuildLeftColumn()
 				})
 				.SubText_Lambda([this]()
 				{
-					const AAirsoftPlayerController* PC = WeakPC.Get();
-					return FText::FromString((PC && PC->IsHost() && !AAirsoftGameState::IsCampaign(PC)) ? TEXT("ENDS IT FOR EVERYONE") : TEXT("CLOSES THE GAME"));
+					return FText::FromString(EndsForEveryone() ? TEXT("ENDS IT FOR EVERYONE") : TEXT("CLOSES THE GAME"));
 				})
 				.IsSelected_Lambda([this]() { return IsQuitArmed(); })
 				.FontSize(14)
@@ -593,7 +617,7 @@ TSharedRef<SWidget> SAirsoftGameMenu::BuildRightColumn()
 						const AAirsoftGameState* State = GS();
 						if (!State || !State->bIsMatchMap)
 						{
-							return FText::FromString(TEXT("STAGING"));
+							return FText::FromString(Multiplayer() ? TEXT("STAGING") : TEXT("THE RANGE"));
 						}
 						return AUI::Upper(AAirsoftGameState::ModeDisplayName(State->Mode));
 					})
@@ -611,7 +635,9 @@ TSharedRef<SWidget> SAirsoftGameMenu::BuildRightColumn()
 						const AAirsoftGameState* State = GS();
 						if (!State || !State->bIsMatchMap)
 						{
-							return FText::FromString(TEXT("Warm up on the range, set your loadout, and vote for the next match. Teams are balanced when it starts."));
+							return FText::FromString(Multiplayer()
+								? TEXT("Warm up on the range, set your loadout, and vote for the next match. Teams are balanced when it starts.")
+								: TEXT("Try any gun on the firing lanes and set your loadout. Leave to start a mission or a skirmish from the title screen."));
 						}
 						return FText::FromString(AAirsoftGameState::ModeBlurb(State->Mode));
 					})

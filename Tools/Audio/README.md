@@ -324,17 +324,23 @@ iterating. To retune a gun, edit its row in `cinematic.WEAPONS`.
 ## Story voice-over
 
 The "Last Contract" campaign lines (`Content/Airsoft/Data/Campaign.json`: mission intros,
-boss taunts, outros) are spoken by **Kokoro-82M** (`hexgrad/Kokoro-82M`, Apache-2.0, commercial
+boss taunts, mid-fight and death lines, outros, Andrew's lines and the combat barks) are spoken by **Kokoro-82M** (`hexgrad/Kokoro-82M`, Apache-2.0, commercial
 use allowed), an open neural TTS model that runs on the CPU. The voices are Kokoro's own
 synthetic voices, some blended into new ones; none imitates a real actor or character.
 Cast, direction and every line are in `Docs/Last_Contract_Voice_Script.html`.
 
-`make_voice_neural.py` writes the same 20 files as before into `Generated/Voice/`:
-`VO_M<n>_I<k>.wav` (narrator, intro line k), `VO_M<n>_Boss.wav` (the boss's taunt) and
-`VO_M<n>_Outro.wav`. They import as `/Game/Airsoft/Audio/VO_...`, and
-`AirsoftCampaign::VoiceKey()` plays them; the opening cinematic and subtitle holds are sized
-from each file's length. The old Windows-voice script `make_voice.ps1` still works as a
-no-download fallback and writes the same names.
+`make_voice_neural.py` writes 62 files into `Generated/Voice/`:
+
+* per mission: `VO_M<n>_I<k>` (narrator, intro line k), `VO_M<n>_Boss` (the boss's taunt),
+  `VO_M<n>_Outro`, `VO_M<n>_Andrew_Start` (Andrew as the cinematic ends), `VO_M<n>_Andrew_Boss`
+  (his reply to the taunt), `VO_M<n>_Boss_Mid` (the boss at half health) and `VO_M<n>_Boss_Death`;
+* the combat barks in Campaign.json's `Barks`: `VO_Andrew_Reload/Hurt/Kill_*` and the three crew
+  voices `VO_Crew_<A|B|C>_Spotted/Flank/Reload/Grenade/Hit/ManDown/Search/Fear_*`.
+
+They import as `/Game/Airsoft/Audio/VO_...`; the campaign referee plays them (barks from the
+enemy's position, in that enemy's voice) and subtitles each one, sized from the file's length.
+The old Windows-voice script `make_voice.ps1` still works as a no-download fallback for the
+narrator and boss taunts (the game shows subtitles for any line whose sound is missing).
 
 ```bash
 # once (Python 3.10-3.12; on Windows use .ttsvenv\Scripts\ instead of .ttsvenv/bin/)
@@ -343,7 +349,7 @@ python -m venv .ttsvenv
 .ttsvenv/bin/pip install kokoro soundfile "misaki[en]"
 .ttsvenv/bin/pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
 
-.ttsvenv/bin/python Tools/Audio/make_voice_neural.py                  # all 20 lines (+ check table)
+.ttsvenv/bin/python Tools/Audio/make_voice_neural.py                  # all 62 lines (+ check table)
 .ttsvenv/bin/python Tools/Audio/make_voice_neural.py VO_M4_Boss       # just this line
 .ttsvenv/bin/python Tools/Audio/make_voice_neural.py --cast           # who speaks with which voice
 .ttsvenv/bin/python Tools/Audio/make_voice_neural.py --check          # measure only
@@ -352,7 +358,7 @@ python -m venv .ttsvenv
 ```
 
 The first run downloads the model (~330 MB) and the voices from Hugging Face (`HF_HOME` sets
-the cache). The 20 lines take about 4 minutes on a 4-core CPU (longer when the machine is busy). Re-runs are deterministic: each
+the cache). The 62 lines take about 10 minutes on a 4-core CPU (longer when the machine is busy). Re-runs are deterministic: each
 sentence seeds torch from `crc32(<file>#<sentence>)`, the reverb and dither from the file name.
 
 | Role | Kokoro voice (blend) | Speed | Post |
@@ -362,6 +368,8 @@ sentence seeds torch from `crc32(<file>#<sentence>)`, the reverb and dither from
 | Dorian Sloane (M2) | `bm_fable` | 0.93 | smooth, softened top, small room |
 | Mara Voss (M3) | `af_kore` | 1.02 | tight (110 Hz high-pass), clipped, very short room |
 | Silas Varga (M4) | `bm_george` 45 % + `bm_lewis` 35 % + `am_onyx` 20 % | 0.85 | darkest: +2 dB low shelf, -3.5 dB above 5.5 kHz, small room |
+| Andrew | `am_fenrir` 70 % + `am_onyx` 30 % | 0.95 | dry, close |
+| Crew A / B / C | `am_eric` / `am_liam` / `am_echo` 60 % + `am_onyx` 40 % | 1.12 / 1.18 / 1.0 | dry, close |
 
 How a line is built:
 
@@ -383,10 +391,9 @@ How a line is built:
 The check table printed at the end lists length, words per minute, LUFS, true peak, leading
 and trailing silence (-50 dBFS) and clipped samples, and flags anything out of range.
 
-`--next-build DIR` also voices the spoken lines marked *Next build* in the voice script
-(Andrew's openers, replies and barks, the bosses' mid-fight and death lines, the crew barks;
-the effort/death-sound rows are skipped) under the script's file names. The game does not load
-those keys yet, so they must go outside `Generated/` (the importer imports every WAV in it).
+`--next-build DIR` voices any spoken line still marked *Next build* in the voice script (none
+today: the effort/death-sound rows are sounds, not speech, and are skipped) under the script's
+file names, outside `Generated/` (the importer imports every WAV in it).
 
 ## Size
 
