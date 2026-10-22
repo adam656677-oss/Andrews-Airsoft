@@ -192,9 +192,11 @@ In **Settings**, *Quality: High* with *Render scale: 60%* is the recommended 207
 | Input, menus, HUD feed, replay camera | `AirsoftPlayerController`, `UI/*` (Slate) |
 | World actors | `AirsoftObjective`, `AirsoftTeamStart`, `AirsoftPracticeTarget`, `AirsoftArmoryDisplay`, `AirsoftGrenade` |
 | Profile, hosting/joining, settings | `AirsoftGameInstance`, `AirsoftSaveGame`, `AirsoftSettings` (Project Settings → Game → Airsoft) |
+| Story gun unlocks | `AirsoftUnlocks` (table: `GunUnlocks` in `Content/Airsoft/Data/Campaign.json`) |
 
 **Tuning:**
 - weapon stats: `AirsoftWeaponData.cpp`;
+- which guns each story mission unlocks: `GunUnlocks` in `Campaign.json`. Missions and Skirmish use unlocked guns only; the Practice Range lets you try any gun without saving it to your loadout;
 - round rules (round time, score limits, respawn time, friendly fire): *Project Settings → Game → Airsoft*.
 
 ## 9. Troubleshooting
