@@ -122,7 +122,7 @@ FIXTURES = {
                          "cone": (40, 62), "pitch": -55.0, "src": 40.0, "shadows": True, "vol": 1.2},
     # Ledger Tower kit (Tools/Blender/tower). Linear pendants: soft warm rect under the diffuser, unshadowed (the map
     # places a few shadowed key spots instead). Rect: w along the pendant (local Y), h across it.
-    "Tower_PendantLinear": {"kind": "rect", "point": "Light", "color": "Warm", "cd": 3.0, "radius": 6.0, "w": 230.0,
+    "Tower_PendantLinear": {"kind": "rect", "point": "Light", "color": "Warm", "cd": 7.0, "radius": 7.0, "w": 230.0,
                             "h": 6.0, "pitch": -90.0, "shadows": False, "vol": 0.4},
     "Harbor_Gatehouse": {"kind": "point", "point": "Light", "color": "Warm", "cd": 2.5, "radius": 7.0, "src": 30.0,
                          "shadows": False, "vol": 1.0},

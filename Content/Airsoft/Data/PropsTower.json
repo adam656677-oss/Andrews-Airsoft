@@ -73,8 +73,8 @@
         "Emissive": 24
       },
       "TextureSize": {
-        "Body": 512,
-        "Emissive": 128
+        "Body": 2048,
+        "Emissive": 256
       },
       "Layout": {
         "Cover": true
@@ -109,7 +109,7 @@
         "Body": 2668
       },
       "TextureSize": {
-        "Body": 1024
+        "Body": 4096
       },
       "Layout": {
         "Cover": true
@@ -198,8 +198,8 @@
         "Emissive": 12
       },
       "TextureSize": {
-        "Body": 256,
-        "Emissive": 128
+        "Body": 1024,
+        "Emissive": 256
       },
       "Layout": {
         "Solid": false,
@@ -244,8 +244,8 @@
         "Emissive": 24
       },
       "TextureSize": {
-        "Body": 1024,
-        "Emissive": 128
+        "Body": 4096,
+        "Emissive": 256
       },
       "Layout": {
         "Cover": true
@@ -288,8 +288,8 @@
         "Emissive": 828
       },
       "TextureSize": {
-        "Body": 512,
-        "Emissive": 128
+        "Body": 2048,
+        "Emissive": 512
       },
       "Layout": {
         "Cover": true
@@ -324,7 +324,7 @@
         "Body": 9484
       },
       "TextureSize": {
-        "Body": 1024
+        "Body": 4096
       },
       "Layout": {
         "Solid": false,

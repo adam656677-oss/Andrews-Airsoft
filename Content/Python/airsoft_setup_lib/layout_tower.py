@@ -450,7 +450,7 @@ def _outside(L, rng):
     it += [prop("Car_Hero", 47.0, 1.0, PODIUM_Z, 96.0, tint="HeroGunmetal", nocoll=True),
            prop("Car_SUV", 59.0, 1.2, PODIUM_Z, 90.0, tint="Obsidian", nocoll=True),
            prop("StreetLamp", 47.0, -2.6, PODIUM_Z, 90.0, nocoll=True, light=False),
-           L.light("spot", 47.0, 1.0, PODIUM_Z + 6.5, pitch=-90.0, color="Sodium", cd=40.0, radius=12.0, cone=(25, 50),
+           L.light("spot", 47.0, 1.0, PODIUM_Z + 6.5, pitch=-90.0, color="Sodium", cd=110.0, radius=14.0, cone=(25, 50),
                    shadows=True, vol=1.5, src=4.0)]
     for (x, y) in ((60.0, -12.0), (70.0, 12.0)):
         it.append(prop("StreetLamp", x, y, PODIUM_Z, 0.0, nocoll=True, light={"cd": 10.0, "radius": 12.0}))
@@ -469,8 +469,6 @@ def _outside(L, rng):
     cols = ["Warm", "Warm", "Cool", "Amber", "Cool", "White"]
     for k in range(34):
         a = math.radians(rng.uniform(0.0, 360.0))
-        if -40.0 < math.degrees(a) % 360.0 < 40.0 and k % 3:     # keep the east view (deck + harbour) more open
-            continue
         r = rng.uniform(90.0, 240.0)
         x, y = math.cos(a) * r, math.sin(a) * r
         sx, sy = rng.uniform(18.0, 34.0), rng.uniform(18.0, 34.0)
@@ -488,14 +486,26 @@ def _outside(L, rng):
             if abs(fx) > abs(fy):
                 px = x + fx * (sx / 2 + 0.05)
                 it.append(slab(px - 0.05, y + o - w / 2, px + 0.05, y + o + w / 2, zb, zb + 1.6, "Emissive:" + rng.choice(cols),
-                               glow=rng.uniform(0.8, 2.6), coll=False, cast=False, name="Windows"))
+                               glow=rng.uniform(1.5, 4.0), coll=False, cast=False, name="Windows"))
             else:
                 py = y + fy * (sy / 2 + 0.05)
                 it.append(slab(x + o - w / 2, py - 0.05, x + o + w / 2, py + 0.05, zb, zb + 1.6, "Emissive:" + rng.choice(cols),
-                               glow=rng.uniform(0.8, 2.6), coll=False, cast=False, name="Windows"))
+                               glow=rng.uniform(1.5, 4.0), coll=False, cast=False, name="Windows"))
         if top > 20.0:
             it.append(L.box(x, y, top + 0.6, 0.8, 0.8, 0.8, "Emissive:Red", glow=25.0, coll=False, cast=False,
                             name="AviationLight"))
+    # mid-rise blocks just beyond the roof deck: lit office floors level with the penthouse (its backdrop)
+    for (x, y, sx, sy, top) in ((96.0, -30.0, 22.0, 26.0, 12.0), (100.0, 14.0, 26.0, 20.0, 26.0), (88.0, 44.0, 18.0, 18.0, 4.0)):
+        it.append(slab(x - sx / 2, y - sy / 2, x + sx / 2, y + sy / 2, STREET_Z, top, "Concrete", name="MidRise", coll=False,
+                       cast=False))
+        for zb in range(int(top) - 26, int(top) - 1, 4):
+            if rng.random() < 0.35:
+                continue
+            w = rng.uniform(6.0, sy - 2.0)
+            o = rng.uniform(-(sy - w) / 2, (sy - w) / 2)
+            it.append(slab(x - sx / 2 - 0.1, y + o - w / 2, x - sx / 2, y + o + w / 2, zb, zb + 2.2,
+                           "Emissive:" + rng.choice(["Warm", "Cool", "Warm", "White"]), glow=rng.uniform(2.0, 4.5), coll=False,
+                           cast=False, name="Windows"))
     # a red neon brand on the tower across the street (invented)
     it.append(L.text(-60.0, -70.0, 18.0, 60.0, "HALLORAN", size=900.0, color="Red", glow=6.0))
     return it
