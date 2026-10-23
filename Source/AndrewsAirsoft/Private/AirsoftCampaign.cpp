@@ -636,6 +636,7 @@ void AAirsoftCampaignGameMode::ApplyTimeOfDay()
 		if (ULightComponent* Light = It->GetLightComponent())
 		{
 			Light->SetIntensity(bNight ? 0.25f : 2.5f);
+			Light->SetUseTemperature(true); // the temperature only tints the light when this is on
 			Light->SetTemperature(bNight ? 9000.f : 2700.f);
 		}
 	}
