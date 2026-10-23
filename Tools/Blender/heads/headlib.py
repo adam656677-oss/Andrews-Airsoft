@@ -488,7 +488,7 @@ HAIRLINES = {
     "textured": ([0, 22, 40, 58, 70, 86, 105, 140, 180], [32, 30, 24, 6, 2, 8, -2, -24, -36]),
     "slick": ([0, 25, 45, 62, 72, 88, 108, 140, 180], [27, 24, 17, -4, -6, 5, -8, -30, -44]),
     "bun": ([0, 25, 45, 62, 72, 88, 108, 140, 180], [29, 26, 18, -2, -6, 4, -8, -32, -46]),
-    "horseshoe": ([0, 30, 50, 70, 86, 105, 140, 180], [80, 70, 40, 2, 6, -6, -26, -38]),
+    "horseshoe": ([0, 40, 58, 66, 74, 86, 105, 140, 180], [80, 70, 30, 16, 6, 4, -6, -26, -38]),
     "buzz": ([0, 22, 40, 58, 70, 86, 105, 140, 180], [31, 29, 23, 3, -1, 7, -5, -27, -40]),
     "crew": ([0, 22, 40, 58, 70, 86, 105, 140, 180], [30, 28, 22, 2, -2, 6, -6, -28, -40]),
     "curly": ([0, 22, 40, 58, 70, 86, 105, 140, 180], [31, 29, 22, 4, 0, 8, -4, -26, -38]),
@@ -547,7 +547,7 @@ class Hair:
         tau = self.thickness(p, az, el) * self.thin
         if self.style == "horseshoe":
             # the hairline is a lower bound on the sides and back; the top is bald
-            top = np.radians(28.0 + 10.0 * smoothstep(120.0, 180.0, az) - el)
+            top = np.radians(14.0 + 12.0 * smoothstep(66.0, 100.0, az) + 10.0 * smoothstep(120.0, 180.0, az) - el)
             e = np.minimum(e, top)
         tau = np.maximum(tau * smoothstep(0.0, 0.12, e), 0.0026)  # a resolvable rounded rim at the hairline
         if self.style == "curly":
