@@ -1388,14 +1388,14 @@ void AAirsoftCharacter::ApplyOwnerView(bool bSeeBody)
 	// Team gear pieces (UAirsoftTeamGearComponent names them TeamGear_*). That component also hides them
 	// while their owner views through this pawn; in third person they have to show.
 	TInlineComponentArray<UStaticMeshComponent*> Meshes(this);
-	for (UStaticMeshComponent* Mesh : Meshes)
+	for (UStaticMeshComponent* GearMesh : Meshes)
 	{
-		if (Mesh && Mesh->GetName().StartsWith(TEXT("TeamGear_")))
+		if (GearMesh && GearMesh->GetName().StartsWith(TEXT("TeamGear_")))
 		{
-			Mesh->SetOwnerNoSee(bNoSee);
-			if (bSeeBody && !Mesh->IsVisible())
+			GearMesh->SetOwnerNoSee(bNoSee);
+			if (bSeeBody && !GearMesh->IsVisible())
 			{
-				Mesh->SetVisibility(true);
+				GearMesh->SetVisibility(true);
 			}
 		}
 	}
