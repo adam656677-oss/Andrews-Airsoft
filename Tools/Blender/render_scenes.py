@@ -1650,8 +1650,8 @@ TERRACE_RAIN = {"box": (27.6, -22.0, 4.6, 34.0, 22.0, 9.6), "count": 7000, "len"
 
 shot("tower_counting", file="40_LedgerTower_CountingFloor", map="LedgerTower",
      caption="Ledger Tower - the counting floor at night: clerk desks under linear pendants, the grand stair beyond",
-     cam=(-17.2, -0.8, 1.6), target=(10.0, 0.6, 2.3), lens=22, fstop=0, clip_start=0.05,
-     exposure=2.6, sun_mult=0.5, haze=TOWER_HAZE, fog_scale=0.04, bloom=0.55, bloom_size=0.9, split=TOWER_SPLIT,
+     cam=(-17.2, -0.8, 1.6), target=(10.0, 0.6, 2.0), lens=22, fstop=0, clip_start=0.05,
+     exposure=3.1, sun_mult=0.5, haze=TOWER_HAZE, fog_scale=0.04, bloom=0.55, bloom_size=0.9, split=TOWER_SPLIT,
      sky_tint=TOWER_SKY, samples=40, noise=0.02)
 shot("tower_archive", file="41_LedgerTower_Archive", map="LedgerTower",
      caption="Ledger Tower - the archive: walnut stacks full of ledgers, the city through the rain-streaked glass",
@@ -1665,7 +1665,7 @@ shot("tower_penthouse", file="42_LedgerTower_Penthouse", map="LedgerTower",
      sky_tint=TOWER_SKY, samples=40, noise=0.02, rain=TERRACE_RAIN)
 shot("tower_terrace", file="43_LedgerTower_Terrace", map="LedgerTower",
      caption="Ledger Tower - the terrace in the rain, and fourteen floors down, a grey Fastback under one lamp",
-     cam=(31.5, -2.8, 6.3), target=(47.0, 1.0, -13.4), lens=42, fstop=0, clip_start=0.05,
+     cam=(31.8, -2.6, 6.45), target=(47.0, 1.0, -13.4), lens=55, fstop=0, clip_start=0.05,
      exposure=2.3, sun_mult=0.5, haze=TERRACE_HAZE, fog_scale=0.04, bloom=0.6, bloom_size=0.9, split=TOWER_SPLIT,
      sky_tint=TOWER_SKY, samples=40, noise=0.02,
      rain={"box": (28.5, -12.0, -14.0, 52.0, 12.0, 9.6), "count": 9000, "len": 0.7, "width": 0.005, "alpha": 0.18,

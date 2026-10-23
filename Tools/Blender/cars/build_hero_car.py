@@ -104,14 +104,16 @@ def night_set(objs, view, res, lens=40, margin=1.12):
         ob = bpy.context.active_object
         ob.scale = (5.6, 0.1, 0.004)
         ob.data.materials.append(line)
-    # back wall + pillars (concrete), so the reflections have something to show
+    # back wall + pillars (concrete), so the reflections have something to show; always on the far side
+    # of the car from the camera
+    sx = 1.0 if view[0] >= 0 else -1.0
     wall = _mat("Wall", (0.035, 0.038, 0.042), 0.85)
-    bpy.ops.mesh.primitive_cube_add(size=1, location=(c.x - 4.2, c.y, 2.0))
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(c.x - 4.2 * sx, c.y, 2.0))
     ob = bpy.context.active_object
     ob.scale = (0.3, 14, 4)
     ob.data.materials.append(wall)
     for yy in (-3.4, 3.4):
-        bpy.ops.mesh.primitive_cube_add(size=1, location=(c.x - 3.0, c.y + yy, 2.0))
+        bpy.ops.mesh.primitive_cube_add(size=1, location=(c.x - 3.0 * sx, c.y + yy, 2.0))
         ob = bpy.context.active_object
         ob.scale = (0.5, 0.5, 4)
         ob.data.materials.append(wall)
@@ -188,6 +190,16 @@ def night_shot(name, view, res, samples, lens=40, margin=1.12):
     bc.render_jpg(os.path.join(bc.OUT_DIR, name), res, samples)
 
 
+def studio_shot(res=(1920, 1080), samples=80):
+    """Product shot like build_cars.product_shot, with a softer key: the dark gunmetal reads silver at full key."""
+    pk.reset_scene()
+    objs = bc.import_car(AID)
+    lo, hi = pk.bbox_of(objs)
+    v, lens = bc.SHOT_VIEW[AID]
+    bc.car_studio(lo, hi, view=v, lens=lens, res=res, key=0.5)
+    bc.render_jpg(os.path.join(bc.OUT_DIR, AID + ".jpg"), res, samples)
+
+
 def lineup(res=(3840, 2160), samples=56):
     pk.reset_scene()
     allo = []
@@ -223,7 +235,7 @@ def main(argv):
     if not one or "--rear" in flags:
         night_shot("Hero_Rear34.jpg", (-1.0, -0.7, 0.16), (1920, 1080), samples or 48, lens=40)
     if not one or "--studio" in flags:
-        bc.product_shot(AID, samples=samples or 80)
+        studio_shot(samples=samples or 80)
     if not one or "--lineup" in flags:
         lineup(samples=samples or 40)
 
