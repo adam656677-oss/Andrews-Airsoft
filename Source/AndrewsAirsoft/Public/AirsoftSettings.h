@@ -325,7 +325,7 @@ public:
 		}
 	}
 
-	/** Ironwood Yard, Velvet Club, Nightjar Garage and Saltmarsh Terminal (AirsoftSettings.cpp). */
+	/** Ironwood Yard, Velvet Club, Nightjar Garage, Saltmarsh Terminal and Ledger Tower (AirsoftSettings.cpp). */
 	static TArray<FAirsoftMapInfo> DefaultMatchMaps();
 
 	/** Pistols -> SMGs -> rifles -> shotgun -> sniper -> a final pistol. */

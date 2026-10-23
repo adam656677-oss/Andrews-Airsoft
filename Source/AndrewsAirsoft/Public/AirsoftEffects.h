@@ -96,7 +96,7 @@ public:
 	/** "Tracer unit" glow on night maps. */
 	UPROPERTY(Config, EditAnywhere, Category = "Tracers") float NightTracerBoost = 2.f;
 	/** Map name fragments that count as night maps. */
-	UPROPERTY(Config, EditAnywhere, Category = "Tracers") TArray<FString> NightMapKeywords = { TEXT("VelvetClub"), TEXT("NightjarGarage"), TEXT("SaltmarshTerminal") };
+	UPROPERTY(Config, EditAnywhere, Category = "Tracers") TArray<FString> NightMapKeywords = { TEXT("VelvetClub"), TEXT("NightjarGarage"), TEXT("SaltmarshTerminal"), TEXT("LedgerTower") };
 	/** Brightness of spent, bouncing BBs. */
 	UPROPERTY(Config, EditAnywhere, Category = "Tracers") float RicochetIntensity = 2.5f;
 

@@ -1653,9 +1653,27 @@ def _harbor():
     return dict(H.MAP, items=H.build(me))
 
 
+def _tower():
+    """L_LedgerTower (syndicate headquarters, story mission 7) lives in layout_tower.py, loaded like _garage()."""
+    import importlib.util
+    import os
+    import types
+    try:
+        from . import layout_tower as T
+    except ImportError:
+        spec = importlib.util.spec_from_file_location(
+            "airsoft_layout_tower", os.path.join(os.path.dirname(os.path.abspath(__file__)), "layout_tower.py"))
+        T = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(T)
+    me = types.ModuleType(__name__)
+    me.__dict__.update(globals())
+    return dict(T.MAP, items=T.build(me))
+
+
 _BUILDERS = {"MainMenu": _menu, "Transition": _transition, "Staging": _staging, "IronwoodYard": _ironwood,
-             "VelvetClub": _velvet, "NightjarGarage": _garage, "SaltmarshTerminal": _harbor}
-MAP_ORDER = ["MainMenu", "Transition", "Staging", "IronwoodYard", "VelvetClub", "NightjarGarage", "SaltmarshTerminal"]
+             "VelvetClub": _velvet, "NightjarGarage": _garage, "SaltmarshTerminal": _harbor, "LedgerTower": _tower}
+MAP_ORDER = ["MainMenu", "Transition", "Staging", "IronwoodYard", "VelvetClub", "NightjarGarage", "SaltmarshTerminal",
+             "LedgerTower"]
 MAP_ALIASES = {"menu": "MainMenu", "mainmenu": "MainMenu", "l_mainmenu": "MainMenu", "transition": "Transition",
                "l_transition": "Transition", "staging": "Staging", "l_staging": "Staging", "lobby": "Staging",
                "ironwood": "IronwoodYard", "ironwoodyard": "IronwoodYard", "l_ironwoodyard": "IronwoodYard",
@@ -1663,7 +1681,8 @@ MAP_ALIASES = {"menu": "MainMenu", "mainmenu": "MainMenu", "l_mainmenu": "MainMe
                "l_velvetclub": "VelvetClub", "club": "VelvetClub", "nightjar": "NightjarGarage",
                "nightjargarage": "NightjarGarage", "l_nightjargarage": "NightjarGarage", "garage": "NightjarGarage",
                "saltmarsh": "SaltmarshTerminal", "saltmarshterminal": "SaltmarshTerminal",
-               "l_saltmarshterminal": "SaltmarshTerminal", "harbor": "SaltmarshTerminal", "harbour": "SaltmarshTerminal"}
+               "l_saltmarshterminal": "SaltmarshTerminal", "harbor": "SaltmarshTerminal", "harbour": "SaltmarshTerminal",
+               "ledger": "LedgerTower", "ledgertower": "LedgerTower", "l_ledgertower": "LedgerTower", "tower": "LedgerTower"}
 
 
 def resolve_map_name(name):

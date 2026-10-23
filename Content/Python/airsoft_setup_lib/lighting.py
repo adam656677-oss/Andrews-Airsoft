@@ -64,6 +64,19 @@ PRESETS = {
         "grade": {"shadows_gain": (0.86, 1.0, 1.14, 1.0), "shadows_saturation": (1.0, 1.0, 1.0, 1.2),
                   "highlights_gain": (1.05, 1.0, 0.94, 1.0), "midtones_saturation": (1.0, 1.0, 1.0, 1.04)},
     },
+    # Ledger Tower: top floors of a high-rise at night. Cold teal city light through the glass, rain, deep shadow
+    # inside; warm practicals (pendants, brass lamps) carry the interior. Interior exposure: brighter range than the
+    # street maps so the warm pools read, still dark corners.
+    "ledger_night": {
+        "sun": {"pitch": -28.0, "yaw": 120.0, "lux": 0.18, "temp": 10500, "angle": 1.2},
+        "sky": {"intensity": 0.35, "lower": (0.006, 0.012, 0.016)}, "clouds": True,
+        "fog": {"density": 0.05, "falloff": 0.06, "start": 400.0, "inscatter": (0.025, 0.055, 0.07),
+                "vol_scatter": 0.6, "vol_albedo": (180, 220, 232), "vol_extinction": 1.6, "vol_distance": 9000.0},
+        "exposure": (-2.0, 1.2, 0.8), "white_temp": 6200.0, "bloom": 0.85, "vignette": 0.45, "grain": 0.16,
+        "ca": 0.1, "saturation": 1.05, "contrast": 1.12, "local_exposure": (0.66, 0.85),
+        "grade": {"shadows_gain": (0.86, 1.0, 1.14, 1.0), "shadows_saturation": (1.0, 1.0, 1.0, 1.2),
+                  "highlights_gain": (1.06, 1.0, 0.93, 1.0), "midtones_saturation": (1.0, 1.0, 1.0, 1.04)},
+    },
     "menu_armory": {
         "sun": {"pitch": -30.0, "yaw": 40.0, "lux": 0.05, "temp": 6500, "angle": 1.0, "shadows": False},
         "sky": {"intensity": 0.15, "lower": (0.02, 0.015, 0.01)}, "clouds": False,
@@ -107,6 +120,10 @@ FIXTURES = {
     # 24 m up, so ~(24/4)^2 the candela of a 4 m street lamp for a similar pool on the ground.
     "Harbor_FloodMast": {"kind": "spot", "point": "Light", "color": "Sodium", "cd": 700.0, "radius": 52.0,
                          "cone": (40, 62), "pitch": -55.0, "src": 40.0, "shadows": True, "vol": 1.2},
+    # Ledger Tower kit (Tools/Blender/tower). Linear pendants: soft warm rect under the diffuser, unshadowed (the map
+    # places a few shadowed key spots instead). Rect: w along the pendant (local Y), h across it.
+    "Tower_PendantLinear": {"kind": "rect", "point": "Light", "color": "Warm", "cd": 3.0, "radius": 6.0, "w": 230.0,
+                            "h": 6.0, "pitch": -90.0, "shadows": False, "vol": 0.4},
     "Harbor_Gatehouse": {"kind": "point", "point": "Light", "color": "Warm", "cd": 2.5, "radius": 7.0, "src": 30.0,
                          "shadows": False, "vol": 1.0},
     # Neon street kit (Tools/Blender/club/neon_kit.py). Signs light the wet street in their own colour: unshadowed

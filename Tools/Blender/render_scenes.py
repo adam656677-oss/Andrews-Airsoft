@@ -1639,6 +1639,39 @@ shot("harbor_shed", file="33_Saltmarsh_Shed7", map="SaltmarshTerminal",
             "near": 1.0, "tilt": (0.04, 0.02), "seed": 9}])
 
 
+# Ledger Tower (top floors of a high-rise, night, rain on the glass): interior haze lit by the warm practicals, the
+# cold city outside; same teal-shadow / warm-highlight split as Saltmarsh. Penthouse floor at z 4.6.
+TOWER_HAZE = {"rect": (-32, -22, 32, 22), "top": 9.0, "density": 0.0035, "color": (0.62, 0.76, 0.84), "g": 0.7}
+TERRACE_HAZE = {"rect": (-40, -60, 120, 60), "top": 12.0, "density": 0.0016, "color": (0.42, 0.78, 0.9), "g": 0.65}
+TOWER_SPLIT = {"shadows": (0.8, 1.0, 1.14), "highlights": (1.06, 1.0, 0.93), "saturation": 1.1, "gamma": 1.14}
+TOWER_SKY = (0.6, 1.25, 1.45)
+TERRACE_RAIN = {"box": (27.6, -22.0, 4.6, 34.0, 22.0, 9.6), "count": 7000, "len": 0.6, "width": 0.005, "alpha": 0.25,
+                "near": 1.5, "tilt": (0.05, 0.02)}
+
+shot("tower_counting", file="40_LedgerTower_CountingFloor", map="LedgerTower",
+     caption="Ledger Tower - the counting floor at night: clerk desks under linear pendants, the grand stair beyond",
+     cam=(-17.2, -0.8, 1.6), target=(10.0, 0.6, 2.3), lens=22, fstop=0, clip_start=0.05,
+     exposure=2.1, sun_mult=0.5, haze=TOWER_HAZE, fog_scale=0.04, bloom=0.55, bloom_size=0.9, split=TOWER_SPLIT,
+     sky_tint=TOWER_SKY, samples=40, noise=0.02)
+shot("tower_archive", file="41_LedgerTower_Archive", map="LedgerTower",
+     caption="Ledger Tower - the archive: walnut stacks full of ledgers, the city through the rain-streaked glass",
+     cam=(12.8, 17.2, 1.55), target=(-18.0, 17.0, 1.6), lens=26, fstop=2.8, focus=(3.0, 16.6, 1.4), clip_start=0.05,
+     exposure=2.2, sun_mult=0.5, haze=TOWER_HAZE, fog_scale=0.04, bloom=0.55, bloom_size=0.9, split=TOWER_SPLIT,
+     sky_tint=TOWER_SKY, samples=40, noise=0.02)
+shot("tower_penthouse", file="42_LedgerTower_Penthouse", map="LedgerTower",
+     caption="Ledger Tower - the penthouse: Crane's desk under the brass lamp, the terrace and the city in the rain",
+     cam=(14.9, 0.7, 6.25), target=(28.0, -0.6, 5.8), lens=24, fstop=2.8, focus=(25.0, 0.2, 5.4), clip_start=0.05,
+     exposure=2.1, sun_mult=0.5, haze=TOWER_HAZE, fog_scale=0.04, bloom=0.6, bloom_size=0.9, split=TOWER_SPLIT,
+     sky_tint=TOWER_SKY, samples=40, noise=0.02, rain=TERRACE_RAIN)
+shot("tower_terrace", file="43_LedgerTower_Terrace", map="LedgerTower",
+     caption="Ledger Tower - the terrace in the rain, and fourteen floors down, a grey Fastback under one lamp",
+     cam=(30.9, -4.2, 6.35), target=(47.0, 1.0, -13.2), lens=32, fstop=0, clip_start=0.05,
+     exposure=2.0, sun_mult=0.5, haze=TERRACE_HAZE, fog_scale=0.04, bloom=0.6, bloom_size=0.9, split=TOWER_SPLIT,
+     sky_tint=TOWER_SKY, samples=40, noise=0.02,
+     rain={"box": (28.5, -12.0, -14.0, 52.0, 12.0, 9.6), "count": 12000, "len": 0.7, "width": 0.006, "alpha": 0.25,
+           "near": 1.5, "tilt": (0.05, 0.02)})
+
+
 # --------------------------------------------------------------------------------------
 # Main
 # --------------------------------------------------------------------------------------

@@ -21,6 +21,8 @@ TArray<FAirsoftMapInfo> UAirsoftSettings::DefaultMatchMaps()
 	Maps.Add(Map(TEXT("Garage"), TEXT("Nightjar Garage"), TEXT("/Game/Maps/L_NightjarGarage"), 4, 18, true));
 	// Container port at night: canyon lanes between box stacks, a warehouse at the quay.
 	Maps.Add(Map(TEXT("Harbor"), TEXT("Saltmarsh Terminal"), TEXT("/Game/Maps/L_SaltmarshTerminal"), 4, 18, true));
+	// Two floors at the top of a high-rise at night: offices and archive stacks below, the penthouse and terrace above.
+	Maps.Add(Map(TEXT("Tower"), TEXT("Ledger Tower"), TEXT("/Game/Maps/L_LedgerTower"), 4, 16, true));
 	return Maps;
 }
 
