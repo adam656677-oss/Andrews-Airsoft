@@ -1,0 +1,412 @@
+<title>Last Contract Voice Script</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Sans+Condensed:wght@400;500;600&display=swap">
+<style>
+/* Layout: a recording-session "sides" binder - cast sheet up top, then one block per character, lines as script rows with the file name in the margin. */
+:root {
+  --paper: #eceef0;
+  --sheet: #f8f9fa;
+  --ink: #16181c;
+  --muted: #5c626b;
+  --rule: #cdd2d8;
+  --oxblood: #8a1d26;
+  --brass: #8a6b2c;
+  --chip: #e1e5ea;
+  --display: "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
+  --script: "Courier Prime", "Courier New", Courier, monospace;
+  --ui: "IBM Plex Sans Condensed", "Arial Narrow", "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #101215; --sheet: #171a1e; --ink: #e6e8eb; --muted: #9aa1aa; --rule: #2b3037;
+    --oxblood: #e0606b; --brass: #d0ac62; --chip: #232830; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #101215; --sheet: #171a1e; --ink: #e6e8eb; --muted: #9aa1aa; --rule: #2b3037;
+  --oxblood: #e0606b; --brass: #d0ac62; --chip: #232830; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--paper); color: var(--ink); font-family: var(--ui); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 64px;
+}
+.wrap { max-width: 1040px; margin: 0 auto; display: grid; gap: 28px; }
+header { display: grid; gap: 10px; border-bottom: 3px solid var(--ink); padding-bottom: 18px; }
+.slug { font-family: var(--ui); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.slug b { color: var(--oxblood); font-weight: 600; }
+h1 { font-family: var(--display); font-weight: 800; font-size: clamp(40px, 7vw, 72px); line-height: .92; margin: 0; letter-spacing: .01em; text-transform: uppercase; text-wrap: balance; }
+.lede { max-width: 68ch; margin: 0; color: var(--muted); }
+.rating { display: inline-flex; align-items: center; gap: 10px; font-family: var(--ui); font-size: 13px; }
+.rating .m { font-family: var(--display); font-weight: 800; font-size: 26px; line-height: 1; border: 2px solid var(--ink); padding: 2px 8px 0; }
+.panel { background: var(--sheet); border: 1px solid var(--rule); padding: 18px 20px; display: grid; gap: 10px; }
+h2 { font-family: var(--display); font-weight: 600; font-size: 28px; margin: 0; text-transform: uppercase; letter-spacing: .02em; }
+h3 { font-family: var(--display); font-weight: 800; font-size: 30px; margin: 0; text-transform: uppercase; letter-spacing: .02em; line-height: 1; }
+.specs { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px 22px; margin: 0; }
+.specs div { min-width: 0; }
+.specs dt { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.specs dd { margin: 0; font-family: var(--script); font-size: 14px; overflow-wrap: anywhere; }
+.filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; position: sticky; top: env(safe-area-inset-top, 0px); background: var(--paper); padding-block: 10px; z-index: 2; border-bottom: 1px solid var(--rule); }
+.filters span { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+.chip { font: 500 13px var(--ui); border: 1px solid var(--rule); background: var(--chip); color: var(--ink); padding: 5px 11px; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--sheet); border-color: var(--ink); }
+.chip:focus-visible, .copy:focus-visible, .done:focus-visible { outline: 2px solid var(--oxblood); outline-offset: 2px; }
+.count { margin-left: auto; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.cast { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+.card { background: var(--sheet); border: 1px solid var(--rule); padding: 16px 18px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.card .role { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--brass); font-weight: 600; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag { font-size: 12px; border: 1px solid var(--rule); padding: 1px 8px; color: var(--muted); }
+.card p { margin: 0; }
+.card .ph { font-size: 13px; color: var(--muted); }
+.card .ph b { color: var(--ink); font-weight: 600; }
+section.char { display: grid; gap: 0; background: var(--sheet); border: 1px solid var(--rule); }
+.char-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; padding: 16px 20px 12px; border-bottom: 2px solid var(--ink); }
+.char-head .dir { font-family: var(--script); font-style: italic; color: var(--muted); font-size: 14px; flex-basis: 100%; }
+.row { display: grid; grid-template-columns: 210px 1fr auto; gap: 6px 18px; padding: 12px 20px; border-bottom: 1px solid var(--rule); align-items: start; }
+.row:last-child { border-bottom: 0; }
+.row.recorded .line { text-decoration: line-through; text-decoration-color: var(--brass); }
+.id { display: grid; gap: 4px; min-width: 0; }
+.file { font-family: var(--script); font-size: 13px; overflow-wrap: anywhere; }
+.where { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.status { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; font-weight: 600; }
+.status.live { color: var(--brass); }
+.status.new { color: var(--oxblood); }
+.text { min-width: 0; display: grid; gap: 4px; }
+.line { font-family: var(--script); font-size: 17px; line-height: 1.45; margin: 0; }
+.paren { font-family: var(--script); font-style: italic; font-size: 14px; color: var(--muted); margin: 0; }
+.acts { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+.copy, .done { font: 500 12px var(--ui); border: 1px solid var(--rule); background: transparent; color: var(--ink); padding: 4px 9px; cursor: pointer; white-space: nowrap; }
+.done[aria-pressed="true"] { background: var(--brass); border-color: var(--brass); color: var(--sheet); }
+footer { font-size: 13px; color: var(--muted); max-width: 70ch; }
+@media (max-width: 680px) {
+  .row { grid-template-columns: 1fr; }
+  .acts { flex-direction: row; }
+  .count { margin-left: 0; flex-basis: 100%; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="slug"><span>Andrew &middot; <b>Last Contract</b></span><span>Voice recording script</span><span>Draft 1</span></div>
+    <h1>Last Contract<br>Voice Script</h1>
+    <p class="lede">Every spoken line in the game, grouped by character, with direction for how each voice should sound. Lines marked <strong>In game</strong> already play today with a temporary synthetic voice (Kokoro TTS, made by <code>Tools/Audio/make_voice_neural.py</code>); recording them under the same file name replaces it. Lines marked <strong>Next build</strong> are written and waiting to be wired in.</p>
+    <div class="rating"><span class="m">M</span><span>Rated Mature: strong language, blood and gun violence.</span></div>
+  </header>
+
+  <section class="panel" aria-labelledby="spec-h">
+    <h2 id="spec-h">Recording spec</h2>
+    <dl class="specs">
+      <div><dt>Format</dt><dd>WAV, 48 kHz, 16-bit, mono</dd></div>
+      <div><dt>Level</dt><dd>Peaks near -3 dBFS, dialogue around -18 LUFS</dd></div>
+      <div><dt>Room</dt><dd>Dry, close mic, no reverb or music</dd></div>
+      <div><dt>Takes</dt><dd>3 per line; barks: 3 variations each</dd></div>
+      <div><dt>Drop files in</dt><dd>Tools/Audio/Generated/Voice/</dd></div>
+      <div><dt>Then</dt><dd>Run Airsoft.bat, option 3 (content build)</dd></div>
+    </dl>
+  </section>
+
+  <section aria-labelledby="cast-h" style="display:grid;gap:14px">
+    <h2 id="cast-h">Cast</h2>
+    <div class="cast" id="cast"></div>
+  </section>
+
+  <nav class="filters" aria-label="Filter by character">
+    <span>Show</span>
+    <div id="chips" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+    <div class="count" id="count"></div>
+  </nav>
+
+  <div id="script" style="display:grid;gap:22px"></div>
+
+  <footer>
+    File names are what the game looks for: keep them exactly. A line can be re-recorded at any time; drop the new file over the old one and rebuild content. The tick buttons only remember your progress in this browser.
+  </footer>
+</div>
+
+<script>
+const CAST = [
+  { id: "narrator", name: "Narrator", role: "Story voice, mission intros and outros",
+    tags: ["Male, 50s to 60s", "Low baritone", "Slow", "Dry"],
+    dir: "A weathered storyteller who has seen this before. Low, unhurried, close to the mic. Lands the last word of each sentence and lets it sit. No drama in the voice; the words carry it.",
+    ph: "Pace about 130 words a minute. Pauses at commas are real pauses.",
+    tts: "Kokoro TTS: am_michael 65% + am_onyx 35%, speed 0.82, plate reverb" },
+  { id: "andrew", name: "Andrew", role: "The lead. Says very little",
+    tags: ["Male, 40s", "Quiet", "Economical", "Controlled"],
+    dir: "A man who stopped wasting words years ago. Calm under fire, tired rather than angry. Never shouts unless hurt. Short lines, often under his breath, as if talking to himself.",
+    ph: "Effort sounds (breaths, grunts) matter as much as words. Record them dry.",
+    tts: "Kokoro TTS: am_fenrir 70% + am_onyx 30%, speed 0.95, dry" },
+  { id: "kade", name: "Kade, the Collector", role: "Boss, Mission 1",
+    tags: ["Male, 30s", "Cocky", "Street-hard", "Fast"],
+    dir: "A hired collector who thinks this is an easy job. Smirking, loud, a bit of swagger. Gets rattled and ugly as the fight turns against him.",
+    ph: "Starts loose and amused; the mid-fight line should sound genuinely scared under the anger.",
+    tts: "Kokoro TTS: am_puck, speed 1.10" },
+  { id: "dorian", name: "Dorian Sloane", role: "Boss, Mission 2 (Velvet Club manager)",
+    tags: ["Male, 40s", "Smooth", "Theatrical", "Condescending"],
+    dir: "Runs Varga's nightclub and loves the sound of his own voice. Silky, unhurried, amused by violence as long as it happens to other people. Polished diction.",
+    ph: "Smile while delivering the threats. The death line loses all the polish.",
+    tts: "Kokoro TTS: bm_fable, speed 0.93" },
+  { id: "mara", name: "Mara Voss", role: "Boss, Mission 3 (Varga's lieutenant)",
+    tags: ["Female, 30s to 40s", "Cold", "Clipped", "Precise"],
+    dir: "Ex-military, all business, and the only one who knew Andrew before. Flat, controlled delivery with contempt underneath. Never raises her voice except to give an order.",
+    ph: "Think of commands over a radio: short, final, no wasted breath.",
+    tts: "Kokoro TTS: af_kore, speed 1.02" },
+  { id: "varga", name: "Silas Varga", role: "Boss, Mission 4 (Ledger underboss)",
+    tags: ["Male, 50s", "Deep", "Measured", "Menacing charm"],
+    dir: "Old money in the underworld. Speaks softly because he has never needed to shout. Intimate, almost fond of Andrew, which makes him worse. Rich low register.",
+    ph: "Keep it close to the mic and quiet. Menace comes from control, not volume.",
+    tts: "Kokoro TTS: bm_george 45% + bm_lewis 35% + am_onyx 20%, speed 0.85, darker EQ" },
+  { id: "kell", name: "Ezra Kell, the Cleaner", role: "Boss, Mission 5 (erases evidence for the Keeper)",
+    tags: ["Male, 40s", "Polite", "Patient", "Unbothered"],
+    dir: "Tidies up after other people's violence and finds it all faintly tedious. Speaks like a man asking you to wipe your feet. Never hurried, never loud.",
+    ph: "The menace is in how reasonable he sounds. The death line is the first time he's surprised.",
+    tts: "Kokoro TTS: am_adam 60% + am_echo 40%, speed 0.9" },
+  { id: "lind", name: "Petra Lind, the Auditor", role: "Boss, Mission 6 (the Keeper's marksman)",
+    tags: ["Female, 40s", "Exact", "Cool", "Knew Andrew's work"],
+    dir: "Checks every account twice and every shot once. Respects Andrew's record and says so, which is worse than an insult. Clear, clean British diction.",
+    ph: "Flat and precise. Her last line is almost kind.",
+    tts: "Kokoro TTS: bf_emma 60% + bf_isabella 40%, speed 0.95" },
+  { id: "brask", name: "Teodor Brask, the Keeper's Hand", role: "Boss, Mission 7 (runs Ledger Tower)",
+    tags: ["Male, 50s", "Heavy", "Formal", "Proud"],
+    dir: "The Keeper's doorman and his fist. Formal to the point of parody, then plainly shaken when the stories turn out to be true.",
+    ph: "Slow and weighty. The mid-fight line is the crack in the armour.",
+    tts: "Kokoro TTS: bm_daniel 60% + am_onyx 40%, speed 0.86, darker EQ" },
+  { id: "crane", name: "Augustin Crane, the Keeper", role: "Final boss, Mission 8 (head of the Ledger)",
+    tags: ["Male, 70s", "Soft", "Tired", "Every word placed"],
+    dir: "Has kept the Ledger's books for thirty years and never once raised his voice. An old bookkeeper, not a warlord: gentle, almost regretful, completely without mercy.",
+    ph: "Close and quiet, as if across a desk. His last line is an accountant closing a column.",
+    tts: "Kokoro TTS: bm_lewis 55% + bm_daniel 45%, speed 0.8, darker EQ" },
+  { id: "crew", name: "Ledger Crew", role: "Enemy combat barks, 3 voices",
+    tags: ["Male and female, 20s to 40s", "Shouted", "Panicked", "Profane"],
+    dir: "Three distinct hired guns. Voice A: aggressive and loud. Voice B: nervous, younger, voice cracks. Voice C: older veteran, gravelly, calm until he isn't. Shouted across a room, with gunfire assumed around them.",
+    ph: "Record shouted at full effort but back off the mic to avoid clipping.",
+    tts: "Kokoro TTS: A am_eric, B am_liam, C am_echo 60% + am_onyx 40%, dry" }
+];
+
+// status: "live" = already plays in the game today; "new" = written, wired in next build
+const LINES = [
+  // Narrator - mission 1
+  { c: "narrator", f: "VO_M1_I0", w: "Mission 1 intro", s: "live", t: "Five years ago, Andrew walked away from the Ledger. The syndicate paid him to settle its debts." },
+  { c: "narrator", f: "VO_M1_I1", w: "Mission 1 intro", s: "live", t: "He traded the work for a quiet armory on the edge of the city. Oil, brass, and silence." },
+  { c: "narrator", f: "VO_M1_I2", w: "Mission 1 intro", s: "live", t: "Tonight, the Ledger has come to settle a debt with him.", p: "Final line of the intro. Slow down on “settle a debt.”" },
+  { c: "narrator", f: "VO_M1_Outro", w: "Mission 1 complete", s: "live", t: "Every one of them carried a matchbook from the Velvet Club." },
+  // Narrator - mission 2
+  { c: "narrator", f: "VO_M2_I0", w: "Mission 2 intro", s: "live", t: "The Velvet Club belongs to Silas Varga, the Ledger's newest underboss." },
+  { c: "narrator", f: "VO_M2_I1", w: "Mission 2 intro", s: "live", t: "He put the price on Andrew's head, and he thinks the music is loud enough to hide behind." },
+  { c: "narrator", f: "VO_M2_I2", w: "Mission 2 intro", s: "live", t: "Andrew goes in through the front door." },
+  { c: "narrator", f: "VO_M2_Outro", w: "Mission 2 complete", s: "live", t: "Varga's books name a meeting tonight. The roof of the Nightjar Garage." },
+  // Narrator - mission 3
+  { c: "narrator", f: "VO_M3_I0", w: "Mission 3 intro", s: "live", t: "Three levels of concrete stand between Andrew and the roof." },
+  { c: "narrator", f: "VO_M3_I1", w: "Mission 3 intro", s: "live", t: "Varga's lieutenants are moving the money tonight, and every floor is watched." },
+  { c: "narrator", f: "VO_M3_I2", w: "Mission 3 intro", s: "live", t: "Somewhere above, Mara Voss is counting the seconds." },
+  { c: "narrator", f: "VO_M3_Outro", w: "Mission 3 complete", s: "live", t: "The money is gone, and so is Varga. The trail ends at Ironwood Yard." },
+  // Narrator - mission 4
+  { c: "narrator", f: "VO_M4_I0", w: "Mission 4 intro", s: "live", t: "Ironwood Yard is the Ledger's freight depot, and Silas Varga's last fortress." },
+  { c: "narrator", f: "VO_M4_I1", w: "Mission 4 intro", s: "live", t: "He is waiting there with everyone he has left." },
+  { c: "narrator", f: "VO_M4_I2", w: "Mission 4 intro", s: "live", t: "So is Andrew.", p: "Three words. Give it a beat before and after." },
+  { c: "narrator", f: "VO_M4_Outro", w: "Mission 4 complete (cliffhanger)", s: "live", t: "Varga's phone lit up in the mud. One message, from a number Andrew hadn't seen in five years. The Keeper will settle this himself.", p: "Quiet. The last sentence is the turn: let it land." },
+
+  // Narrator - mission 5
+  { c: "narrator", f: "VO_M5_I0", w: "Mission 5 intro", s: "live", t: "Varga kept two sets of books. One burned with him. The other is still somewhere in Ironwood Yard." },
+  { c: "narrator", f: "VO_M5_I1", w: "Mission 5 intro", s: "live", t: "Tonight the Ledger's cleaners are sweeping the yard, erasing every page and every witness." },
+  { c: "narrator", f: "VO_M5_I2", w: "Mission 5 intro", s: "live", t: "Andrew leaves the car a mile out, and walks in through the dark." },
+  { c: "narrator", f: "VO_M5_Outro", w: "Mission 5 complete", s: "live", t: "The book names the Keeper: Augustin Crane. And one more debt, marked to be paid at dawn. Theo Marsh." },
+  // Narrator - mission 6
+  { c: "narrator", f: "VO_M6_I0", w: "Mission 6 intro", s: "live", t: "Theo Marsh keeps the Lantern House. Under its lamp, no contract may be served, and no name may be spoken." },
+  { c: "narrator", f: "VO_M6_I1", w: "Mission 6 intro", s: "live", t: "Five years ago, Theo got Andrew out. Last night, he stepped outside the lamp's light to warn him." },
+  { c: "narrator", f: "VO_M6_I2", w: "Mission 6 intro", s: "live", t: "Crane's people are holding him on the Nightjar roof. Andrew parks the car on the top deck, and starts down before the sun comes up." },
+  { c: "narrator", f: "VO_M6_Outro", w: "Mission 6 complete", s: "live", t: "Theo was gone before first light. He left his lantern, and a note in his careful hand. Live, Andrew.", p: "The quietest line in the story. A real pause before “Live, Andrew.”" },
+  // Narrator - mission 7
+  { c: "narrator", f: "VO_M7_I0", w: "Mission 7 intro", s: "live", t: "Ledger Tower. Forty floors of glass, where the syndicate keeps its accounts." },
+  { c: "narrator", f: "VO_M7_I1", w: "Mission 7 intro", s: "live", t: "Every name, every price, every debt, written in Augustin Crane's own hand." },
+  { c: "narrator", f: "VO_M7_I2", w: "Mission 7 intro", s: "live", t: "Andrew isn't here to read them." },
+  { c: "narrator", f: "VO_M7_Outro", w: "Mission 7 complete", s: "live", t: "Crane's penthouse is empty. A freighter leaves Saltmarsh Terminal at four. He means to be on it." },
+  // Narrator - mission 8
+  { c: "narrator", f: "VO_M8_I0", w: "Mission 8 intro", s: "live", t: "Saltmarsh Terminal. Rain on steel, and a ship waiting in the dark." },
+  { c: "narrator", f: "VO_M8_I1", w: "Mission 8 intro", s: "live", t: "Augustin Crane has kept the Ledger for thirty years. He has never once stood in a room with Andrew." },
+  { c: "narrator", f: "VO_M8_I2", w: "Mission 8 intro", s: "live", t: "Tonight he will.", p: "Three words. A beat before." },
+  { c: "narrator", f: "VO_M8_Outro", w: "Campaign ending", s: "live", t: "The Ledger has no Keeper tonight. Andrew sets Theo's lantern on the water, starts the car, and drives home in the rain.", p: "The last line of the story. Unhurried; let “in the rain” fade." },
+
+  // Andrew - mission openers
+  { c: "andrew", f: "VO_M1_Andrew_Start", w: "Mission 1, as the cinematic ends", s: "live", t: "Five years. Couldn't even give me five years.", p: "Under his breath, more tired than angry." },
+  { c: "andrew", f: "VO_M2_Andrew_Start", w: "Mission 2, as the cinematic ends", s: "live", t: "Should've let it lie, Varga." },
+  { c: "andrew", f: "VO_M3_Andrew_Start", w: "Mission 3, as the cinematic ends", s: "live", t: "Top floor. Let's get this done." },
+  { c: "andrew", f: "VO_M4_Andrew_Start", w: "Mission 4, as the cinematic ends", s: "live", t: "Last one. Make it count." },
+  { c: "andrew", f: "VO_M5_Andrew_Start", w: "Mission 5, as the cinematic ends", s: "live", t: "Lights out. Good." },
+  { c: "andrew", f: "VO_M6_Andrew_Start", w: "Mission 6, as the cinematic ends", s: "live", t: "Hold on, Theo." },
+  { c: "andrew", f: "VO_M7_Andrew_Start", w: "Mission 7, as the cinematic ends", s: "live", t: "Let's close the books." },
+  { c: "andrew", f: "VO_M8_Andrew_Start", w: "Mission 8, as the cinematic ends", s: "live", t: "Last contract." },
+  // Andrew - replies to bosses
+  { c: "andrew", f: "VO_M1_Andrew_Boss", w: "After Kade's taunt", s: "live", t: "Then come and collect." },
+  { c: "andrew", f: "VO_M2_Andrew_Boss", w: "After Dorian's taunt", s: "live", t: "I'll send him yours back. In pieces." },
+  { c: "andrew", f: "VO_M3_Andrew_Boss", w: "After Mara's taunt", s: "live", t: "I tried, Mara. You people wouldn't let me.", p: "The only line with old history in it. Quieter." },
+  { c: "andrew", f: "VO_M4_Andrew_Boss", w: "After Varga's taunt", s: "live", t: "You came to my door first, Silas." },
+  { c: "andrew", f: "VO_M5_Andrew_Boss", w: "After Ezra's taunt", s: "live", t: "Then he knows I'm coming." },
+  { c: "andrew", f: "VO_M6_Andrew_Boss", w: "After Petra's taunt", s: "live", t: "Where is he?" },
+  { c: "andrew", f: "VO_M7_Andrew_Boss", w: "After Teodor's taunt", s: "live", t: "Cancel them." },
+  { c: "andrew", f: "VO_M8_Andrew_Boss", w: "After Augustin's taunt", s: "live", t: "Then put it down." },
+  // Andrew - barks
+  { c: "andrew", f: "VO_Andrew_Reload_1", w: "Reloading", s: "live", t: "Changing." },
+  { c: "andrew", f: "VO_Andrew_Reload_2", w: "Reloading", s: "live", t: "Mag." },
+  { c: "andrew", f: "VO_Andrew_Reload_3", w: "Reloading", s: "live", t: "Loading." },
+  { c: "andrew", f: "VO_Andrew_Hurt_1", w: "Health below 30%", s: "live", t: "Not yet.", p: "Through gritted teeth." },
+  { c: "andrew", f: "VO_Andrew_Hurt_2", w: "Health below 30%", s: "live", t: "Keep moving. Keep moving." },
+  { c: "andrew", f: "VO_Andrew_Hurt_3", w: "Health below 30%", s: "live", t: "Shit. Shit.", p: "Sharp exhale, pain." },
+  { c: "andrew", f: "VO_Andrew_Kill_1", w: "Now and then after a kill", s: "live", t: "Stay down." },
+  { c: "andrew", f: "VO_Andrew_Kill_2", w: "Now and then after a kill", s: "live", t: "Should've walked away." },
+  { c: "andrew", f: "VO_Andrew_Kill_3", w: "Now and then after a kill", s: "live", t: "That's one." },
+  { c: "andrew", f: "VO_Andrew_Kill_4", w: "Last enemy before the boss", s: "live", t: "Who's next?" },
+  { c: "andrew", f: "VO_Andrew_Efforts", w: "Getting hit, jumping, sliding", s: "new", t: "(Six short efforts: hit grunt x3, jump breath, slide exhale, heavy landing)", p: "One file, a second of silence between each." },
+
+  // Kade
+  { c: "kade", f: "VO_M1_Boss", w: "Kade steps in", s: "live", t: "Nothing personal, Andrew. The Ledger always collects." },
+  { c: "kade", f: "VO_M1_Boss_Mid", w: "Kade at half health", s: "live", t: "Hold still, you old bastard!", p: "Anger covering fear." },
+  { c: "kade", f: "VO_M1_Boss_Death", w: "Kade goes down", s: "live", t: "Should've... asked for more money.", p: "Wet, fading, almost a laugh." },
+
+  // Dorian
+  { c: "dorian", f: "VO_M2_Boss", w: "Dorian steps in", s: "live", t: "Mister Varga sends his regards. And his best." },
+  { c: "dorian", f: "VO_M2_Boss_Mid", w: "Dorian at half health", s: "live", t: "Do you have any idea what this carpet cost? Kill him!", p: "Offended first, then a scream at his men." },
+  { c: "dorian", f: "VO_M2_Boss_Death", w: "Dorian goes down", s: "live", t: "He'll... burn your whole life down for this.", p: "The polish is gone." },
+
+  // Mara
+  { c: "mara", f: "VO_M3_Boss", w: "Mara steps in", s: "live", t: "You should have stayed retired, Andrew." },
+  { c: "mara", f: "VO_M3_Boss_Mid", w: "Mara at half health", s: "live", t: "You're slower than you used to be. Pin him down. Now.", p: "First half to Andrew, second half an order." },
+  { c: "mara", f: "VO_M3_Boss_Death", w: "Mara goes down", s: "live", t: "Damn you... Andrew.", p: "Quiet. Something like regret." },
+
+  // Varga
+  { c: "varga", f: "VO_M4_Boss", w: "Varga steps in", s: "live", t: "Five years, Andrew. Five years, and you came back for this?" },
+  { c: "varga", f: "VO_M4_Boss_Mid", w: "Varga at half health", s: "live", t: "You think killing me closes the Ledger? It's a book, Andrew. Somebody always picks it up.", p: "Calm, even wounded. He believes it." },
+  { c: "varga", f: "VO_M4_Boss_Death", w: "Varga goes down", s: "live", t: "Then you... write the next page.", p: "A last, ugly smile." },
+
+  // Ezra Kell
+  { c: "kell", f: "VO_M5_Boss", w: "Ezra steps in", s: "live", t: "I clean up after the Keeper. You're just one more stain." },
+  { c: "kell", f: "VO_M5_Boss_Mid", w: "Ezra at half health", s: "live", t: "Stay still. This goes quicker if you stay still." },
+  { c: "kell", f: "VO_M5_Boss_Death", w: "Ezra goes down", s: "live", t: "He already knows... where you'll go next." },
+
+  // Petra Lind
+  { c: "lind", f: "VO_M6_Boss", w: "Petra steps in", s: "live", t: "The Keeper balances every account. Even old friends." },
+  { c: "lind", f: "VO_M6_Boss_Mid", w: "Petra at half health", s: "live", t: "You were the best we ever had. Now you're just late." },
+  { c: "lind", f: "VO_M6_Boss_Death", w: "Petra goes down", s: "live", t: "Too late, Andrew. It was always too late." },
+
+  // Teodor Brask
+  { c: "brask", f: "VO_M7_Boss", w: "Teodor steps in", s: "live", t: "Mister Crane is not available. I take his appointments." },
+  { c: "brask", f: "VO_M7_Boss_Mid", w: "Teodor at half health", s: "live", t: "We saw the grey Fastback in the lot. I knew it was you before the alarms did." },
+  { c: "brask", f: "VO_M7_Boss_Death", w: "Teodor goes down", s: "live", t: "Crane... is already on the water." },
+
+  // Augustin Crane
+  { c: "crane", f: "VO_M8_Boss", w: "Augustin steps in", s: "live", t: "You think this closes the Ledger? I only hold the pen." },
+  { c: "crane", f: "VO_M8_Boss_Mid", w: "Augustin at half health", s: "live", t: "Theo asked me to let you go. I should have listened to him." },
+  { c: "crane", f: "VO_M8_Boss_Death", w: "Augustin goes down", s: "live", t: "Write it down, then. Paid... in full." },
+
+  // Crew barks
+  { c: "crew", f: "VO_Crew_A_Spotted_1", w: "Enemy sees Andrew", s: "live", t: "Contact! He's right there!", p: "Voice A, aggressive." },
+  { c: "crew", f: "VO_Crew_B_Spotted_1", w: "Enemy sees Andrew", s: "live", t: "Oh shit, that's him! That's him!", p: "Voice B, nervous." },
+  { c: "crew", f: "VO_Crew_C_Spotted_1", w: "Enemy sees Andrew", s: "live", t: "Eyes on target. Light him up.", p: "Voice C, veteran." },
+  { c: "crew", f: "VO_Crew_A_Flank_1", w: "Enemy moves around cover", s: "live", t: "Go wide! Take the left!" },
+  { c: "crew", f: "VO_Crew_C_Flank_1", w: "Enemy moves around cover", s: "live", t: "Push him. Don't give him room." },
+  { c: "crew", f: "VO_Crew_A_Reload_1", w: "Enemy reloads", s: "live", t: "Reloading! Cover me!" },
+  { c: "crew", f: "VO_Crew_B_Reload_1", w: "Enemy reloads", s: "live", t: "I'm dry, I'm dry!" },
+  { c: "crew", f: "VO_Crew_A_Grenade_1", w: "Enemy throws a grenade", s: "live", t: "Frag out!" },
+  { c: "crew", f: "VO_Crew_C_Grenade_1", w: "Andrew throws a grenade", s: "live", t: "Grenade! Get down!" },
+  { c: "crew", f: "VO_Crew_A_Hit_1", w: "Enemy is wounded", s: "live", t: "Fuck! I'm hit!" },
+  { c: "crew", f: "VO_Crew_B_Hit_1", w: "Enemy is wounded", s: "live", t: "Ah, shit, shit, shit!" },
+  { c: "crew", f: "VO_Crew_C_ManDown_1", w: "A crewmate dies nearby", s: "live", t: "Man down! He's dropping us one by one!" },
+  { c: "crew", f: "VO_Crew_B_ManDown_1", w: "A crewmate dies nearby", s: "live", t: "They said this would be easy!" },
+  { c: "crew", f: "VO_Crew_C_Search_1", w: "Enemy lost sight of Andrew", s: "live", t: "Where'd he go? Check the corners." },
+  { c: "crew", f: "VO_Crew_A_Search_1", w: "Enemy lost sight of Andrew", s: "live", t: "Come on out, old man!" },
+  { c: "crew", f: "VO_Crew_B_Fear_1", w: "Last few enemies alive", s: "live", t: "Nobody said it was him. Nobody said it was HIM!", p: "Breaking." },
+  { c: "crew", f: "VO_Crew_C_Fear_1", w: "Last few enemies alive", s: "live", t: "He went through Varga's whole crew. Alone.", p: "Voice C, low. Reputation, not panic." },
+  { c: "crew", f: "VO_Crew_B_Spotted_2", w: "Enemy sees Andrew", s: "live", t: "Grey Fastback outside. It's him. It's really him.", p: "Voice B. They know the car on sight." },
+  { c: "crew", f: "VO_Crew_Deaths", w: "Enemy deaths", s: "new", t: "(Each voice: three short death sounds, one cut-off scream, one breath out)", p: "One file per voice: VO_Crew_A_Deaths, VO_Crew_B_Deaths, VO_Crew_C_Deaths." }
+];
+
+const store = {
+  get(k) { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+let done = new Set(store.get("lc-voice-done") || []);
+let filter = "all";
+
+const esc = s => s.replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]);
+const byChar = id => LINES.filter(l => l.c === id);
+
+document.getElementById("cast").innerHTML = CAST.map(c => {
+  const n = byChar(c.id).length;
+  return `<article class="card">
+    <div class="role">${esc(c.role)}</div>
+    <h3>${esc(c.name)}</h3>
+    <div class="tags">${c.tags.map(t => `<span class="tag">${esc(t)}</span>`).join("")}</div>
+    <p>${esc(c.dir)}</p>
+    <p class="ph"><b>Performance:</b> ${esc(c.ph)}</p>
+    <p class="ph"><b>Temporary voice:</b> ${esc(c.tts)} &middot; <b>${n}</b> lines</p>
+  </article>`;
+}).join("");
+
+const chips = document.getElementById("chips");
+chips.innerHTML = [`<button class="chip" id="chip-all" data-c="all" aria-pressed="true">Everyone</button>`]
+  .concat(CAST.map(c => `<button class="chip" id="chip-${c.id}" data-c="${c.id}" aria-pressed="false">${esc(c.name.split(",")[0])}</button>`)).join("");
+chips.addEventListener("click", e => {
+  const b = e.target.closest(".chip");
+  if (!b) return;
+  filter = b.dataset.c;
+  chips.querySelectorAll(".chip").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+  render();
+});
+
+function render() {
+  const out = [];
+  for (const c of CAST) {
+    if (filter !== "all" && filter !== c.id) continue;
+    const rows = byChar(c.id).map(l => `
+      <div class="row ${done.has(l.f) ? "recorded" : ""}">
+        <div class="id">
+          <span class="file">${esc(l.f)}.wav</span>
+          <span class="where">${esc(l.w)}</span>
+          <span class="status ${l.s}">${l.s === "live" ? "In game" : "Next build"}</span>
+        </div>
+        <div class="text">
+          <p class="line">${esc(l.t)}</p>
+          ${l.p ? `<p class="paren">(${esc(l.p)})</p>` : ""}
+        </div>
+        <div class="acts">
+          <button class="copy" data-f="${esc(l.f)}.wav">Copy file name</button>
+          <button class="done" data-f="${esc(l.f)}" aria-pressed="${done.has(l.f)}">${done.has(l.f) ? "Recorded" : "Mark recorded"}</button>
+        </div>
+      </div>`).join("");
+    out.push(`<section class="char" aria-label="${esc(c.name)}">
+      <div class="char-head"><h3>${esc(c.name)}</h3><span class="where">${esc(c.role)}</span><span class="dir">${esc(c.dir)}</span></div>
+      ${rows}
+    </section>`);
+  }
+  document.getElementById("script").innerHTML = out.join("");
+  const shown = filter === "all" ? LINES : byChar(filter);
+  const rec = shown.filter(l => done.has(l.f)).length;
+  const live = shown.filter(l => l.s === "live").length;
+  document.getElementById("count").textContent = `${shown.length} lines · ${live} in game · ${rec} recorded`;
+}
+
+document.getElementById("script").addEventListener("click", e => {
+  const copy = e.target.closest(".copy");
+  if (copy) {
+    const name = copy.dataset.f;
+    const ok = () => { copy.textContent = "Copied"; setTimeout(() => copy.textContent = "Copy file name", 1400); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(name).then(ok, () => { copy.textContent = name; });
+    } else { copy.textContent = name; }
+    return;
+  }
+  const d = e.target.closest(".done");
+  if (d) {
+    const f = d.dataset.f;
+    if (done.has(f)) done.delete(f); else done.add(f);
+    store.set("lc-voice-done", [...done]);
+    render();
+  }
+});
+
+render();
+</script>

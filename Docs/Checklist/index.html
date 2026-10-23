@@ -1,0 +1,363 @@
+<title>Andrew's Airsoft Road to 1.0</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: one reading column; a sticky progress strip, then ten phases as checklists. */
+:root {
+  --bg: #f4f2f6;
+  --panel: #ffffff;
+  --ink: #1c1922;
+  --muted: #615b6b;
+  --line: #dcd7e3;
+  --accent: #b3195a;
+  --done: #1f7a4d;
+  --part: #b26b00;
+  --check: #2a5fb0;
+  --todo: #8a8494;
+  --display: "Barlow Condensed", "Arial Narrow", Arial, sans-serif;
+  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131118; --panel: #1c1922; --ink: #ece8f1; --muted: #a49db0; --line: #322d3b;
+    --accent: #ff5c9d; --done: #4cc98a; --part: #f0a43a; --check: #6ea2ff; --todo: #7d7689;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131118; --panel: #1c1922; --ink: #ece8f1; --muted: #a49db0; --line: #322d3b;
+  --accent: #ff5c9d; --done: #4cc98a; --part: #f0a43a; --check: #6ea2ff; --todo: #7d7689;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font: 15px/1.55 var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 48px;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.wrap { max-width: 860px; margin: 0 auto; }
+header { padding-block: 36px 20px; display: grid; gap: 10px; }
+.eyebrow { font: 500 12px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+h1 { font: 700 clamp(34px, 7vw, 54px)/1 var(--display); letter-spacing: .01em; text-transform: uppercase; margin: 0; text-wrap: balance; }
+.lede { color: var(--muted); max-width: 62ch; margin: 0; }
+
+.strip {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: var(--bg); padding-block: 12px; border-bottom: 1px solid var(--line);
+  display: grid; gap: 10px;
+}
+.bar { height: 10px; border-radius: 5px; background: var(--line); overflow: hidden; display: flex; }
+.bar span { display: block; height: 100%; transition: width .4s ease; }
+.bar .b-done { background: var(--done); }
+.bar .b-part { background: var(--part); }
+.summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; font-size: 13px; color: var(--muted); }
+.pct { font: 700 28px/1 var(--display); color: var(--ink); font-variant-numeric: tabular-nums; }
+.tally { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
+.dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.filters button {
+  font: 500 12px/1 var(--mono); letter-spacing: .04em; padding: 7px 10px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--panel); color: var(--muted); cursor: pointer;
+}
+.filters button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+.filters button:focus-visible, .item input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; color: var(--muted); padding-block: 16px 4px; }
+.note { font-size: 13px; color: var(--muted); min-height: 1.4em; }
+
+section.phase { padding-block: 22px 4px; }
+.phase-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; border-bottom: 2px solid var(--ink); padding-bottom: 6px; }
+.phase-head h2 { font: 700 22px/1.1 var(--display); text-transform: uppercase; letter-spacing: .03em; margin: 0; display: flex; gap: 10px; align-items: baseline; }
+.phase-head h2 .num { font: 500 13px/1 var(--mono); color: var(--accent); }
+.phase-head .count { font: 500 12px/1 var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.phase-goal { color: var(--muted); font-size: 13.5px; margin: 8px 0 4px; }
+ul.items { list-style: none; margin: 0; padding: 0; }
+.item { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 4px 12px; align-items: start; padding: 11px 0; border-bottom: 1px solid var(--line); }
+.item input { width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--done); cursor: pointer; }
+.item input:disabled { cursor: default; }
+.item .text { min-width: 0; }
+.item .label { font-weight: 500; }
+.item .detail { display: block; color: var(--muted); font-size: 13px; margin-top: 2px; }
+.item.is-done .label { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--line); text-decoration-thickness: 2px; }
+.tags { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.chip { font: 500 11px/1 var(--mono); letter-spacing: .05em; text-transform: uppercase; padding: 5px 7px; border-radius: 4px; border: 1px solid currentColor; white-space: nowrap; }
+.chip.s-d { color: var(--done); }
+.chip.s-p { color: var(--part); }
+.chip.s-v { color: var(--check); }
+.chip.s-t { color: var(--todo); }
+.chip.who { color: var(--muted); border-color: var(--line); }
+@media (max-width: 520px) {
+  .item { grid-template-columns: 22px minmax(0, 1fr); }
+  .tags { grid-column: 2; justify-content: flex-start; }
+}
+footer { color: var(--muted); font-size: 13px; padding-top: 28px; max-width: 62ch; }
+@media (prefers-reduced-motion: reduce) { .bar span { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Andrew's Airsoft · UE 5.7 · build tracker</div>
+    <h1>Road to 1.0</h1>
+    <p class="lede">Every step from an empty project to a finished single-player game. Items already built are ticked. Tick the rest as they get done, and the marks are saved for anyone who opens this page.</p>
+  </header>
+
+  <div class="strip" aria-live="polite">
+    <div class="summary">
+      <span class="pct" id="pct">0%</span>
+      <span class="tally"><i class="dot" style="background:var(--done)"></i><span id="n-d">0</span> done</span>
+      <span class="tally"><i class="dot" style="background:var(--part)"></i><span id="n-p">0</span> in progress</span>
+      <span class="tally"><i class="dot" style="background:var(--check)"></i><span id="n-v">0</span> test on your PC</span>
+      <span class="tally"><i class="dot" style="background:var(--todo)"></i><span id="n-t">0</span> to do</span>
+    </div>
+    <div class="bar" role="img" id="bar" aria-label="Progress"><span class="b-done" id="bar-d"></span><span class="b-part" id="bar-p"></span></div>
+    <div class="filters" role="group" aria-label="Show">
+      <button type="button" id="f-all" data-f="all" aria-pressed="true">All</button>
+      <button type="button" id="f-left" data-f="left" aria-pressed="false">Still left</button>
+      <button type="button" id="f-you" data-f="you" aria-pressed="false">Needs you</button>
+      <button type="button" id="f-claude" data-f="claude" aria-pressed="false">Claude can build</button>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><b>You</b> needs your PC, the Unreal editor or your friends.</span>
+    <span><b>Claude</b> can be built in the cloud session and pushed.</span>
+    <span><b>Both</b> needs a decision or test from you, then code.</span>
+  </div>
+  <div class="note" id="note">Loading saved ticks…</div>
+
+  <main id="phases"></main>
+
+  <footer>Starting status reflects the <code>unreal</code> branch on 21 Oct 2026. Bigger items marked "test on your PC" are built but have never been run in the real editor, because the cloud session has no Unreal Engine.</footer>
+</div>
+
+<script>
+const PHASES = [
+  { n: "01", name: "Foundation", goal: "The project exists, builds, and every asset can be regenerated from scripts.", items: [
+    ["f1", "Git repo, unreal branch and draft pull request", "", "d", "Claude"],
+    ["f2", "UE5 C++ project skeleton", "Game mode, character, player state, save game, settings.", "d", "Claude"],
+    ["f3", "Blender art pipeline with 4K renders", "Guns, props, gear and environments generated from Python.", "d", "Claude"],
+    ["f4", "Editor setup script", "airsoft_setup.py imports everything and builds the levels.", "d", "Claude"],
+    ["f5", "Build helper Airsoft.bat", "Check, build, setup, editor and package from one menu.", "d", "Claude"],
+    ["f6", "Project compiles with no errors in UE 5.7", "Run Airsoft.bat → build, then send Saved/BuildReport/latest.txt if it fails.", "v", "You"],
+    ["f7", "Setup script runs start to finish cleanly", "Airsoft.bat → setup; the Output Log should end with no red errors.", "v", "You"],
+    ["f8", "Fix the Staging layout check error", "Armory displays are missing for the C1911, G34, SG4 and TR1.", "t", "Claude"],
+    ["f9", "Finish the code review of effects, modes and team gear", "Started earlier and stopped before it finished.", "t", "Claude"],
+  ]},
+  { n: "02", name: "Core gameplay", goal: "Shooting, moving and getting tagged feel good in a one-player test.", items: [
+    ["g1", "Movement: sprint, crouch, lean, slide", "", "d", "Claude"],
+    ["g2", "BB ballistics with drop and hop-up", "", "d", "Claude"],
+    ["g3", "Hit tagging, hit calls and respawn", "", "d", "Claude"],
+    ["g4", "14 guns with attachments and skins", "", "d", "Claude"],
+    ["g5", "Grenades", "", "d", "Claude"],
+    ["g6", "Red dot sight fix", "", "d", "Claude"],
+    ["g7", "Third-person camera with over-the-shoulder aim", "", "d", "Claude"],
+    ["g8", "Final-tag slow-motion cinematic", "", "d", "Claude"],
+    ["g9", "Team rules so teammates can't tag each other", "", "d", "Claude"],
+    ["g10", "Proper reload, aim and melee animation sets", "Characters currently use the stock mannequin animations.", "p", "Claude"],
+    ["g11", "Hit registration check at long range", "Shoot targets at 50 m+ and confirm every visible hit counts.", "v", "You"],
+    ["g12", "Weapon balance pass after playtests", "Damage, range, fire rate and recoil per gun, against story enemies.", "t", "Both"],
+  ]},
+  { n: "03", name: "Single-player structure", goal: "One player can start the game, pick up the story where they left off, or play a quick match against bots.", items: [
+    ["s4", "Bots and five match modes for offline skirmish", "Team Deathmatch, Domination, Elimination, Gun Game and VIP Escort.", "d", "Claude"],
+    ["s9", "Armory loadout, scoreboard and after-action report", "", "d", "Claude"],
+    ["s1", "Main menu leads with the story", "Continue, New Game, Mission Select, Skirmish, Practice Range.", "t", "Claude"],
+    ["s2", "Difficulty levels", "Easy to Hard: enemy aim, reaction speed and how many hits you can take.", "t", "Claude"],
+    ["s3", "Pause stops the game", "", "t", "Claude"],
+    ["s5", "Online screens hidden", "Host, join, chat and lobby votes stay in the code but off the menus.", "t", "Claude"],
+    ["s6", "Mission unlocks and story progress saved", "", "t", "Claude"],
+    ["s7", "Guns unlock as the story goes on", "", "t", "Claude"],
+    ["s8", "Decide the final campaign length", "Eight missions.", "t", "You"],
+  ]},
+  { n: "04", name: "Maps and world", goal: "Every map is dressed, lit, walkable and fair on both sides.", items: [
+    ["w1", "Ironwood outdoor field", "", "d", "Claude"],
+    ["w2", "Staging area and armory room", "", "d", "Claude"],
+    ["w3", "Velvet Club neon street", "", "d", "Claude"],
+    ["w4", "Nightjar Garage", "", "d", "Claude"],
+    ["w5", "Ambient sound for each area", "", "d", "Claude"],
+    ["w6", "Luxury cars replace the old sedan and coupe", "Four original designs; renders in progress.", "p", "Claude"],
+    ["w7", "Scanned CC0 textures on ground, walls and metal", "From Poly Haven and ambientCG; before/after renders in progress.", "p", "Claude"],
+    ["w8", "Collision and bot navigation check on every map", "Walk every edge; watch for bots stuck on props.", "v", "You"],
+    ["w9", "Spawn points balanced per map and mode", "", "t", "Both"],
+    ["w10", "Velvet Club light count trimmed for the RTX 2070", "About 85 lights now.", "t", "Claude"],
+  ]},
+  { n: "05", name: "Look and characters", goal: "The game holds up next to the reference photos.", items: [
+    ["l1", "Team gear on player bodies", "", "d", "Claude"],
+    ["l2", "Tailored suits for story characters", "", "d", "Claude"],
+    ["l3", "Noir color grade", "", "d", "Claude"],
+    ["l4", "Neon HUD", "", "d", "Claude"],
+    ["l5", "Hit and muzzle effects, and rain", "", "d", "Claude"],
+    ["l6", "Lumen lighting and reflections tuned on your PC", "Compare each map with the stills in Docs/Screens.", "v", "You"],
+    ["l7", "Cloth and leather scans on suits and gear", "", "t", "Claude"],
+    ["l8", "Original character heads instead of faceless mannequins", "First procedural pass built but switched off (looks like clay). Best route: MetaHuman Creator in UE 5.7.", "p", "Both"],
+  ]},
+  { n: "06", name: "Campaign: Last Contract", goal: "The eight-mission story plays from the first scene to the credits.", items: [
+    ["c1", "Campaign mode, mission data and bosses", "", "d", "Claude"],
+    ["c2", "Missions 1–4", "", "d", "Claude"],
+    ["c10", "Missions 5–8 written, voiced and in the game", "Cold Iron, First Light, The Books, Dead Tide. The ending moves to Mission 8.", "d", "Claude"],
+    ["c12", "Ironwood at night and Nightjar Garage at dawn", "Missions 5 and 6.", "d", "Claude"],
+    ["c13", "New map: Ledger Tower penthouse", "Mission 7, The Books. Plays on Velvet Club until the map is built.", "p", "Claude"],
+    ["c11", "New map: Saltmarsh Terminal harbor", "Mission 8, Dead Tide, the finale.", "p", "Claude"],
+    ["c14", "The '69 Fastback, Andrew's car", "Parked in the garage; drives off in the final scene.", "p", "Claude"],
+    ["c3", "Cinematic camera intros", "", "d", "Claude"],
+    ["c4", "Neural voice-over for all 20 lines", "", "d", "Claude"],
+    ["c5", "Add the 42 extra voice lines to the game", "Drafted already; the game doesn't load them yet.", "t", "Claude"],
+    ["c6", "Story enemies that take cover and flank", "", "t", "Claude"],
+    ["c7", "Checkpoints mid-mission", "", "t", "Claude"],
+    ["c8", "Ending scene and credits roll", "", "t", "Claude"],
+    ["c9", "Play the story start to finish and note problems", "", "t", "You"],
+  ]},
+  { n: "07", name: "Audio", goal: "Every action has a sound, and nothing drowns out anything else.", items: [
+    ["a1", "Gun sounds with near, far and airsoft variants", "", "d", "Claude"],
+    ["a2", "Footsteps, reloads, impacts and UI sounds", "", "d", "Claude"],
+    ["a3", "Menu, staging, club and post-round music", "", "d", "Claude"],
+    ["a4", "Footsteps that change by surface", "Grass, concrete, metal and wet street.", "t", "Claude"],
+    ["a5", "Final mix of guns, music and voice", "", "t", "Both"],
+  ]},
+  { n: "08", name: "Menus and options", goal: "A friend who has never played can set up and start without asking you.", items: [
+    ["u1", "Settings screen with graphics quality presets", "", "d", "Claude"],
+    ["u2", "Controller support works", "Plug in a pad and play one round.", "v", "You"],
+    ["u3", "Key rebinding in settings", "", "t", "Claude"],
+    ["u4", "Loading screen between maps", "", "t", "Claude"],
+    ["u5", "Practice range with a how-to-play walkthrough", "Practice targets exist; no guided tutorial yet.", "p", "Claude"],
+    ["u6", "Subtitles for voice lines and colorblind team colors", "", "t", "Claude"],
+  ]},
+  { n: "09", name: "Performance and stability", goal: "Smooth on the RTX 2070 and no crashes in a long session.", items: [
+    ["q1", "Holds 60 fps at your target resolution", "Check with stat fps on each map.", "v", "You"],
+    ["q2", "One-hour session with no crash", "", "t", "You"],
+    ["q3", "Bug list gathered from playtests", "Send crash logs from Saved/Crashes.", "t", "You"],
+    ["q4", "Every bug on the list fixed", "", "t", "Claude"],
+  ]},
+  { n: "10", name: "Release", goal: "A player downloads one file, installs, and plays.", items: [
+    ["r1", "Packaged Windows build", "Airsoft.bat → package.", "v", "You"],
+    ["r2", "One-page install guide for players", "Docs/Friends_Setup.md.", "p", "Claude"],
+    ["r3", "Credits and licenses file", "Docs/CREDITS.md started.", "p", "Claude"],
+    ["r4", "Trailer and screenshot set", "The gallery page has the stills.", "p", "Both"],
+    ["r5", "Zip and share the build", "", "t", "You"],
+    ["r6", "A simple way to send updates to players", "", "t", "Both"],
+    ["r7", "Merge the pull request and tag version 1.0", "", "t", "Both"],
+  ]},
+];
+const STATUS_TEXT = { d: "Done", p: "In progress", v: "Test on your PC", t: "To do" };
+
+let overrides = {};   // id -> boolean done, from the shared store
+let db = null;
+let canWrite = false;
+let filter = "all";
+try { filter = localStorage.getItem("road-filter") || "all"; } catch (e) {}
+
+function statusOf(id, base) {
+  if (!(id in overrides)) return base;
+  if (overrides[id]) return "d";
+  return base === "d" ? "t" : base;
+}
+
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+
+function render() {
+  const root = document.getElementById("phases");
+  root.replaceChildren();
+  const totals = { d: 0, p: 0, v: 0, t: 0 };
+  let all = 0;
+  for (const ph of PHASES) {
+    const sec = el("section", "phase");
+    const head = el("div", "phase-head");
+    const h2 = el("h2");
+    h2.append(el("span", "num", ph.n), document.createTextNode(ph.name));
+    const count = el("span", "count");
+    head.append(h2, count);
+    sec.append(head, el("p", "phase-goal", ph.goal));
+    const ul = el("ul", "items");
+    let doneHere = 0;
+    for (const [id, label, detail, base, who] of ph.items) {
+      const s = statusOf(id, base);
+      totals[s]++; all++;
+      if (s === "d") doneHere++;
+      const visible = filter === "all"
+        || (filter === "left" && s !== "d")
+        || (filter === "you" && s !== "d" && (who === "You" || who === "Both"))
+        || (filter === "claude" && s !== "d" && (who === "Claude" || who === "Both"));
+      if (!visible) continue;
+      const li = el("li", "item" + (s === "d" ? " is-done" : ""));
+      const box = document.createElement("input");
+      box.type = "checkbox"; box.id = "chk-" + id; box.checked = s === "d";
+      box.disabled = !canWrite;
+      box.addEventListener("change", () => save(id, box.checked, box));
+      const text = el("label", "text");
+      text.htmlFor = box.id;
+      text.append(el("span", "label", label));
+      if (detail) text.append(el("span", "detail", detail));
+      const tags = el("div", "tags");
+      tags.append(el("span", "chip s-" + s, STATUS_TEXT[s]), el("span", "chip who", who));
+      li.append(box, text, tags);
+      ul.append(li);
+    }
+    count.textContent = doneHere + " / " + ph.items.length;
+    if (ul.children.length) { sec.append(ul); root.append(sec); }
+  }
+  const pct = Math.round((totals.d / all) * 100);
+  document.getElementById("pct").textContent = pct + "%";
+  for (const k of ["d", "p", "v", "t"]) document.getElementById("n-" + k).textContent = totals[k];
+  document.getElementById("bar-d").style.width = (totals.d / all * 100) + "%";
+  document.getElementById("bar-p").style.width = (totals.p / all * 100) + "%";
+  document.getElementById("bar").setAttribute("aria-label", pct + "% done, " + totals.p + " in progress");
+  for (const b of document.querySelectorAll(".filters button")) b.setAttribute("aria-pressed", String(b.dataset.f === filter));
+}
+
+async function save(id, done, box) {
+  if (!db) return;
+  box.disabled = true;
+  try {
+    await db.doc("checks/" + id).set({ done, at: new Date().toISOString() });
+    overrides[id] = done;
+    setNote("Saved.");
+  } catch (e) {
+    box.checked = !done;
+    if (e && e.code === "invalid_argument") { canWrite = false; setNote("You can view this checklist but not change it. Ask the owner for Contributor access."); }
+    else setNote("Couldn't save that tick. Try again in a moment.");
+  }
+  render();
+}
+
+function setNote(t) { document.getElementById("note").textContent = t; }
+
+document.querySelector(".filters").addEventListener("click", (e) => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  filter = b.dataset.f;
+  try { localStorage.setItem("road-filter", filter); } catch (err) {}
+  render();
+});
+
+render();
+
+(async () => {
+  const claude = window.claude;
+  if (!claude || !claude.use) { setNote("Showing the starting status. Open this page on claude.ai to tick items."); return; }
+  db = await claude.use("db");
+  const user = await claude.use("user");
+  if (!db) { setNote("Showing the starting status. Sign in to claude.ai to tick items."); render(); return; }
+  const may = user ? await user.can("data.write") : null;
+  canWrite = may !== false;
+  setNote(canWrite ? "Tick an item when it's finished. Ticks are saved for everyone." : "You can view this checklist. Only the owner and contributors can tick items.");
+  db.collection("checks").onSnapshot((snap) => {
+    const next = {};
+    for (const d of snap.docs) {
+      const v = d.data();
+      if (v && typeof v.done === "boolean") next[d.id] = v.done;
+    }
+    overrides = next;
+    render();
+  }, () => { setNote("Saved ticks couldn't be loaded. Showing the starting status."); });
+  render();
+})();
+</script>

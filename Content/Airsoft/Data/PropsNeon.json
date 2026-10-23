@@ -1,0 +1,1073 @@
+{
+  "Version": 1,
+  "Assets": {
+    "Neon_ArrowBar": {
+      "Group": "Neon",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Neon_ArrowBar_Body"
+          ]
+        },
+        {
+          "Name": "Emissive",
+          "Kind": "Emissive",
+          "Slots": [
+            "M_Neon_ArrowBar_Emissive"
+          ]
+        }
+      ],
+      "Points": {
+        "Light": [
+          30.0,
+          0.0,
+          45.0
+        ],
+        "WallMount": [
+          0.0,
+          0.0,
+          45.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          0.0,
+          -99.6,
+          -9.5
+        ],
+        "Max": [
+          18.2,
+          90.0,
+          99.5
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 7488,
+        "Emissive": 22880
+      },
+      "TextureSize": {
+        "Body": 1024,
+        "Emissive": 1024
+      }
+    },
+    "Neon_BladeGames": {
+      "Group": "Neon",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Neon_BladeGames_Body"
+          ]
+        },
+        {
+          "Name": "Emissive",
+          "Kind": "Emissive",
+          "Slots": [
+            "M_Neon_BladeGames_Emissive"
+          ]
+        }
+      ],
+      "Points": {
+        "Light": [
+          61.0,
+          0.0,
+          145.0
+        ],
+        "WallMount": [
+          0.0,
+          0.0,
+          145.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          0.0,
+          -14.0,
+          0.0
+        ],
+        "Max": [
+          96.0,
+          14.0,
+          293.0
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 3716,
+        "Emissive": 65920
+      },
+      "TextureSize": {
+        "Body": 1024,
+        "Emissive": 1024
+      }
+    },
+    "Neon_BladeHotel": {
+      "Group": "Neon",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Neon_BladeHotel_Body"
+          ]
+        },
+        {
+          "Name": "Emissive",
+          "Kind": "Emissive",
+          "Slots": [
+            "M_Neon_BladeHotel_Emissive"
+          ]
+        }
+      ],
+      "Points": {
+        "Light": [
+          67.0,
+          0.0,
+          170.0
+        ],
+        "WallMount": [
+          0.0,
+          0.0,
+          170.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          0.0,
+          -15.0,
+          0.0
+        ],
+        "Max": [
+          108.0,
+          15.0,
+          343.0
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 3492,
+        "Emissive": 63960
+      },
+      "TextureSize": {
+        "Body": 1024,
+        "Emissive": 1024
+      }
+    },
+    "Neon_BladeIzakaya": {
+      "Group": "Neon",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Neon_BladeIzakaya_Body"
+          ]
+        },
+        {
+          "Name": "Emissive",
+          "Kind": "Emissive",
+          "Slots": [
+            "M_Neon_BladeIzakaya_Emissive"
+          ]
+        }
+      ],
+      "Points": {
+        "Light": [
+          57.0,
+          0.0,
+          135.0
+        ],
+        "WallMount": [
+          0.0,
+          0.0,
+          135.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          0.0,
+          -12.8,
+          0.0
+        ],
+        "Max": [
+          88.0,
+          12.8,
+          273.0
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 3108,
+        "Emissive": 21164
+      },
+      "TextureSize": {
+        "Body": 1024,
+        "Emissive": 1024
+      }
+    },
+    "Neon_BladeRamen": {
+      "Group": "Neon",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Neon_BladeRamen_Body"
+          ]
+        },
+        {
+          "Name": "Emissive",
+          "Kind": "Emissive",
+          "Slots": [
+            "M_Neon_BladeRamen_Emissive"
+          ]
+        }
+      ],
+      "Points": {
+        "Light": [
+          59.0,
+          0.0,
+          115.0
+        ],
+        "WallMount": [
+          0.0,
+          0.0,
+          115.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          0.0,
+          -13.8,
+          0.0
+        ],
+        "Max": [
+          92.0,
+          13.8,
+          233.0
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 2996,
+        "Emissive": 18764
+      },
+      "TextureSize": {
+        "Body": 1024,
+        "Emissive": 1024
+      }
+    },
+    "Neon_BladeVelvet": {
+      "Group": "Neon",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Neon_BladeVelvet_Body"
+          ]
+        },
+        {
+          "Name": "Emissive",
+          "Kind": "Emissive",
+          "Slots": [
+            "M_Neon_BladeVelvet_Emissive"
+          ]
+        }
+      ],
+      "Points": {
+        "Light": [
+          68.0,
+          0.0,
+          195.0
+        ],
+        "WallMount": [
+          0.0,
+          0.0,
+          195.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          0.0,
+          -15.0,
+          0.0
+        ],
+        "Max": [
+          110.0,
+          15.0,
+          393.0
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 3548,
+        "Emissive": 72880
+      },
+      "TextureSize": {
+        "Body": 1024,
+        "Emissive": 1024
+      }
+    },
+    "Neon_BoxPawn": {
+      "Group": "Neon",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Neon_BoxPawn_Body"
+          ]
+        },
+        {
+          "Name": "Emissive",
+          "Kind": "Emissive",
+          "Slots": [
+            "M_Neon_BoxPawn_Emissive"
+          ]
+        }
+      ],
+      "Points": {
+        "Light": [
+          38.0,
+          0.0,
+          50.0
+        ],
+        "WallMount": [
+          0.0,
+          0.0,
+          50.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          0.0,
+          -130.0,
+          0.0
+        ],
+        "Max": [
+          27.3,
+          130.0,
+          100.0
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 1656,
+        "Emissive": 50268
+      },
+      "TextureSize": {
+        "Body": 1024,
+        "Emissive": 1024
+      }
+    },
+    "Neon_Cocktails": {
+      "Group": "Neon",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Neon_Cocktails_Body"
+          ]
+        },
+        {
+          "Name": "Emissive",
+          "Kind": "Emissive",
+          "Slots": [
+            "M_Neon_Cocktails_Emissive"
+          ]
+        }
+      ],
+      "Points": {
+        "Light": [
+          30.0,
+          0.0,
+          70.0
+        ],
+        "WallMount": [
+          0.0,
+          0.0,
+          70.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          0.0,
+          -97.5,
+          6.3
+        ],
+        "Max": [
+          14.9,
+          97.5,
+          125.9
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 832,
+        "Emissive": 27568
+      },
+      "TextureSize": {
+        "Body": 1024,
+        "Emissive": 512
+      }
+    },
+    "Neon_Karaoke": {
+      "Group": "Neon",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Neon_Karaoke_Body"
+          ]
+        },
+        {
+          "Name": "Emissive",
+          "Kind": "Emissive",
+          "Slots": [
+            "M_Neon_Karaoke_Emissive"
+          ]
+        }
+      ],
+      "Points": {
+        "Light": [
+          35.0,
+          0.0,
+          41.0
+        ],
+        "WallMount": [
+          0.0,
+          0.0,
+          41.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          0.0,
+          -140.0,
+          0.0
+        ],
+        "Max": [
+          23.8,
+          140.0,
+          82.0
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 856,
+        "Emissive": 11742
+      },
+      "TextureSize": {
+        "Body": 1024,
+        "Emissive": 1024
+      }
+    },
+    "Neon_OpenSign": {
+      "Group": "Neon",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Neon_OpenSign_Body"
+          ]
+        },
+        {
+          "Name": "Emissive",
+          "Kind": "Emissive",
+          "Slots": [
+            "M_Neon_OpenSign_Emissive"
+          ]
+        }
+      ],
+      "Points": {
+        "Light": [
+          10.0,
+          0.0,
+          18.0
+        ],
+        "WallMount": [
+          0.0,
+          0.0,
+          18.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          0.0,
+          -31.0,
+          -1.5
+        ],
+        "Max": [
+          5.6,
+          31.0,
+          33.6
+        ]
+      },
+      "Collision": "None",
+      "Triangles": {
+        "Body": 148,
+        "Emissive": 11340
+      },
+      "TextureSize": {
+        "Body": 512,
+        "Emissive": 512
+      }
+    },
+    "Neon_PharmacyCross": {
+      "Group": "Neon",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Neon_PharmacyCross_Body"
+          ]
+        },
+        {
+          "Name": "Emissive",
+          "Kind": "Emissive",
+          "Slots": [
+            "M_Neon_PharmacyCross_Emissive"
+          ]
+        }
+      ],
+      "Points": {
+        "Light": [
+          77.5,
+          0.0,
+          47.5
+        ],
+        "WallMount": [
+          0.0,
+          0.0,
+          47.5
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          0.0,
+          -11.4,
+          -0.9
+        ],
+        "Max": [
+          125.9,
+          11.4,
+          95.9
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 2108,
+        "Emissive": 14500
+      },
+      "TextureSize": {
+        "Body": 1024,
+        "Emissive": 1024
+      }
+    },
+    "Street_ACUnit": {
+      "Group": "Neon",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Street_ACUnit_Body"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          0.0,
+          -41.0,
+          -60.0
+        ],
+        "Max": [
+          47.0,
+          41.0,
+          61.0
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 3612
+      },
+      "TextureSize": {
+        "Body": 1024
+      }
+    },
+    "Street_Awning": {
+      "Group": "Neon",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Street_Awning_Body"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          0.0,
+          -160.0,
+          -90.0
+        ],
+        "Max": [
+          116.5,
+          160.0,
+          1.8
+        ]
+      },
+      "Collision": "None",
+      "Triangles": {
+        "Body": 2208
+      },
+      "TextureSize": {
+        "Body": 2048
+      },
+      "TintVariants": {}
+    },
+    "Street_Cables": {
+      "Group": "Neon",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Street_Cables_Body"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -74.5,
+          -1013.0,
+          -158.0
+        ],
+        "Max": [
+          116.9,
+          1013.0,
+          47.7
+        ]
+      },
+      "Collision": "None",
+      "Triangles": {
+        "Body": 6584
+      },
+      "TextureSize": {
+        "Body": 1024
+      }
+    },
+    "Street_FacadeBay_A": {
+      "Group": "Neon",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Street_FacadeBay_A_Body"
+          ]
+        },
+        {
+          "Name": "Emissive",
+          "Kind": "Emissive",
+          "Slots": [
+            "M_Street_FacadeBay_A_Emissive"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -25.0,
+          -200.0,
+          0.0
+        ],
+        "Max": [
+          20.0,
+          200.0,
+          340.0
+        ]
+      },
+      "Collision": "None",
+      "Triangles": {
+        "Body": 2500,
+        "Emissive": 4
+      },
+      "TextureSize": {
+        "Body": 2048,
+        "Emissive": 1024
+      }
+    },
+    "Street_FacadeBay_B": {
+      "Group": "Neon",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Street_FacadeBay_B_Body"
+          ]
+        },
+        {
+          "Name": "Emissive",
+          "Kind": "Emissive",
+          "Slots": [
+            "M_Street_FacadeBay_B_Emissive"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -25.0,
+          -200.0,
+          0.0
+        ],
+        "Max": [
+          46.0,
+          200.0,
+          340.0
+        ]
+      },
+      "Collision": "None",
+      "Triangles": {
+        "Body": 3160,
+        "Emissive": 4
+      },
+      "TextureSize": {
+        "Body": 2048,
+        "Emissive": 1024
+      }
+    },
+    "Street_FacadeBay_C": {
+      "Group": "Neon",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Street_FacadeBay_C_Body"
+          ]
+        },
+        {
+          "Name": "Emissive",
+          "Kind": "Emissive",
+          "Slots": [
+            "M_Street_FacadeBay_C_Emissive"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -25.0,
+          -200.0,
+          0.0
+        ],
+        "Max": [
+          46.0,
+          200.0,
+          340.0
+        ]
+      },
+      "Collision": "None",
+      "Triangles": {
+        "Body": 3160,
+        "Emissive": 4
+      },
+      "TextureSize": {
+        "Body": 2048,
+        "Emissive": 1024
+      }
+    },
+    "Street_FacadeBay_D": {
+      "Group": "Neon",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Street_FacadeBay_D_Body"
+          ]
+        },
+        {
+          "Name": "Emissive",
+          "Kind": "Emissive",
+          "Slots": [
+            "M_Street_FacadeBay_D_Emissive"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -25.0,
+          -200.0,
+          0.0
+        ],
+        "Max": [
+          20.0,
+          200.0,
+          340.0
+        ]
+      },
+      "Collision": "None",
+      "Triangles": {
+        "Body": 2500,
+        "Emissive": 4
+      },
+      "TextureSize": {
+        "Body": 2048,
+        "Emissive": 1024
+      }
+    },
+    "Street_FireBarrel": {
+      "Group": "Neon",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Street_FireBarrel_Body"
+          ]
+        },
+        {
+          "Name": "Emissive",
+          "Kind": "Emissive",
+          "Slots": [
+            "M_Street_FireBarrel_Emissive"
+          ]
+        }
+      ],
+      "Points": {
+        "Light": [
+          0.0,
+          0.0,
+          113.0
+        ],
+        "Embers": [
+          0.0,
+          0.0,
+          98.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -30.2,
+          -30.2,
+          0.0
+        ],
+        "Max": [
+          30.2,
+          30.2,
+          111.5
+        ]
+      },
+      "Collision": "Convex",
+      "Triangles": {
+        "Body": 1608,
+        "Emissive": 1532
+      },
+      "TextureSize": {
+        "Body": 1024,
+        "Emissive": 1024
+      }
+    },
+    "Street_Shopfront": {
+      "Group": "Neon",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Street_Shopfront_Body"
+          ]
+        },
+        {
+          "Name": "Glass",
+          "Kind": "Glass",
+          "Slots": [
+            "M_Street_Shopfront_Glass"
+          ]
+        },
+        {
+          "Name": "Emissive",
+          "Kind": "Emissive",
+          "Slots": [
+            "M_Street_Shopfront_Emissive"
+          ]
+        }
+      ],
+      "Points": {
+        "Light": [
+          -40.0,
+          0.0,
+          260.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -120.0,
+          -197.0,
+          0.0
+        ],
+        "Max": [
+          38.0,
+          197.0,
+          345.0
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 4044,
+        "Glass": 48,
+        "Emissive": 4
+      },
+      "TextureSize": {
+        "Body": 2048,
+        "Glass": 512,
+        "Emissive": 1024
+      }
+    },
+    "Street_Shutter": {
+      "Group": "Neon",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Street_Shutter_Body"
+          ]
+        }
+      ],
+      "Points": {
+        "Light": [
+          40.0,
+          0.0,
+          330.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          0.0,
+          -197.0,
+          0.0
+        ],
+        "Max": [
+          38.0,
+          197.0,
+          345.0
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 2644
+      },
+      "TextureSize": {
+        "Body": 2048
+      },
+      "TintVariants": {}
+    },
+    "Street_SteamVent": {
+      "Group": "Neon",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Street_SteamVent_Body"
+          ]
+        }
+      ],
+      "Points": {},
+      "Bounds": {
+        "Min": [
+          -50.0,
+          -35.0,
+          -5.5
+        ],
+        "Max": [
+          50.0,
+          35.0,
+          3.0
+        ]
+      },
+      "Collision": "None",
+      "Triangles": {
+        "Body": 1632
+      },
+      "TextureSize": {
+        "Body": 1024
+      }
+    },
+    "Street_Vending": {
+      "Group": "Neon",
+      "Pieces": [
+        {
+          "Name": "Body",
+          "Kind": "Body",
+          "Slots": [
+            "M_Street_Vending_Body"
+          ]
+        },
+        {
+          "Name": "Emissive",
+          "Kind": "Emissive",
+          "Slots": [
+            "M_Street_Vending_Emissive"
+          ]
+        },
+        {
+          "Name": "Glass",
+          "Kind": "Glass",
+          "Slots": [
+            "M_Street_Vending_Glass"
+          ]
+        }
+      ],
+      "Points": {
+        "Light": [
+          40.0,
+          8.0,
+          120.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -68.0,
+          -50.0,
+          0.0
+        ],
+        "Max": [
+          7.1,
+          50.0,
+          186.0
+        ]
+      },
+      "Collision": "Box",
+      "Triangles": {
+        "Body": 1484,
+        "Emissive": 112,
+        "Glass": 12
+      },
+      "TextureSize": {
+        "Body": 2048,
+        "Emissive": 1024,
+        "Glass": 512
+      }
+    }
+  }
+}

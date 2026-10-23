@@ -1,0 +1,1704 @@
+{
+  "Version": 1,
+  "Assets": {
+    "Head_Andrew": {
+      "Pieces": [
+        {
+          "Name": "Head",
+          "Kind": "Static",
+          "Slots": [
+            "M_Head_Andrew_Head"
+          ],
+          "Bounds": {
+            "Min": [
+              -11.1,
+              -9.2,
+              -12.2
+            ],
+            "Max": [
+              15.3,
+              9.2,
+              20.4
+            ]
+          },
+          "Triangles": 177298,
+          "TextureSize": 2048,
+          "Anchor": {
+            "Bone": "head",
+            "Offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Scale": 1.0,
+            "AssumedBonePos": [
+              0.0,
+              0.0,
+              158.5
+            ]
+          }
+        },
+        {
+          "Name": "Hair",
+          "Kind": "Static",
+          "Slots": [
+            "M_Head_Andrew_Hair"
+          ],
+          "Bounds": {
+            "Min": [
+              -11.4,
+              -9.1,
+              1.0
+            ],
+            "Max": [
+              10.7,
+              9.1,
+              21.3
+            ]
+          },
+          "Triangles": 132202,
+          "TextureSize": 2048,
+          "Anchor": {
+            "Bone": "head",
+            "Offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Scale": 1.0,
+            "AssumedBonePos": [
+              0.0,
+              0.0,
+              158.5
+            ]
+          }
+        }
+      ],
+      "Points": {
+        "Pivot": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -11.4,
+          -9.2,
+          -12.2
+        ],
+        "Max": [
+          15.3,
+          9.2,
+          21.3
+        ]
+      },
+      "Anchor": {
+        "Bone": "head",
+        "Offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Scale": 1.0,
+        "AssumedBonePos": [
+          0.0,
+          0.0,
+          158.5
+        ]
+      },
+      "Outfit": {
+        "Outfit": "Head",
+        "Tint": "Head",
+        "TintRoughness": 0.5,
+        "RoughnessDetail": 1.0,
+        "TintMetallic": 0.0
+      },
+      "SourceDir": "Characters/Heads",
+      "Character": "Andrew",
+      "Notes": "Original procedural head (Tools/Blender/heads). Unreal cm, character space; origin = the head bone pivot of the assumed UE5 Manny reference pose. UAirsoftTeamGearComponent::ApplyHead attaches every piece to the head bone (tune with airsoft.gear.tune Head_Andrew). Colours are baked; the role mask is empty."
+    },
+    "Head_Kade": {
+      "Pieces": [
+        {
+          "Name": "Head",
+          "Kind": "Static",
+          "Slots": [
+            "M_Head_Kade_Head"
+          ],
+          "Bounds": {
+            "Min": [
+              -11.1,
+              -9.2,
+              -12.2
+            ],
+            "Max": [
+              15.3,
+              9.2,
+              20.4
+            ]
+          },
+          "Triangles": 175084,
+          "TextureSize": 2048,
+          "Anchor": {
+            "Bone": "head",
+            "Offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Scale": 1.0,
+            "AssumedBonePos": [
+              0.0,
+              0.0,
+              158.5
+            ]
+          }
+        },
+        {
+          "Name": "Hair",
+          "Kind": "Static",
+          "Slots": [
+            "M_Head_Kade_Hair"
+          ],
+          "Bounds": {
+            "Min": [
+              -11.3,
+              -8.7,
+              1.6
+            ],
+            "Max": [
+              10.5,
+              8.7,
+              21.8
+            ]
+          },
+          "Triangles": 126266,
+          "TextureSize": 2048,
+          "Anchor": {
+            "Bone": "head",
+            "Offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Scale": 1.0,
+            "AssumedBonePos": [
+              0.0,
+              0.0,
+              158.5
+            ]
+          }
+        }
+      ],
+      "Points": {
+        "Pivot": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -11.3,
+          -9.2,
+          -12.2
+        ],
+        "Max": [
+          15.3,
+          9.2,
+          21.8
+        ]
+      },
+      "Anchor": {
+        "Bone": "head",
+        "Offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Scale": 1.0,
+        "AssumedBonePos": [
+          0.0,
+          0.0,
+          158.5
+        ]
+      },
+      "Outfit": {
+        "Outfit": "Head",
+        "Tint": "Head",
+        "TintRoughness": 0.5,
+        "RoughnessDetail": 1.0,
+        "TintMetallic": 0.0
+      },
+      "SourceDir": "Characters/Heads",
+      "Character": "Kade",
+      "Notes": "Original procedural head (Tools/Blender/heads). Unreal cm, character space; origin = the head bone pivot of the assumed UE5 Manny reference pose. UAirsoftTeamGearComponent::ApplyHead attaches every piece to the head bone (tune with airsoft.gear.tune Head_Kade). Colours are baked; the role mask is empty."
+    },
+    "Head_Dorian": {
+      "Pieces": [
+        {
+          "Name": "Head",
+          "Kind": "Static",
+          "Slots": [
+            "M_Head_Dorian_Head"
+          ],
+          "Bounds": {
+            "Min": [
+              -11.1,
+              -9.2,
+              -12.2
+            ],
+            "Max": [
+              15.4,
+              9.2,
+              20.9
+            ]
+          },
+          "Triangles": 177096,
+          "TextureSize": 2048,
+          "Anchor": {
+            "Bone": "head",
+            "Offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Scale": 1.0,
+            "AssumedBonePos": [
+              0.0,
+              0.0,
+              158.5
+            ]
+          }
+        },
+        {
+          "Name": "Hair",
+          "Kind": "Static",
+          "Slots": [
+            "M_Head_Dorian_Hair"
+          ],
+          "Bounds": {
+            "Min": [
+              -11.6,
+              -9.0,
+              0.1
+            ],
+            "Max": [
+              11.1,
+              9.0,
+              22.0
+            ]
+          },
+          "Triangles": 141718,
+          "TextureSize": 2048,
+          "Anchor": {
+            "Bone": "head",
+            "Offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Scale": 1.0,
+            "AssumedBonePos": [
+              0.0,
+              0.0,
+              158.5
+            ]
+          }
+        }
+      ],
+      "Points": {
+        "Pivot": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -11.6,
+          -9.2,
+          -12.2
+        ],
+        "Max": [
+          15.4,
+          9.2,
+          22.0
+        ]
+      },
+      "Anchor": {
+        "Bone": "head",
+        "Offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Scale": 1.0,
+        "AssumedBonePos": [
+          0.0,
+          0.0,
+          158.5
+        ]
+      },
+      "Outfit": {
+        "Outfit": "Head",
+        "Tint": "Head",
+        "TintRoughness": 0.5,
+        "RoughnessDetail": 1.0,
+        "TintMetallic": 0.0
+      },
+      "SourceDir": "Characters/Heads",
+      "Character": "Dorian Sloane",
+      "Notes": "Original procedural head (Tools/Blender/heads). Unreal cm, character space; origin = the head bone pivot of the assumed UE5 Manny reference pose. UAirsoftTeamGearComponent::ApplyHead attaches every piece to the head bone (tune with airsoft.gear.tune Head_Dorian). Colours are baked; the role mask is empty."
+    },
+    "Head_Mara": {
+      "Pieces": [
+        {
+          "Name": "Head",
+          "Kind": "Static",
+          "Slots": [
+            "M_Head_Mara_Head"
+          ],
+          "Bounds": {
+            "Min": [
+              -11.0,
+              -9.2,
+              -12.2
+            ],
+            "Max": [
+              15.1,
+              9.2,
+              20.3
+            ]
+          },
+          "Triangles": 172048,
+          "TextureSize": 2048,
+          "Anchor": {
+            "Bone": "head",
+            "Offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Scale": 1.0,
+            "AssumedBonePos": [
+              0.0,
+              0.0,
+              158.5
+            ]
+          }
+        },
+        {
+          "Name": "Hair",
+          "Kind": "Static",
+          "Slots": [
+            "M_Head_Mara_Hair"
+          ],
+          "Bounds": {
+            "Min": [
+              -12.4,
+              -9.1,
+              0.2
+            ],
+            "Max": [
+              10.7,
+              9.1,
+              21.0
+            ]
+          },
+          "Triangles": 135772,
+          "TextureSize": 2048,
+          "Anchor": {
+            "Bone": "head",
+            "Offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Scale": 1.0,
+            "AssumedBonePos": [
+              0.0,
+              0.0,
+              158.5
+            ]
+          }
+        }
+      ],
+      "Points": {
+        "Pivot": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -12.4,
+          -9.2,
+          -12.2
+        ],
+        "Max": [
+          15.1,
+          9.2,
+          21.0
+        ]
+      },
+      "Anchor": {
+        "Bone": "head",
+        "Offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Scale": 1.0,
+        "AssumedBonePos": [
+          0.0,
+          0.0,
+          158.5
+        ]
+      },
+      "Outfit": {
+        "Outfit": "Head",
+        "Tint": "Head",
+        "TintRoughness": 0.5,
+        "RoughnessDetail": 1.0,
+        "TintMetallic": 0.0
+      },
+      "SourceDir": "Characters/Heads",
+      "Character": "Mara Voss",
+      "Notes": "Original procedural head (Tools/Blender/heads). Unreal cm, character space; origin = the head bone pivot of the assumed UE5 Manny reference pose. UAirsoftTeamGearComponent::ApplyHead attaches every piece to the head bone (tune with airsoft.gear.tune Head_Mara). Colours are baked; the role mask is empty."
+    },
+    "Head_Silas": {
+      "Pieces": [
+        {
+          "Name": "Head",
+          "Kind": "Static",
+          "Slots": [
+            "M_Head_Silas_Head"
+          ],
+          "Bounds": {
+            "Min": [
+              -11.2,
+              -9.6,
+              -12.2
+            ],
+            "Max": [
+              15.6,
+              9.6,
+              20.3
+            ]
+          },
+          "Triangles": 182646,
+          "TextureSize": 2048,
+          "Anchor": {
+            "Bone": "head",
+            "Offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Scale": 1.0,
+            "AssumedBonePos": [
+              0.0,
+              0.0,
+              158.5
+            ]
+          }
+        },
+        {
+          "Name": "Hair",
+          "Kind": "Static",
+          "Slots": [
+            "M_Head_Silas_Hair"
+          ],
+          "Bounds": {
+            "Min": [
+              -11.6,
+              -9.6,
+              -6.3
+            ],
+            "Max": [
+              15.4,
+              9.6,
+              15.8
+            ]
+          },
+          "Triangles": 127830,
+          "TextureSize": 2048,
+          "Anchor": {
+            "Bone": "head",
+            "Offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Scale": 1.0,
+            "AssumedBonePos": [
+              0.0,
+              0.0,
+              158.5
+            ]
+          }
+        }
+      ],
+      "Points": {
+        "Pivot": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -11.6,
+          -9.6,
+          -12.2
+        ],
+        "Max": [
+          15.6,
+          9.6,
+          20.3
+        ]
+      },
+      "Anchor": {
+        "Bone": "head",
+        "Offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Scale": 1.0,
+        "AssumedBonePos": [
+          0.0,
+          0.0,
+          158.5
+        ]
+      },
+      "Outfit": {
+        "Outfit": "Head",
+        "Tint": "Head",
+        "TintRoughness": 0.5,
+        "RoughnessDetail": 1.0,
+        "TintMetallic": 0.0
+      },
+      "SourceDir": "Characters/Heads",
+      "Character": "Silas Varga",
+      "Notes": "Original procedural head (Tools/Blender/heads). Unreal cm, character space; origin = the head bone pivot of the assumed UE5 Manny reference pose. UAirsoftTeamGearComponent::ApplyHead attaches every piece to the head bone (tune with airsoft.gear.tune Head_Silas). Colours are baked; the role mask is empty."
+    },
+    "Head_Ezra": {
+      "Pieces": [
+        {
+          "Name": "Head",
+          "Kind": "Static",
+          "Slots": [
+            "M_Head_Ezra_Head"
+          ],
+          "Bounds": {
+            "Min": [
+              -11.1,
+              -9.2,
+              -12.2
+            ],
+            "Max": [
+              15.3,
+              9.2,
+              20.7
+            ]
+          },
+          "Triangles": 176230,
+          "TextureSize": 2048,
+          "Anchor": {
+            "Bone": "head",
+            "Offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Scale": 1.0,
+            "AssumedBonePos": [
+              0.0,
+              0.0,
+              158.5
+            ]
+          }
+        },
+        {
+          "Name": "Hair",
+          "Kind": "Static",
+          "Slots": [
+            "M_Head_Ezra_Hair"
+          ],
+          "Bounds": {
+            "Min": [
+              -11.4,
+              -8.9,
+              0.8
+            ],
+            "Max": [
+              10.4,
+              8.9,
+              21.0
+            ]
+          },
+          "Triangles": 127048,
+          "TextureSize": 2048,
+          "Anchor": {
+            "Bone": "head",
+            "Offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Scale": 1.0,
+            "AssumedBonePos": [
+              0.0,
+              0.0,
+              158.5
+            ]
+          }
+        }
+      ],
+      "Points": {
+        "Pivot": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -11.4,
+          -9.2,
+          -12.2
+        ],
+        "Max": [
+          15.3,
+          9.2,
+          21.0
+        ]
+      },
+      "Anchor": {
+        "Bone": "head",
+        "Offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Scale": 1.0,
+        "AssumedBonePos": [
+          0.0,
+          0.0,
+          158.5
+        ]
+      },
+      "Outfit": {
+        "Outfit": "Head",
+        "Tint": "Head",
+        "TintRoughness": 0.5,
+        "RoughnessDetail": 1.0,
+        "TintMetallic": 0.0
+      },
+      "SourceDir": "Characters/Heads",
+      "Character": "Ezra Kell",
+      "Notes": "Original procedural head (Tools/Blender/heads). Unreal cm, character space; origin = the head bone pivot of the assumed UE5 Manny reference pose. UAirsoftTeamGearComponent::ApplyHead attaches every piece to the head bone (tune with airsoft.gear.tune Head_Ezra). Colours are baked; the role mask is empty."
+    },
+    "Head_Petra": {
+      "Pieces": [
+        {
+          "Name": "Head",
+          "Kind": "Static",
+          "Slots": [
+            "M_Head_Petra_Head"
+          ],
+          "Bounds": {
+            "Min": [
+              -11.0,
+              -9.2,
+              -12.2
+            ],
+            "Max": [
+              15.3,
+              9.2,
+              20.3
+            ]
+          },
+          "Triangles": 172350,
+          "TextureSize": 2048,
+          "Anchor": {
+            "Bone": "head",
+            "Offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Scale": 1.0,
+            "AssumedBonePos": [
+              0.0,
+              0.0,
+              158.5
+            ]
+          }
+        },
+        {
+          "Name": "Hair",
+          "Kind": "Static",
+          "Slots": [
+            "M_Head_Petra_Hair"
+          ],
+          "Bounds": {
+            "Min": [
+              -11.3,
+              -9.0,
+              0.4
+            ],
+            "Max": [
+              11.0,
+              9.0,
+              21.0
+            ]
+          },
+          "Triangles": 132068,
+          "TextureSize": 2048,
+          "Anchor": {
+            "Bone": "head",
+            "Offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Scale": 1.0,
+            "AssumedBonePos": [
+              0.0,
+              0.0,
+              158.5
+            ]
+          }
+        }
+      ],
+      "Points": {
+        "Pivot": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -11.3,
+          -9.2,
+          -12.2
+        ],
+        "Max": [
+          15.3,
+          9.2,
+          21.0
+        ]
+      },
+      "Anchor": {
+        "Bone": "head",
+        "Offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Scale": 1.0,
+        "AssumedBonePos": [
+          0.0,
+          0.0,
+          158.5
+        ]
+      },
+      "Outfit": {
+        "Outfit": "Head",
+        "Tint": "Head",
+        "TintRoughness": 0.5,
+        "RoughnessDetail": 1.0,
+        "TintMetallic": 0.0
+      },
+      "SourceDir": "Characters/Heads",
+      "Character": "Petra Lind",
+      "Notes": "Original procedural head (Tools/Blender/heads). Unreal cm, character space; origin = the head bone pivot of the assumed UE5 Manny reference pose. UAirsoftTeamGearComponent::ApplyHead attaches every piece to the head bone (tune with airsoft.gear.tune Head_Petra). Colours are baked; the role mask is empty."
+    },
+    "Head_Teodor": {
+      "Pieces": [
+        {
+          "Name": "Head",
+          "Kind": "Static",
+          "Slots": [
+            "M_Head_Teodor_Head"
+          ],
+          "Bounds": {
+            "Min": [
+              -11.2,
+              -9.7,
+              -12.2
+            ],
+            "Max": [
+              15.3,
+              9.7,
+              20.4
+            ]
+          },
+          "Triangles": 185820,
+          "TextureSize": 2048,
+          "Anchor": {
+            "Bone": "head",
+            "Offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Scale": 1.0,
+            "AssumedBonePos": [
+              0.0,
+              0.0,
+              158.5
+            ]
+          }
+        },
+        {
+          "Name": "Hair",
+          "Kind": "Static",
+          "Slots": [
+            "M_Head_Teodor_Hair"
+          ],
+          "Bounds": {
+            "Min": [
+              -11.5,
+              -9.6,
+              -6.3
+            ],
+            "Max": [
+              15.0,
+              9.6,
+              21.2
+            ]
+          },
+          "Triangles": 204860,
+          "TextureSize": 2048,
+          "Anchor": {
+            "Bone": "head",
+            "Offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Scale": 1.0,
+            "AssumedBonePos": [
+              0.0,
+              0.0,
+              158.5
+            ]
+          }
+        }
+      ],
+      "Points": {
+        "Pivot": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -11.5,
+          -9.7,
+          -12.2
+        ],
+        "Max": [
+          15.3,
+          9.7,
+          21.2
+        ]
+      },
+      "Anchor": {
+        "Bone": "head",
+        "Offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Scale": 1.0,
+        "AssumedBonePos": [
+          0.0,
+          0.0,
+          158.5
+        ]
+      },
+      "Outfit": {
+        "Outfit": "Head",
+        "Tint": "Head",
+        "TintRoughness": 0.5,
+        "RoughnessDetail": 1.0,
+        "TintMetallic": 0.0
+      },
+      "SourceDir": "Characters/Heads",
+      "Character": "Teodor Brask",
+      "Notes": "Original procedural head (Tools/Blender/heads). Unreal cm, character space; origin = the head bone pivot of the assumed UE5 Manny reference pose. UAirsoftTeamGearComponent::ApplyHead attaches every piece to the head bone (tune with airsoft.gear.tune Head_Teodor). Colours are baked; the role mask is empty."
+    },
+    "Head_Augustin": {
+      "Pieces": [
+        {
+          "Name": "Head",
+          "Kind": "Static",
+          "Slots": [
+            "M_Head_Augustin_Head"
+          ],
+          "Bounds": {
+            "Min": [
+              -11.1,
+              -9.2,
+              -12.2
+            ],
+            "Max": [
+              15.4,
+              9.2,
+              21.0
+            ]
+          },
+          "Triangles": 176912,
+          "TextureSize": 2048,
+          "Anchor": {
+            "Bone": "head",
+            "Offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Scale": 1.0,
+            "AssumedBonePos": [
+              0.0,
+              0.0,
+              158.5
+            ]
+          }
+        },
+        {
+          "Name": "Hair",
+          "Kind": "Static",
+          "Slots": [
+            "M_Head_Augustin_Hair"
+          ],
+          "Bounds": {
+            "Min": [
+              -11.5,
+              -9.0,
+              0.1
+            ],
+            "Max": [
+              11.0,
+              9.0,
+              21.9
+            ]
+          },
+          "Triangles": 139478,
+          "TextureSize": 2048,
+          "Anchor": {
+            "Bone": "head",
+            "Offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Scale": 1.0,
+            "AssumedBonePos": [
+              0.0,
+              0.0,
+              158.5
+            ]
+          }
+        }
+      ],
+      "Points": {
+        "Pivot": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -11.5,
+          -9.2,
+          -12.2
+        ],
+        "Max": [
+          15.4,
+          9.2,
+          21.9
+        ]
+      },
+      "Anchor": {
+        "Bone": "head",
+        "Offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Scale": 1.0,
+        "AssumedBonePos": [
+          0.0,
+          0.0,
+          158.5
+        ]
+      },
+      "Outfit": {
+        "Outfit": "Head",
+        "Tint": "Head",
+        "TintRoughness": 0.5,
+        "RoughnessDetail": 1.0,
+        "TintMetallic": 0.0
+      },
+      "SourceDir": "Characters/Heads",
+      "Character": "Augustin Crane",
+      "Notes": "Original procedural head (Tools/Blender/heads). Unreal cm, character space; origin = the head bone pivot of the assumed UE5 Manny reference pose. UAirsoftTeamGearComponent::ApplyHead attaches every piece to the head bone (tune with airsoft.gear.tune Head_Augustin). Colours are baked; the role mask is empty."
+    },
+    "Head_LedgerA": {
+      "Pieces": [
+        {
+          "Name": "Head",
+          "Kind": "Static",
+          "Slots": [
+            "M_Head_LedgerA_Head"
+          ],
+          "Bounds": {
+            "Min": [
+              -11.1,
+              -9.2,
+              -12.2
+            ],
+            "Max": [
+              15.3,
+              9.2,
+              20.4
+            ]
+          },
+          "Triangles": 178218,
+          "TextureSize": 2048,
+          "Anchor": {
+            "Bone": "head",
+            "Offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Scale": 1.0,
+            "AssumedBonePos": [
+              0.0,
+              0.0,
+              158.5
+            ]
+          }
+        },
+        {
+          "Name": "Hair",
+          "Kind": "Static",
+          "Slots": [
+            "M_Head_LedgerA_Hair"
+          ],
+          "Bounds": {
+            "Min": [
+              -11.4,
+              -9.0,
+              0.9
+            ],
+            "Max": [
+              10.5,
+              9.0,
+              20.7
+            ]
+          },
+          "Triangles": 126728,
+          "TextureSize": 2048,
+          "Anchor": {
+            "Bone": "head",
+            "Offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Scale": 1.0,
+            "AssumedBonePos": [
+              0.0,
+              0.0,
+              158.5
+            ]
+          }
+        }
+      ],
+      "Points": {
+        "Pivot": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -11.4,
+          -9.2,
+          -12.2
+        ],
+        "Max": [
+          15.3,
+          9.2,
+          20.7
+        ]
+      },
+      "Anchor": {
+        "Bone": "head",
+        "Offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Scale": 1.0,
+        "AssumedBonePos": [
+          0.0,
+          0.0,
+          158.5
+        ]
+      },
+      "Outfit": {
+        "Outfit": "Head",
+        "Tint": "Head",
+        "TintRoughness": 0.5,
+        "RoughnessDetail": 1.0,
+        "TintMetallic": 0.0
+      },
+      "SourceDir": "Characters/Heads",
+      "Character": "Ledger A",
+      "Notes": "Original procedural head (Tools/Blender/heads). Unreal cm, character space; origin = the head bone pivot of the assumed UE5 Manny reference pose. UAirsoftTeamGearComponent::ApplyHead attaches every piece to the head bone (tune with airsoft.gear.tune Head_LedgerA). Colours are baked; the role mask is empty."
+    },
+    "Head_LedgerB": {
+      "Pieces": [
+        {
+          "Name": "Head",
+          "Kind": "Static",
+          "Slots": [
+            "M_Head_LedgerB_Head"
+          ],
+          "Bounds": {
+            "Min": [
+              -11.2,
+              -9.5,
+              -12.2
+            ],
+            "Max": [
+              15.3,
+              9.5,
+              20.3
+            ]
+          },
+          "Triangles": 182000,
+          "TextureSize": 2048,
+          "Anchor": {
+            "Bone": "head",
+            "Offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Scale": 1.0,
+            "AssumedBonePos": [
+              0.0,
+              0.0,
+              158.5
+            ]
+          }
+        }
+      ],
+      "Points": {
+        "Pivot": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -11.2,
+          -9.5,
+          -12.2
+        ],
+        "Max": [
+          15.3,
+          9.5,
+          20.3
+        ]
+      },
+      "Anchor": {
+        "Bone": "head",
+        "Offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Scale": 1.0,
+        "AssumedBonePos": [
+          0.0,
+          0.0,
+          158.5
+        ]
+      },
+      "Outfit": {
+        "Outfit": "Head",
+        "Tint": "Head",
+        "TintRoughness": 0.5,
+        "RoughnessDetail": 1.0,
+        "TintMetallic": 0.0
+      },
+      "SourceDir": "Characters/Heads",
+      "Character": "Ledger B",
+      "Notes": "Original procedural head (Tools/Blender/heads). Unreal cm, character space; origin = the head bone pivot of the assumed UE5 Manny reference pose. UAirsoftTeamGearComponent::ApplyHead attaches every piece to the head bone (tune with airsoft.gear.tune Head_LedgerB). Colours are baked; the role mask is empty."
+    },
+    "Head_LedgerC": {
+      "Pieces": [
+        {
+          "Name": "Head",
+          "Kind": "Static",
+          "Slots": [
+            "M_Head_LedgerC_Head"
+          ],
+          "Bounds": {
+            "Min": [
+              -11.1,
+              -9.2,
+              -12.2
+            ],
+            "Max": [
+              15.4,
+              9.2,
+              20.4
+            ]
+          },
+          "Triangles": 176590,
+          "TextureSize": 2048,
+          "Anchor": {
+            "Bone": "head",
+            "Offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Scale": 1.0,
+            "AssumedBonePos": [
+              0.0,
+              0.0,
+              158.5
+            ]
+          }
+        },
+        {
+          "Name": "Hair",
+          "Kind": "Static",
+          "Slots": [
+            "M_Head_LedgerC_Hair"
+          ],
+          "Bounds": {
+            "Min": [
+              -11.4,
+              -9.1,
+              1.0
+            ],
+            "Max": [
+              10.7,
+              9.1,
+              21.4
+            ]
+          },
+          "Triangles": 131686,
+          "TextureSize": 2048,
+          "Anchor": {
+            "Bone": "head",
+            "Offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Scale": 1.0,
+            "AssumedBonePos": [
+              0.0,
+              0.0,
+              158.5
+            ]
+          }
+        }
+      ],
+      "Points": {
+        "Pivot": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -11.4,
+          -9.2,
+          -12.2
+        ],
+        "Max": [
+          15.4,
+          9.2,
+          21.4
+        ]
+      },
+      "Anchor": {
+        "Bone": "head",
+        "Offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Scale": 1.0,
+        "AssumedBonePos": [
+          0.0,
+          0.0,
+          158.5
+        ]
+      },
+      "Outfit": {
+        "Outfit": "Head",
+        "Tint": "Head",
+        "TintRoughness": 0.5,
+        "RoughnessDetail": 1.0,
+        "TintMetallic": 0.0
+      },
+      "SourceDir": "Characters/Heads",
+      "Character": "Ledger C",
+      "Notes": "Original procedural head (Tools/Blender/heads). Unreal cm, character space; origin = the head bone pivot of the assumed UE5 Manny reference pose. UAirsoftTeamGearComponent::ApplyHead attaches every piece to the head bone (tune with airsoft.gear.tune Head_LedgerC). Colours are baked; the role mask is empty."
+    },
+    "Head_LedgerD": {
+      "Pieces": [
+        {
+          "Name": "Head",
+          "Kind": "Static",
+          "Slots": [
+            "M_Head_LedgerD_Head"
+          ],
+          "Bounds": {
+            "Min": [
+              -11.1,
+              -9.2,
+              -12.2
+            ],
+            "Max": [
+              15.3,
+              9.2,
+              20.6
+            ]
+          },
+          "Triangles": 177672,
+          "TextureSize": 2048,
+          "Anchor": {
+            "Bone": "head",
+            "Offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Scale": 1.0,
+            "AssumedBonePos": [
+              0.0,
+              0.0,
+              158.5
+            ]
+          }
+        },
+        {
+          "Name": "Hair",
+          "Kind": "Static",
+          "Slots": [
+            "M_Head_LedgerD_Hair"
+          ],
+          "Bounds": {
+            "Min": [
+              -11.8,
+              -8.9,
+              1.2
+            ],
+            "Max": [
+              10.5,
+              9.0,
+              22.0
+            ]
+          },
+          "Triangles": 153382,
+          "TextureSize": 2048,
+          "Anchor": {
+            "Bone": "head",
+            "Offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Scale": 1.0,
+            "AssumedBonePos": [
+              0.0,
+              0.0,
+              158.5
+            ]
+          }
+        }
+      ],
+      "Points": {
+        "Pivot": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "Bounds": {
+        "Min": [
+          -11.8,
+          -9.2,
+          -12.2
+        ],
+        "Max": [
+          15.3,
+          9.2,
+          22.0
+        ]
+      },
+      "Anchor": {
+        "Bone": "head",
+        "Offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Scale": 1.0,
+        "AssumedBonePos": [
+          0.0,
+          0.0,
+          158.5
+        ]
+      },
+      "Outfit": {
+        "Outfit": "Head",
+        "Tint": "Head",
+        "TintRoughness": 0.5,
+        "RoughnessDetail": 1.0,
+        "TintMetallic": 0.0
+      },
+      "SourceDir": "Characters/Heads",
+      "Character": "Ledger D",
+      "Notes": "Original procedural head (Tools/Blender/heads). Unreal cm, character space; origin = the head bone pivot of the assumed UE5 Manny reference pose. UAirsoftTeamGearComponent::ApplyHead attaches every piece to the head bone (tune with airsoft.gear.tune Head_LedgerD). Colours are baked; the role mask is empty."
+    }
+  },
+  "Heads": {
+    "Cast": {
+      "Andrew": "Head_Andrew",
+      "Kade": "Head_Kade",
+      "Dorian Sloane": "Head_Dorian",
+      "Mara Voss": "Head_Mara",
+      "Silas Varga": "Head_Silas",
+      "Ezra Kell": "Head_Ezra",
+      "Petra Lind": "Head_Petra",
+      "Teodor Brask": "Head_Teodor",
+      "Augustin Crane": "Head_Augustin"
+    },
+    "Crew": [
+      "Head_LedgerA",
+      "Head_LedgerB",
+      "Head_LedgerC",
+      "Head_LedgerD"
+    ],
+    "HideHair": [
+      "HairSlick"
+    ],
+    "Notes": "Story characters by name (Andrew, and the bosses by their Campaign.json names). Ledger crew heads are picked by seed. Putting a head on removes the suit's own haircut (HideHair)."
+  }
+}
