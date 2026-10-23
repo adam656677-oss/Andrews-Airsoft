@@ -963,7 +963,8 @@ bool UAirsoftTeamGearComponent::ApplyHead(USkinnedMeshComponent* Body, FName Cha
 {
 	using namespace AirsoftTeamGear;
 	static const FName SlotHead(TEXT("Head"));
-	if (!Body || !Body->GetSkinnedAsset() || !GetOwner() || !UAirsoftGearSettings::Get()->bEnableSuit || GetNetMode() == NM_DedicatedServer)
+	if (!Body || !Body->GetSkinnedAsset() || !GetOwner() || !UAirsoftGearSettings::Get()->bEnableSuit || !UAirsoftGearSettings::Get()->bEnableHeads
+		|| GetNetMode() == NM_DedicatedServer)
 	{
 		return false;
 	}

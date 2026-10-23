@@ -57,6 +57,11 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category = "Suit")
 	bool bEnableSuit = true;
 
+	/** Story characters wear the procedural faces from GearHeads.json (Tools/Blender/heads). Off by default: the first
+	 *  pass reads as clay next to the suits, so characters keep the faceless mannequin head until better heads land. */
+	UPROPERTY(Config, EditAnywhere, Category = "Team Gear")
+	bool bEnableHeads = false;
+
 	/** Multiplayer suit: the tie and pocket square take the team colour scaled by this (1 = the full, bright team colour). */
 	UPROPERTY(Config, EditAnywhere, Category = "Suit", meta = (ClampMin = "0", ClampMax = "1"))
 	float SuitTeamTieScale = 0.6f;
