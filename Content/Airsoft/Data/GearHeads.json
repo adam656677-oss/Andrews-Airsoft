@@ -580,16 +580,16 @@
           "Bounds": {
             "Min": [
               -11.6,
-              -9.5,
+              -9.6,
               -6.3
             ],
             "Max": [
               15.4,
-              9.5,
-              16.1
+              9.6,
+              15.8
             ]
           },
-          "Triangles": 134086,
+          "Triangles": 127830,
           "TextureSize": 2048,
           "Anchor": {
             "Bone": "head",
